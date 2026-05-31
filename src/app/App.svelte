@@ -57,7 +57,7 @@ onDestroy(() => {
 
 <main class="binnacle-shell">
   <header class="topbar">
-    <span class="brand">Binnacle</span>
+    <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     <ThemeToggle controller={theme} />
   </header>
   <section class="chart-host" aria-label="Chart">
@@ -100,6 +100,12 @@ onDestroy(() => {
 }
 .brand {
   font-weight: 600;
+}
+.version {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-muted);
 }
 .chart-host {
   position: relative;

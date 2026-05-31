@@ -14,6 +14,9 @@ const alias = {
 export default defineConfig({
   // Signal K serves the webapp at /<package-name>/, so production assets resolve under /binnacle/.
   base: process.env.NODE_ENV === 'production' ? '/binnacle/' : '/',
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.1.0'),
+  },
   plugins: [svelte()],
   resolve: { alias },
   publicDir: 'static',
