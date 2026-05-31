@@ -26,12 +26,16 @@ export class OwnVessel {
   }
 
   get position(): LatLon | undefined {
-    const value = this.#store.cell(SK_PATHS.position).value;
+    const value = this.#raw(SK_PATHS.position);
     return this.#isLatLon(value) ? value : undefined;
   }
 
+  #raw(path: string): unknown {
+    return this.#store.cell(path).value;
+  }
+
   #number(path: string): number | undefined {
-    const value = this.#store.cell(path).value;
+    const value = this.#raw(path);
     return typeof value === 'number' ? value : undefined;
   }
 

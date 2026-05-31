@@ -4,7 +4,7 @@
 set -e
 
 echo "[pre-commit] biome ci"
-biome ci .
+npm run --silent ci:biome
 
 echo "[pre-commit] dependency-cruiser"
 npm run --silent cruise

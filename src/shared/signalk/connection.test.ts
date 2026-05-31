@@ -1,26 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { FakeWebSocket } from '$shared/testing/fake-websocket';
 import { SkConnection } from './connection';
 import type { ConnectionState } from './types';
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = [];
-  onopen: (() => void) | null = null;
-  onclose: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  onmessage: ((e: { data: string }) => void) | null = null;
-  sent: string[] = [];
-  closed = false;
-  constructor(public url: string) {
-    FakeWebSocket.instances.push(this);
-  }
-  send(data: string) {
-    this.sent.push(data);
-  }
-  close() {
-    this.closed = true;
-    this.onclose?.();
-  }
-}
 
 beforeEach(() => {
   FakeWebSocket.instances = [];

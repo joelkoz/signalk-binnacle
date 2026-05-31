@@ -1,7 +1,7 @@
 <script lang="ts">
 import maplibregl from 'maplibre-gl';
 import { onDestroy, onMount } from 'svelte';
-import { OwnVessel } from '$entities/vessel';
+import type { OwnVessel } from '$entities/vessel';
 import { fetchCharts } from '$features/charts';
 import { LayersView } from '$features/layers-panel';
 import { createVesselOverlay } from '$features/vessel-layer';
@@ -14,20 +14,21 @@ import {
   type OverlayContext,
   registerPmtilesProtocol,
 } from '$shared/map';
-import type { SignalKStore } from '$shared/signalk';
+import { type SignalKStore, serverOrigin } from '$shared/signalk';
 
 interface Props {
   store: SignalKStore;
+  vessel: OwnVessel;
   onReady?: (view: LayersView) => void;
 }
 
-const { store, onReady }: Props = $props();
+const { store, vessel, onReady }: Props = $props();
 
 let container: HTMLDivElement;
 let map: maplibregl.Map | undefined;
 let manager: LayerManager | undefined;
-let vesselOverlay: ReturnType<typeof createVesselOverlay> | undefined;
 let frame = 0;
+let destroyed = false;
 
 registerPmtilesProtocol();
 
@@ -51,15 +52,16 @@ onMount(() => {
     installSentinels(mapInstance);
     manager = new LayerManager(ctx);
 
-    const serverBase = `${location.protocol}//${location.host}`;
-    const charts = await fetchCharts(serverBase);
+    const charts = await fetchCharts(serverOrigin());
+    if (destroyed) return;
     for (const chart of charts) {
-      await manager.register(createChartOverlay(chart, serverBase));
+      await manager.register(createChartOverlay(chart, serverOrigin()));
+      if (destroyed) return;
     }
 
-    const overlay = createVesselOverlay(new OwnVessel(store));
-    vesselOverlay = overlay;
+    const overlay = createVesselOverlay(vessel);
     await manager.register(overlay);
+    if (destroyed) return;
 
     const view = new LayersView(manager);
     view.refresh();
@@ -74,6 +76,7 @@ onMount(() => {
 });
 
 onDestroy(() => {
+  destroyed = true;
   if (frame) cancelAnimationFrame(frame);
   map?.remove();
 });

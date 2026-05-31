@@ -1,23 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { createFakeMap } from '$shared/testing/fake-map';
 import { createChartOverlay } from './chart-overlay';
 import type { OverlayContext } from './types';
 
-function fakeMap() {
-  const sources = new Set<string>();
-  const layers = new Set<string>();
-  return {
-    sources,
-    layers,
-    addSource: (id: string) => sources.add(id),
-    addLayer: (layer: { id: string }) => layers.add(layer.id),
-    getSource: (id: string) => (sources.has(id) ? {} : undefined),
-    getLayer: (id: string) => (layers.has(id) ? { id } : undefined),
-    removeLayer: (id: string) => layers.delete(id),
-    removeSource: (id: string) => sources.delete(id),
-    setLayoutProperty: vi.fn(),
-    setPaintProperty: vi.fn(),
-  };
-}
+const fakeMap = createFakeMap;
 
 function ctxFor(map: ReturnType<typeof fakeMap>): OverlayContext {
   return { map: map as never, beforeIdFor: () => undefined };

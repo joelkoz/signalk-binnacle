@@ -2,7 +2,7 @@
 import { onDestroy, onMount } from 'svelte';
 import { OwnVessel } from '$entities/vessel';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
-import { createSignalKClient, SignalKStore, SK_PATHS } from '$shared/signalk';
+import { createSignalKClient, SignalKStore, SK_PATHS, streamUrl } from '$shared/signalk';
 import { ChartCanvas } from '$widgets/chart-canvas';
 
 const store = new SignalKStore();
@@ -11,23 +11,20 @@ const client = createSignalKClient();
 
 let layersView = $state<LayersView | undefined>();
 
-const streamUrl = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/signalk/v1/stream`;
+const CONNECTION_LABELS: Record<string, string> = {
+  open: 'Connected',
+  connecting: 'Connecting',
+  reconnecting: 'Reconnecting',
+  closed: 'Not connected',
+};
 
-const connectionLabel = $derived(
-  store.connection.phase === 'open'
-    ? 'Connected'
-    : store.connection.phase === 'connecting'
-      ? 'Connecting'
-      : store.connection.phase === 'reconnecting'
-        ? 'Reconnecting'
-        : 'Not connected',
-);
+const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase] ?? 'Not connected');
 
 const fmt = (value: number | undefined, digits: number) =>
   value === undefined ? '--' : value.toFixed(digits);
 
 onMount(async () => {
-  await client.connect(streamUrl, (frame) => store.applyFrame(frame));
+  await client.connect(streamUrl(), (frame) => store.applyFrame(frame));
   await client.raw.subscribe([
     { path: SK_PATHS.headingTrue, policy: 'instant', minPeriod: 200 },
     { path: SK_PATHS.position, policy: 'instant', minPeriod: 1000 },
@@ -44,7 +41,7 @@ onDestroy(() => {
 <main class="binnacle-shell">
   <header class="topbar">Binnacle</header>
   <section class="chart-host" aria-label="Chart">
-    <ChartCanvas {store} onReady={(view) => (layersView = view)} />
+    <ChartCanvas {store} {vessel} onReady={(view) => (layersView = view)} />
     {#if layersView}
       <LayersPanel view={layersView} />
     {/if}

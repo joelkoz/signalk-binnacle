@@ -24,16 +24,18 @@ const { view }: Props = $props();
           >
           <span class="title">{item.title}</span>
         </label>
-        <input
-          class="opacity"
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={item.opacity}
-          aria-label={`${item.title} opacity`}
-          oninput={(e) => view.setOpacity(item.id, Number(e.currentTarget.value))}
-        >
+        {#if item.supportsOpacity}
+          <input
+            class="opacity"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={item.opacity}
+            aria-label={`${item.title} opacity`}
+            oninput={(e) => view.setOpacity(item.id, Number(e.currentTarget.value))}
+          >
+        {/if}
       </li>
     {/each}
   </ul>

@@ -1,3 +1,4 @@
+import { installSentinels } from './sentinels';
 import type { OverlayContext, OverlayModule } from './types';
 
 interface OverlayState {
@@ -50,6 +51,9 @@ export class LayerManager {
   }
 
   async reattachAll(): Promise<void> {
+    // A base-style swap wipes the sentinel layers too, so restore them before
+    // re-adding overlays or every beforeId would point at a missing layer.
+    installSentinels(this.#ctx.map);
     for (const [id, module] of this.#modules) {
       const state = this.#state.get(id) ?? { visible: true, opacity: 1 };
       await (module.reattach ?? module.add).call(module, this.#ctx);
@@ -58,10 +62,22 @@ export class LayerManager {
     }
   }
 
-  layers(): Array<{ id: string; title: string; visible: boolean; opacity: number }> {
+  layers(): Array<{
+    id: string;
+    title: string;
+    visible: boolean;
+    opacity: number;
+    supportsOpacity: boolean;
+  }> {
     return [...this.#modules.values()].map((module) => {
       const state = this.#state.get(module.id) ?? { visible: true, opacity: 1 };
-      return { id: module.id, title: module.title, visible: state.visible, opacity: state.opacity };
+      return {
+        id: module.id,
+        title: module.title,
+        visible: state.visible,
+        opacity: state.opacity,
+        supportsOpacity: module.supportsOpacity,
+      };
     });
   }
 }

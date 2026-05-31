@@ -17,6 +17,7 @@ export class SkConnection {
   #ws?: WebSocket;
   #attempt = 0;
   #stopped = false;
+  #reconnectTimer?: ReturnType<typeof setTimeout>;
 
   constructor(url: string, handlers: ConnectionHandlers) {
     this.#url = url;
@@ -47,6 +48,7 @@ export class SkConnection {
 
   disconnect(): void {
     this.#stopped = true;
+    if (this.#reconnectTimer) clearTimeout(this.#reconnectTimer);
     this.#ws?.close();
     this.#emit('closed');
   }
@@ -55,7 +57,7 @@ export class SkConnection {
     this.#emit('reconnecting');
     const delay = fullJitterDelay(this.#attempt);
     this.#attempt += 1;
-    setTimeout(() => {
+    this.#reconnectTimer = setTimeout(() => {
       if (!this.#stopped) this.connect();
     }, delay);
   }

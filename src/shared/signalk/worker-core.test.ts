@@ -1,25 +1,8 @@
 import type { Path } from '@signalk/server-api';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { FakeWebSocket } from '$shared/testing/fake-websocket';
 import type { SKFrame } from './types';
 import { WorkerCore } from './worker-core';
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = [];
-  onopen: (() => void) | null = null;
-  onclose: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  onmessage: ((e: { data: string }) => void) | null = null;
-  sent: string[] = [];
-  constructor(public url: string) {
-    FakeWebSocket.instances.push(this);
-  }
-  send(data: string) {
-    this.sent.push(data);
-  }
-  close() {
-    this.onclose?.();
-  }
-}
 
 beforeEach(() => {
   FakeWebSocket.instances = [];

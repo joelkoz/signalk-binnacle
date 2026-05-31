@@ -1,9 +1,13 @@
 export const VESSEL_ICON_ID = 'binnacle-vessel';
 const SIZE = 32;
 
+let cached: ImageData | undefined;
+
 // A filled triangle pointing up (north at 0 rotation), drawn into ImageData so
-// it can be registered with map.addImage and rotated by icon-rotate.
+// it can be registered with map.addImage and rotated by icon-rotate. The result
+// is constant, so it is built once and reused across re-registration.
 export function vesselIconImage(): ImageData {
+  if (cached) return cached;
   const data = new Uint8ClampedArray(SIZE * SIZE * 4);
   const cx = SIZE / 2;
   for (let y = 0; y < SIZE; y += 1) {
@@ -20,5 +24,6 @@ export function vesselIconImage(): ImageData {
       }
     }
   }
-  return new ImageData(data, SIZE, SIZE);
+  cached = new ImageData(data, SIZE, SIZE);
+  return cached;
 }

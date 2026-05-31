@@ -5,6 +5,7 @@ interface LayerItem {
   title: string;
   visible: boolean;
   opacity: number;
+  supportsOpacity: boolean;
 }
 
 export class LayersView {

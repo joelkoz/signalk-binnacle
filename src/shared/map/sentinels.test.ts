@@ -1,15 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createFakeMap } from '$shared/testing/fake-map';
 import { beforeIdFor, installSentinels, sentinelId } from './sentinels';
 import { Z_ORDER } from './types';
 
-function fakeMap() {
-  const layers = new Set<string>();
-  return {
-    layers,
-    getLayer: (id: string) => (layers.has(id) ? { id } : undefined),
-    addLayer: (layer: { id: string }) => layers.add(layer.id),
-  };
-}
+const fakeMap = createFakeMap;
 
 describe('sentinels', () => {
   it('installs one sentinel per z-band', () => {

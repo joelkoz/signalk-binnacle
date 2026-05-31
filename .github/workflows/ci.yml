@@ -19,7 +19,7 @@ jobs:
           version: 2.4.16
       - run: npm ci
       - run: npm run check
-      - run: biome ci .
+      - run: npm run ci:biome
       - run: npm run cruise
       - run: npm test
       - run: npm run build

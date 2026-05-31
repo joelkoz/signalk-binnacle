@@ -1,4 +1,4 @@
-import { chartToSpecs } from './chart-adapter';
+import { chartSourceId, chartToSpecs } from './chart-adapter';
 import type { SignalKChart } from './chart-types';
 import type { OverlayModule } from './types';
 
@@ -8,7 +8,7 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
   const layerIds = specs.layers.map((layer) => layer.id);
 
   return {
-    id: `chart-${chart.identifier}`,
+    id: chartSourceId(chart.identifier),
     title: chart.name,
     band: 'basemap',
     supportsOpacity: true,
@@ -20,7 +20,7 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
       }
       for (const layer of specs.layers) {
         if (!ctx.map.getLayer(layer.id)) {
-          ctx.map.addLayer(layer as never, ctx.beforeIdFor('basemap'));
+          ctx.map.addLayer(layer, ctx.beforeIdFor('basemap'));
         }
       }
     },

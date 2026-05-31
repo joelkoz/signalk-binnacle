@@ -1,5 +1,6 @@
 export type { SignalKClient } from './client';
 export { createSignalKClient } from './client';
+export { serverOrigin, streamUrl } from './origin';
 export type { SkPathKey } from './paths';
 export { SK_PATHS } from './paths';
 export { PathCell, SignalKStore } from './store.svelte';

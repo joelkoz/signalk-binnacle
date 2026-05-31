@@ -48,6 +48,9 @@ export class WorkerCore {
     try {
       delta = JSON.parse(raw) as Delta;
     } catch {
+      // A malformed frame indicates a real server or transport fault; surface it
+      // rather than dropping it silently.
+      if (import.meta.env?.DEV) console.warn('[signalk] dropped a malformed delta frame');
       return;
     }
     reconcileDelta(delta, (write) => this.#batcher.put(write.path, write.value));

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { createFakeMap } from '$shared/testing/fake-map';
 import { LayerManager } from './layer-manager';
 import type { OverlayContext, OverlayModule } from './types';
 
 function fakeCtx(): OverlayContext {
   return {
-    map: {} as never,
+    map: createFakeMap() as never,
     beforeIdFor: () => undefined,
   };
 }

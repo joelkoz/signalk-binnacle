@@ -2,23 +2,25 @@ const MS_TO_KNOTS = 1.943844492;
 const METERS_TO_FEET = 3.280839895;
 const METERS_PER_NAUTICAL_MILE = 1852;
 
-export function metersPerSecondToKnots(value: number | undefined): number | undefined {
-  return value === undefined ? undefined : value * MS_TO_KNOTS;
+// Signal K can emit null as well as undefined for an absent value, so the guards
+// use `== null` to catch both.
+export function metersPerSecondToKnots(value: number | null | undefined): number | undefined {
+  return value == null ? undefined : value * MS_TO_KNOTS;
 }
 
-export function radiansToDegrees(value: number | undefined): number | undefined {
-  if (value === undefined) return undefined;
+export function radiansToDegrees(value: number | null | undefined): number | undefined {
+  if (value == null) return undefined;
   return ((value * 180) / Math.PI + 360) % 360;
 }
 
-export function kelvinToCelsius(value: number | undefined): number | undefined {
-  return value === undefined ? undefined : value - 273.15;
+export function kelvinToCelsius(value: number | null | undefined): number | undefined {
+  return value == null ? undefined : value - 273.15;
 }
 
-export function metersToFeet(value: number | undefined): number | undefined {
-  return value === undefined ? undefined : value * METERS_TO_FEET;
+export function metersToFeet(value: number | null | undefined): number | undefined {
+  return value == null ? undefined : value * METERS_TO_FEET;
 }
 
-export function metersToNauticalMiles(value: number | undefined): number | undefined {
-  return value === undefined ? undefined : value / METERS_PER_NAUTICAL_MILE;
+export function metersToNauticalMiles(value: number | null | undefined): number | undefined {
+  return value == null ? undefined : value / METERS_PER_NAUTICAL_MILE;
 }

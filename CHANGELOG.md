@@ -15,6 +15,22 @@ All notable changes to Binnacle are documented here. The format follows
   charts client discovers them from `/resources/charts` (v2, falling back to v1, degrading to an
   empty list offline), and a layers panel gives each chart a visibility toggle and an opacity
   slider.
+- Verify-before-push git hooks (`.githooks/`, installed via `npm run hooks`): a fast format,
+  lint, and boundary check before each commit, and the full type-check, test, and build gate
+  before each push, so a broken tree cannot be committed or pushed.
+
+### Changed
+
+- Whole-repo cleanup pass: the chart source and layer ids derive from a single `chartSourceId`
+  helper, the own-vessel overlay skips its per-frame `setData` when position and heading are
+  unchanged, the vessel icon is built once and cached, the connection clears its reconnect timer
+  on disconnect, malformed delta frames and chart fetch errors now warn instead of failing
+  silently, MapLibre source and layer specs are properly typed (no `as never` casts), the layers
+  panel hides the opacity slider for layers that do not support it, the unit converters accept
+  `null`, the connection wakes a single shared own-vessel instead of two, and the shared test
+  fakes (`FakeWebSocket`, `createFakeMap`) live in `src/shared/testing/` rather than being
+  redefined per test. The dependency-cruiser ruleset now covers every Feature-Sliced Design
+  layer direction, including the cross-feature public-API boundary.
 
 - The map: a MapLibre GL map with a vector base, rendered in the chart area. A framework-free
   `LayerManager` gives every overlay an independent toggle, opacity, and deterministic z-order

@@ -6,7 +6,12 @@ const V1 = '/signalk/v1/api/resources/charts';
 async function tryFetch(url: string): Promise<SignalKChart[] | undefined> {
   try {
     const response = await fetch(url);
-    if (!response.ok) return undefined;
+    if (!response.ok) {
+      // A reachable server returning an error is distinct from being offline, so
+      // surface it rather than treating it as "no charts".
+      console.warn(`[charts] ${url} returned ${response.status}`);
+      return undefined;
+    }
     const body = (await response.json()) as Record<string, SignalKChart>;
     return Object.values(body);
   } catch {

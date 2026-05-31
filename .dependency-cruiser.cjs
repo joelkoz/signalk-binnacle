@@ -8,11 +8,43 @@ module.exports = {
       to: { circular: true },
     },
     {
-      name: 'layers-go-down-only',
+      name: 'entities-go-down-only',
       severity: 'error',
-      comment: 'Lower FSD layers must not import higher ones.',
+      comment: 'entities may import shared only.',
       from: { path: '^src/entities' },
       to: { path: '^src/(features|widgets|views|app)' },
+    },
+    {
+      name: 'features-go-down-only',
+      severity: 'error',
+      comment: 'features may import entities and shared only, never widgets, views, or app.',
+      from: { path: '^src/features' },
+      to: { path: '^src/(widgets|views|app)' },
+    },
+    {
+      name: 'no-cross-feature',
+      severity: 'error',
+      comment:
+        'A feature may import another feature only through its index public API, not its internals.',
+      from: { path: '^src/features/([^/]+)/' },
+      to: {
+        path: '^src/features/(?!$1/)[^/]+/.+',
+        pathNot: '^src/features/[^/]+/index\\.(ts|js)$',
+      },
+    },
+    {
+      name: 'widgets-go-down-only',
+      severity: 'error',
+      comment: 'widgets may import features, entities, and shared only, never views or app.',
+      from: { path: '^src/widgets' },
+      to: { path: '^src/(views|app)' },
+    },
+    {
+      name: 'views-go-down-only',
+      severity: 'error',
+      comment: 'views may not import app.',
+      from: { path: '^src/views' },
+      to: { path: '^src/app' },
     },
     {
       name: 'shared-imports-nothing-above',
@@ -20,16 +52,6 @@ module.exports = {
       comment: 'shared is the lowest layer and must not import any layer above it.',
       from: { path: '^src/shared' },
       to: { path: '^src/(entities|features|widgets|views|app)' },
-    },
-    {
-      name: 'no-cross-feature-internals',
-      severity: 'error',
-      comment: 'A feature may import another feature only through its index public API.',
-      from: { path: '^src/features/([^/]+)/.+' },
-      to: {
-        path: '^src/features/([^/]+)/.+',
-        pathNot: ['^src/features/$1/.+', '^src/features/[^/]+/index\\.(ts|js)$'],
-      },
     },
   ],
   options: {
