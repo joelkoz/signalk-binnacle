@@ -13,6 +13,10 @@ All notable changes to Binnacle are documented here. The format follows
   recolors from CSS custom properties, a top-bar toggle cycles the themes, and the map base
   recolors via `setPaintProperty` (keeping tiles and overlays). Night-red is pure red on true
   black with no blue, and a dedicated alarm token stays distinguishable in every palette.
+- Identity: self-hosted Inter (UI) and JetBrains Mono (tabular numeric readouts) typography
+  bundled for offline use, Lucide icons for the theme toggle and the layers panel, the own-ship
+  and AIS symbols recolored per theme so the chart shows no blue on the night-red theme (the own
+  ship turns red and AIS a night-safe amber), and the build version shown in the top bar.
 - AIS targets: the worker learns the self vessel from the `hello` handshake and routes other
   vessels' deltas into a per-context AIS stream, the store accumulates each target and prunes
   ones that go silent past a six-minute window, an `AisTargets` entity interprets each target

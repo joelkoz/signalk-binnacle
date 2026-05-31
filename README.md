@@ -25,10 +25,10 @@ night watch, danger that surfaces before you ask for it, and a plotter that keep
 
 ## Status
 
-The foundation is being built in phases. The build, the module architecture, the verification
-gates, the real-time data layer, the map, chart layers, AIS targets, and the day, dusk, and
-night-red theme system are in place; the identity pass and the differentiating features arrive
-in the following phases.
+The foundation is complete: the build, the module architecture, the verification gates, the
+real-time data layer, the map, chart layers, AIS targets, day, dusk, and night-red theming, and
+the identity pass (typography, iconography, and theme-aware symbols) are all in place. The
+differentiating features arrive in the following cycles.
 
 What is in place now:
 
@@ -46,6 +46,9 @@ What is in place now:
   out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
 - Day, dusk, and night-red themes switched from a top-bar toggle, recoloring the chrome and the
   map base; night-red is pure red on true black to preserve dark adaptation on a night watch.
+- Identity: self-hosted Inter and JetBrains Mono typography (offline-first, with tabular numeric
+  readouts), Lucide chrome icons, own-ship and AIS symbols that recolor per theme so nothing
+  glows blue on a night watch, and the build version shown in the top bar.
 - An SI unit-conversion module in `shared`, built test-first.
 - Lint and format with Biome, type-checking with svelte-check, unit tests with Vitest, an
   end-to-end smoke test with Playwright, and architectural boundary checks with
