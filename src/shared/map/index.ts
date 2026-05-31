@@ -2,6 +2,8 @@ export { baseStyleUrl } from './base-style';
 export { chartToSpecs } from './chart-adapter';
 export { createChartOverlay } from './chart-overlay';
 export type { MapSourceType, SignalKChart } from './chart-types';
+export type { Rgba } from './icon-raster';
+export { rasterIcon } from './icon-raster';
 export { LayerManager } from './layer-manager';
 export { registerPmtilesProtocol } from './pmtiles';
 export { beforeIdFor, installSentinels, sentinelId } from './sentinels';
