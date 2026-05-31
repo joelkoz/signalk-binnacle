@@ -4,13 +4,14 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { AisTargets } from '$entities/ais';
-import type { OverlayContext, OverlayModule } from '$shared/map';
+import type { OverlayContext, OverlayModule, Rgba } from '$shared/map';
 import type { SignalKStore } from '$shared/signalk';
 import { AIS_ICON_ID, aisIconImage } from './ais-icon';
 
 const SOURCE_ID = 'binnacle-ais';
 const LAYER_ID = 'binnacle-ais-symbol';
 const STALE_TTL_MS = 360_000;
+const DEFAULT_COLOR: Rgba = { r: 0xe0, g: 0xa0, b: 0x20, a: 0xff };
 
 interface AisOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -48,7 +49,7 @@ export function createAisOverlay(targets: AisTargets, store: SignalKStore): AisO
     supportsOpacity: true,
     add(ctx) {
       if (!ctx.map.hasImage(AIS_ICON_ID)) {
-        ctx.map.addImage(AIS_ICON_ID, aisIconImage());
+        ctx.map.addImage(AIS_ICON_ID, aisIconImage(DEFAULT_COLOR));
       }
       const source: GeoJSONSourceSpecification = { type: 'geojson', data: featureCollection() };
       ctx.map.addSource(SOURCE_ID, source);
@@ -72,6 +73,14 @@ export function createAisOverlay(targets: AisTargets, store: SignalKStore): AisO
       lastVersion = store.aisVersion;
       const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
       source?.setData(featureCollection());
+    },
+    applyTheme(ctx, paint) {
+      const image = aisIconImage(paint.aisTarget);
+      if (ctx.map.hasImage(AIS_ICON_ID)) {
+        ctx.map.updateImage(AIS_ICON_ID, image);
+      } else {
+        ctx.map.addImage(AIS_ICON_ID, image);
+      }
     },
     setVisible(ctx, visible) {
       ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');

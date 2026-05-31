@@ -6,12 +6,18 @@ export function createFakeMap() {
   const sources = new Map<string, { setData: (data: unknown) => void; data: unknown }>();
   const layers = new Set<string>();
   const images = new Set<string>();
+  const updatedImages: string[] = [];
   return {
     sources,
     layers,
     images,
+    updatedImages,
     hasImage: (id: string) => images.has(id),
     addImage: (id: string) => images.add(id),
+    updateImage: (id: string) => {
+      updatedImages.push(id);
+      images.add(id);
+    },
     addSource: (id: string, spec: { data?: unknown }) => {
       sources.set(id, {
         data: spec.data,

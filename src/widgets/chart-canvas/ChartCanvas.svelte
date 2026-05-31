@@ -95,6 +95,8 @@ onMount(() => {
           // A base style without this layer or property is fine; skip it.
         }
       }
+      overlay.applyTheme?.(ctx, paint);
+      aisOverlay.applyTheme?.(ctx, paint);
     };
     onMapReady?.(recolor);
 

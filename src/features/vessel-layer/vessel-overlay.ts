@@ -4,11 +4,12 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { OwnVessel } from '$entities/vessel';
-import type { OverlayContext, OverlayModule } from '$shared/map';
+import type { OverlayContext, OverlayModule, Rgba } from '$shared/map';
 import { VESSEL_ICON_ID, vesselIconImage } from './vessel-icon';
 
 const SOURCE_ID = 'binnacle-own-vessel';
 const LAYER_ID = 'binnacle-own-vessel-symbol';
+const DEFAULT_COLOR: Rgba = { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff };
 
 interface VesselOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -45,7 +46,7 @@ export function createVesselOverlay(vessel: OwnVessel): VesselOverlay {
     supportsOpacity: true,
     add(ctx) {
       if (!ctx.map.hasImage(VESSEL_ICON_ID)) {
-        ctx.map.addImage(VESSEL_ICON_ID, vesselIconImage());
+        ctx.map.addImage(VESSEL_ICON_ID, vesselIconImage(DEFAULT_COLOR));
       }
       const source: GeoJSONSourceSpecification = { type: 'geojson', data: featureCollection() };
       ctx.map.addSource(SOURCE_ID, source);
@@ -74,6 +75,14 @@ export function createVesselOverlay(vessel: OwnVessel): VesselOverlay {
       lastHeading = heading;
       const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
       source?.setData(featureCollection());
+    },
+    applyTheme(ctx, paint) {
+      const image = vesselIconImage(paint.ownVessel);
+      if (ctx.map.hasImage(VESSEL_ICON_ID)) {
+        ctx.map.updateImage(VESSEL_ICON_ID, image);
+      } else {
+        ctx.map.addImage(VESSEL_ICON_ID, image);
+      }
     },
     setVisible(ctx, visible) {
       ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');

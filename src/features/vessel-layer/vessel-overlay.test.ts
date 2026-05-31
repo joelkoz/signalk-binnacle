@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OwnVessel } from '$entities/vessel';
-import type { OverlayContext } from '$shared/map';
+import { mapThemePaint, type OverlayContext } from '$shared/map';
 import { SignalKStore } from '$shared/signalk';
+import { createFakeMap } from '$shared/testing/fake-map';
 import { createVesselOverlay } from './vessel-overlay';
 
 // ImageData is a browser global; the overlay builds the vessel icon with it, so the
@@ -22,35 +23,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function fakeMap() {
-  const sources = new Map<string, { setData: (d: unknown) => void; data: unknown }>();
-  const layers = new Set<string>();
-  const images = new Set<string>();
-  return {
-    sources,
-    layers,
-    images,
-    hasImage: (id: string) => images.has(id),
-    addImage: (id: string) => images.add(id),
-    addSource: (id: string, spec: { data: unknown }) => {
-      sources.set(id, {
-        data: spec.data,
-        setData(d: unknown) {
-          this.data = d;
-        },
-      });
-    },
-    getSource: (id: string) => sources.get(id),
-    getLayer: (id: string) => (layers.has(id) ? { id } : undefined),
-    addLayer: (layer: { id: string }) => layers.add(layer.id),
-    removeLayer: (id: string) => layers.delete(id),
-    removeSource: (id: string) => sources.delete(id),
-    setLayoutProperty: vi.fn(),
-    setPaintProperty: vi.fn(),
-  };
-}
-
-function ctxFor(map: ReturnType<typeof fakeMap>): OverlayContext {
+function ctxFor(map: ReturnType<typeof createFakeMap>): OverlayContext {
   return { map: map as never, beforeIdFor: () => undefined };
 }
 
@@ -58,7 +31,7 @@ describe('vessel overlay', () => {
   it('adds an image, a source, and a symbol layer', async () => {
     const store = new SignalKStore();
     const overlay = createVesselOverlay(new OwnVessel(store));
-    const map = fakeMap();
+    const map = createFakeMap();
     await overlay.add(ctxFor(map));
     expect(map.images.size).toBe(1);
     expect(map.sources.size).toBe(1);
@@ -68,7 +41,7 @@ describe('vessel overlay', () => {
   it('updates the source position from the store', async () => {
     const store = new SignalKStore();
     const overlay = createVesselOverlay(new OwnVessel(store));
-    const map = fakeMap();
+    const map = createFakeMap();
     await overlay.add(ctxFor(map));
     store.applyFrame({
       self: { 'navigation.position': { latitude: 36.8, longitude: -121.7 } } as never,
@@ -81,10 +54,19 @@ describe('vessel overlay', () => {
     expect(fc.features[0].geometry.coordinates).toEqual([-121.7, 36.8]);
   });
 
+  it('applyTheme recolors the icon image', async () => {
+    const store = new SignalKStore();
+    const overlay = createVesselOverlay(new OwnVessel(store));
+    const map = createFakeMap();
+    await overlay.add(ctxFor(map));
+    overlay.applyTheme?.(ctxFor(map), mapThemePaint('night-red'));
+    expect(map.updatedImages).toContain('binnacle-vessel');
+  });
+
   it('remove deletes the layer and source', async () => {
     const store = new SignalKStore();
     const overlay = createVesselOverlay(new OwnVessel(store));
-    const map = fakeMap();
+    const map = createFakeMap();
     await overlay.add(ctxFor(map));
     overlay.remove(ctxFor(map));
     expect(map.layers.size).toBe(0);

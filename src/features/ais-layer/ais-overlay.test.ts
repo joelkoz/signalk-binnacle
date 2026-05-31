@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AisTargets } from '$entities/ais';
-import type { OverlayContext } from '$shared/map';
+import { mapThemePaint, type OverlayContext } from '$shared/map';
 import { SignalKStore } from '$shared/signalk';
 import { createFakeMap } from '$shared/testing/fake-map';
 import { createAisOverlay } from './ais-overlay';
@@ -68,5 +68,14 @@ describe('ais overlay', () => {
     overlay.sync(ctxFor(map));
     overlay.sync(ctxFor(map));
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('applyTheme recolors the icon image', () => {
+    const store = new SignalKStore();
+    const overlay = createAisOverlay(new AisTargets(store), store);
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    overlay.applyTheme?.(ctxFor(map), mapThemePaint('night-red'));
+    expect(map.updatedImages).toContain('binnacle-ais');
   });
 });

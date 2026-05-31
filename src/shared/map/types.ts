@@ -1,4 +1,5 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
+import type { MapThemePaint } from './map-theme';
 
 export type ZBand =
   | 'basemap'
@@ -36,4 +37,5 @@ export interface OverlayModule {
   setVisible(ctx: OverlayContext, visible: boolean): void;
   setOpacity?(ctx: OverlayContext, opacity: number): void;
   reattach?(ctx: OverlayContext): void | Promise<void>;
+  applyTheme?(ctx: OverlayContext, paint: MapThemePaint): void;
 }
