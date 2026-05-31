@@ -1,4 +1,5 @@
 <script lang="ts">
+import { Layers } from '@lucide/svelte';
 import type { LayersView } from './layers-view.svelte';
 
 interface Props {
@@ -9,7 +10,7 @@ const { view }: Props = $props();
 </script>
 
 <aside class="layers-panel" aria-label="Layers">
-  <h2 class="heading">Layers</h2>
+  <h2 class="heading"><Layers size={14} aria-hidden="true" /> Layers</h2>
   {#if view.items.length === 0}
     <p class="empty">No charts configured</p>
   {/if}
@@ -55,6 +56,9 @@ const { view }: Props = $props();
   font-family: var(--font-ui);
 }
 .heading {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   margin: 0 0 0.5rem;
   font-size: 0.75rem;
   text-transform: uppercase;

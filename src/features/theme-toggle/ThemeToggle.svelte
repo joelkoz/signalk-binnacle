@@ -1,4 +1,6 @@
 <script lang="ts">
+import { Moon, Sun, Sunset } from '@lucide/svelte';
+import type { Component } from 'svelte';
 import type { ThemeController } from '$shared/ui';
 
 interface Props {
@@ -7,22 +9,40 @@ interface Props {
 
 const { controller }: Props = $props();
 
-const LABELS: Record<string, string> = {
-  day: 'Day',
-  dusk: 'Dusk',
-  'night-red': 'Night',
+const ICONS: Record<string, Component> = {
+  day: Sun,
+  dusk: Sunset,
+  'night-red': Moon,
 };
+
+const LABELS: Record<string, string> = {
+  day: 'Day theme',
+  dusk: 'Dusk theme',
+  'night-red': 'Night theme',
+};
+
+const Icon = $derived(ICONS[controller.theme] ?? Sun);
+const label = $derived(LABELS[controller.theme] ?? controller.theme);
 </script>
 
-<button type="button" class="theme-toggle" onclick={() => controller.cycle()}>
-  {LABELS[controller.theme] ?? controller.theme}
+<button
+  type="button"
+  class="theme-toggle"
+  aria-label={`Switch theme (currently ${label})`}
+  title={label}
+  onclick={() => controller.cycle()}
+>
+  <Icon size={18} aria-hidden="true" />
 </button>
 
 <style>
 .theme-toggle {
-  font: inherit;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface-raised);
