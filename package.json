@@ -1,0 +1,53 @@
+{
+  "name": "binnacle",
+  "version": "0.1.0",
+  "description": "Next-generation marine chart plotter for Signal K",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Nearl Crews <23341701+NearlCrews@users.noreply.github.com>",
+  "funding": {
+    "type": "buymeacoffee",
+    "url": "https://www.buymeacoffee.com/nearlcrews"
+  },
+  "keywords": [
+    "signalk-webapp",
+    "signalk-category-chart-plotters"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "signalk": {
+    "appIcon": "./binnacle-icon.svg",
+    "displayName": "Binnacle",
+    "screenshots": []
+  },
+  "files": [
+    "public/"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "check": "svelte-check --tsconfig ./tsconfig.app.json",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "ci:biome": "biome ci .",
+    "cruise": "depcruise src --config .dependency-cruiser.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@tsconfig/svelte": "^5.0.8",
+    "dependency-cruiser": "^17.4.3",
+    "svelte": "^5.56.0",
+    "svelte-check": "^4.4.8",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14",
+    "vitest": "^4.1.7"
+  }
+}

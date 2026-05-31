@@ -1,0 +1,141 @@
+# Binnacle: AI assistant operating rules
+
+Binnacle is a from-scratch, next-generation marine chart plotter for Signal K, for the
+bluewater cruiser and the liveaboard. It is NOT a port of Freeboard-SK or of the earlier
+signalk-open-binnacle fork; those are conceptual references only. The project name is
+Binnacle, not Open Binnacle. No legacy code is carried forward.
+
+This file is the source of truth for project-scoped AI assistant rules. User-global memory
+does not always load reliably across worktrees or fresh clones, so rules that came at the cost
+of redoing work live here.
+
+The authoritative design is `docs/superpowers/specs/2026-05-31-binnacle-foundation-design.md`.
+Read it before doing architectural work.
+
+## Locked product and stack decisions
+
+- Framework: Svelte 5 (runes), Vite, TypeScript. This was a deliberate clean break from the
+  Angular lineage of the prior fork; do not reintroduce Angular.
+- Map: MapLibre GL JS 5.x via svelte-maplibre-gl, plus a thin imperative LayerManager for
+  dynamic overlays. deck.gl MapboxOverlay is an optional pluggable overlay, not the base.
+- Charts: a generic ChartSourceAdapter over the Signal K `/resources/charts` API, plus a
+  vector base map. S-57 to vector-tile pipeline and full S-52 styling are a later spec.
+- Real-time: a dedicated Web Worker hosts the Signal K WebSocket client, bridged with Comlink,
+  batching deltas to one flush per animation frame, feeding a path-keyed fine-grained runes
+  store.
+- Fonts: Inter (UI) and JetBrains Mono (numeric readouts), self-hosted.
+- Icons: lucide-svelte for app chrome. Chart symbols derive from the S-52 Presentation
+  Library and OpenBridge, not from a UI icon set.
+- Themes: day, dusk, and night-red. Night-red is pure red on true black. No blue at night,
+  alarms always distinguishable, brightest pixel low.
+- App shell: hybrid chart-centric, structured so the three-mode shell (Watch, Anchor, Inhabit)
+  drops in later without a rebuild.
+- Layer control: per-layer toggle, opacity slider, and drag-to-reorder z-order.
+
+## Toolchain (lint, format, build)
+
+- Lint and format: Biome (preferred over ESLint and Prettier). Use the system binary at
+  `/usr/local/bin/biome`, kept current and not added to `package.json`, so a working tree needs
+  Biome installed globally to run `npm run lint` and `npm run format`. CI installs it with the
+  `biomejs/setup-biome` action pinned to the same version. Config is `biome.json`. `npm run lint`
+  is `biome lint .`, `npm run format` is `biome format --write .`, and CI runs `biome ci .`.
+- Biome's `.svelte` support is experimental (it formats and lints the script and style blocks,
+  not the control-flow template syntax). It is enabled via `html.experimentalFullSupportEnabled`.
+  Re-verify it round-trips Svelte files cleanly whenever `{#if}`, `{#each}`, or other control
+  flow is added (Phase 6 onward); if it ever mangles a `.svelte` file, exclude `.svelte` from
+  Biome and rely on `svelte-check` for correctness.
+- Type-check: `svelte-check --tsconfig ./tsconfig.app.json` (the leaf app config, not the
+  solution-style root `tsconfig.json`, which is for `tsc -b` and dependency-cruiser path
+  resolution only).
+- Keep every dependency at its latest compatible version. Vite is held at 7.x because the stable
+  `@sveltejs/vite-plugin-svelte` peers Vite 7 only; revisit Vite 8 when the stable plugin
+  supports it. TypeScript is on 6.x.
+
+## Modularity is a first-class rule
+
+Adding a later feature (weather, tides, routing, the CoPilot, anchor mode, the dashboard,
+watch handoff) MUST be a self-contained module dropped in against stable interfaces, never
+surgery on the core. The core never hardcodes knowledge of a specific feature.
+
+- Layered structure (Feature-Sliced Design, adapted): imports flow strictly downward,
+  `app -> views -> widgets -> features -> entities -> shared`. No same-layer slice-to-slice
+  imports. Cross-feature data flows through an `entities` store, never feature to feature.
+- Every slice exposes a public API via `index.ts`. Named re-exports only, never `export *`.
+  Nothing outside a slice imports its internal files.
+- Features self-register through a `FeatureManifest` collected by a registry in `app/`. Adding
+  a feature is a new folder plus one line in `app/features.ts`. Feature UI is behind dynamic
+  `import()` so Vite emits a per-feature chunk.
+- Services (Signal K client, map instance, registry, stores) are injected via typed
+  `createContext` helpers, not global singletons, so they are swappable in tests.
+- Boundaries are machine-enforced and fail the build: path aliases plus a dependency-cruiser
+  gate (`no-circular`, `layers-go-down-only`, `shared-imports-nothing-above`, and the
+  per-feature public-API `no-cross-feature-internals` rule). dependency-cruiser is the single
+  boundary enforcer, because Biome has no import-boundary rule equivalent to
+  `eslint-plugin-boundaries`.
+
+This is a hard rule. Architectural feedback that came at the cost of redoing significant work
+must not be repeatable.
+
+## Signal K conformance: 100% compliance, always
+
+- The foundation ships as a Signal K webapp: keywords `signalk-webapp` and
+  `signalk-category-chart-plotters`, a `signalk` manifest with `appIcon`, `displayName`, and
+  `screenshots`, the build emitted into the served directory, and `files` shipping it. No
+  server plugin is required for the foundation.
+- Consume the v1 streaming WebSocket. Connect with `subscribe=none` and issue explicit
+  subscriptions: own vessel at high rate (`policy: instant`, heading near 200 ms, others near
+  1000 ms), and AIS at a controlled rate (`vessels.*`, `policy: fixed`, period near 5000 ms,
+  rendered paths only). Read `self` from `hello` and filter self out of `vessels.*`.
+- All values are SI in the store (radians, meters, m/s, Kelvin). The one exception is
+  `navigation.position`, which is decimal degrees. Convert only at the display edge in a
+  separate pure module.
+- CPA and TCPA are not computed by the server core. Read `navigation.closestApproach` when a
+  provider populates it, degrade gracefully when absent.
+- Charts: discover at `GET /signalk/v2/api/resources/charts` (fall back to v1), branch on
+  chart `type`, honor `bounds` and zoom limits. Layering order, visibility, and opacity are
+  Binnacle's job.
+- The v1 stream does not carry v2 data (course, autopilot); read those over v2 REST in later
+  specs.
+- Bundle all assets locally. No CDNs; vessels are offline.
+- Every release must hold 100% Signal K compliance, and project files must be written per the
+  Signal K spec to achieve it.
+
+## Build policy (every major step)
+
+- Agent team: each major step may use an agent team of up to 6 expert agents, with at least one
+  Signal K expert on steps that touch the integration. Give each a distinct, non-overlapping
+  lens to avoid file conflicts.
+- Cleanup gate: each major step finishes with the `/cleanup` skill.
+- Fix everything: fix every finding from review, cleanup, linters, and human review, including
+  low and nit. The only acceptable skip is factually refuted or by-design after honest
+  scrutiny, with a one-line reason.
+- Verification: after fixing, run type-check, tests, lint, and build, and confirm green before
+  claiming a step done. Respect the Pi memory budget below.
+- Each numbered step in the spec's build order is a major step under this policy.
+
+## Pi memory budget: one heavy verification at a time
+
+This runs on a Raspberry Pi 5 (8 GB RAM, 4 cores). Concurrent heavy verification commands
+(type-check, lint, test, build) will OOM-kill the session. Never run more than one heavy
+command at a time, whether by the lead or by spawned agents. Agent prompts must explicitly
+forbid running heavy commands; agents do edits, the lead runs verification. Prefix heavy
+invocations with `NODE_OPTIONS="--max-old-space-size=2048"` as a backstop.
+
+## Style rules (override defaults)
+
+- American English everywhere (color, behavior, center, gray), not British. Code, docs,
+  commits, comments, and any text passed to subagents.
+- No em dashes anywhere. Use a colon, a comma, or two sentences.
+- Always use the Oxford (serial) comma in lists of three or more.
+- Default to no comments. Keep only non-obvious why comments. Delete what comments.
+- These apply to text I write and to instructions passed to subagents; brief them on the same
+  rules so their output does not reintroduce violations.
+
+## Workflow
+
+- Brainstorming artifacts live in `.superpowers/brainstorm/`; add `.superpowers/` to
+  `.gitignore`.
+- Specs live in `docs/superpowers/specs/`. Each differentiator gets its own brainstorm, spec,
+  and plan: active-safety CoPilot, weather and routing, anchor intelligence, the liveaboard
+  dashboard, and multi-station watch handoff. The offline and PWA pipeline is the spec
+  immediately after the foundation.
