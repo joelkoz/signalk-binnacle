@@ -8,6 +8,11 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Theming: a design-token system with day, dusk, and night-red palettes, switched by a single
+  theme controller that sets `data-theme` on the document and persists the choice. Every surface
+  recolors from CSS custom properties, a top-bar toggle cycles the themes, and the map base
+  recolors via `setPaintProperty` (keeping tiles and overlays). Night-red is pure red on true
+  black with no blue, and a dedicated alarm token stays distinguishable in every palette.
 - AIS targets: the worker learns the self vessel from the `hello` handshake and routes other
   vessels' deltas into a per-context AIS stream, the store accumulates each target and prunes
   ones that go silent past a six-minute window, an `AisTargets` entity interprets each target

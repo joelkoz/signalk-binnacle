@@ -26,8 +26,9 @@ night watch, danger that surfaces before you ask for it, and a plotter that keep
 ## Status
 
 The foundation is being built in phases. The build, the module architecture, the verification
-gates, the real-time data layer, the map, chart layers, and AIS targets are in place; theming
-and the differentiating features arrive in the following phases.
+gates, the real-time data layer, the map, chart layers, AIS targets, and the day, dusk, and
+night-red theme system are in place; the identity pass and the differentiating features arrive
+in the following phases.
 
 What is in place now:
 
@@ -43,6 +44,8 @@ What is in place now:
   a generic adapter and controlled from a layers panel (per-layer toggle and opacity).
 - AIS targets: other vessels render as GPU symbols in the traffic band, rotate with course, age
   out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
+- Day, dusk, and night-red themes switched from a top-bar toggle, recoloring the chrome and the
+  map base; night-red is pure red on true black to preserve dark adaptation on a night watch.
 - An SI unit-conversion module in `shared`, built test-first.
 - Lint and format with Biome, type-checking with svelte-check, unit tests with Vitest, an
   end-to-end smoke test with Playwright, and architectural boundary checks with

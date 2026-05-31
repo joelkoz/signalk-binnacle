@@ -13,18 +13,21 @@ import {
   createChartOverlay,
   installSentinels,
   LayerManager,
+  mapThemePaint,
   type OverlayContext,
   registerPmtilesProtocol,
 } from '$shared/map';
 import { type SignalKStore, serverOrigin } from '$shared/signalk';
+import type { Theme } from '$shared/ui';
 
 interface Props {
   store: SignalKStore;
   vessel: OwnVessel;
   onReady?: (view: LayersView) => void;
+  onMapReady?: (recolor: (theme: string) => void) => void;
 }
 
-const { store, vessel, onReady }: Props = $props();
+const { store, vessel, onReady, onMapReady }: Props = $props();
 
 let container: HTMLDivElement;
 let map: maplibregl.Map | undefined;
@@ -72,6 +75,28 @@ onMount(() => {
     const view = new LayersView(manager);
     view.refresh();
     onReady?.(view);
+
+    const recolor = (theme: string) => {
+      const paint = mapThemePaint(theme as Theme);
+      let style: ReturnType<typeof mapInstance.getStyle>;
+      try {
+        style = mapInstance.getStyle();
+      } catch {
+        return;
+      }
+      for (const layer of style.layers ?? []) {
+        try {
+          if (layer.type === 'background') {
+            mapInstance.setPaintProperty(layer.id, 'background-color', paint.background);
+          } else if (layer.id.includes('water') && layer.type === 'fill') {
+            mapInstance.setPaintProperty(layer.id, 'fill-color', paint.water);
+          }
+        } catch {
+          // A base style without this layer or property is fine; skip it.
+        }
+      }
+    };
+    onMapReady?.(recolor);
 
     const tick = () => {
       aisOverlay.sync(ctx);

@@ -5,6 +5,8 @@ export type { MapSourceType, SignalKChart } from './chart-types';
 export type { Rgba } from './icon-raster';
 export { rasterIcon } from './icon-raster';
 export { LayerManager } from './layer-manager';
+export type { MapThemePaint } from './map-theme';
+export { mapThemePaint } from './map-theme';
 export { registerPmtilesProtocol } from './pmtiles';
 export { beforeIdFor, installSentinels, sentinelId } from './sentinels';
 export type { OverlayContext, OverlayModule, ZBand } from './types';
