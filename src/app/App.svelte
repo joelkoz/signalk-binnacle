@@ -2,8 +2,10 @@
 import { onDestroy, onMount } from 'svelte';
 import { OwnVessel } from '$entities/vessel';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
+import { ThemeToggle } from '$features/theme-toggle';
 import type { Context } from '$shared/signalk';
 import { createSignalKClient, SignalKStore, SK_PATHS, streamUrl } from '$shared/signalk';
+import { createThemeController } from '$shared/ui';
 import { ChartCanvas } from '$widgets/chart-canvas';
 
 const ALL_VESSELS = 'vessels.*' as Context;
@@ -13,6 +15,9 @@ const vessel = new OwnVessel(store);
 const client = createSignalKClient();
 
 let layersView = $state<LayersView | undefined>();
+let recolorMap: ((theme: string) => void) | undefined;
+
+const theme = createThemeController((next) => recolorMap?.(next));
 
 const CONNECTION_LABELS: Record<string, string> = {
   open: 'Connected',
@@ -51,9 +56,20 @@ onDestroy(() => {
 </script>
 
 <main class="binnacle-shell">
-  <header class="topbar">Binnacle</header>
+  <header class="topbar">
+    <span class="brand">Binnacle</span>
+    <ThemeToggle controller={theme} />
+  </header>
   <section class="chart-host" aria-label="Chart">
-    <ChartCanvas {store} {vessel} onReady={(view) => (layersView = view)} />
+    <ChartCanvas
+      {store}
+      {vessel}
+      onReady={(view) => (layersView = view)}
+      onMapReady={(recolor) => {
+        recolorMap = recolor;
+        recolor(theme.theme);
+      }}
+    />
     {#if layersView}
       <LayersPanel view={layersView} />
     {/if}
@@ -71,14 +87,19 @@ onDestroy(() => {
   grid-template-rows: auto 1fr auto;
   block-size: 100vh;
   margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #06090d;
-  color: #e7edf3;
+  font-family: var(--font-ui);
+  background: var(--surface);
+  color: var(--text);
 }
 .topbar {
-  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  border-block-end: 1px solid var(--border);
+}
+.brand {
   font-weight: 600;
-  border-block-end: 1px solid #243140;
 }
 .chart-host {
   position: relative;
@@ -87,11 +108,12 @@ onDestroy(() => {
   display: flex;
   gap: 1.5rem;
   padding: 0.5rem 1rem;
-  border-block-start: 1px solid #243140;
-  color: #6f8aa3;
+  border-block-start: 1px solid var(--border);
+  color: var(--text-muted);
 }
 .readout b {
-  color: #e7edf3;
+  color: var(--text);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 </style>

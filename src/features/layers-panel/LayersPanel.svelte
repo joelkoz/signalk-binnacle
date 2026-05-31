@@ -48,23 +48,23 @@ const { view }: Props = $props();
   inset-inline-start: 0.75rem;
   inline-size: 14rem;
   padding: 0.75rem;
-  background: rgba(6, 9, 13, 0.85);
-  border: 1px solid #243140;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  color: #e7edf3;
-  font-family: system-ui, sans-serif;
+  color: var(--text);
+  font-family: var(--font-ui);
 }
 .heading {
   margin: 0 0 0.5rem;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6f8aa3;
+  color: var(--text-muted);
 }
 .empty {
   margin: 0;
   font-size: 0.8rem;
-  color: #6f8aa3;
+  color: var(--text-muted);
 }
 .list {
   list-style: none;
