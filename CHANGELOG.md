@@ -8,6 +8,21 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Charts: a generic chart-source adapter turns any Signal K chart resource into MapLibre source
+  and layer specs, branching on the chart type (raster tilelayer, WMS, WMTS, and S-57, plus
+  vector tileJSON with PMTiles resolved to the `pmtiles://` protocol) and honoring bounds and
+  zoom limits. Each chart wraps as a basemap-band overlay on the existing layer manager, the
+  charts client discovers them from `/resources/charts` (v2, falling back to v1, degrading to an
+  empty list offline), and a layers panel gives each chart a visibility toggle and an opacity
+  slider.
+
+- The map: a MapLibre GL map with a vector base, rendered in the chart area. A framework-free
+  `LayerManager` gives every overlay an independent toggle, opacity, and deterministic z-order
+  via sentinel layers and `beforeId`, so a new overlay later is a new file plus one
+  registration. The own vessel renders as a GPU symbol layer that rotates with heading (falling
+  back to course over ground), updated from the Signal K store each animation frame. Includes
+  the PMTiles protocol registration for future offline tiles.
+
 - Real-time data layer: a Web Worker hosts the Signal K WebSocket client, bridged to the main
   thread with Comlink, delivering one batched frame per animation frame. A path-keyed runes
   store of independently reactive cells lets a component bound to one Signal K path avoid

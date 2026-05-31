@@ -26,7 +26,9 @@
   ],
   "dependencies": {
     "@signalk/server-api": "^2.25.0",
-    "comlink": "^4.4.2"
+    "comlink": "^4.4.2",
+    "maplibre-gl": "^5.24.0",
+    "pmtiles": "^4.4.1"
   },
   "scripts": {
     "dev": "vite",
@@ -41,13 +43,14 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "format": "biome format --write .",
-    "format:check": "biome format ."
+    "format:check": "biome format .",
+    "hooks": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "@vitest/web-worker": "^4.1.7",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tsconfig/svelte": "^5.0.8",
+    "@vitest/web-worker": "^4.1.7",
     "dependency-cruiser": "^17.4.3",
     "svelte": "^5.56.0",
     "svelte-check": "^4.4.8",

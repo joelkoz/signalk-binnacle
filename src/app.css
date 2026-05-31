@@ -1,5 +1,11 @@
+@import "maplibre-gl/dist/maplibre-gl.css";
+
 :root {
   color-scheme: dark;
+}
+
+#app {
+  block-size: 100vh;
 }
 
 * {

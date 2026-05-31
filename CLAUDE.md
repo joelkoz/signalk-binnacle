@@ -47,9 +47,26 @@ Read it before doing architectural work.
 - Type-check: `svelte-check --tsconfig ./tsconfig.app.json` (the leaf app config, not the
   solution-style root `tsconfig.json`, which is for `tsc -b` and dependency-cruiser path
   resolution only).
-- Keep every dependency at its latest compatible version. Vite is held at 7.x because the stable
-  `@sveltejs/vite-plugin-svelte` peers Vite 7 only; revisit Vite 8 when the stable plugin
-  supports it. TypeScript is on 6.x.
+- Keep every dependency at its latest compatible version. The stack is on Vite 8, TypeScript 6,
+  Svelte 5, MapLibre GL JS 5.24 (used directly, not svelte-maplibre-gl), pmtiles 4, Comlink 4,
+  and `@signalk/server-api` 2.
+
+## Verify before commit and push (hard rule, mechanically enforced)
+
+Never commit or push on a red gate. A commit message must never claim "green" before the gate
+has actually run and passed. This was violated repeatedly early on, so it is now enforced by git
+hooks in `.githooks/`, wired via `npm run hooks` (a non-lifecycle script, never a `prepare` hook,
+per the SignalK pack-banner caveat above):
+
+- `pre-commit` runs `biome ci .` and `npm run cruise`.
+- `pre-push` runs the full chain: `biome ci`, `cruise`, `check`, `test`, and a production `build`.
+  A failure blocks the push.
+
+The working rhythm: write every file, run the gate capturing each result to a file and reading it
+back (shell output on this Pi intermittently truncates, so trust the file, not a glanced line),
+confirm all green, and only then commit and push. Run heavy commands one at a time. Prefer
+lead-driven implementation over agent teams on this Pi; teams have dropped lane files silently
+("Lock file is already being held" on spawn), which is how broken trees reached commits.
 
 ## Modularity is a first-class rule
 

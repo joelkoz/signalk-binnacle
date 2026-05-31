@@ -1,11 +1,15 @@
 <script lang="ts">
 import { onDestroy, onMount } from 'svelte';
 import { OwnVessel } from '$entities/vessel';
+import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { createSignalKClient, SignalKStore, SK_PATHS } from '$shared/signalk';
+import { ChartCanvas } from '$widgets/chart-canvas';
 
 const store = new SignalKStore();
 const vessel = new OwnVessel(store);
 const client = createSignalKClient();
+
+let layersView = $state<LayersView | undefined>();
 
 const streamUrl = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/signalk/v1/stream`;
 
@@ -40,7 +44,10 @@ onDestroy(() => {
 <main class="binnacle-shell">
   <header class="topbar">Binnacle</header>
   <section class="chart-host" aria-label="Chart">
-    <p class="placeholder">Chart canvas mounts here in Phase 3.</p>
+    <ChartCanvas {store} onReady={(view) => (layersView = view)} />
+    {#if layersView}
+      <LayersPanel view={layersView} />
+    {/if}
   </section>
   <footer class="status-strip">
     <span class="status">{connectionLabel}</span>
@@ -65,11 +72,7 @@ onDestroy(() => {
   border-block-end: 1px solid #243140;
 }
 .chart-host {
-  display: grid;
-  place-items: center;
-}
-.placeholder {
-  color: #6f8aa3;
+  position: relative;
 }
 .status-strip {
   display: flex;

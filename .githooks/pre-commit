@@ -1,0 +1,12 @@
+#!/bin/sh
+# Fast gate on every commit: format and lint check, plus the module-boundary check.
+# Heavier gates (type-check, tests, build, e2e) run in pre-push.
+set -e
+
+echo "[pre-commit] biome ci"
+biome ci .
+
+echo "[pre-commit] dependency-cruiser"
+npm run --silent cruise
+
+echo "[pre-commit] ok"

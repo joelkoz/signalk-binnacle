@@ -1,0 +1,29 @@
+#!/bin/sh
+# Full verification gate before any push. A red gate blocks the push, so a broken
+# tree cannot reach the remote. Commands run one at a time to respect the Pi memory
+# budget. Set BINNACLE_SKIP_PREPUSH=1 only for a deliberate, documented exception.
+set -e
+
+if [ "$BINNACLE_SKIP_PREPUSH" = "1" ]; then
+  echo "[pre-push] skipped via BINNACLE_SKIP_PREPUSH"
+  exit 0
+fi
+
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2048}"
+
+echo "[pre-push] biome ci"
+biome ci .
+
+echo "[pre-push] dependency-cruiser"
+npm run --silent cruise
+
+echo "[pre-push] type-check"
+npm run --silent check
+
+echo "[pre-push] unit tests"
+npm run --silent test
+
+echo "[pre-push] production build"
+NODE_ENV=production npm run --silent build
+
+echo "[pre-push] all gates green"

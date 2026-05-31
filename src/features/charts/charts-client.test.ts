@@ -1,0 +1,56 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fetchCharts } from './charts-client';
+
+afterEach(() => vi.restoreAllMocks());
+
+function jsonResponse(body: unknown, ok = true, status = 200) {
+  return Promise.resolve({ ok, status, json: () => Promise.resolve(body) } as Response);
+}
+
+describe('fetchCharts', () => {
+  it('normalizes the v2 charts map to an array', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        jsonResponse({
+          noaa: { identifier: 'noaa', name: 'NOAA', type: 'tilelayer' },
+          enc: { identifier: 'enc', name: 'ENC', type: 'tileJSON' },
+        }),
+      ),
+    );
+    const charts = await fetchCharts('http://pi.local');
+    expect(charts).toHaveLength(2);
+    expect(charts.map((c) => c.identifier).sort()).toEqual(['enc', 'noaa']);
+  });
+
+  it('falls back to v1 when v2 returns 404', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(jsonResponse({}, false, 404))
+      .mockReturnValueOnce(
+        jsonResponse({ noaa: { identifier: 'noaa', name: 'NOAA', type: 'tilelayer' } }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const charts = await fetchCharts('http://pi.local');
+    expect(charts).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns an empty array when both endpoints fail', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => jsonResponse({}, false, 500)),
+    );
+    const charts = await fetchCharts('http://pi.local');
+    expect(charts).toEqual([]);
+  });
+
+  it('tolerates a fetch rejection', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('offline'))),
+    );
+    const charts = await fetchCharts('http://pi.local');
+    expect(charts).toEqual([]);
+  });
+});

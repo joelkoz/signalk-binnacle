@@ -71,6 +71,7 @@ installed and on your `PATH` (CI installs it via the `biomejs/setup-biome` actio
 
 ```bash
 npm install        # install dependencies
+npm run hooks      # install the git pre-commit and pre-push gates (run once)
 npm run dev        # Vite dev server
 npm run check      # type-check (svelte-check)
 npm run lint       # Biome lint
@@ -80,6 +81,11 @@ npm test           # Vitest unit tests
 npm run build      # production build into public/
 npm run test:e2e   # Playwright end-to-end smoke test
 ```
+
+After `npm run hooks`, git runs a fast format, lint, and boundary check before each
+commit, and the full type-check, test, and build gate before each push. A failing gate
+blocks the action, so a broken tree cannot be committed or pushed. The hooks live in
+`.githooks/` and are opt-in via `core.hooksPath`, never a package lifecycle script.
 
 Link the built webapp into your Signal K server's module directory, then add it to the
 server config so it loads:
