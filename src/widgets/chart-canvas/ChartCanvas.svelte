@@ -1,7 +1,9 @@
 <script lang="ts">
 import maplibregl from 'maplibre-gl';
 import { onDestroy, onMount } from 'svelte';
+import { AisTargets } from '$entities/ais';
 import type { OwnVessel } from '$entities/vessel';
+import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
 import { LayersView } from '$features/layers-panel';
 import { createVesselOverlay } from '$features/vessel-layer';
@@ -59,6 +61,10 @@ onMount(() => {
       if (destroyed) return;
     }
 
+    const aisOverlay = createAisOverlay(new AisTargets(store), store);
+    await manager.register(aisOverlay);
+    if (destroyed) return;
+
     const overlay = createVesselOverlay(vessel);
     await manager.register(overlay);
     if (destroyed) return;
@@ -68,6 +74,7 @@ onMount(() => {
     onReady?.(view);
 
     const tick = () => {
+      aisOverlay.sync(ctx);
       overlay.sync(ctx);
       frame = requestAnimationFrame(tick);
     };

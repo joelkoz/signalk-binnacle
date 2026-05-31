@@ -51,4 +51,18 @@ describe('FrameBatcher', () => {
     vi.runAllTimers();
     expect(flushes).toHaveLength(0);
   });
+
+  it('accumulates per-vessel writes keyed by context, last write wins', () => {
+    const batcher = new FrameBatcher();
+    let captured: Map<string, Map<string, Value>> | undefined;
+    batcher.onFlush = (_self, ais) => {
+      captured = ais;
+    };
+    batcher.putVessel('vessels.a', 'navigation.speedOverGround', 1);
+    batcher.putVessel('vessels.a', 'navigation.speedOverGround', 2);
+    batcher.putVessel('vessels.b', 'navigation.headingTrue', 0.5);
+    vi.runAllTimers();
+    expect(captured?.get('vessels.a')?.get('navigation.speedOverGround')).toBe(2);
+    expect(captured?.get('vessels.b')?.get('navigation.headingTrue')).toBe(0.5);
+  });
 });

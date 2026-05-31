@@ -50,4 +50,50 @@ describe('SignalKStore', () => {
     });
     cleanup();
   });
+
+  it('applies ais targets from the frame', () => {
+    const store = new SignalKStore();
+    store.applyFrame({
+      self: {},
+      ais: { 'vessels.a': { 'navigation.speedOverGround': 4 } },
+      connection: { phase: 'open', attempt: 0, since: 0 },
+      epoch: 5,
+    });
+    expect(store.aisTargets.get('vessels.a')?.values.get('navigation.speedOverGround')).toBe(4);
+    expect(store.aisTargets.get('vessels.a')?.lastUpdate).toBe(5);
+  });
+
+  it('merges later ais updates and refreshes lastUpdate', () => {
+    const store = new SignalKStore();
+    const aisFrame = (epoch: number, value: number): SKFrame => ({
+      self: {},
+      ais: { 'vessels.a': { 'navigation.speedOverGround': value } },
+      connection: { phase: 'open', attempt: 0, since: 0 },
+      epoch,
+    });
+    store.applyFrame(aisFrame(1, 4));
+    store.applyFrame(aisFrame(2, 6));
+    expect(store.aisTargets.get('vessels.a')?.values.get('navigation.speedOverGround')).toBe(6);
+    expect(store.aisTargets.get('vessels.a')?.lastUpdate).toBe(2);
+  });
+
+  it('prunes targets older than the ttl', () => {
+    const store = new SignalKStore();
+    store.applyFrame({
+      self: {},
+      ais: { 'vessels.a': { name: 'A' }, 'vessels.b': { name: 'B' } },
+      connection: { phase: 'open', attempt: 0, since: 0 },
+      epoch: 1000,
+    });
+    store.applyFrame({
+      self: {},
+      ais: { 'vessels.b': { name: 'B' } },
+      connection: { phase: 'open', attempt: 0, since: 0 },
+      epoch: 400000,
+    });
+    const removed = store.pruneAis(400000, 360000);
+    expect(removed).toBe(1);
+    expect(store.aisTargets.has('vessels.a')).toBe(false);
+    expect(store.aisTargets.has('vessels.b')).toBe(true);
+  });
 });

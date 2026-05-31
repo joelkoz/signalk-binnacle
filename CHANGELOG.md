@@ -8,6 +8,13 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- AIS targets: the worker learns the self vessel from the `hello` handshake and routes other
+  vessels' deltas into a per-context AIS stream, the store accumulates each target and prunes
+  ones that go silent past a six-minute window, an `AisTargets` entity interprets each target
+  into display units, and an AIS overlay renders them as GPU symbols in the traffic band that
+  rotate with course and skip rebuilding when nothing changed. The app subscribes `vessels.*` at
+  a controlled rate, and CPA and TCPA are read from `navigation.closestApproach` when a provider
+  supplies them.
 - Charts: a generic chart-source adapter turns any Signal K chart resource into MapLibre source
   and layer specs, branching on the chart type (raster tilelayer, WMS, WMTS, and S-57, plus
   vector tileJSON with PMTiles resolved to the `pmtiles://` protocol) and honoring bounds and

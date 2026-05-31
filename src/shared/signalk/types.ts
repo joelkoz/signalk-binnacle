@@ -29,8 +29,16 @@ export interface LeafWrite {
 // One coalesced batch delivered from the worker to the main thread per frame.
 export interface SKFrame {
   self: Record<string, Value>;
+  ais?: Record<string, Record<string, Value>>;
   connection: ConnectionState;
   epoch: number;
+}
+
+// An accumulated AIS target: the latest value seen per path, plus the epoch of
+// the most recent update for staleness pruning.
+export interface AisTargetState {
+  values: Map<string, Value>;
+  lastUpdate: number;
 }
 
 export interface SignalKClientApi {

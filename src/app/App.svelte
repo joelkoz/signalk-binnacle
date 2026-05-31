@@ -2,8 +2,11 @@
 import { onDestroy, onMount } from 'svelte';
 import { OwnVessel } from '$entities/vessel';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
+import type { Context } from '$shared/signalk';
 import { createSignalKClient, SignalKStore, SK_PATHS, streamUrl } from '$shared/signalk';
 import { ChartCanvas } from '$widgets/chart-canvas';
+
+const ALL_VESSELS = 'vessels.*' as Context;
 
 const store = new SignalKStore();
 const vessel = new OwnVessel(store);
@@ -30,6 +33,15 @@ onMount(async () => {
     { path: SK_PATHS.position, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.courseOverGroundTrue, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.speedOverGround, policy: 'instant', minPeriod: 1000 },
+  ]);
+  await client.raw.subscribe([
+    { path: SK_PATHS.position, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.courseOverGroundTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.speedOverGround, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.headingTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.name, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.aisShipType, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.closestApproach, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
   ]);
 });
 

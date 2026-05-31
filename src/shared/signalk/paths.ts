@@ -12,6 +12,11 @@ export const SK_PATHS = {
   depthBelowTransducer: 'environment.depth.belowTransducer' as Path,
   windSpeedApparent: 'environment.wind.speedApparent' as Path,
   windAngleApparent: 'environment.wind.angleApparent' as Path,
+  closestApproach: 'navigation.closestApproach' as Path,
+  navigationState: 'navigation.state' as Path,
+  name: 'name' as Path,
+  mmsi: 'mmsi' as Path,
+  aisShipType: 'design.aisShipType' as Path,
 } as const;
 
 export type SkPathKey = keyof typeof SK_PATHS;

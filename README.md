@@ -25,22 +25,31 @@ night watch, danger that surfaces before you ask for it, and a plotter that keep
 
 ## Status
 
-This is the project floor (Phase 1 of the foundation). It establishes the build, the module
-architecture, and the verification gates that every later phase ships through. It does not
-yet render a chart or connect to a Signal K stream; those arrive in the following phases.
+The foundation is being built in phases. The build, the module architecture, the verification
+gates, the real-time data layer, the map, chart layers, and AIS targets are in place; theming
+and the differentiating features arrive in the following phases.
 
 What is in place now:
 
 - A Svelte 5, Vite, and TypeScript application that builds as a Signal K webapp.
 - A Feature-Sliced Design layout (`app`, `views`, `widgets`, `features`, `entities`, and
   `shared`) with machine-enforced module boundaries.
+- A real-time data layer: a Web Worker Signal K client bridged with Comlink, a path-keyed
+  runes store with fine-grained reactivity, per-frame batching, a subscription registry, and
+  reconnection. The shell shows live connection state and own-vessel readouts.
+- A MapLibre GL map with a vector base and an extensible layer manager, with the own vessel
+  drawn as a GPU symbol layer that rotates with heading.
+- Chart layers discovered from the Signal K server's `/resources/charts` API, rendered through
+  a generic adapter and controlled from a layers panel (per-layer toggle and opacity).
+- AIS targets: other vessels render as GPU symbols in the traffic band, rotate with course, age
+  out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
 - An SI unit-conversion module in `shared`, built test-first.
 - Lint and format with Biome, type-checking with svelte-check, unit tests with Vitest, an
   end-to-end smoke test with Playwright, and architectural boundary checks with
-  dependency-cruiser, all wired into CI.
+  dependency-cruiser, all wired into CI, plus verify-before-push git hooks.
 
-The design and the build plan live in [`docs/superpowers`](docs/superpowers): the foundation
-design spec, and the Phase 1 implementation plan.
+The design and the build plans live in [`docs/superpowers`](docs/superpowers): the foundation
+design spec, and the per-phase implementation plans.
 
 ## Installation
 
