@@ -1,5 +1,5 @@
 <script lang="ts">
-import { LocateFixed, PanelLeftClose, PanelLeftOpen } from '@lucide/svelte';
+import { Layers, LocateFixed } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
@@ -7,7 +7,7 @@ import { OwnVessel } from '$entities/vessel';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { DangerStrip } from '$features/lookout';
-import { AppMenu, type MenuItem } from '$features/menu';
+import { AppMenu, type MenuItem, MenuSubmenu } from '$features/menu';
 import { ThemeToggle } from '$features/theme-toggle';
 import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
@@ -64,25 +64,18 @@ function onViewChange(view: MapView): void {
   viewSaveTimer = setTimeout(() => mapViewStore.set(view), 400);
 }
 
-const panelOpen = new PersistedValue<boolean>('binnacle:layers-panel-open', true);
 let mapCommands = $state<MapCommands | undefined>();
 
-// The app menu's options. Adding an option is one more entry here; the menu renders
-// whatever it is given.
-const menuItems = $derived<MenuItem[]>([
+// The app menu's action options. Adding one is a single entry here; the layers controls
+// are rendered into the menu as a section below (see the AppMenu children).
+const menuItems: MenuItem[] = [
   {
     id: 'center-on-boat',
     label: 'Center on boat',
     icon: LocateFixed,
     onSelect: () => mapCommands?.centerOnVessel(),
   },
-  {
-    id: 'toggle-layers',
-    label: panelOpen.value ? 'Hide layers panel' : 'Show layers panel',
-    icon: panelOpen.value ? PanelLeftClose : PanelLeftOpen,
-    onSelect: () => panelOpen.set(!panelOpen.value),
-  },
-]);
+];
 
 const CONNECTION_LABELS: Record<string, string> = {
   open: 'Connected',
@@ -146,7 +139,13 @@ onDestroy(() => {
 <main class="binnacle-shell">
   <header class="topbar">
     <span class="topbar-start">
-      <AppMenu items={menuItems} />
+      <AppMenu items={menuItems}>
+        {#if layersView}
+          <MenuSubmenu label="Layers" icon={Layers}>
+            <LayersPanel view={layersView} />
+          </MenuSubmenu>
+        {/if}
+      </AppMenu>
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>
     <span class="topbar-actions">
@@ -177,9 +176,6 @@ onDestroy(() => {
     <div class="banner-slot">
       <AuthBanner {auth} />
     </div>
-    {#if layersView && panelOpen.value}
-      <LayersPanel view={layersView} />
-    {/if}
     <div class="danger-slot">
       <DangerStrip {collision} />
     </div>

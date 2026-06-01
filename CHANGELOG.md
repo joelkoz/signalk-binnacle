@@ -9,11 +9,12 @@ All notable changes to Binnacle are documented here. The format follows
 ### Added
 
 - An app menu in the top bar gives app-wide options a home. It stays a single button until
-  opened, then drops a themed popout, and closes on selection, Escape, or a click outside; it is
-  keyboard- and screen-reader-labeled (aria-haspopup and aria-expanded, role menu and menuitem). The
-  menu is generic and renders whatever list of options it is given, so adding an option is one
-  `MenuItem` entry in the app shell, never a change to the menu itself. It ships with two: "Center on
-  boat" (flies the map to the vessel) and a "Show/Hide layers panel" toggle (which persists).
+  opened, then drops a themed popout, and closes on selection, Escape, or a click outside; the
+  trigger is a labeled disclosure (aria-haspopup, aria-expanded, aria-controls). The menu is generic:
+  it renders whatever action items it is given plus optional collapsible submenus, so adding an
+  option is one `MenuItem` (or one `MenuSubmenu`) in the app shell, never a change to the menu
+  itself. It hosts a "Center on boat" action that flies the map to the vessel and a "Layers"
+  submenu.
 
 - Binnacle now remembers your session across a page refresh. The map reopens at the last center and
   zoom, and each layer's visibility and opacity are restored, alongside the theme that was already
@@ -64,6 +65,11 @@ All notable changes to Binnacle are documented here. The format follows
   theme-aware through the layer manager's applyTheme broadcast, and toggles from the layers panel.
 
 ### Changed
+
+- The layers controls (per-layer visibility and opacity) moved off the chart into the app menu.
+  They were a panel floating over the top-left of the map; they now live in a collapsible "Layers"
+  submenu inside the menu, so the chart is unobstructed and the controls share one place with other
+  app options. Each layer's visibility and opacity still persist across refreshes.
 
 - The own-vessel marker is now a boat hull instead of a flat triangle. It is drawn with the 2D
   canvas (filled hull, darker outline, sharp bow, flat transom) at 2x for retina crispness, rotates

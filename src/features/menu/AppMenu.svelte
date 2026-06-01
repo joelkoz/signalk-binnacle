@@ -1,13 +1,16 @@
 <script lang="ts">
 import { Menu } from '@lucide/svelte';
+import type { Snippet } from 'svelte';
 import type { MenuItem } from './menu-item';
 
 interface Props {
-  items: MenuItem[];
+  items?: MenuItem[];
   label?: string;
+  // Rich content (e.g. the layers controls) rendered below the action items.
+  children?: Snippet;
 }
 
-const { items, label = 'Menu' }: Props = $props();
+const { items = [], label = 'Menu', children }: Props = $props();
 
 let menuOpen = $state(false);
 let root = $state<HTMLElement>();
@@ -38,8 +41,9 @@ function onWindowKeydown(event: KeyboardEvent): void {
   <button
     type="button"
     class="trigger"
-    aria-haspopup="menu"
+    aria-haspopup="true"
     aria-expanded={menuOpen}
+    aria-controls="app-menu-popout"
     aria-label={label}
     title={label}
     onclick={() => (menuOpen = !menuOpen)}
@@ -47,28 +51,21 @@ function onWindowKeydown(event: KeyboardEvent): void {
     <Menu size={18} aria-hidden="true" />
   </button>
   {#if menuOpen}
-    <ul class="popout" role="menu">
+    <div class="popout" id="app-menu-popout">
       {#each items as item (item.id)}
-        <li role="none">
-          <button
-            type="button"
-            role="menuitem"
-            class="item"
-            disabled={item.disabled}
-            onclick={() => select(item)}
-          >
-            {#if item.icon}
-              {@const Icon = item.icon}
-              <Icon size={16} aria-hidden="true" />
-            {/if}
-            <span>{item.label}</span>
-          </button>
-        </li>
+        <button type="button" class="item" disabled={item.disabled} onclick={() => select(item)}>
+          {#if item.icon}
+            {@const Icon = item.icon}
+            <Icon size={16} aria-hidden="true" />
+          {/if}
+          <span>{item.label}</span>
+        </button>
       {/each}
-      {#if items.length === 0}
-        <li role="none"><span class="empty">No options</span></li>
+      {@render children?.()}
+      {#if items.length === 0 && !children}
+        <span class="empty">No options</span>
       {/if}
-    </ul>
+    </div>
   {/if}
 </div>
 
@@ -98,10 +95,12 @@ function onWindowKeydown(event: KeyboardEvent): void {
   inset-block-start: calc(100% + 0.4rem);
   inset-inline-start: 0;
   z-index: 5;
-  min-inline-size: 12rem;
-  margin: 0;
-  padding: 0.3rem;
-  list-style: none;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 15rem;
+  max-block-size: calc(100vh - 4rem);
+  overflow-y: auto;
+  padding: 0.4rem;
   background: var(--surface-overlay);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
