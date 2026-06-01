@@ -1,4 +1,4 @@
-export { baseStyle } from './base-style';
+export { baseStyleUrl } from './base-style';
 export { chartToSpecs } from './chart-adapter';
 export { createChartOverlay } from './chart-overlay';
 export type { MapSourceType, SignalKChart } from './chart-types';

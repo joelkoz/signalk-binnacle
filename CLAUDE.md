@@ -113,9 +113,13 @@ must not be repeatable.
   Binnacle's job.
 - The v1 stream does not carry v2 data (course, autopilot); read those over v2 REST in later
   specs.
-- Bundle all assets locally. No CDNs; vessels are offline. This includes the base map: it must
-  ship inline or as bundled tiles, never a tile CDN. (A CDN base map renders all blue with no
-  internet, which shipped once and had to be fixed.)
+- Bundle the app's own assets locally (fonts, icons, worker): no CDN for code. The MAP base is
+  the deliberate exception: it is an online vector tile source (OpenFreeMap), because shipping a
+  world basemap inline is not feasible. Offline operation is achieved by CACHING that source (a
+  service-worker runtime cache plus an optional pre-downloaded PMTiles region), not by removing
+  it. Do not replace the base map with a flat inline style to satisfy "offline": that yields a
+  blank map. Verify reachability before assuming a host is unreachable; OpenFreeMap resolves and
+  returns 200 from the boat network.
 - Never import `@signalk/server-api` in browser or worker code, not even as a type-only import.
   Its entry barrel re-exports `FullSignalK`, which extends Node's `EventEmitter`; bundled into the
   worker with `events` externalized, the base class is `undefined` and the worker dies at load with

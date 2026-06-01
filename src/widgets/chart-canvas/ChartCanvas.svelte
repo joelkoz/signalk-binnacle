@@ -8,7 +8,7 @@ import { fetchCharts } from '$features/charts';
 import { LayersView } from '$features/layers-panel';
 import { createVesselOverlay } from '$features/vessel-layer';
 import {
-  baseStyle,
+  baseStyleUrl,
   beforeIdFor,
   createChartOverlay,
   installSentinels,
@@ -41,7 +41,7 @@ onMount(() => {
   try {
     map = new maplibregl.Map({
       container,
-      style: baseStyle(),
+      style: baseStyleUrl(),
       center: [0, 30],
       zoom: 2,
       attributionControl: { compact: true },
