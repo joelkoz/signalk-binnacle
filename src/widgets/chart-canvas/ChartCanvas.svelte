@@ -116,6 +116,23 @@ onMount(() => {
             mapInstance.setPaintProperty(layer.id, 'background-color', paint.background);
           } else if (layer.id.includes('water') && layer.type === 'fill') {
             mapInstance.setPaintProperty(layer.id, 'fill-color', paint.water);
+          } else if (layer.type === 'fill' && layer.id.endsWith('-earth')) {
+            mapInstance.setPaintProperty(layer.id, 'fill-color', paint.land);
+          } else if (
+            layer.type === 'fill' &&
+            (layer.id.endsWith('-landcover') || layer.id.endsWith('-landuse'))
+          ) {
+            mapInstance.setPaintProperty(layer.id, 'fill-color', paint.landcover);
+          } else if (
+            layer.type === 'line' &&
+            (layer.id.endsWith('-roads') || layer.id.endsWith('-transportation'))
+          ) {
+            mapInstance.setPaintProperty(layer.id, 'line-color', paint.road);
+          } else if (
+            layer.type === 'line' &&
+            (layer.id.endsWith('-boundaries') || layer.id.endsWith('-boundary'))
+          ) {
+            mapInstance.setPaintProperty(layer.id, 'line-color', paint.boundary);
           }
         } catch {
           // A base style without this layer or property is fine; skip it.

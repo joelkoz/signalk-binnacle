@@ -5,10 +5,20 @@ import type { OverlayModule } from './types';
 
 const PMTILES_SCHEME = 'pmtiles://';
 
+const OPACITY_PROPERTY = {
+  fill: 'fill-opacity',
+  line: 'line-opacity',
+  raster: 'raster-opacity',
+} as const;
+
+function opacityProperty(layerType: string): string {
+  return OPACITY_PROPERTY[layerType as keyof typeof OPACITY_PROPERTY] ?? 'raster-opacity';
+}
+
 export function createChartOverlay(chart: SignalKChart, serverBase: string): OverlayModule {
   const specs = chartToSpecs(chart, serverBase);
   const sourceIds = Object.keys(specs.sources);
-  const layerIds = specs.layers.map((layer) => layer.id);
+  const layers = specs.layers.map((layer) => ({ id: layer.id, type: layer.type }));
 
   return {
     id: chartSourceId(chart.identifier),
@@ -34,21 +44,21 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
       }
     },
     remove(ctx) {
-      for (const layerId of layerIds) {
-        if (ctx.map.getLayer(layerId)) ctx.map.removeLayer(layerId);
+      for (const layer of layers) {
+        if (ctx.map.getLayer(layer.id)) ctx.map.removeLayer(layer.id);
       }
       for (const sourceId of sourceIds) {
         if (ctx.map.getSource(sourceId)) ctx.map.removeSource(sourceId);
       }
     },
     setVisible(ctx, visible) {
-      for (const layerId of layerIds) {
-        ctx.map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+      for (const layer of layers) {
+        ctx.map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
       }
     },
     setOpacity(ctx, opacity) {
-      for (const layerId of layerIds) {
-        ctx.map.setPaintProperty(layerId, specs.opacityProperty, opacity);
+      for (const layer of layers) {
+        ctx.map.setPaintProperty(layer.id, opacityProperty(layer.type), opacity);
       }
     },
   };

@@ -15,14 +15,13 @@ describe('chartToSpecs', () => {
       tilemapUrl: '/signalk/chart-tiles/noaa/{z}/{x}/{y}',
       bounds: [-180, -85, 180, 85],
     };
-    const { sources, layers, opacityProperty } = chartToSpecs(chart, base);
+    const { sources, layers } = chartToSpecs(chart, base);
     const sourceId = Object.keys(sources)[0];
     expect(sources[sourceId].type).toBe('raster');
     expect((sources[sourceId] as { tiles: string[] }).tiles[0]).toBe(
       'http://pi.local/signalk/chart-tiles/noaa/{z}/{x}/{y}',
     );
     expect(layers[0].type).toBe('raster');
-    expect(opacityProperty).toBe('raster-opacity');
   });
 
   it('builds a vector source for a tileJSON chart', () => {
@@ -52,6 +51,71 @@ describe('chartToSpecs', () => {
     expect((sources[sourceId] as { url: string }).url).toBe(
       'pmtiles://http://pi.local/signalk/pmtiles/region.pmtiles',
     );
+  });
+
+  it('builds a vector source and themed draw layers for an mvt pmtiles tilelayer', () => {
+    const chart: SignalKChart = {
+      identifier: 'Michigan-pmtiles',
+      name: 'Michigan',
+      type: 'tilelayer',
+      format: 'mvt',
+      layers: ['boundaries', 'buildings', 'earth', 'landcover', 'landuse', 'roads', 'water'],
+      url: '/signalk/pmtiles/Michigan.pmtiles',
+      minzoom: 0,
+      maxzoom: 15,
+    };
+    const { sources, layers } = chartToSpecs(chart, base);
+    const sourceId = Object.keys(sources)[0];
+    expect(sourceId).toBe('chart-Michigan-pmtiles');
+    expect(sources[sourceId].type).toBe('vector');
+    expect((sources[sourceId] as { url: string }).url).toBe(
+      'pmtiles://http://pi.local/signalk/pmtiles/Michigan.pmtiles',
+    );
+
+    // Draw layers are emitted only for known source-layers, back to front, each
+    // bound to its source-layer. "buildings" is unknown, so it is skipped.
+    const ids = layers.map((layer) => layer.id);
+    expect(ids).toEqual([
+      'chart-Michigan-pmtiles-earth',
+      'chart-Michigan-pmtiles-landcover',
+      'chart-Michigan-pmtiles-landuse',
+      'chart-Michigan-pmtiles-water',
+      'chart-Michigan-pmtiles-roads',
+      'chart-Michigan-pmtiles-boundaries',
+    ]);
+    const byId = new Map(layers.map((layer) => [layer.id, layer]));
+    expect(byId.get('chart-Michigan-pmtiles-water')?.type).toBe('fill');
+    expect(byId.get('chart-Michigan-pmtiles-roads')?.type).toBe('line');
+    expect(
+      (byId.get('chart-Michigan-pmtiles-water') as { 'source-layer': string })['source-layer'],
+    ).toBe('water');
+  });
+
+  it('draws the full known vector set when a pmtiles chart declares no layers', () => {
+    // The live v2 charts API returns this shape: a pmtiles tilelayer with no format
+    // and an empty layers list. The adapter must still emit themed draw layers.
+    const chart: SignalKChart = {
+      identifier: 'Michigan-pmtiles',
+      name: 'Michigan',
+      type: 'tilelayer',
+      url: '/signalk/pmtiles/Michigan.pmtiles',
+      layers: [],
+    };
+    const { sources, layers } = chartToSpecs(chart, base);
+    const sourceId = Object.keys(sources)[0];
+    expect(sources[sourceId].type).toBe('vector');
+    // Both the Protomaps and OpenMapTiles line names are emitted; MapLibre ignores
+    // the draw layers whose source-layer is absent from this archive.
+    expect(layers.map((layer) => layer.id)).toEqual([
+      'chart-Michigan-pmtiles-earth',
+      'chart-Michigan-pmtiles-landcover',
+      'chart-Michigan-pmtiles-landuse',
+      'chart-Michigan-pmtiles-water',
+      'chart-Michigan-pmtiles-roads',
+      'chart-Michigan-pmtiles-transportation',
+      'chart-Michigan-pmtiles-boundaries',
+      'chart-Michigan-pmtiles-boundary',
+    ]);
   });
 
   it('builds a raster source for a WMS chart', () => {

@@ -8,6 +8,17 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- Vector charts (MVT/PMTiles) rendered nothing on the map. A vector tile source paints nothing on
+  its own: MapLibre needs a draw layer per source-layer, and the chart adapter both routed these
+  charts to a raster source and, on the vector path, emitted no draw layers. The adapter now routes
+  any chart marked `mvt`/`pbf`, typed `tileJSON`/`mapstyleJSON`, or ending in `.pmtiles` to a vector
+  source and generates themed fill and line draw layers per source-layer. It covers the two dominant
+  vector base-map schemas (Protomaps and OpenMapTiles) and, because Signal K's charts API often
+  returns an empty layer list for an archive, falls back to the full known set when none are
+  declared; MapLibre silently ignores a draw layer whose source-layer is absent. The chart layers
+  recolor with the day, dusk, and night-red themes, and per-layer opacity now uses the correct paint
+  property for fill, line, and raster layers.
+
 - PMTiles vector charts failed to render with `ERR_CACHE_WRITE_FAILURE`: a large archive served
   with a weak ETag over range requests makes Chrome fail the HTTP disk-cache write, which rejects
   the whole fetch and blanks the chart. Binnacle now registers each PMTiles archive with a source

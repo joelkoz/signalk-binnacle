@@ -96,15 +96,15 @@ function minutes(seconds: number): string {
   gap: 0.75rem;
   font-size: 0.85rem;
 }
-.row.danger .name {
-  color: var(--alarm);
-  font-weight: 600;
-}
 .name {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.row.danger .name {
+  color: var(--alarm);
+  font-weight: 600;
 }
 .metric b {
   font-family: var(--font-mono);
