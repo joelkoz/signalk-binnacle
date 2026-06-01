@@ -62,3 +62,54 @@ body {
 #app {
   block-size: 100vh;
 }
+
+/* Point-of-interest marker popup, themed from the tokens above. */
+.poi-popup-wrap .maplibregl-popup-content {
+  background: var(--surface-overlay);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  font-family: var(--font-ui);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  max-width: 16rem;
+}
+.poi-popup-wrap .maplibregl-popup-tip {
+  border-top-color: var(--surface-overlay);
+  border-bottom-color: var(--surface-overlay);
+}
+.poi-popup-wrap .maplibregl-popup-close-button {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  padding-inline-end: 0.3rem;
+}
+.poi-popup-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.poi-popup-category {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-block-start: 0.1rem;
+}
+.poi-popup-body {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+}
+.poi-popup-link {
+  display: inline-block;
+  margin-block-start: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.poi-popup-link:hover {
+  text-decoration: underline;
+}
+.poi-popup-credit {
+  margin-block-start: 0.4rem;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}

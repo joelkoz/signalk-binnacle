@@ -1,3 +1,5 @@
+import { categoryForSkIcon, type PoiCategory } from './poi-categories';
+
 // A point-of-interest note from the Signal K resources API. Providers like
 // signalk-crows-nest serve marinas, anchorages, and hazards as `notes`, scoped to a
 // geographic query, which is why the fetch carries the current viewport bbox.
@@ -5,6 +7,16 @@ export interface NotePoint {
   id: string;
   name: string;
   position: { latitude: number; longitude: number };
+  category: PoiCategory;
+  // Optional detail surfaced in the marker popup.
+  url?: string;
+  description?: string;
+  source?: string;
+  attribution?: string;
+}
+
+function str(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 // [west, south, east, north] in decimal degrees (GeoJSON / longitude-first order).
@@ -40,14 +52,25 @@ export async function fetchNotes(
     const note = raw as {
       name?: unknown;
       title?: unknown;
+      url?: unknown;
+      description?: unknown;
       position?: { latitude?: unknown; longitude?: unknown };
+      properties?: { skIcon?: unknown; source?: unknown; attribution?: unknown };
     };
     const lat = note.position?.latitude;
     const lon = note.position?.longitude;
     if (typeof lat !== 'number' || typeof lon !== 'number') continue;
-    const name =
-      typeof note.name === 'string' ? note.name : typeof note.title === 'string' ? note.title : id;
-    out.push({ id, name, position: { latitude: lat, longitude: lon } });
+    const props = note.properties ?? {};
+    out.push({
+      id,
+      name: str(note.name) ?? str(note.title) ?? id,
+      position: { latitude: lat, longitude: lon },
+      category: categoryForSkIcon(str(props.skIcon)),
+      url: str(note.url),
+      description: str(note.description),
+      source: str(props.source),
+      attribution: str(props.attribution),
+    });
   }
   return out;
 }

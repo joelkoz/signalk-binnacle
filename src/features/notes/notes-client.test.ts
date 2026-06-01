@@ -12,23 +12,41 @@ function jsonResponse(status: number, body: unknown): Response {
 describe('fetchNotes', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('requests with a bbox and no provider, and parses positioned notes', async () => {
+  it('requests with a bbox and no provider, and parses positioned notes with detail', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse(200, {
-        a: { name: 'Marina', position: { latitude: 42.6, longitude: -83.5 } },
-        b: { title: 'Anchorage', position: { latitude: 42.7, longitude: -83.4 } },
-        c: { name: 'No position here' },
+        a: {
+          name: 'Harbor Marina',
+          position: { latitude: 42.6, longitude: -83.5 },
+          url: 'https://example/poi/1',
+          properties: {
+            skIcon: 'marina',
+            source: 'activecaptain',
+            attribution: 'Data from Garmin ActiveCaptain',
+          },
+        },
+        b: {
+          title: 'Quiet Cove',
+          position: { latitude: 42.7, longitude: -83.4 },
+          properties: { skIcon: 'anchorage' },
+        },
+        c: { name: 'No position here', properties: { skIcon: 'hazard' } },
       }),
     );
     vi.stubGlobal('fetch', fetchMock);
     const notes = await fetchNotes('http://pi', 'tok', [-84, 42, -83, 43]);
     expect(notes).toHaveLength(2);
-    expect(notes[0]).toEqual({
+    expect(notes[0]).toMatchObject({
       id: 'a',
-      name: 'Marina',
+      name: 'Harbor Marina',
       position: { latitude: 42.6, longitude: -83.5 },
+      category: 'marina',
+      url: 'https://example/poi/1',
+      source: 'activecaptain',
+      attribution: 'Data from Garmin ActiveCaptain',
     });
-    expect(notes[1].name).toBe('Anchorage');
+    // name falls back to title; category from skIcon.
+    expect(notes[1]).toMatchObject({ name: 'Quiet Cove', category: 'anchorage' });
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/signalk/v2/api/resources/notes?');
     expect(url).toContain('bbox=');
