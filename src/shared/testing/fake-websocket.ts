@@ -1,5 +1,7 @@
 // Test-only fake. Imported by *.test.ts files, never by production code.
 export class FakeWebSocket {
+  static CONNECTING = 0;
+  static OPEN = 1;
   static instances: FakeWebSocket[] = [];
   onopen: (() => void) | null = null;
   onclose: (() => void) | null = null;
@@ -7,6 +9,8 @@ export class FakeWebSocket {
   onmessage: ((e: { data: string }) => void) | null = null;
   sent: string[] = [];
   closed = false;
+  // Sockets start CONNECTING; tests flip to OPEN (or call onopen, which sets it).
+  readyState: number = FakeWebSocket.CONNECTING;
 
   constructor(public url: string) {
     FakeWebSocket.instances.push(this);
@@ -18,6 +22,12 @@ export class FakeWebSocket {
       throw new Error("Failed to execute 'send' on 'WebSocket': Still in CONNECTING state.");
     }
     this.sent.push(data);
+  }
+
+  // Test helper: open the socket and fire onopen, like a real handshake.
+  open(): void {
+    this.readyState = FakeWebSocket.OPEN;
+    this.onopen?.();
   }
 
   close(): void {

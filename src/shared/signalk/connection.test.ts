@@ -54,6 +54,20 @@ describe('SkConnection', () => {
     expect(FakeWebSocket.instances).toHaveLength(2);
   });
 
+  it('drops sends while connecting, then sends once open', () => {
+    const conn = new SkConnection('ws://test', {
+      onState: () => {},
+      onDelta: () => {},
+    });
+    conn.connect();
+    const ws = FakeWebSocket.instances[0];
+    expect(() => conn.send({ subscribe: [] })).not.toThrow();
+    expect(ws.sent).toHaveLength(0);
+    ws.open();
+    conn.send({ subscribe: [] });
+    expect(ws.sent).toHaveLength(1);
+  });
+
   it('resets the attempt counter on a successful open', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const states: ConnectionState[] = [];

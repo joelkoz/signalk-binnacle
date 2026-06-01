@@ -39,7 +39,7 @@ describe('WorkerCore', () => {
     const core = new WorkerCore();
     core.connect('ws://test', () => {});
     const ws = FakeWebSocket.instances[0];
-    ws.onopen?.();
+    ws.open();
     core.subscribe([{ path: 'navigation.position' as Path, policy: 'instant', minPeriod: 1000 }]);
     expect(ws.sent.some((m) => m.includes('navigation.position'))).toBe(true);
   });

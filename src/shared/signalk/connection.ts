@@ -43,7 +43,10 @@ export class SkConnection {
   }
 
   send(message: unknown): void {
-    this.#ws?.send(JSON.stringify(message));
+    // The socket may still be CONNECTING when the first subscriptions arrive.
+    // Dropping the send is safe: the registry resubscribes everything on open.
+    if (this.#ws?.readyState !== WebSocket.OPEN) return;
+    this.#ws.send(JSON.stringify(message));
   }
 
   disconnect(): void {
