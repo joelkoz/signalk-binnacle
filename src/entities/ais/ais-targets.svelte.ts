@@ -21,6 +21,13 @@ export class AisTargets {
     this.#store = store;
   }
 
+  // Reading this in a reactive context takes a dependency on AIS changes, since the
+  // store bumps aisVersion ($state) on every AIS update and prune. list() iterates a
+  // non-reactive Map, so a consumer that needs to re-render must read this too.
+  get version(): number {
+    return this.#store.aisVersion;
+  }
+
   list(): AisTargetView[] {
     const out: AisTargetView[] = [];
     for (const [id, target] of this.#store.aisTargets) {

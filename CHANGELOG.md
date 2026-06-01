@@ -46,6 +46,13 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Lookout danger strip: collision danger now surfaces on screen. A strip floats at the bottom of
+  the chart listing the most dangerous AIS contacts with their closest point of approach in nautical
+  miles and time to closest approach in minutes, color-graded by severity, with an acknowledge
+  control and a "computing locally" note when the values are the client-side fallback rather than a
+  Signal K provider. The strip is absent when nothing is dangerous, so a calm night watch stays dark,
+  and it updates as traffic moves. This is the first on-screen slice of the active-safety Lookout
+  feature; the chart highlight, audible alarm, notifications, and thresholds panel follow.
 - Offline and PWA caching: Binnacle is now an installable progressive web app. A service worker
   precaches the app shell, runtime-caches the OpenFreeMap base map and the Signal K PMTiles charts
   cache-first (range-request aware) as they are viewed, and never caches the live Signal K stream or

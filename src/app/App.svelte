@@ -1,11 +1,15 @@
 <script lang="ts">
 import { onDestroy, onMount } from 'svelte';
+import { AisTargets } from '$entities/ais';
+import { CollisionAssessment } from '$entities/collision';
 import { OwnVessel } from '$entities/vessel';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
+import { DangerStrip } from '$features/lookout';
 import { ThemeToggle } from '$features/theme-toggle';
 import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
+import { createThresholds } from '$shared/settings';
 import type { Context } from '$shared/signalk';
 import {
   AuthController,
@@ -25,6 +29,7 @@ const vessel = new OwnVessel(store);
 const client = createSignalKClient();
 const auth = new AuthController(serverOrigin());
 const net = new OnlineStatus();
+const collision = new CollisionAssessment(vessel, new AisTargets(store), createThresholds());
 
 let layersView = $state<LayersView | undefined>();
 let recolorMap: ((theme: string) => void) | undefined;
@@ -121,6 +126,9 @@ onDestroy(() => {
     {#if layersView}
       <LayersPanel view={layersView} />
     {/if}
+    <div class="danger-slot">
+      <DangerStrip {collision} />
+    </div>
   </section>
   <footer class="status-strip">
     <span class="status" role="status" aria-live="polite">{connectionLabel}</span>
@@ -186,6 +194,18 @@ onDestroy(() => {
 }
 .chart-host {
   position: relative;
+}
+.danger-slot {
+  position: absolute;
+  inset-block-end: 0.75rem;
+  inset-inline: 0.75rem;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+.danger-slot :global(.danger-strip) {
+  pointer-events: auto;
 }
 .status-strip {
   display: flex;

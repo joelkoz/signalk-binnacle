@@ -98,6 +98,9 @@ export class CollisionAssessment {
   }
 
   get assessment(): Assessment {
+    // Take a reactive dependency on AIS updates; list() iterates a non-reactive Map, so
+    // without this read a reactive consumer would not re-render when traffic changes.
+    void this.#targets.version;
     const position = this.#vessel.position;
     const own = position
       ? { position, sogKnots: this.#vessel.sogKnots ?? 0, cogDegrees: this.#vessel.cogDegrees ?? 0 }
