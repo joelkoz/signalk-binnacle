@@ -8,14 +8,22 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
-- Points-of-interest markers now use per-category icons and a rich detail popup. Each note maps to
-  one of six categories (anchorage, marina, hazard, navaid, structure, point of interest) drawn as a
-  themed disc with a glyph: Lucide glyphs (anchor, sailboat, triangle-alert, landmark, map-pin) per
-  the spec's chosen app icon family, plus a custom buoy for navaids (authentic S-52 buoy and light
-  symbols remain the deferred chart-symbol atlas). Hazards take the alarm hue, navaids the caution
-  hue, the rest the POI hue; all recolor with the theme (night-red stays in the red band). Clicking a
-  marker opens a themed popup with the name, category, any description and source attribution, and a
-  link to the provider's detail page.
+- Points-of-interest markers now use per-category icons and a rich detail popup. Each note is sorted
+  into a category (anchorage, marina, fuel, services, inlet, hazard, navaid, structure, or a generic
+  point of interest), matched from the provider's skIcon against the live Crow's Nest / ActiveCaptain
+  vocabulary with a keyword fallback for unfamiliar variants, so navigation lights and channel buoys
+  read as navaids and creek inlets as inlets instead of plain pins. Each category draws as a themed
+  disc with a glyph: Lucide glyphs (anchor, sailboat, fuel pump, wrench, waves, triangle-alert,
+  landmark, map-pin) per the spec's chosen app icon family, plus a custom beacon for navaids
+  (authentic S-52 buoy and light symbols remain the deferred chart-symbol atlas). Hazards take the
+  alarm hue, navaids the caution hue, the rest the POI hue; all recolor with the theme (night-red
+  stays in the red band). Clicking a marker opens a themed popup with the name, category, any
+  description and source attribution, and an http(s)-only link to the provider's detail page, and the
+  selected marker gets a highlight ring.
+
+- Points-of-interest markers cluster at lower zoom and split apart as you zoom in, so a busy harbor
+  shows a single counted disc instead of a stack of overlapping markers; clicking a cluster zooms to
+  expand it. Marker size scales gently with zoom.
 
 - Points-of-interest overlay: Binnacle now renders Signal K `notes` resources on the map, so POI
   providers like signalk-crows-nest (Active Captain, OpenSeaMap, NOAA, USCG light list) show up.

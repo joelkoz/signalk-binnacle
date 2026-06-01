@@ -18,6 +18,9 @@ export interface MapThemePaint {
   // The glyph drawn on a marker disc: a light contrast in day and dusk, a brighter red
   // at night so it reads on the disc without breaking the pure-red-on-black contract.
   markerGlyph: string;
+  // Highlight ring around a selected marker. A distinct accent in day and dusk; at night
+  // a light red that stays in the red band yet reads apart from the danger and warning hues.
+  select: string;
   ownVessel: Rgba;
   aisTarget: Rgba;
 }
@@ -37,6 +40,7 @@ const PAINT: Record<Theme, MapThemePaint> = {
     warning: '#e0a020',
     note: '#7a3fa0',
     markerGlyph: '#ffffff',
+    select: '#ffb300',
     ownVessel: { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff },
     aisTarget: { r: 0xe0, g: 0xa0, b: 0x20, a: 0xff },
   },
@@ -51,6 +55,7 @@ const PAINT: Record<Theme, MapThemePaint> = {
     warning: '#d9a441',
     note: '#9a6fc0',
     markerGlyph: '#eef3f6',
+    select: '#ffc24d',
     ownVessel: { r: 0x4f, g: 0x9f, b: 0xd8, a: 0xff },
     aisTarget: { r: 0xd9, g: 0xa4, b: 0x41, a: 0xff },
   },
@@ -65,6 +70,7 @@ const PAINT: Record<Theme, MapThemePaint> = {
     warning: '#a83a10',
     note: '#9a3020',
     markerGlyph: '#ff9a86',
+    select: '#ffb39a',
     ownVessel: { r: 0xe0, g: 0x47, b: 0x3a, a: 0xff },
     aisTarget: { r: 0xb0, g: 0x6a, b: 0x10, a: 0xff },
   },

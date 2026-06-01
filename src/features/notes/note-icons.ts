@@ -2,16 +2,21 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { MapThemePaint } from '$shared/map';
 import { POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
 
-// Per-category glyphs. Anchorage, marina, hazard, structure, and generic are Lucide
-// glyphs (anchor, sailboat, triangle-alert, landmark, map-pin) per the spec's chosen
-// app icon family; navaid is a custom beacon (a diamond daymark on a post) in the same
-// 24x24 / 2px stroke weight, the spec's sanctioned "one-off custom SVG". Authentic S-52
-// buoy and light symbols replace navaid when the chart-symbol atlas lands.
+// Per-category glyphs. Most are Lucide glyphs (anchor, sailboat, triangle-alert, fuel,
+// wrench, landmark, map-pin) per the spec's chosen app icon family; navaid is a custom
+// beacon (a diamond daymark on a post) in the same 24x24 / 2px stroke weight, the spec's
+// sanctioned "one-off custom SVG". Authentic S-52 buoy and light symbols replace navaid
+// when the chart-symbol atlas lands.
 const GLYPHS: Record<PoiCategory, string> = {
   anchorage:
     '<path d="M12 6v16"/><path d="m19 13 2-1a9 9 0 0 1-18 0l2 1"/><path d="M9 11h6"/><circle cx="12" cy="4" r="2"/>',
   marina:
     '<path d="M10 2v15"/><path d="M7 22a4 4 0 0 1-4-4 1 1 0 0 1 1-1h16a1 1 0 0 1 1 1 4 4 0 0 1-4 4z"/><path d="M9.159 2.46a1 1 0 0 1 1.521-.193l9.977 8.98A1 1 0 0 1 20 13H4a1 1 0 0 1-.824-1.567z"/>',
+  fuel: '<line x1="3" x2="15" y1="22" y2="22"/><line x1="4" x2="14" y1="9" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/>',
+  services:
+    '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  inlet:
+    '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>',
   hazard:
     '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   navaid: '<path d="M12 2 16 7 12 12 8 7Z"/><path d="M12 12v9"/><path d="M8 21h8"/>',

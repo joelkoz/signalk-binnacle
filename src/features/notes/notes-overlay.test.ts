@@ -8,14 +8,18 @@ function ctxFor(map: ReturnType<typeof createFakeMap>): OverlayContext {
 }
 
 describe('notes overlay', () => {
-  it('adds a source and a symbol layer in the routes band', async () => {
+  it('adds clustered, count, symbol, and selection layers in the routes band', async () => {
     const overlay = createNotesOverlay('http://pi', undefined);
     const map = createFakeMap();
     await overlay.add(ctxFor(map));
     expect(overlay.band).toBe('routes');
     expect(overlay.title).toBe('Points of interest');
-    expect(map.sources.size).toBe(1);
-    expect(map.layers.size).toBe(1);
+    // The note source (clustered) plus the selection-ring source.
+    expect(map.sources.size).toBe(2);
+    expect(map.layers.has('binnacle-notes-symbol')).toBe(true);
+    expect(map.layers.has('binnacle-notes-cluster')).toBe(true);
+    expect(map.layers.has('binnacle-notes-cluster-count')).toBe(true);
+    expect(map.layers.has('binnacle-notes-selected')).toBe(true);
   });
 });
 

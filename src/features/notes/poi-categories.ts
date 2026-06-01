@@ -1,29 +1,57 @@
 // Crow's Nest (and other notes providers) tag each note with a Freeboard `skIcon`.
-// There are ~33 of them; Binnacle groups them into a handful of marker categories, each
-// with its own glyph and themed color. A category is the single source for both.
-export type PoiCategory = 'anchorage' | 'marina' | 'hazard' | 'navaid' | 'structure' | 'generic';
+// Binnacle groups them into a handful of marker categories, each with its own glyph and
+// themed color. A category is the single source for both.
+export type PoiCategory =
+  | 'anchorage'
+  | 'marina'
+  | 'fuel'
+  | 'services'
+  | 'inlet'
+  | 'hazard'
+  | 'navaid'
+  | 'structure'
+  | 'generic';
 
 export const POI_CATEGORIES: readonly PoiCategory[] = [
   'anchorage',
   'marina',
+  'fuel',
+  'services',
+  'inlet',
   'hazard',
   'navaid',
   'structure',
   'generic',
 ];
 
+// Exact skIcon to category for the canonical Freeboard / Crow's Nest vocabulary.
 const SKICON_CATEGORY: Record<string, PoiCategory> = {
   anchorage: 'anchorage',
   anchor_berth: 'anchorage',
   mooring: 'anchorage',
   marina: 'marina',
   harbour: 'marina',
+  yacht_club: 'marina',
+  fuel: 'fuel',
+  fuel_station: 'fuel',
+  water: 'services',
+  water_tap: 'services',
+  pumpout: 'services',
+  provisions: 'services',
+  electricity: 'services',
+  repairs: 'services',
+  chandler: 'services',
+  business: 'services',
+  inlet: 'inlet',
   hazard: 'hazard',
   obstruction: 'hazard',
   rock: 'hazard',
   wreck: 'hazard',
   beacon_isolated_danger: 'hazard',
   buoy_isolated_danger: 'hazard',
+  // Crow's Nest tags lights, daybeacons, pierhead lights, and channel buoys as
+  // navigation-structure; they are navaids.
+  'navigation-structure': 'navaid',
   beacon_cardinal: 'navaid',
   beacon_lateral: 'navaid',
   beacon_safe_water: 'navaid',
@@ -44,9 +72,51 @@ const SKICON_CATEGORY: Record<string, PoiCategory> = {
   boatramp: 'structure',
 };
 
+// Ordered keyword fallback for skIcons not in the exact table. Providers use many naming
+// variants (active_captain prefixes, plurals, hyphen vs underscore), so a substring match
+// keeps an unfamiliar variant in the right bucket instead of dropping it to a plain pin.
+// Order matters: navaid (buoy, beacon, light) is checked before the services 'water' so a
+// "safe_water" mark stays a navaid, and hazard 'danger' is checked before navaid so an
+// isolated-danger mark stays a hazard, both matching the exact table above.
+const KEYWORD_CATEGORY: ReadonlyArray<readonly [string, PoiCategory]> = [
+  ['fuel', 'fuel'],
+  ['anchor', 'anchorage'],
+  ['mooring', 'anchorage'],
+  ['marina', 'marina'],
+  ['harbour', 'marina'],
+  ['harbor', 'marina'],
+  ['yacht', 'marina'],
+  ['wreck', 'hazard'],
+  ['rock', 'hazard'],
+  ['obstruction', 'hazard'],
+  ['hazard', 'hazard'],
+  ['danger', 'hazard'],
+  ['buoy', 'navaid'],
+  ['beacon', 'navaid'],
+  ['light', 'navaid'],
+  ['navigation', 'navaid'],
+  ['inlet', 'inlet'],
+  ['pumpout', 'services'],
+  ['pump_out', 'services'],
+  ['water', 'services'],
+  ['provision', 'services'],
+  ['grocery', 'services'],
+  ['repair', 'services'],
+  ['chandler', 'services'],
+  ['business', 'services'],
+  ['bridge', 'structure'],
+  ['lock', 'structure'],
+  ['dam', 'structure'],
+  ['ferry', 'structure'],
+  ['ramp', 'structure'],
+];
+
 const CATEGORY_LABEL: Record<PoiCategory, string> = {
   anchorage: 'Anchorage',
   marina: 'Marina',
+  fuel: 'Fuel',
+  services: 'Services',
+  inlet: 'Inlet',
   hazard: 'Hazard',
   navaid: 'Navigation aid',
   structure: 'Structure',
@@ -55,7 +125,13 @@ const CATEGORY_LABEL: Record<PoiCategory, string> = {
 
 export function categoryForSkIcon(skIcon: string | undefined): PoiCategory {
   if (!skIcon) return 'generic';
-  return SKICON_CATEGORY[skIcon] ?? 'generic';
+  const exact = SKICON_CATEGORY[skIcon];
+  if (exact) return exact;
+  const lower = skIcon.toLowerCase();
+  for (const [needle, category] of KEYWORD_CATEGORY) {
+    if (lower.includes(needle)) return category;
+  }
+  return 'generic';
 }
 
 export function categoryLabel(category: PoiCategory): string {
