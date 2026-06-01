@@ -8,6 +8,13 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Lookout now sounds an audible collision alarm (differentiator step 4). When an AIS contact
+  crosses the danger CPA/TCPA threshold, a repeating two-beep tone plays, synthesized with the Web
+  Audio API so nothing is downloaded. Acknowledging the contact on the danger strip silences it, and
+  a new or more severe contact re-arms it; a "Mute alarm" toggle in the menu turns sound off entirely
+  and persists. The audio primes on your first interaction with the page (browsers block sound until
+  a gesture). Warnings stay visual only.
+
 - An app menu in the top bar gives app-wide options a home. It stays a single button until
   opened, then drops a themed popout, and closes on selection, Escape, or a click outside; the
   trigger is a labeled disclosure (aria-haspopup, aria-expanded, aria-controls). The menu is generic:

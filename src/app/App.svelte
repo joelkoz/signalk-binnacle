@@ -1,12 +1,12 @@
 <script lang="ts">
-import { Layers, LocateFixed } from '@lucide/svelte';
+import { Layers, LocateFixed, Volume2, VolumeX } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
 import { OwnVessel } from '$entities/vessel';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
-import { DangerStrip } from '$features/lookout';
+import { DangerStrip, LookoutAlarm } from '$features/lookout';
 import { AppMenu, type MenuItem, MenuSubmenu } from '$features/menu';
 import { ThemeToggle } from '$features/theme-toggle';
 import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
@@ -40,6 +40,8 @@ const client = createSignalKClient();
 const auth = new AuthController(serverOrigin());
 const net = new OnlineStatus();
 const collision = new CollisionAssessment(vessel, aisTargets, createThresholds());
+const lookoutAlarm = new LookoutAlarm();
+const alarmMuted = new PersistedValue<boolean>('binnacle:alarm-muted', false);
 
 let layersView = $state<LayersView | undefined>();
 let recolorMap: ((theme: Theme) => void) | undefined;
@@ -67,15 +69,30 @@ function onViewChange(view: MapView): void {
 let mapCommands = $state<MapCommands | undefined>();
 
 // The app menu's action options. Adding one is a single entry here; the layers controls
-// are rendered into the menu as a section below (see the AppMenu children).
-const menuItems: MenuItem[] = [
+// are rendered into the menu as a submenu below (see the AppMenu children).
+const menuItems = $derived<MenuItem[]>([
   {
     id: 'center-on-boat',
     label: 'Center on boat',
     icon: LocateFixed,
     onSelect: () => mapCommands?.centerOnVessel(),
   },
-];
+  {
+    id: 'mute-alarm',
+    label: alarmMuted.value ? 'Unmute alarm' : 'Mute alarm',
+    icon: alarmMuted.value ? VolumeX : Volume2,
+    onSelect: () => alarmMuted.set(!alarmMuted.value),
+  },
+]);
+
+// Sound the collision alarm whenever the assessment, acknowledgement, or mute changes.
+$effect(() => {
+  lookoutAlarm.update(collision.assessment.worst, collision.suppressed, alarmMuted.value);
+});
+
+// Browsers block audio until a user gesture; prime the audio context on the first one so
+// the alarm can sound later on its own.
+const primeAudio = () => lookoutAlarm.prime();
 
 const CONNECTION_LABELS: Record<string, string> = {
   open: 'Connected',
@@ -105,6 +122,7 @@ function waitForAccess(): Promise<void> {
 }
 
 onMount(async () => {
+  window.addEventListener('pointerdown', primeAudio, { once: true });
   await auth.probe();
   await waitForAccess();
   const token = auth.token ?? undefined;
@@ -130,6 +148,8 @@ onMount(async () => {
 onDestroy(() => {
   if (accessTimer) clearTimeout(accessTimer);
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
+  window.removeEventListener('pointerdown', primeAudio);
+  lookoutAlarm.update('clear', false, false);
   auth.stop();
   net.dispose();
   void client.disconnect();
