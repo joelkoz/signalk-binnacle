@@ -1,5 +1,4 @@
-import type { Value } from '@signalk/server-api';
-import type { AisTargetState, ConnectionState, SKFrame } from './types';
+import type { AisTargetState, ConnectionState, SKFrame, Value } from './types';
 
 export class PathCell {
   value = $state<Value | undefined>(undefined);

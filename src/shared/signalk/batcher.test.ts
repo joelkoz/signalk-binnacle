@@ -1,6 +1,6 @@
-import type { Value } from '@signalk/server-api';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FrameBatcher } from './batcher';
+import type { Value } from './types';
 
 beforeEach(() => {
   vi.stubGlobal(

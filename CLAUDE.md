@@ -113,7 +113,18 @@ must not be repeatable.
   Binnacle's job.
 - The v1 stream does not carry v2 data (course, autopilot); read those over v2 REST in later
   specs.
-- Bundle all assets locally. No CDNs; vessels are offline.
+- Bundle all assets locally. No CDNs; vessels are offline. This includes the base map: it must
+  ship inline or as bundled tiles, never a tile CDN. (A CDN base map renders all blue with no
+  internet, which shipped once and had to be fixed.)
+- Never import `@signalk/server-api` in browser or worker code, not even as a type-only import.
+  Its entry barrel re-exports `FullSignalK`, which extends Node's `EventEmitter`; bundled into the
+  worker with `events` externalized, the base class is `undefined` and the worker dies at load with
+  "Class extends value undefined". Mirror the few wire types the client needs in
+  `src/shared/signalk/types.ts` instead. The "events externalized for browser" build warning is the
+  tell. The package may be a dev-only dependency for server-side code, but the foundation has none.
+- Guard every WebSocket `send` on `readyState === WebSocket.OPEN`. The first subscriptions can be
+  issued while the socket is still CONNECTING; dropping the send is safe because the subscription
+  registry resubscribes everything on open.
 - Every release must hold 100% Signal K compliance, and project files must be written per the
   Signal K spec to achieve it.
 

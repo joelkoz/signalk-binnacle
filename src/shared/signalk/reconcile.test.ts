@@ -1,7 +1,6 @@
-import type { Context, Delta } from '@signalk/server-api';
 import { describe, expect, it } from 'vitest';
 import { reconcileDelta } from './reconcile';
-import type { LeafWrite } from './types';
+import type { Context, Delta, LeafWrite } from './types';
 
 function collect(delta: Delta): LeafWrite[] {
   const out: LeafWrite[] = [];

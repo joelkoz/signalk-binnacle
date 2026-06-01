@@ -1,9 +1,8 @@
-import type { Context, Delta, Path } from '@signalk/server-api';
 import { FrameBatcher } from './batcher';
 import { SkConnection } from './connection';
 import { reconcileDelta } from './reconcile';
 import { SubscriptionRegistry } from './subscription-registry';
-import type { ConnectionState, SKFrame, SubscribeEntry } from './types';
+import type { ConnectionState, Context, Delta, Path, SKFrame, SubscribeEntry } from './types';
 
 const SELF_CONTEXT = 'vessels.self';
 

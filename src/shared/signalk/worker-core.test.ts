@@ -1,7 +1,6 @@
-import type { Path } from '@signalk/server-api';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FakeWebSocket } from '$shared/testing/fake-websocket';
-import type { SKFrame } from './types';
+import type { Path, SKFrame } from './types';
 import { WorkerCore } from './worker-core';
 
 beforeEach(() => {

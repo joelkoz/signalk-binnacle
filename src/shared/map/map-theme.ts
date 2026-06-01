@@ -10,7 +10,7 @@ export interface MapThemePaint {
 
 const PAINT: Record<Theme, MapThemePaint> = {
   day: {
-    background: '#aecbe0',
+    background: '#dfe4e8',
     water: '#a8c9e0',
     ownVessel: { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff },
     aisTarget: { r: 0xe0, g: 0xa0, b: 0x20, a: 0xff },

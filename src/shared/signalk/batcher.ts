@@ -1,4 +1,4 @@
-import type { Value } from '@signalk/server-api';
+import type { Value } from './types';
 
 type Schedule = (cb: (epoch: number) => void) => void;
 

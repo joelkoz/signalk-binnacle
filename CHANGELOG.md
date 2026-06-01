@@ -6,6 +6,20 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The Signal K worker crashed at load with "Class extends value undefined" because the worker
+  graph imported the server-side `@signalk/server-api` package, whose entry re-exports a
+  `FullSignalK` class extending Node's `EventEmitter`; bundled into the browser worker with
+  `events` externalized, that base class resolved to `undefined`. The worker now mirrors the few
+  Signal K wire types it needs locally and no longer imports the package, dropping the worker
+  bundle from about 164 KB to about 7 KB and removing the dependency entirely.
+- The chart area rendered all blue offshore because the base map was fetched from a CDN
+  (`tiles.openfreemap.org`), which is unreachable on a boat with no internet, leaving an empty
+  map that showed the page background through it. Binnacle now ships a bundled, offline base
+  style that the theme recolors, with Signal K charts layered on top. Bundled vector base tiles
+  are a later spec; this removes the CDN dependency in line with the offline-first rule.
+
 ### Added
 
 - Lookout (active-safety, first slice): the headless collision data layer behind the upcoming

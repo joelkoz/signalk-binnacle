@@ -1,6 +1,27 @@
-import type { Context, Path, Value } from '@signalk/server-api';
+// Local mirrors of the Signal K wire shapes. The @signalk/server-api package is
+// server-side: its entry re-exports FullSignalK, which extends Node's EventEmitter,
+// so bundling it into the browser worker crashes with "Class extends value
+// undefined" once `events` is externalized. The client only needs these structural
+// types, so it defines them here and never imports the package.
+export type Path = string;
+export type Context = string;
+export type Value = unknown;
 
-export type { Context, Path, Value } from '@signalk/server-api';
+export interface PathValue {
+  path: Path;
+  value: Value;
+}
+
+export interface DeltaUpdate {
+  values?: PathValue[];
+  [key: string]: unknown;
+}
+
+export interface Delta {
+  context?: Context;
+  updates?: DeltaUpdate[];
+  [key: string]: unknown;
+}
 
 export type ConnectionPhase = 'connecting' | 'open' | 'reconnecting' | 'closed';
 

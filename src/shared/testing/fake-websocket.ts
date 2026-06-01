@@ -13,6 +13,10 @@ export class FakeWebSocket {
   }
 
   send(data: string): void {
+    // Mirror the browser: sending before the socket opens throws.
+    if (this.readyState !== FakeWebSocket.OPEN) {
+      throw new Error("Failed to execute 'send' on 'WebSocket': Still in CONNECTING state.");
+    }
     this.sent.push(data);
   }
 

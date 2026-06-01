@@ -1,6 +1,5 @@
-import type { Context, Path } from '@signalk/server-api';
 import * as Comlink from 'comlink';
-import type { SignalKClientApi, SKFrame, SubscribeEntry } from './types';
+import type { Context, Path, SignalKClientApi, SKFrame, SubscribeEntry } from './types';
 import { WorkerCore } from './worker-core';
 
 class SignalKWorker implements SignalKClientApi {

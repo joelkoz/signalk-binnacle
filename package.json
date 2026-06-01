@@ -28,7 +28,6 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@lucide/svelte": "^1.17.0",
-    "@signalk/server-api": "^2.25.0",
     "comlink": "^4.4.2",
     "maplibre-gl": "^5.24.0",
     "pmtiles": "^4.4.1"

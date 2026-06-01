@@ -1,5 +1,4 @@
-import type { Context, Path } from '@signalk/server-api';
-import type { SubscribeEntry, SubscribePolicy } from './types';
+import type { Context, Path, SubscribeEntry, SubscribePolicy } from './types';
 
 const SELF_CONTEXT = 'vessels.self' as Context;
 const DEFAULT_PERIOD = 1000;

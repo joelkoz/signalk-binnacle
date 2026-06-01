@@ -1,6 +1,6 @@
-import type { Context, Path } from '@signalk/server-api';
 import { describe, expect, it } from 'vitest';
 import { SubscriptionRegistry } from './subscription-registry';
+import type { Context, Path } from './types';
 
 const path = (s: string) => s as Path;
 

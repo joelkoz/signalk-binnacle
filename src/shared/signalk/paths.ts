@@ -1,4 +1,4 @@
-import type { Path } from '@signalk/server-api';
+import type { Path } from './types';
 
 // Signal K is SI: angles in radians, speed in m/s, depth in meters, temperature
 // in Kelvin. navigation.position is the exception: decimal degrees.
