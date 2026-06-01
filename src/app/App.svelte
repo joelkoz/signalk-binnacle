@@ -19,20 +19,21 @@ import {
   serverOrigin,
   streamUrl,
 } from '$shared/signalk';
-import { createThemeController } from '$shared/ui';
+import { createThemeController, type Theme } from '$shared/ui';
 import { ChartCanvas } from '$widgets/chart-canvas';
 
 const ALL_VESSELS = 'vessels.*' as Context;
 
 const store = new SignalKStore();
 const vessel = new OwnVessel(store);
+const aisTargets = new AisTargets(store);
 const client = createSignalKClient();
 const auth = new AuthController(serverOrigin());
 const net = new OnlineStatus();
-const collision = new CollisionAssessment(vessel, new AisTargets(store), createThresholds());
+const collision = new CollisionAssessment(vessel, aisTargets, createThresholds());
 
 let layersView = $state<LayersView | undefined>();
-let recolorMap: ((theme: string) => void) | undefined;
+let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
 let mapView = $state<{ lat: number; lon: number; zoom: number } | undefined>();
 let updateReady = $state(false);
@@ -112,6 +113,7 @@ onDestroy(() => {
     <ChartCanvas
       {store}
       {vessel}
+      {aisTargets}
       {chartsToken}
       onReady={(view) => (layersView = view)}
       onMapReady={(recolor) => {

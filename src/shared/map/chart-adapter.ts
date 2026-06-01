@@ -1,6 +1,10 @@
 import type { LayerSpecification, SourceSpecification } from 'maplibre-gl';
 import type { SignalKChart } from './chart-types';
-import { type MapThemePaint, mapThemePaint } from './map-theme';
+import { type MapColorKey, mapThemePaint } from './map-theme';
+
+// Stamped on each themed draw layer so the chart overlay can recolor it on a theme
+// change without re-deriving the source-layer to color mapping.
+export const THEME_PAINT_KEY = 'binnacle:themePaint';
 
 export interface ChartSpecs {
   sources: Record<string, SourceSpecification>;
@@ -44,31 +48,29 @@ function rasterSpecs(chart: SignalKChart, base: string): ChartSpecs {
 // user archive renders: Protomaps (earth, roads, boundaries) and OpenMapTiles
 // (no earth land polygon, transportation, boundary).
 type DrawKind = 'fill' | 'line';
-const SOURCE_LAYER_STYLE: Record<string, { kind: DrawKind; paint: keyof MapThemePaint }> = {
-  earth: { kind: 'fill', paint: 'land' },
-  landcover: { kind: 'fill', paint: 'landcover' },
-  landuse: { kind: 'fill', paint: 'landcover' },
-  water: { kind: 'fill', paint: 'water' },
-  roads: { kind: 'line', paint: 'road' },
-  transportation: { kind: 'line', paint: 'road' },
-  boundaries: { kind: 'line', paint: 'boundary' },
-  boundary: { kind: 'line', paint: 'boundary' },
-};
+interface DrawStyle {
+  sourceLayer: string;
+  kind: DrawKind;
+  paint: MapColorKey;
+}
 
-// Drawn back to front: land base, ground cover, water, then line work on top. Water is
-// drawn over land on purpose: on a marine chart navigable water must never be hidden by
-// an over-generalized land polygon. The tradeoff is that at low zoom a small island
-// whose archive water tile lacks a hole merges into the water; it reappears once the
-// tiles carry enough detail (a zoom level or two in), which is the safe direction.
-const DRAW_ORDER = [
-  'earth',
-  'landcover',
-  'landuse',
-  'water',
-  'roads',
-  'transportation',
-  'boundaries',
-  'boundary',
+// One ordered list is the single source of both draw order and per-source-layer style,
+// so a styled source-layer can never be left out of the draw order. Drawn back to front:
+// land base, ground cover, water, then line work on top. Water is drawn over land on
+// purpose: on a marine chart navigable water must never be hidden by an over-generalized
+// land polygon. The tradeoff is that at low zoom a small island whose archive water tile
+// lacks a hole merges into the water; it reappears once the tiles carry enough detail.
+// Two schemas are covered so an arbitrary archive renders: Protomaps (earth, roads,
+// boundaries) and OpenMapTiles (no earth land polygon, transportation, boundary).
+const DRAW_LAYERS: readonly DrawStyle[] = [
+  { sourceLayer: 'earth', kind: 'fill', paint: 'land' },
+  { sourceLayer: 'landcover', kind: 'fill', paint: 'landcover' },
+  { sourceLayer: 'landuse', kind: 'fill', paint: 'landcover' },
+  { sourceLayer: 'water', kind: 'fill', paint: 'water' },
+  { sourceLayer: 'roads', kind: 'line', paint: 'road' },
+  { sourceLayer: 'transportation', kind: 'line', paint: 'road' },
+  { sourceLayer: 'boundaries', kind: 'line', paint: 'boundary' },
+  { sourceLayer: 'boundary', kind: 'line', paint: 'boundary' },
 ];
 
 function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecification[] {
@@ -78,14 +80,15 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
   // map uses the standard Protomaps schema, so when no layers are declared, draw the
   // full known set. MapLibre silently ignores a draw layer whose source-layer is
   // absent from the tiles, so emitting all of them is safe.
-  const present = available.length > 0 ? new Set(available) : new Set(DRAW_ORDER);
+  const present =
+    available.length > 0 ? new Set(available) : new Set(DRAW_LAYERS.map((d) => d.sourceLayer));
   const layers: LayerSpecification[] = [];
-  for (const sourceLayer of DRAW_ORDER) {
+  for (const style of DRAW_LAYERS) {
+    const sourceLayer = style.sourceLayer;
     if (!present.has(sourceLayer)) continue;
-    const style = SOURCE_LAYER_STYLE[sourceLayer];
-    if (!style) continue;
     const id = `${sourceId}-${sourceLayer}`;
-    const color = paint[style.paint] as string;
+    const color = paint[style.paint];
+    const metadata = { [THEME_PAINT_KEY]: style.paint };
     if (style.kind === 'fill') {
       layers.push({
         id,
@@ -93,6 +96,7 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
         source: sourceId,
         'source-layer': sourceLayer,
         paint: { 'fill-color': color },
+        metadata,
       });
     } else {
       layers.push({
@@ -100,7 +104,11 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
         type: 'line',
         source: sourceId,
         'source-layer': sourceLayer,
-        paint: { 'line-color': color, 'line-width': sourceLayer === 'boundaries' ? 0.8 : 0.5 },
+        paint: {
+          'line-color': color,
+          'line-width': sourceLayer === 'boundaries' || sourceLayer === 'boundary' ? 0.8 : 0.5,
+        },
+        metadata,
       });
     }
   }
@@ -109,6 +117,8 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
 
 function vectorSpecs(chart: SignalKChart, base: string): ChartSpecs {
   const sourceId = chartSourceId(chart.identifier);
+  // A vector chart's `url` is its TileJSON or .pmtiles document, preferred over the
+  // `{z}/{x}/{y}` template in `tilemapUrl`; the raster path prefers them the other way.
   const raw = chart.url ?? chart.tilemapUrl ?? '';
   const resolved = absolute(raw, base);
   const url = resolved.endsWith('.pmtiles') ? `pmtiles://${resolved}` : resolved;
@@ -128,12 +138,16 @@ function vectorSpecs(chart: SignalKChart, base: string): ChartSpecs {
 // Signal K servers label a vector PMTiles archive as "tilelayer" but mark it with
 // format "mvt", so the format and the .pmtiles suffix are checked, not just the type.
 function isVector(chart: SignalKChart): boolean {
-  if (chart.type === 'tileJSON' || chart.type === 'mapstyleJSON') return true;
+  if (chart.type === 'tileJSON') return true;
   if (chart.format === 'mvt' || chart.format === 'pbf') return true;
   const candidate = chart.url ?? chart.tilemapUrl ?? '';
   return candidate.endsWith('.pmtiles');
 }
 
 export function chartToSpecs(chart: SignalKChart, serverBase: string): ChartSpecs {
+  // A mapstyleJSON chart is a full style document, not a tile source; until the style
+  // pipeline lands (a later spec) it cannot load as an overlay, so emit nothing rather
+  // than a broken vector source. No current provider ships this type.
+  if (chart.type === 'mapstyleJSON') return { sources: {}, layers: [] };
   return isVector(chart) ? vectorSpecs(chart, serverBase) : rasterSpecs(chart, serverBase);
 }

@@ -48,4 +48,19 @@ describe('SubscriptionRegistry', () => {
     reg.resubscribeAll();
     expect(sent).toHaveLength(2);
   });
+
+  it('remove drops demand so resubscribeAll does not resurrect it', () => {
+    const sent: unknown[] = [];
+    const reg = new SubscriptionRegistry((m) => sent.push(m));
+    reg.add([{ path: path('navigation.position') }]);
+    reg.remove([path('navigation.position')]);
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toMatchObject({
+      context: 'vessels.self',
+      unsubscribe: [{ path: 'navigation.position' }],
+    });
+    sent.length = 0;
+    reg.resubscribeAll();
+    expect(sent).toHaveLength(0);
+  });
 });

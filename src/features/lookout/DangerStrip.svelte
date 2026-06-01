@@ -12,6 +12,7 @@ const MAX_ROWS = 4;
 
 const contacts = $derived(collision.assessment.contacts);
 const top = $derived(contacts.slice(0, MAX_ROWS));
+const overflow = $derived(Math.max(0, contacts.length - MAX_ROWS));
 const computedFallback = $derived(contacts.some((c) => c.source === 'computed'));
 
 function nm(meters: number): string {
@@ -23,7 +24,7 @@ function minutes(seconds: number): string {
 }
 </script>
 
-{#if contacts.length > 0}
+{#if contacts.length > 0 && !collision.suppressed}
   <aside class="danger-strip" aria-label="Collision danger" aria-live="assertive">
     <div class="head">
       <span class="title">Danger</span>
@@ -41,6 +42,9 @@ function minutes(seconds: number): string {
         </li>
       {/each}
     </ul>
+    {#if overflow > 0}
+      <p class="more">+{overflow} more</p>
+    {/if}
   </aside>
 {/if}
 
@@ -110,5 +114,10 @@ function minutes(seconds: number): string {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--text);
+}
+.more {
+  margin: 0.3rem 0 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 </style>

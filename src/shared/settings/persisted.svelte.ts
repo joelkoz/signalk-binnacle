@@ -22,8 +22,8 @@ export class PersistedValue<T> {
     this.#key = key;
     this.#storage = resolveStorage(storage);
     const read = this.#read(fallback);
-    this.fromStorage = read !== fallback;
-    this.value = read;
+    this.fromStorage = read.fromStorage;
+    this.value = read.value;
   }
 
   set(next: T): void {
@@ -31,13 +31,16 @@ export class PersistedValue<T> {
     this.#storage?.setItem(this.#key, JSON.stringify(next));
   }
 
-  #read(fallback: T): T {
+  // Reports whether the value came from storage by key presence and a successful
+  // parse, not by comparing to the default: a stored primitive equal to the default
+  // is still "from storage", which a value compare would miss.
+  #read(fallback: T): { value: T; fromStorage: boolean } {
     const raw = this.#storage?.getItem(this.#key);
-    if (raw == null) return fallback;
+    if (raw == null) return { value: fallback, fromStorage: false };
     try {
-      return JSON.parse(raw) as T;
+      return { value: JSON.parse(raw) as T, fromStorage: true };
     } catch {
-      return fallback;
+      return { value: fallback, fromStorage: false };
     }
   }
 }

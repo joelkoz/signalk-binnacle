@@ -1,25 +1,16 @@
-import type {
-  GeoJSONSource,
-  GeoJSONSourceSpecification,
-  SymbolLayerSpecification,
-} from 'maplibre-gl';
 import type { OwnVessel } from '$entities/vessel';
-import type { OverlayContext, OverlayModule, Rgba } from '$shared/map';
+import { createSymbolOverlay, type Rgba, type SymbolOverlay } from '$shared/map';
 import { VESSEL_ICON_ID, vesselIconImage } from './vessel-icon';
 
 const SOURCE_ID = 'binnacle-own-vessel';
 const LAYER_ID = 'binnacle-own-vessel-symbol';
 const DEFAULT_COLOR: Rgba = { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff };
 
-interface VesselOverlay extends OverlayModule {
-  sync(ctx: OverlayContext): void;
-}
-
 function emptyCollection(): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
 
-export function createVesselOverlay(vessel: OwnVessel): VesselOverlay {
+export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
   let lastLon: number | undefined;
   let lastLat: number | undefined;
   let lastHeading: number | undefined;
@@ -39,60 +30,29 @@ export function createVesselOverlay(vessel: OwnVessel): VesselOverlay {
     };
   }
 
-  return {
+  function shouldRefresh(): boolean {
+    const position = vessel.position;
+    const lon = position?.longitude;
+    const lat = position?.latitude;
+    const heading = position ? (vessel.headingDegrees ?? vessel.cogDegrees ?? 0) : undefined;
+    if (lon === lastLon && lat === lastLat && heading === lastHeading) return false;
+    lastLon = lon;
+    lastLat = lat;
+    lastHeading = heading;
+    return true;
+  }
+
+  return createSymbolOverlay({
     id: 'own-vessel',
     title: 'Own vessel',
     band: 'vessel',
-    supportsOpacity: true,
-    add(ctx) {
-      if (!ctx.map.hasImage(VESSEL_ICON_ID)) {
-        ctx.map.addImage(VESSEL_ICON_ID, vesselIconImage(DEFAULT_COLOR));
-      }
-      const source: GeoJSONSourceSpecification = { type: 'geojson', data: featureCollection() };
-      ctx.map.addSource(SOURCE_ID, source);
-      const layer: SymbolLayerSpecification = {
-        id: LAYER_ID,
-        type: 'symbol',
-        source: SOURCE_ID,
-        layout: {
-          'icon-image': VESSEL_ICON_ID,
-          'icon-rotate': ['get', 'heading'],
-          'icon-rotation-alignment': 'map',
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-        },
-      };
-      ctx.map.addLayer(layer, ctx.beforeIdFor('vessel'));
-    },
-    sync(ctx) {
-      const position = vessel.position;
-      const lon = position?.longitude;
-      const lat = position?.latitude;
-      const heading = position ? (vessel.headingDegrees ?? vessel.cogDegrees ?? 0) : undefined;
-      if (lon === lastLon && lat === lastLat && heading === lastHeading) return;
-      lastLon = lon;
-      lastLat = lat;
-      lastHeading = heading;
-      const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      source?.setData(featureCollection());
-    },
-    applyTheme(ctx, paint) {
-      const image = vesselIconImage(paint.ownVessel);
-      if (ctx.map.hasImage(VESSEL_ICON_ID)) {
-        ctx.map.updateImage(VESSEL_ICON_ID, image);
-      } else {
-        ctx.map.addImage(VESSEL_ICON_ID, image);
-      }
-    },
-    setVisible(ctx, visible) {
-      ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');
-    },
-    setOpacity(ctx, opacity) {
-      ctx.map.setPaintProperty(LAYER_ID, 'icon-opacity', opacity);
-    },
-    remove(ctx) {
-      if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
-      if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
-    },
-  };
+    sourceId: SOURCE_ID,
+    layerId: LAYER_ID,
+    iconId: VESSEL_ICON_ID,
+    iconImage: vesselIconImage,
+    defaultColor: DEFAULT_COLOR,
+    paintColor: (paint) => paint.ownVessel,
+    features: featureCollection,
+    shouldRefresh,
+  });
 }

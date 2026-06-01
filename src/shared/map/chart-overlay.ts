@@ -1,10 +1,13 @@
 import type { Map as MapLibreMap, MapSourceDataEvent } from 'maplibre-gl';
-import { chartSourceId, chartToSpecs } from './chart-adapter';
+import { chartSourceId, chartToSpecs, THEME_PAINT_KEY } from './chart-adapter';
 import type { SignalKChart } from './chart-types';
+import type { MapColorKey } from './map-theme';
 import { registerPmtilesArchive } from './pmtiles';
-import type { OverlayModule } from './types';
+import type { OverlayModule, ZBand } from './types';
 
 const PMTILES_SCHEME = 'pmtiles://';
+// Charts render in the basemap band; the single source of the band string.
+const BAND: ZBand = 'basemap';
 
 // How far past a chart's native max zoom its layers keep drawing before they hand off
 // to the base map. Zooming past a chart's scale overzooms the top tiles into a blocky,
@@ -26,7 +29,11 @@ function opacityProperty(layerType: string): string {
 export function createChartOverlay(chart: SignalKChart, serverBase: string): OverlayModule {
   const specs = chartToSpecs(chart, serverBase);
   const sourceIds = Object.keys(specs.sources);
-  const layers = specs.layers.map((layer) => ({ id: layer.id, type: layer.type }));
+  const layers = specs.layers.map((layer) => ({
+    id: layer.id,
+    type: layer.type,
+    themePaint: (layer.metadata as Record<string, MapColorKey> | undefined)?.[THEME_PAINT_KEY],
+  }));
   const chartSource = sourceIds[0];
   let onSourceData: ((event: MapSourceDataEvent) => void) | undefined;
 
@@ -47,7 +54,7 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
   return {
     id: chartSourceId(chart.identifier),
     title: chart.name,
-    band: 'basemap',
+    band: BAND,
     supportsOpacity: true,
     add(ctx) {
       for (const sourceId of sourceIds) {
@@ -63,18 +70,25 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
       }
       for (const layer of specs.layers) {
         if (!ctx.map.getLayer(layer.id)) {
-          ctx.map.addLayer(layer, ctx.beforeIdFor('basemap'));
+          ctx.map.addLayer(layer, ctx.beforeIdFor(BAND));
         }
+      }
+      // Clear any listener left by a prior add (the reattach path) before installing a
+      // new one, so the handler reference cannot be orphaned.
+      if (onSourceData) {
+        ctx.map.off('sourcedata', onSourceData);
+        onSourceData = undefined;
       }
       const tryCap = () => ctx.map.isSourceLoaded(chartSource) && capToNativeZoom(ctx.map);
       if (!tryCap()) {
-        onSourceData = (event) => {
+        const handler = (event: MapSourceDataEvent) => {
           if (event.sourceId === chartSource && event.isSourceLoaded && tryCap()) {
-            if (onSourceData) ctx.map.off('sourcedata', onSourceData);
-            onSourceData = undefined;
+            ctx.map.off('sourcedata', handler);
+            if (onSourceData === handler) onSourceData = undefined;
           }
         };
-        ctx.map.on('sourcedata', onSourceData);
+        onSourceData = handler;
+        ctx.map.on('sourcedata', handler);
       }
     },
     remove(ctx) {
@@ -97,6 +111,15 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
     setOpacity(ctx, opacity) {
       for (const layer of layers) {
         ctx.map.setPaintProperty(layer.id, opacityProperty(layer.type), opacity);
+      }
+    },
+    applyTheme(ctx, paint) {
+      // Recolor this chart's own themed draw layers, so the widget no longer reaches
+      // into chart layers by id. Raster layers carry no theme key and are skipped.
+      for (const layer of layers) {
+        if (!layer.themePaint) continue;
+        const property = layer.type === 'line' ? 'line-color' : 'fill-color';
+        ctx.map.setPaintProperty(layer.id, property, paint[layer.themePaint]);
       }
     },
   };

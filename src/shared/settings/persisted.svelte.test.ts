@@ -36,4 +36,16 @@ describe('PersistedValue', () => {
     const p = new PersistedValue('k', { a: 1 }, fakeStorage(store));
     expect(p.value).toEqual({ a: 1 });
   });
+
+  it('reports fromStorage by key presence, even for a primitive equal to the default', () => {
+    const store = new Map<string, string>([['k', JSON.stringify(5)]]);
+    const p = new PersistedValue('k', 5, fakeStorage(store));
+    expect(p.value).toBe(5);
+    expect(p.fromStorage).toBe(true);
+  });
+
+  it('reports not fromStorage when the key is absent', () => {
+    const p = new PersistedValue('k', 5, fakeStorage(new Map()));
+    expect(p.fromStorage).toBe(false);
+  });
 });

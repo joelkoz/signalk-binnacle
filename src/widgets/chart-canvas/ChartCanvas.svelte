@@ -1,7 +1,7 @@
 <script lang="ts">
 import maplibregl from 'maplibre-gl';
 import { onDestroy, onMount } from 'svelte';
-import { AisTargets } from '$entities/ais';
+import type { AisTargets } from '$entities/ais';
 import type { OwnVessel } from '$entities/vessel';
 import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
@@ -29,13 +29,15 @@ interface MapView {
 interface Props {
   store: SignalKStore;
   vessel: OwnVessel;
+  aisTargets: AisTargets;
   chartsToken?: string;
   onReady?: (view: LayersView) => void;
-  onMapReady?: (recolor: (theme: string) => void) => void;
+  onMapReady?: (recolor: (theme: Theme) => void) => void;
   onViewChange?: (view: MapView) => void;
 }
 
-const { store, vessel, chartsToken, onReady, onMapReady, onViewChange }: Props = $props();
+const { store, vessel, aisTargets, chartsToken, onReady, onMapReady, onViewChange }: Props =
+  $props();
 
 const DEFAULT_CENTER: [number, number] = [0, 30];
 const DEFAULT_ZOOM = 2;
@@ -77,8 +79,8 @@ onMount(() => {
     });
   };
   mapInstance.on('move', emitView);
-  mapInstance.on('load', emitView);
   mapInstance.on('load', async () => {
+    emitView();
     const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
     installSentinels(mapInstance);
     manager = new LayerManager(ctx);
@@ -90,7 +92,7 @@ onMount(() => {
       if (destroyed) return;
     }
 
-    const aisOverlay = createAisOverlay(new AisTargets(store), store);
+    const aisOverlay = createAisOverlay(aisTargets, store);
     await manager.register(aisOverlay);
     if (destroyed) return;
 
@@ -102,44 +104,32 @@ onMount(() => {
     view.refresh();
     onReady?.(view);
 
-    const recolor = (theme: string) => {
-      const paint = mapThemePaint(theme as Theme);
+    const recolor = (theme: Theme) => {
+      const paint = mapThemePaint(theme);
       let style: ReturnType<typeof mapInstance.getStyle>;
       try {
         style = mapInstance.getStyle();
       } catch {
         return;
       }
+      // Recolor only the base map here (background and its water). Each overlay,
+      // including the chart, recolors its own layers via applyTheme below.
       for (const layer of style.layers ?? []) {
         try {
           if (layer.type === 'background') {
             mapInstance.setPaintProperty(layer.id, 'background-color', paint.background);
-          } else if (layer.id.includes('water') && layer.type === 'fill') {
+          } else if (
+            !layer.id.startsWith('chart-') &&
+            layer.id.includes('water') &&
+            layer.type === 'fill'
+          ) {
             mapInstance.setPaintProperty(layer.id, 'fill-color', paint.water);
-          } else if (layer.type === 'fill' && layer.id.endsWith('-earth')) {
-            mapInstance.setPaintProperty(layer.id, 'fill-color', paint.land);
-          } else if (
-            layer.type === 'fill' &&
-            (layer.id.endsWith('-landcover') || layer.id.endsWith('-landuse'))
-          ) {
-            mapInstance.setPaintProperty(layer.id, 'fill-color', paint.landcover);
-          } else if (
-            layer.type === 'line' &&
-            (layer.id.endsWith('-roads') || layer.id.endsWith('-transportation'))
-          ) {
-            mapInstance.setPaintProperty(layer.id, 'line-color', paint.road);
-          } else if (
-            layer.type === 'line' &&
-            (layer.id.endsWith('-boundaries') || layer.id.endsWith('-boundary'))
-          ) {
-            mapInstance.setPaintProperty(layer.id, 'line-color', paint.boundary);
           }
         } catch {
           // A base style without this layer or property is fine; skip it.
         }
       }
-      overlay.applyTheme?.(ctx, paint);
-      aisOverlay.applyTheme?.(ctx, paint);
+      manager?.applyTheme(paint);
     };
     onMapReady?.(recolor);
 

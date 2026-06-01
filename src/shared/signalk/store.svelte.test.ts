@@ -18,10 +18,20 @@ describe('SignalKStore', () => {
     expect(store.cell('navigation.speedOverGround').value).toBe(5.1);
   });
 
-  it('records receivedAt from the frame epoch', () => {
+  it('bumps aisVersion only when a context actually updates', () => {
     const store = new SignalKStore();
-    store.applyFrame(frame({ 'navigation.headingTrue': 1.2 }));
-    expect(store.cell('navigation.headingTrue').receivedAt).toBe(1000);
+    const before = store.aisVersion;
+    // An empty ais object (a self-only worker frame) must not bump the version,
+    // or the consumers' version guards would fire every frame.
+    store.applyFrame({ self: {}, ais: {}, connection: { phase: 'open', attempt: 0 }, epoch: 1000 });
+    expect(store.aisVersion).toBe(before);
+    store.applyFrame({
+      self: {},
+      ais: { 'vessels.a': { name: 'A' } },
+      connection: { phase: 'open', attempt: 0 },
+      epoch: 1001,
+    });
+    expect(store.aisVersion).toBe(before + 1);
   });
 
   it('updates connection state reactively', () => {

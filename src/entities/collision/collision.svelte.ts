@@ -45,8 +45,8 @@ export function assessContacts(
   const ownK = {
     latitude: own.position.latitude,
     longitude: own.position.longitude,
-    sogMps: knotsToMetersPerSecond(own.sogKnots ?? 0),
-    cogRad: degreesToRadians(own.cogDegrees ?? 0),
+    sogMps: knotsToMetersPerSecond(own.sogKnots),
+    cogRad: degreesToRadians(own.cogDegrees),
   };
   const contacts: DangerContact[] = [];
   for (const t of targets) {
@@ -89,7 +89,10 @@ export class CollisionAssessment {
   #targets: AisTargets;
   #thresholds: PersistedValue<Thresholds>;
 
-  acknowledged = $state(false);
+  // The worst-contact signature (id and severity) that was acknowledged. The alert is
+  // suppressed only while the current worst contact still matches it, so a new or more
+  // severe contact re-arms the alert automatically. Full mute lifecycle is Lookout step 4.
+  #ackSignature = $state<string | null>(null);
 
   constructor(vessel: OwnVessel, targets: AisTargets, thresholds: PersistedValue<Thresholds>) {
     this.#vessel = vessel;
@@ -108,15 +111,18 @@ export class CollisionAssessment {
     return assessContacts(own, this.#targets.list(), this.#thresholds.value);
   }
 
-  get worst(): Severity {
-    return this.assessment.worst;
+  // True when the current worst contact has been acknowledged and has not since changed.
+  get suppressed(): boolean {
+    const sig = this.#signature();
+    return sig !== null && sig === this.#ackSignature;
   }
 
   acknowledge(): void {
-    this.acknowledged = true;
+    this.#ackSignature = this.#signature();
   }
 
-  reset(): void {
-    this.acknowledged = false;
+  #signature(): string | null {
+    const top = this.assessment.contacts[0];
+    return top ? `${top.id}:${top.severity}` : null;
   }
 }

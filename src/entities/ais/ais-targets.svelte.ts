@@ -16,6 +16,8 @@ export interface AisTargetView {
 
 export class AisTargets {
   #store: SignalKStore;
+  #cache: AisTargetView[] | undefined;
+  #cacheVersion = -1;
 
   constructor(store: SignalKStore) {
     this.#store = store;
@@ -29,6 +31,10 @@ export class AisTargets {
   }
 
   list(): AisTargetView[] {
+    // Rebuild only when AIS data changed. With aisVersion bumped only on real AIS
+    // updates, own-vessel motion no longer forces a full list rebuild on consumers.
+    const version = this.#store.aisVersion;
+    if (this.#cache && this.#cacheVersion === version) return this.#cache;
     const out: AisTargetView[] = [];
     for (const [id, target] of this.#store.aisTargets) {
       const position = target.values.get(SK_PATHS.position);
@@ -42,24 +48,19 @@ export class AisTargets {
         cogDegrees: radiansToDegrees(asNumber(target.values.get(SK_PATHS.courseOverGroundTrue))),
         headingDegrees: radiansToDegrees(asNumber(target.values.get(SK_PATHS.headingTrue))),
         sogKnots: metersPerSecondToKnots(asNumber(target.values.get(SK_PATHS.speedOverGround))),
-        shipTypeId: this.#shipTypeId(target.values.get(SK_PATHS.aisShipType)),
-        cpaMeters: this.#approachField(approach, 'distance'),
-        tcpaSeconds: this.#approachField(approach, 'timeTo'),
+        shipTypeId: this.#numField(target.values.get(SK_PATHS.aisShipType), 'id'),
+        cpaMeters: this.#numField(approach, 'distance'),
+        tcpaSeconds: this.#numField(approach, 'timeTo'),
       });
     }
+    this.#cache = out;
+    this.#cacheVersion = version;
     return out;
   }
 
-  #shipTypeId(value: unknown): number | undefined {
+  #numField(value: unknown, key: string): number | undefined {
     if (typeof value === 'object' && value !== null) {
-      return asNumber((value as { id?: unknown }).id);
-    }
-    return undefined;
-  }
-
-  #approachField(value: unknown, field: 'distance' | 'timeTo'): number | undefined {
-    if (typeof value === 'object' && value !== null) {
-      return asNumber((value as Record<string, unknown>)[field]);
+      return asNumber((value as Record<string, unknown>)[key]);
     }
     return undefined;
   }

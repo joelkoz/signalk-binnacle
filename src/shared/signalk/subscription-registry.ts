@@ -47,6 +47,14 @@ export class SubscriptionRegistry {
     return () => this.#release(keys);
   }
 
+  // Drop demand by path and context, the same refcounted accounting as the closure
+  // returned by add(). The worker core routes unsubscribe through here so a dropped
+  // path also leaves #demand and is not resurrected by resubscribeAll on reconnect.
+  remove(paths: Path[], context?: Context): void {
+    const ctx = context ?? SELF_CONTEXT;
+    for (const path of paths) this.#drop(`${ctx}|${path}`);
+  }
+
   resubscribeAll(): void {
     for (const { entry } of this.#demand.values()) {
       this.#sendSubscribe(entry);
@@ -54,17 +62,19 @@ export class SubscriptionRegistry {
   }
 
   #release(keys: string[]): void {
-    for (const key of keys) {
-      const demand = this.#demand.get(key);
-      if (!demand) continue;
-      demand.count -= 1;
-      if (demand.count > 0) continue;
-      this.#demand.delete(key);
-      this.#send({
-        context: demand.entry.context,
-        unsubscribe: [{ path: demand.entry.path }],
-      });
-    }
+    for (const key of keys) this.#drop(key);
+  }
+
+  #drop(key: string): void {
+    const demand = this.#demand.get(key);
+    if (!demand) return;
+    demand.count -= 1;
+    if (demand.count > 0) return;
+    this.#demand.delete(key);
+    this.#send({
+      context: demand.entry.context,
+      unsubscribe: [{ path: demand.entry.path }],
+    });
   }
 
   #resolve(entry: SubscribeEntry): Resolved {

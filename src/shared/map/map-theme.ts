@@ -13,6 +13,9 @@ export interface MapThemePaint {
   aisTarget: Rgba;
 }
 
+// The string-valued (color) keys of MapThemePaint, usable directly as a paint color.
+export type MapColorKey = 'background' | 'water' | 'land' | 'landcover' | 'road' | 'boundary';
+
 const PAINT: Record<Theme, MapThemePaint> = {
   day: {
     background: '#dfe4e8',

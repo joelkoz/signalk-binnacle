@@ -2,13 +2,18 @@ import type { Value } from './types';
 
 type Schedule = (cb: (epoch: number) => void) => void;
 
+// The epoch stamped on each flush is a wall clock (Date.now), not the scheduler's
+// timestamp: the batcher runs in the worker where requestAnimationFrame is absent, so
+// the rAF callback's high-res timestamp is unavailable and would in any case use a
+// different time origin than the main thread that prunes by staleness. Date.now is
+// consistent across both threads.
 const defaultSchedule: Schedule =
   typeof requestAnimationFrame === 'function'
     ? (cb) => {
-        requestAnimationFrame(cb);
+        requestAnimationFrame(() => cb(Date.now()));
       }
     : (cb) => {
-        setTimeout(() => cb(0), 16);
+        setTimeout(() => cb(Date.now()), 16);
       };
 
 export class FrameBatcher {

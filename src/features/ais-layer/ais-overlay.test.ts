@@ -44,7 +44,9 @@ describe('ais overlay', () => {
         'vessels.b': { name: 'no pos' },
       },
       connection: { phase: 'open', attempt: 0 },
-      epoch: 1,
+      // The worker stamps targets with a wall clock; a recent epoch keeps them
+      // inside the staleness window when sync prunes.
+      epoch: Date.now(),
     });
     overlay.sync(ctxFor(map));
     const source = [...map.sources.values()][0];
@@ -61,7 +63,7 @@ describe('ais overlay', () => {
       self: {},
       ais: { 'vessels.a': { 'navigation.position': { latitude: 1, longitude: 2 } } },
       connection: { phase: 'open', attempt: 0 },
-      epoch: 1,
+      epoch: Date.now(),
     });
     const source = [...map.sources.values()][0];
     const spy = vi.spyOn(source, 'setData');

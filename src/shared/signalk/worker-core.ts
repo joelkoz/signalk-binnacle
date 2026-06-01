@@ -6,6 +6,7 @@ import {
   type ConnectionState,
   type Context,
   type Delta,
+  INITIAL_CONNECTION_STATE,
   type Path,
   SELF_CONTEXT,
   type SKFrame,
@@ -21,7 +22,7 @@ export class WorkerCore {
   #registry?: SubscriptionRegistry;
   #batcher = new FrameBatcher();
   #onFrame?: (frame: SKFrame) => void;
-  #connectionState: ConnectionState = { phase: 'connecting', attempt: 0 };
+  #connectionState: ConnectionState = INITIAL_CONNECTION_STATE;
   #selfContext?: string;
 
   connect(url: string, onFrame: (frame: SKFrame) => void): void {
@@ -41,7 +42,7 @@ export class WorkerCore {
       }
       this.#onFrame?.({
         self,
-        ais: aisRecord as SKFrame['ais'],
+        ais: aisRecord,
         connection: this.#connectionState,
         epoch,
       });
@@ -54,10 +55,7 @@ export class WorkerCore {
   }
 
   unsubscribe(paths: Path[], context?: Context): void {
-    this.#connection?.send({
-      context: context ?? (SELF_CONTEXT as Context),
-      unsubscribe: paths.map((path) => ({ path })),
-    });
+    this.#registry?.remove(paths, context);
   }
 
   disconnect(): void {
@@ -73,8 +71,8 @@ export class WorkerCore {
     try {
       message = JSON.parse(raw) as Delta & Hello;
     } catch {
-      // A malformed frame indicates a real server or transport fault; surface it
-      // rather than dropping it silently.
+      // A malformed frame indicates a real server or transport fault. Log it in dev
+      // and drop it: one bad frame must not tear down the stream.
       if (import.meta.env?.DEV) console.warn('[signalk] dropped a malformed delta frame');
       return;
     }

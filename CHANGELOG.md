@@ -14,7 +14,39 @@ All notable changes to Binnacle are documented here. The format follows
   base map instead of a blocky overzoomed chart. The chart stays authoritative within its own zoom
   range and aligned with the base beyond it.
 
+- The collision danger strip's Acknowledge control now works: acknowledging suppresses the current
+  worst contact, and a new or more severe contact automatically re-arms the alert. The full
+  mute/alarm lifecycle remains a later Lookout step.
+
+- Whole-repo cleanup pass: a chart now themes its own draw layers through an `applyTheme` broadcast
+  from the layer manager, so the widget no longer reaches into chart layers by id (the source-layer
+  to color mapping lives in one place); the vessel and AIS overlays are built from a shared
+  `createSymbolOverlay` factory instead of duplicated scaffolding; the vector draw order and per
+  source-layer styling are a single ordered list; a `mapstyleJSON` chart is a clean no-op pending
+  the style pipeline rather than a broken source; AIS target views are memoized by version so
+  own-vessel motion no longer rebuilds the list; the AIS staleness scan is throttled off the
+  per-frame path; the subscription registry gained a refcounted `remove` and the worker routes
+  unsubscribe through it so a dropped path is not resurrected on reconnect; `PersistedValue` reports
+  `fromStorage` by key presence rather than a value compare; coordinate formatting and the
+  AIS-target field extractors were de-duplicated; the connecting state is a shared
+  `INITIAL_CONNECTION_STATE`; dead code was removed (`PathCell.receivedAt`, the unused `worst`
+  getter, the `kelvinToCelsius` and `metersToFeet` helpers, identity arithmetic in the icons, and
+  several unreachable null-guards); and the danger strip shows a "+N more" cue instead of silently
+  truncating the contact list.
+
 ### Fixed
+
+- AIS targets disappeared from the chart after about six minutes of page uptime. The worker stamped
+  each frame's epoch with 0 (`requestAnimationFrame` is absent in the worker, so the batcher's
+  fallback passed 0) while the overlay pruned staleness against `performance.now()`, so pruning
+  tracked uptime, not real staleness. The worker now stamps a wall clock (`Date.now`) and the
+  overlay prunes with the same clock.
+- The AIS change counter bumped on every worker frame, not only on AIS changes, because the worker
+  always emits an `ais` object (empty when only the own vessel moved). It now bumps only when a
+  context actually updates, so the AIS overlay and the collision assessment no longer rebuild every
+  frame.
+- The stored-token auth probe now omits credentials, so a live session cookie cannot mask a stale
+  token and leave the WebSocket streaming nothing.
 
 - Vector charts (MVT/PMTiles) rendered nothing on the map. A vector tile source paints nothing on
   its own: MapLibre needs a draw layer per source-layer, and the chart adapter both routed these

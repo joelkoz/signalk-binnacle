@@ -1,3 +1,4 @@
+import type { MapThemePaint } from './map-theme';
 import { installSentinels } from './sentinels';
 import type { OverlayContext, OverlayModule } from './types';
 
@@ -48,6 +49,14 @@ export class LayerManager {
     if (!module || !state) return;
     state.opacity = opacity;
     module.setOpacity?.(this.#ctx, opacity);
+  }
+
+  // Broadcast a theme change to every overlay that recolors itself, so each slice owns
+  // the theming of its own layers instead of the widget reaching into them by id.
+  applyTheme(paint: MapThemePaint): void {
+    for (const module of this.#modules.values()) {
+      module.applyTheme?.(this.#ctx, paint);
+    }
   }
 
   async reattachAll(): Promise<void> {

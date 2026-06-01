@@ -34,6 +34,10 @@ export interface ConnectionState {
   attempt: number;
 }
 
+// The state before the socket opens, shared by the store and the worker core so the
+// initial literal lives in one place.
+export const INITIAL_CONNECTION_STATE: ConnectionState = { phase: 'connecting', attempt: 0 };
+
 export type SubscribePolicy = 'instant' | 'ideal' | 'fixed';
 
 export interface SubscribeEntry {

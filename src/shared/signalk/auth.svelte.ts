@@ -64,8 +64,11 @@ export class AuthController {
     // working token means the server is secured and we are good. Check it first.
     const stored = this.#identity.value.token;
     if (stored) {
+      // credentials: 'omit' so a live session cookie cannot authorize this probe and
+      // mask a stale token; the token alone must prove access (it is what the stream uses).
       const authed = await this.#safeFetch(`${this.#base}${PROBE_PATH}`, {
         headers: { Authorization: `Bearer ${stored}` },
+        credentials: 'omit',
       });
       if (authed?.ok) {
         this.token = stored;
