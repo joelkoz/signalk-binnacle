@@ -20,15 +20,22 @@ import {
 import { type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 
+interface MapView {
+  lat: number;
+  lon: number;
+  zoom: number;
+}
+
 interface Props {
   store: SignalKStore;
   vessel: OwnVessel;
   chartsToken?: string;
   onReady?: (view: LayersView) => void;
   onMapReady?: (recolor: (theme: string) => void) => void;
+  onViewChange?: (view: MapView) => void;
 }
 
-const { store, vessel, chartsToken, onReady, onMapReady }: Props = $props();
+const { store, vessel, chartsToken, onReady, onMapReady, onViewChange }: Props = $props();
 
 let container: HTMLDivElement;
 let map: maplibregl.Map | undefined;
@@ -53,6 +60,12 @@ onMount(() => {
   }
 
   const mapInstance = map;
+  const emitView = () => {
+    const center = mapInstance.getCenter();
+    onViewChange?.({ lat: center.lat, lon: center.lng, zoom: mapInstance.getZoom() });
+  };
+  mapInstance.on('move', emitView);
+  mapInstance.on('load', emitView);
   mapInstance.on('load', async () => {
     const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
     installSentinels(mapInstance);

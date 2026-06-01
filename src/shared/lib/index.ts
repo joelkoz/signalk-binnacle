@@ -1,3 +1,4 @@
+export { formatLatitude, formatLongitude } from './coords';
 export {
   kelvinToCelsius,
   metersPerSecondToKnots,

@@ -4,6 +4,7 @@ import { OwnVessel } from '$entities/vessel';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { ThemeToggle } from '$features/theme-toggle';
+import { formatLatitude, formatLongitude } from '$shared/lib';
 import type { Context } from '$shared/signalk';
 import {
   AuthController,
@@ -26,6 +27,7 @@ const auth = new AuthController(serverOrigin());
 let layersView = $state<LayersView | undefined>();
 let recolorMap: ((theme: string) => void) | undefined;
 let chartsToken = $state<string | undefined>();
+let mapView = $state<{ lat: number; lon: number; zoom: number } | undefined>();
 
 const theme = createThemeController((next) => recolorMap?.(next));
 
@@ -96,6 +98,7 @@ onDestroy(() => {
         recolorMap = recolor;
         recolor(theme.theme);
       }}
+      onViewChange={(view) => (mapView = view)}
     />
     <div class="banner-slot">
       <AuthBanner {auth} />
@@ -108,6 +111,10 @@ onDestroy(() => {
     <span class="status">{connectionLabel}</span>
     <span class="readout">SOG <b>{fmt(vessel.sogKnots, 1)}</b> kn</span>
     <span class="readout">COG <b>{fmt(vessel.cogDegrees, 0)}</b>&deg;</span>
+    <span class="spacer"></span>
+    <span class="readout"><b>{formatLatitude(mapView?.lat)}</b></span>
+    <span class="readout"><b>{formatLongitude(mapView?.lon)}</b></span>
+    <span class="readout">z<b>{mapView ? mapView.zoom.toFixed(1) : '--'}</b></span>
   </footer>
 </main>
 
@@ -148,10 +155,14 @@ onDestroy(() => {
 }
 .status-strip {
   display: flex;
+  align-items: center;
   gap: 1.5rem;
   padding: 0.5rem 1rem;
   border-block-start: 1px solid var(--border);
   color: var(--text-muted);
+}
+.spacer {
+  margin-inline-start: auto;
 }
 .readout b {
   color: var(--text);

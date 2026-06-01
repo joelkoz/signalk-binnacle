@@ -32,6 +32,8 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- The status strip shows the map's center latitude and longitude and the zoom level, updating as
+  the chart is panned and zoomed, formatted at the display edge with hemisphere suffixes.
 - Lookout (active-safety, first slice): the headless collision data layer behind the upcoming
   danger strip. A pure, test-first closest-point-of-approach module computes CPA and TCPA from the
   own vessel and a target's position and velocity, a persisted-settings helper holds
