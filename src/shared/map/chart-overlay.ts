@@ -1,6 +1,9 @@
 import { chartSourceId, chartToSpecs } from './chart-adapter';
 import type { SignalKChart } from './chart-types';
+import { registerPmtilesArchive } from './pmtiles';
 import type { OverlayModule } from './types';
+
+const PMTILES_SCHEME = 'pmtiles://';
 
 export function createChartOverlay(chart: SignalKChart, serverBase: string): OverlayModule {
   const specs = chartToSpecs(chart, serverBase);
@@ -14,8 +17,14 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
     supportsOpacity: true,
     add(ctx) {
       for (const sourceId of sourceIds) {
+        const spec = specs.sources[sourceId];
+        // A PMTiles archive registers a no-store source first so MapLibre resolves the
+        // pmtiles:// url to it rather than the default cache-writing fetch source.
+        if ('url' in spec && typeof spec.url === 'string' && spec.url.startsWith(PMTILES_SCHEME)) {
+          registerPmtilesArchive(spec.url.slice(PMTILES_SCHEME.length));
+        }
         if (!ctx.map.getSource(sourceId)) {
-          ctx.map.addSource(sourceId, specs.sources[sourceId]);
+          ctx.map.addSource(sourceId, spec);
         }
       }
       for (const layer of specs.layers) {

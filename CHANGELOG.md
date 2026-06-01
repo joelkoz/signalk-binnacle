@@ -8,6 +8,12 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- PMTiles vector charts failed to render with `ERR_CACHE_WRITE_FAILURE`: a large archive served
+  with a weak ETag over range requests makes Chrome fail the HTTP disk-cache write, which rejects
+  the whole fetch and blanks the chart. Binnacle now registers each PMTiles archive with a source
+  that fetches ranges with `cache: 'no-store'`, bypassing the browser cache for these reads. Durable
+  offline caching of these archives is a later spec.
+
 - Collision assessment no longer raises a false alarm on an opening or already-passed AIS target:
   the provider closest-approach path now drops a contact whose time to closest approach is negative
   (the closest approach is in the past), matching the computed path's behavior.
