@@ -8,6 +8,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- Collision assessment no longer raises a false alarm on an opening or already-passed AIS target:
+  the provider closest-approach path now drops a contact whose time to closest approach is negative
+  (the closest approach is in the past), matching the computed path's behavior.
+- Closest-point-of-approach math now normalizes the longitude difference, so a vessel pair
+  straddling the antimeridian computes a real short range instead of a bogus near-360-degree offset.
+- The AIS change counter is now reactive state, so a future reactive consumer is notified rather
+  than only the per-frame poll, removing a latent reactivity trap.
+
 - Own-vessel readouts (SOG and COG) stayed blank while live data flowed. The store creates a
   path cell lazily on first access; the first access was the shell's reactive readout, so a
   brand-new `$state` source was created during the effect's tracking pass and never subscribed,

@@ -9,12 +9,12 @@ const { auth }: Props = $props();
 </script>
 
 {#if auth.status === 'requesting'}
-  <div class="auth-banner">
+  <div class="auth-banner" role="status" aria-live="polite">
     Requesting access. Approve <strong>Binnacle</strong> in Signal K under Security, then Access
     Requests.
   </div>
 {:else if auth.status === 'denied'}
-  <div class="auth-banner denied">
+  <div class="auth-banner denied" role="alert">
     Access was denied.
     <button type="button" onclick={() => auth.requestAccess()}>Request again</button>
   </div>

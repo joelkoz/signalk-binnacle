@@ -4,7 +4,7 @@ import { SkConnection } from './connection';
 import type { ConnectionState } from './types';
 
 beforeEach(() => {
-  FakeWebSocket.instances = [];
+  FakeWebSocket.reset();
   vi.stubGlobal('WebSocket', FakeWebSocket as unknown as typeof WebSocket);
   vi.useFakeTimers();
 });

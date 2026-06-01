@@ -1,6 +1,11 @@
-import type { Context, Path, SubscribeEntry, SubscribePolicy } from './types';
+import {
+  type Context,
+  type Path,
+  SELF_CONTEXT,
+  type SubscribeEntry,
+  type SubscribePolicy,
+} from './types';
 
-const SELF_CONTEXT = 'vessels.self' as Context;
 const DEFAULT_PERIOD = 1000;
 const DEFAULT_POLICY: SubscribePolicy = 'ideal';
 

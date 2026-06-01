@@ -4,7 +4,7 @@ import type { Path, SKFrame } from './types';
 import { WorkerCore } from './worker-core';
 
 beforeEach(() => {
-  FakeWebSocket.instances = [];
+  FakeWebSocket.reset();
   vi.stubGlobal('WebSocket', FakeWebSocket as unknown as typeof WebSocket);
   vi.stubGlobal(
     'requestAnimationFrame',

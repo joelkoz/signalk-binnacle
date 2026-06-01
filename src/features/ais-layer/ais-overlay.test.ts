@@ -43,7 +43,7 @@ describe('ais overlay', () => {
         'vessels.a': { 'navigation.position': { latitude: 1, longitude: 2 } },
         'vessels.b': { name: 'no pos' },
       },
-      connection: { phase: 'open', attempt: 0, since: 0 },
+      connection: { phase: 'open', attempt: 0 },
       epoch: 1,
     });
     overlay.sync(ctxFor(map));
@@ -60,7 +60,7 @@ describe('ais overlay', () => {
     store.applyFrame({
       self: {},
       ais: { 'vessels.a': { 'navigation.position': { latitude: 1, longitude: 2 } } },
-      connection: { phase: 'open', attempt: 0, since: 0 },
+      connection: { phase: 'open', attempt: 0 },
       epoch: 1,
     });
     const source = [...map.sources.values()][0];

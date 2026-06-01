@@ -6,7 +6,7 @@ import { OwnVessel } from './vessel.svelte';
 function frame(self: Record<string, unknown>): SKFrame {
   return {
     self: self as SKFrame['self'],
-    connection: { phase: 'open', attempt: 0, since: 0 },
+    connection: { phase: 'open', attempt: 0 },
     epoch: 1000,
   };
 }

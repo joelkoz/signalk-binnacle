@@ -4,7 +4,7 @@ import { OwnVessel } from '$entities/vessel';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { ThemeToggle } from '$features/theme-toggle';
-import { formatLatitude, formatLongitude } from '$shared/lib';
+import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
 import type { Context } from '$shared/signalk';
 import {
   AuthController,
@@ -41,14 +41,18 @@ const CONNECTION_LABELS: Record<string, string> = {
 const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase] ?? 'Not connected');
 
 const fmt = (value: number | undefined, digits: number) =>
-  value === undefined ? '--' : value.toFixed(digits);
+  value === undefined ? PLACEHOLDER : value.toFixed(digits);
 
-// Resolve once the server is open to us: either unsecured or an approved token.
+let accessTimer: ReturnType<typeof setTimeout> | undefined;
+
+// Resolve once the server is open to us: either unsecured or an approved token. A
+// denied or still-pending request never resolves, so the stream stays disconnected
+// until the user re-requests; the pending timer is cleared on destroy.
 function waitForAccess(): Promise<void> {
   return new Promise((resolve) => {
     const tick = () => {
       if (auth.status === 'authenticated' || auth.status === 'unsecured') resolve();
-      else setTimeout(tick, 500);
+      else accessTimer = setTimeout(tick, 500);
     };
     tick();
   });
@@ -78,6 +82,7 @@ onMount(async () => {
 });
 
 onDestroy(() => {
+  if (accessTimer) clearTimeout(accessTimer);
   auth.stop();
   void client.disconnect();
 });
@@ -108,13 +113,14 @@ onDestroy(() => {
     {/if}
   </section>
   <footer class="status-strip">
-    <span class="status">{connectionLabel}</span>
+    <span class="status" role="status" aria-live="polite">{connectionLabel}</span>
     <span class="readout">SOG <b>{fmt(vessel.sogKnots, 1)}</b> kn</span>
     <span class="readout">COG <b>{fmt(vessel.cogDegrees, 0)}</b>&deg;</span>
     <span class="spacer"></span>
+    <span class="readout">Center</span>
     <span class="readout"><b>{formatLatitude(mapView?.lat)}</b></span>
     <span class="readout"><b>{formatLongitude(mapView?.lon)}</b></span>
-    <span class="readout">z<b>{mapView ? mapView.zoom.toFixed(1) : '--'}</b></span>
+    <span class="readout">z<b>{mapView ? mapView.zoom.toFixed(1) : PLACEHOLDER}</b></span>
   </footer>
 </main>
 

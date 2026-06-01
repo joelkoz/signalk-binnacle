@@ -1,5 +1,6 @@
 import type { AisTargets, AisTargetView } from '$entities/ais';
 import type { OwnVessel } from '$entities/vessel';
+import { degreesToRadians, knotsToMetersPerSecond } from '$shared/lib';
 import { computeCpa } from '$shared/nav';
 import type { PersistedValue, Thresholds } from '$shared/settings';
 import type { LatLon } from '$shared/signalk';
@@ -27,8 +28,6 @@ interface OwnFix {
   cogDegrees: number;
 }
 
-const KNOTS_TO_MPS = 0.514444;
-const DEG_TO_RAD = Math.PI / 180;
 const SEVERITY_RANK: Record<Severity, number> = { danger: 0, warning: 1, clear: 2 };
 
 function classify(cpaMeters: number, tcpaSeconds: number, t: Thresholds): Severity {
@@ -46,8 +45,8 @@ export function assessContacts(
   const ownK = {
     latitude: own.position.latitude,
     longitude: own.position.longitude,
-    sogMps: (own.sogKnots ?? 0) * KNOTS_TO_MPS,
-    cogRad: (own.cogDegrees ?? 0) * DEG_TO_RAD,
+    sogMps: knotsToMetersPerSecond(own.sogKnots ?? 0),
+    cogRad: degreesToRadians(own.cogDegrees ?? 0),
   };
   const contacts: DangerContact[] = [];
   for (const t of targets) {
@@ -55,6 +54,9 @@ export function assessContacts(
     let tcpaSeconds: number;
     let source: CpaSource;
     if (t.cpaMeters != null && t.tcpaSeconds != null) {
+      // A negative TCPA means the closest approach is in the past: the target is
+      // opening or has passed, so it is not a danger even at a small CPA.
+      if (t.tcpaSeconds < 0) continue;
       cpaMeters = t.cpaMeters;
       tcpaSeconds = t.tcpaSeconds;
       source = 'provider';
@@ -62,8 +64,8 @@ export function assessContacts(
       const r = computeCpa(ownK, {
         latitude: t.position.latitude,
         longitude: t.position.longitude,
-        sogMps: (t.sogKnots ?? 0) * KNOTS_TO_MPS,
-        cogRad: (t.cogDegrees ?? 0) * DEG_TO_RAD,
+        sogMps: knotsToMetersPerSecond(t.sogKnots ?? 0),
+        cogRad: degreesToRadians(t.cogDegrees ?? 0),
       });
       if (!r.closing) continue;
       cpaMeters = r.cpaMeters;

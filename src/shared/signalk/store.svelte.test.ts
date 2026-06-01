@@ -6,7 +6,7 @@ import type { SKFrame } from './types';
 function frame(self: Record<string, unknown>): SKFrame {
   return {
     self: self as SKFrame['self'],
-    connection: { phase: 'open', attempt: 0, since: 0 },
+    connection: { phase: 'open', attempt: 0 },
     epoch: 1000,
   };
 }
@@ -56,7 +56,7 @@ describe('SignalKStore', () => {
     store.applyFrame({
       self: {},
       ais: { 'vessels.a': { 'navigation.speedOverGround': 4 } },
-      connection: { phase: 'open', attempt: 0, since: 0 },
+      connection: { phase: 'open', attempt: 0 },
       epoch: 5,
     });
     expect(store.aisTargets.get('vessels.a')?.values.get('navigation.speedOverGround')).toBe(4);
@@ -68,7 +68,7 @@ describe('SignalKStore', () => {
     const aisFrame = (epoch: number, value: number): SKFrame => ({
       self: {},
       ais: { 'vessels.a': { 'navigation.speedOverGround': value } },
-      connection: { phase: 'open', attempt: 0, since: 0 },
+      connection: { phase: 'open', attempt: 0 },
       epoch,
     });
     store.applyFrame(aisFrame(1, 4));
@@ -82,13 +82,13 @@ describe('SignalKStore', () => {
     store.applyFrame({
       self: {},
       ais: { 'vessels.a': { name: 'A' }, 'vessels.b': { name: 'B' } },
-      connection: { phase: 'open', attempt: 0, since: 0 },
+      connection: { phase: 'open', attempt: 0 },
       epoch: 1000,
     });
     store.applyFrame({
       self: {},
       ais: { 'vessels.b': { name: 'B' } },
-      connection: { phase: 'open', attempt: 0, since: 0 },
+      connection: { phase: 'open', attempt: 0 },
       epoch: 400000,
     });
     const removed = store.pruneAis(400000, 360000);

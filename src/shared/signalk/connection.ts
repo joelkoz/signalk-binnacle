@@ -66,6 +66,6 @@ export class SkConnection {
   }
 
   #emit(phase: ConnectionPhase): void {
-    this.#handlers.onState({ phase, attempt: this.#attempt, since: 0 });
+    this.#handlers.onState({ phase, attempt: this.#attempt });
   }
 }

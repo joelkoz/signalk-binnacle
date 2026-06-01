@@ -6,11 +6,12 @@ export class PathCell {
 }
 
 export class SignalKStore {
-  connection = $state<ConnectionState>({ phase: 'connecting', attempt: 0, since: 0 });
+  connection = $state<ConnectionState>({ phase: 'connecting', attempt: 0 });
   readonly aisTargets = new Map<string, AisTargetState>();
 
   // Bumped on every AIS change, so a consumer can skip rebuilding when nothing moved.
-  aisVersion = 0;
+  // Reactive so a $derived or $effect consumer is notified, not only the rAF poll.
+  aisVersion = $state(0);
 
   #cells = new Map<string, PathCell>();
 

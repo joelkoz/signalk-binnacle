@@ -17,6 +17,9 @@ interface AuthOptions {
 const STORAGE_KEY = 'binnacle:signalk-auth';
 const PROBE_PATH = '/signalk/v1/api/vessels/self';
 const REQUEST_PATH = '/signalk/v1/access/requests';
+// Stop polling an unanswered access request after this many attempts (about 10 min at
+// the default 3 s interval) so a never-approved request is not an unbounded loop.
+const MAX_POLL_ATTEMPTS = 200;
 
 function newClientId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -35,6 +38,7 @@ export class AuthController {
   #identity: PersistedValue<AuthIdentity>;
   #href?: string;
   #stopped = false;
+  #pollAttempts = 0;
 
   constructor(base: string, opts: AuthOptions = {}) {
     this.#base = base;
@@ -46,8 +50,8 @@ export class AuthController {
       { clientId: newClientId(), token: null },
       opts.storage,
     );
-    // Persist the identity once so the generated clientId is stable across reloads.
-    this.#identity.set(this.#identity.value);
+    // Persist the generated clientId only on first run, not on every reload.
+    if (!this.#identity.fromStorage) this.#identity.set(this.#identity.value);
     this.token = this.#identity.value.token;
   }
 
@@ -84,6 +88,7 @@ export class AuthController {
 
   async requestAccess(): Promise<void> {
     this.status = 'requesting';
+    this.#pollAttempts = 0;
     const res = await this.#safeFetch(`${this.#base}${REQUEST_PATH}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -127,6 +132,11 @@ export class AuthController {
 
   #schedulePoll(): void {
     if (this.#stopped) return;
+    if (this.#pollAttempts >= MAX_POLL_ATTEMPTS) {
+      this.status = 'denied';
+      return;
+    }
+    this.#pollAttempts += 1;
     this.#schedule(() => void this.checkRequest(), this.#pollMs);
   }
 

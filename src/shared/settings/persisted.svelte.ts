@@ -6,9 +6,14 @@ function resolveStorage(injected?: StorageLike): StorageLike | undefined {
 }
 
 // A reactive value persisted to localStorage as JSON, with a default and a storage
-// injection seam for tests. Mirrors the theme controller's persistence shape.
+// injection seam for tests. The field initializer is a placeholder the constructor
+// immediately replaces with the read value.
 export class PersistedValue<T> {
   value = $state<T>(undefined as unknown as T);
+
+  // True when `value` was loaded from storage, false when it fell back to the default.
+  // Lets a caller persist a freshly generated default only on first run.
+  readonly fromStorage: boolean;
 
   #key: string;
   #storage: StorageLike | undefined;
@@ -16,7 +21,9 @@ export class PersistedValue<T> {
   constructor(key: string, fallback: T, storage?: StorageLike) {
     this.#key = key;
     this.#storage = resolveStorage(storage);
-    this.value = this.#read(fallback);
+    const read = this.#read(fallback);
+    this.fromStorage = read !== fallback;
+    this.value = read;
   }
 
   set(next: T): void {

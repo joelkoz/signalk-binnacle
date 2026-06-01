@@ -37,6 +37,9 @@ interface Props {
 
 const { store, vessel, chartsToken, onReady, onMapReady, onViewChange }: Props = $props();
 
+const DEFAULT_CENTER: [number, number] = [0, 30];
+const DEFAULT_ZOOM = 2;
+
 let container: HTMLDivElement;
 let map: maplibregl.Map | undefined;
 let manager: LayerManager | undefined;
@@ -50,8 +53,8 @@ onMount(() => {
     map = new maplibregl.Map({
       container,
       style: baseStyleUrl(),
-      center: [0, 30],
-      zoom: 2,
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
       attributionControl: { compact: true },
     });
   } catch (error) {
@@ -60,9 +63,18 @@ onMount(() => {
   }
 
   const mapInstance = map;
+  // The 'move' event fires many times per drag frame; coalesce to one emit per
+  // animation frame so the status strip updates at display rate, not per pixel.
+  let viewPending = false;
   const emitView = () => {
-    const center = mapInstance.getCenter();
-    onViewChange?.({ lat: center.lat, lon: center.lng, zoom: mapInstance.getZoom() });
+    if (viewPending) return;
+    viewPending = true;
+    requestAnimationFrame(() => {
+      viewPending = false;
+      if (destroyed) return;
+      const center = mapInstance.getCenter();
+      onViewChange?.({ lat: center.lat, lon: center.lng, zoom: mapInstance.getZoom() });
+    });
   };
   mapInstance.on('move', emitView);
   mapInstance.on('load', emitView);

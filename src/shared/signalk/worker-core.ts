@@ -2,9 +2,15 @@ import { FrameBatcher } from './batcher';
 import { SkConnection } from './connection';
 import { reconcileDelta } from './reconcile';
 import { SubscriptionRegistry } from './subscription-registry';
-import type { ConnectionState, Context, Delta, Path, SKFrame, SubscribeEntry } from './types';
-
-const SELF_CONTEXT = 'vessels.self';
+import {
+  type ConnectionState,
+  type Context,
+  type Delta,
+  type Path,
+  SELF_CONTEXT,
+  type SKFrame,
+  type SubscribeEntry,
+} from './types';
 
 interface Hello {
   self?: string;
@@ -15,7 +21,7 @@ export class WorkerCore {
   #registry?: SubscriptionRegistry;
   #batcher = new FrameBatcher();
   #onFrame?: (frame: SKFrame) => void;
-  #connectionState: ConnectionState = { phase: 'connecting', attempt: 0, since: 0 };
+  #connectionState: ConnectionState = { phase: 'connecting', attempt: 0 };
   #selfContext?: string;
 
   connect(url: string, onFrame: (frame: SKFrame) => void): void {

@@ -24,6 +24,14 @@ describe('assessContacts', () => {
     expect(r.worst).toBe('danger');
   });
 
+  it('drops a provider contact whose CPA is in the past (negative TCPA)', () => {
+    // An opening or passed target reports a negative TCPA; a small CPA must not alarm.
+    const t = target({ id: 'past', cpaMeters: 50, tcpaSeconds: -30 });
+    const r = assessContacts(ownStationary, [t], DEFAULT_THRESHOLDS);
+    expect(r.contacts).toHaveLength(0);
+    expect(r.worst).toBe('clear');
+  });
+
   it('computes CPA/TCPA when the provider value is absent and flags it computed', () => {
     // 1 nm due north closing south at about 10 kn: inside the danger or warning band.
     const t = target({

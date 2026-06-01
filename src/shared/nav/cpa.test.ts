@@ -30,4 +30,13 @@ describe('computeCpa', () => {
     expect(r.cpaMeters).toBeGreaterThan(900);
     expect(r.cpaMeters).toBeLessThan(952);
   });
+
+  it('handles a pair straddling the antimeridian as a short range', () => {
+    // Own at lon 179.99, target at lon -179.99: a true separation near the equator
+    // of about 2.2 km, not the ~360-degree bogus offset of an unnormalized delta.
+    const stationaryOwn = { latitude: 0, longitude: 179.99, sogMps: 0, cogRad: 0 };
+    const target = { latitude: 0, longitude: -179.99, sogMps: 5, cogRad: 270 * (Math.PI / 180) };
+    const r = computeCpa(stationaryOwn, target);
+    expect(r.cpaMeters).toBeLessThan(3000);
+  });
 });

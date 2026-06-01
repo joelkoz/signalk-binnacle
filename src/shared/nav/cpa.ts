@@ -16,16 +16,18 @@ const METERS_PER_DEG_LAT = 111_320;
 // Local east-north projection around the own vessel. Accurate within the few
 // nautical miles that matter for collision; large separations are not the use case.
 function toLocalMeters(origin: Kinematics, point: Kinematics): [number, number] {
-  const east =
-    (point.longitude - origin.longitude) *
-    METERS_PER_DEG_LAT *
-    Math.cos((origin.latitude * Math.PI) / 180);
+  // Normalize the longitude delta so a pair straddling the antimeridian does not
+  // read as a ~360-degree separation.
+  let dLon = point.longitude - origin.longitude;
+  if (dLon > 180) dLon -= 360;
+  else if (dLon < -180) dLon += 360;
+  const east = dLon * METERS_PER_DEG_LAT * Math.cos((origin.latitude * Math.PI) / 180);
   const north = (point.latitude - origin.latitude) * METERS_PER_DEG_LAT;
   return [east, north];
 }
 
 function velocity(k: Kinematics): [number, number] {
-  // Course is measured clockwise from north, so east = sin, north = cos.
+  // Course is clockwise from north, so the east component is sin and north is cos.
   return [k.sogMps * Math.sin(k.cogRad), k.sogMps * Math.cos(k.cogRad)];
 }
 

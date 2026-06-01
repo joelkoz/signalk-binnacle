@@ -7,7 +7,7 @@ function frame(ais: Record<string, Record<string, unknown>>, epoch = 1): SKFrame
   return {
     self: {},
     ais: ais as SKFrame['ais'],
-    connection: { phase: 'open', attempt: 0, since: 0 },
+    connection: { phase: 'open', attempt: 0 },
     epoch,
   };
 }

@@ -7,6 +7,10 @@ export type Path = string;
 export type Context = string;
 export type Value = unknown;
 
+// The Signal K context for the server's own vessel, before the hello handshake
+// reveals its MMSI URN. Single source of truth for the transport layer's routing.
+export const SELF_CONTEXT = 'vessels.self';
+
 export interface PathValue {
   path: Path;
   value: Value;
@@ -28,7 +32,6 @@ export type ConnectionPhase = 'connecting' | 'open' | 'reconnecting' | 'closed';
 export interface ConnectionState {
   phase: ConnectionPhase;
   attempt: number;
-  since: number;
 }
 
 export type SubscribePolicy = 'instant' | 'ideal' | 'fixed';

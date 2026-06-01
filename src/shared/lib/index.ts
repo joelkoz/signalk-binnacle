@@ -1,6 +1,8 @@
-export { formatLatitude, formatLongitude } from './coords';
+export { formatLatitude, formatLongitude, PLACEHOLDER } from './coords';
 export {
+  degreesToRadians,
   kelvinToCelsius,
+  knotsToMetersPerSecond,
   metersPerSecondToKnots,
   metersToFeet,
   metersToNauticalMiles,
