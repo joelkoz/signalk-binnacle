@@ -13,8 +13,8 @@ describe('poi categories', () => {
     expect(categoryForSkIcon('rock')).toBe('hazard');
     expect(categoryForSkIcon('buoy_lateral')).toBe('navaid');
     expect(categoryForSkIcon('light_major')).toBe('navaid');
-    expect(categoryForSkIcon('bridge')).toBe('structure');
-    expect(categoryForSkIcon('boatramp')).toBe('structure');
+    expect(categoryForSkIcon('bridge')).toBe('bridge');
+    expect(categoryForSkIcon('boatramp')).toBe('ramp');
   });
 
   it('maps the live Crows Nest (ActiveCaptain) vocabulary', () => {
@@ -29,7 +29,8 @@ describe('poi categories', () => {
   it('keyword-matches unfamiliar skIcon variants without an exact entry', () => {
     expect(categoryForSkIcon('fuel_dock')).toBe('fuel');
     expect(categoryForSkIcon('active_captain_marina')).toBe('marina');
-    expect(categoryForSkIcon('public_boat_ramp')).toBe('structure');
+    expect(categoryForSkIcon('public_boat_ramp')).toBe('ramp');
+    expect(categoryForSkIcon('draw_bridge')).toBe('bridge');
     expect(categoryForSkIcon('fresh_water_tap')).toBe('services');
     // navaid wins over the services 'water' keyword for a safe-water mark
     expect(categoryForSkIcon('buoy_safe_water_2')).toBe('navaid');
@@ -47,6 +48,8 @@ describe('poi categories', () => {
     expect(categoryLabel('marina')).toBe('Marina');
     expect(categoryLabel('fuel')).toBe('Fuel');
     expect(categoryLabel('services')).toBe('Services');
+    expect(categoryLabel('ramp')).toBe('Boat ramp');
+    expect(categoryLabel('bridge')).toBe('Bridge');
     expect(poiIconId('hazard')).toBe('binnacle-poi-hazard');
   });
 });

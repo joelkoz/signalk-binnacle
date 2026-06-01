@@ -7,6 +7,8 @@ export type PoiCategory =
   | 'fuel'
   | 'services'
   | 'inlet'
+  | 'ramp'
+  | 'bridge'
   | 'hazard'
   | 'navaid'
   | 'structure'
@@ -18,6 +20,8 @@ export const POI_CATEGORIES: readonly PoiCategory[] = [
   'fuel',
   'services',
   'inlet',
+  'ramp',
+  'bridge',
   'hazard',
   'navaid',
   'structure',
@@ -64,12 +68,12 @@ const SKICON_CATEGORY: Record<string, PoiCategory> = {
   light_major: 'navaid',
   light_minor: 'navaid',
   light_vessel: 'navaid',
-  bridge: 'structure',
+  bridge: 'bridge',
+  boatramp: 'ramp',
   dam: 'structure',
   lock: 'structure',
   lock_basin: 'structure',
   ferry: 'structure',
-  boatramp: 'structure',
 };
 
 // Ordered keyword fallback for skIcons not in the exact table. Providers use many naming
@@ -104,11 +108,11 @@ const KEYWORD_CATEGORY: ReadonlyArray<readonly [string, PoiCategory]> = [
   ['repair', 'services'],
   ['chandler', 'services'],
   ['business', 'services'],
-  ['bridge', 'structure'],
+  ['bridge', 'bridge'],
+  ['ramp', 'ramp'],
   ['lock', 'structure'],
   ['dam', 'structure'],
   ['ferry', 'structure'],
-  ['ramp', 'structure'],
 ];
 
 const CATEGORY_LABEL: Record<PoiCategory, string> = {
@@ -117,6 +121,8 @@ const CATEGORY_LABEL: Record<PoiCategory, string> = {
   fuel: 'Fuel',
   services: 'Services',
   inlet: 'Inlet',
+  ramp: 'Boat ramp',
+  bridge: 'Bridge',
   hazard: 'Hazard',
   navaid: 'Navigation aid',
   structure: 'Structure',
