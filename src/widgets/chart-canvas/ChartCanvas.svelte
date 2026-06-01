@@ -25,6 +25,7 @@ import {
 import type { MapView } from '$shared/settings';
 import { type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
+import type { MapCommands } from './commands';
 
 interface Props {
   store: SignalKStore;
@@ -39,6 +40,7 @@ interface Props {
   onLayersChange?: (settings: LayerSettings) => void;
   onReady?: (view: LayersView) => void;
   onMapReady?: (recolor: (theme: Theme) => void) => void;
+  onCommandsReady?: (commands: MapCommands) => void;
   onViewChange?: (view: MapView) => void;
 }
 
@@ -53,6 +55,7 @@ const {
   onLayersChange,
   onReady,
   onMapReady,
+  onCommandsReady,
   onViewChange,
 }: Props = $props();
 
@@ -137,6 +140,18 @@ onMount(() => {
       manager?.applyTheme(paint);
     };
     onMapReady?.(recolor);
+
+    onCommandsReady?.({
+      centerOnVessel: () => {
+        const position = vessel.position;
+        if (!position) return;
+        const zoom = mapInstance.getZoom();
+        mapInstance.flyTo({
+          center: [position.longitude, position.latitude],
+          zoom: zoom < 12 ? 14 : zoom,
+        });
+      },
+    });
 
     const tick = () => {
       notesOverlay.sync(ctx);

@@ -1,4 +1,5 @@
 <script lang="ts">
+import { LocateFixed, PanelLeftClose, PanelLeftOpen } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
@@ -6,6 +7,7 @@ import { OwnVessel } from '$entities/vessel';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { DangerStrip } from '$features/lookout';
+import { AppMenu, type MenuItem } from '$features/menu';
 import { ThemeToggle } from '$features/theme-toggle';
 import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
@@ -27,7 +29,7 @@ import {
   streamUrl,
 } from '$shared/signalk';
 import { createThemeController, type Theme } from '$shared/ui';
-import { ChartCanvas } from '$widgets/chart-canvas';
+import { ChartCanvas, type MapCommands } from '$widgets/chart-canvas';
 
 const ALL_VESSELS = 'vessels.*' as Context;
 
@@ -61,6 +63,26 @@ function onViewChange(view: MapView): void {
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   viewSaveTimer = setTimeout(() => mapViewStore.set(view), 400);
 }
+
+const panelOpen = new PersistedValue<boolean>('binnacle:layers-panel-open', true);
+let mapCommands = $state<MapCommands | undefined>();
+
+// The app menu's options. Adding an option is one more entry here; the menu renders
+// whatever it is given.
+const menuItems = $derived<MenuItem[]>([
+  {
+    id: 'center-on-boat',
+    label: 'Center on boat',
+    icon: LocateFixed,
+    onSelect: () => mapCommands?.centerOnVessel(),
+  },
+  {
+    id: 'toggle-layers',
+    label: panelOpen.value ? 'Hide layers panel' : 'Show layers panel',
+    icon: panelOpen.value ? PanelLeftClose : PanelLeftOpen,
+    onSelect: () => panelOpen.set(!panelOpen.value),
+  },
+]);
 
 const CONNECTION_LABELS: Record<string, string> = {
   open: 'Connected',
@@ -123,7 +145,10 @@ onDestroy(() => {
 
 <main class="binnacle-shell">
   <header class="topbar">
-    <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
+    <span class="topbar-start">
+      <AppMenu items={menuItems} />
+      <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
+    </span>
     <span class="topbar-actions">
       {#if updateReady}
         <button type="button" class="update" onclick={() => pwa.update()}>Update</button>
@@ -146,12 +171,13 @@ onDestroy(() => {
         recolorMap = recolor;
         recolor(theme.theme);
       }}
+      onCommandsReady={(commands) => (mapCommands = commands)}
       {onViewChange}
     />
     <div class="banner-slot">
       <AuthBanner {auth} />
     </div>
-    {#if layersView}
+    {#if layersView && panelOpen.value}
       <LayersPanel view={layersView} />
     {/if}
     <div class="danger-slot">
@@ -195,6 +221,11 @@ onDestroy(() => {
   justify-content: space-between;
   padding: 0.5rem 1rem;
   border-block-end: 1px solid var(--border);
+}
+.topbar-start {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 .topbar-actions {
   display: flex;

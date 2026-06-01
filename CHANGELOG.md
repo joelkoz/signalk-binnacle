@@ -8,6 +8,13 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- An app menu in the top bar gives app-wide options a home. It stays a single button until
+  opened, then drops a themed popout, and closes on selection, Escape, or a click outside; it is
+  keyboard- and screen-reader-labeled (aria-haspopup and aria-expanded, role menu and menuitem). The
+  menu is generic and renders whatever list of options it is given, so adding an option is one
+  `MenuItem` entry in the app shell, never a change to the menu itself. It ships with two: "Center on
+  boat" (flies the map to the vessel) and a "Show/Hide layers panel" toggle (which persists).
+
 - Binnacle now remembers your session across a page refresh. The map reopens at the last center and
   zoom, and each layer's visibility and opacity are restored, alongside the theme that was already
   persisted. The view is saved to local storage after panning settles (one write per gesture, not
