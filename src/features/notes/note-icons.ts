@@ -49,7 +49,7 @@ const ICON_PX = 60; // rendered at 2x for crispness; added with pixelRatio 2 -> 
 // decode SVG blobs across browsers, but Image + drawImage does. Browser only: the node
 // test environment has no document, so icons are simply not registered there (the source
 // and layer still install).
-async function rasterize(svg: string): Promise<ImageData | null> {
+export async function rasterizeSvg(svg: string): Promise<ImageData | null> {
   if (typeof document === 'undefined' || typeof Image === 'undefined') return null;
   try {
     const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -71,16 +71,21 @@ async function rasterize(svg: string): Promise<ImageData | null> {
   }
 }
 
+// Add an image, or replace it in place on a theme change. Shared by the category discs and
+// the navaid symbols so both register at the same 2x scale.
+export function setMapImage(map: MapLibreMap, id: string, image: ImageData): void {
+  if (map.hasImage(id)) map.updateImage(id, image);
+  else map.addImage(id, image, { pixelRatio: 2 });
+}
+
 // Register (or recolor, on a theme change) the marker icon for every category. Never
 // throws: an icon that fails to rasterize is skipped so it cannot break overlay setup.
 export async function registerPoiIcons(map: MapLibreMap, paint: MapThemePaint): Promise<void> {
   await Promise.all(
     POI_CATEGORIES.map(async (category) => {
-      const image = await rasterize(markerSvg(category, paint));
+      const image = await rasterizeSvg(markerSvg(category, paint));
       if (!image) return;
-      const id = poiIconId(category);
-      if (map.hasImage(id)) map.updateImage(id, image);
-      else map.addImage(id, image, { pixelRatio: 2 });
+      setMapImage(map, poiIconId(category), image);
     }),
   );
 }

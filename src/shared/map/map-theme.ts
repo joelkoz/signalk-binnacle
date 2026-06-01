@@ -21,6 +21,13 @@ export interface MapThemePaint {
   // Highlight ring around a selected marker. A distinct accent in day and dusk; at night
   // a light red that stays in the red band yet reads apart from the danger and warning hues.
   select: string;
+  // Navaid (lateral mark) fills. IALA red/green in day and dusk; at night both collapse to
+  // distinguishable red shades, because night-red forbids green, so the lateral side is read
+  // from the symbol shape (cone vs can, triangle vs square) rather than color.
+  navStarboard: string;
+  navPort: string;
+  // Light flare and lighthouse lantern: chart magenta in day and dusk, a light red at night.
+  navLight: string;
   ownVessel: Rgba;
   aisTarget: Rgba;
 }
@@ -41,6 +48,9 @@ const PAINT: Record<Theme, MapThemePaint> = {
     note: '#7a3fa0',
     markerGlyph: '#ffffff',
     select: '#ffb300',
+    navStarboard: '#d8392f',
+    navPort: '#1f9e54',
+    navLight: '#c026d3',
     ownVessel: { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff },
     aisTarget: { r: 0xe0, g: 0xa0, b: 0x20, a: 0xff },
   },
@@ -56,6 +66,9 @@ const PAINT: Record<Theme, MapThemePaint> = {
     note: '#9a6fc0',
     markerGlyph: '#eef3f6',
     select: '#ffc24d',
+    navStarboard: '#e0573f',
+    navPort: '#3fae6a',
+    navLight: '#cf5bd9',
     ownVessel: { r: 0x4f, g: 0x9f, b: 0xd8, a: 0xff },
     aisTarget: { r: 0xd9, g: 0xa4, b: 0x41, a: 0xff },
   },
@@ -71,6 +84,9 @@ const PAINT: Record<Theme, MapThemePaint> = {
     note: '#9a3020',
     markerGlyph: '#ff9a86',
     select: '#ffb39a',
+    navStarboard: '#ff6a5a',
+    navPort: '#8e2a22',
+    navLight: '#ff9a86',
     ownVessel: { r: 0xe0, g: 0x47, b: 0x3a, a: 0xff },
     aisTarget: { r: 0xb0, g: 0x6a, b: 0x10, a: 0xff },
   },

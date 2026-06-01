@@ -8,9 +8,10 @@ import {
   type SymbolLayerSpecification,
 } from 'maplibre-gl';
 import { mapThemePaint, type OverlayContext, type OverlayModule } from '$shared/map';
+import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
 import { type Bbox, fetchNotes, type NotePoint } from './notes-client';
-import { categoryLabel, type PoiCategory } from './poi-categories';
+import { categoryLabel, type PoiCategory, poiIconId } from './poi-categories';
 
 const SOURCE_ID = 'binnacle-notes';
 const LAYER_ID = 'binnacle-notes-symbol';
@@ -28,6 +29,13 @@ interface NotesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
 }
 
+// The registered map-image id for a note. Navaids resolve to a type- and side-specific
+// symbol inferred from the name; every other category uses its disc.
+function iconFor(note: NotePoint): string {
+  if (note.category === 'navaid') return navaidIconId(navaidClassify(note.name));
+  return poiIconId(note.category);
+}
+
 function featureCollection(notes: readonly NotePoint[]): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
@@ -40,6 +48,7 @@ function featureCollection(notes: readonly NotePoint[]): GeoJSON.FeatureCollecti
       properties: {
         name: note.name,
         category: note.category,
+        icon: iconFor(note),
         url: note.url ?? '',
         description: note.description ?? '',
         source: note.source ?? '',
@@ -216,7 +225,7 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
         source: SOURCE_ID,
         filter: ['!', ['has', 'point_count']],
         layout: {
-          'icon-image': ['concat', 'binnacle-poi-', ['get', 'category']],
+          'icon-image': ['get', 'icon'],
           'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 0.9],
           'icon-allow-overlap': true,
           'text-field': ['get', 'name'],
@@ -271,9 +280,10 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
       ctx.map.on('mouseenter', CLUSTER_LAYER, onEnter);
       ctx.map.on('mouseleave', LAYER_ID, onLeave);
       ctx.map.on('mouseleave', CLUSTER_LAYER, onLeave);
-      // Load the category icons after the layers exist; resilient, so a failure here
-      // leaves the markers as text labels rather than breaking overlay setup.
+      // Load the category and navaid icons after the layers exist; resilient, so a failure
+      // here leaves the markers as text labels rather than breaking overlay setup.
       await registerPoiIcons(ctx.map, paint);
+      await registerNavaidIcons(ctx.map, paint);
     },
     sync(ctx) {
       if (fetching) return;
@@ -300,6 +310,7 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
     },
     applyTheme(ctx, paint) {
       void registerPoiIcons(ctx.map, paint);
+      void registerNavaidIcons(ctx.map, paint);
       ctx.map.setPaintProperty(LAYER_ID, 'text-color', paint.note);
       ctx.map.setPaintProperty(LAYER_ID, 'text-halo-color', paint.background);
       ctx.map.setPaintProperty(CLUSTER_LAYER, 'circle-color', paint.note);

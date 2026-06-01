@@ -14,12 +14,21 @@ All notable changes to Binnacle are documented here. The format follows
   vocabulary with a keyword fallback for unfamiliar variants, so navigation lights and channel buoys
   read as navaids and creek inlets as inlets instead of plain pins. Each category draws as a themed
   disc with a glyph: Lucide glyphs (anchor, sailboat, fuel pump, wrench, waves, triangle-alert,
-  landmark, map-pin) per the spec's chosen app icon family, plus a custom beacon for navaids
-  (authentic S-52 buoy and light symbols remain the deferred chart-symbol atlas). Hazards take the
-  alarm hue, navaids the caution hue, the rest the POI hue; all recolor with the theme (night-red
-  stays in the red band). Clicking a marker opens a themed popup with the name, category, any
-  description and source attribution, and an http(s)-only link to the provider's detail page, and the
-  selected marker gets a highlight ring.
+  landmark, map-pin) per the spec's chosen app icon family. Hazards take the alarm hue, navaids the
+  caution hue, the rest the POI hue; all recolor with the theme (night-red stays in the red band).
+  Clicking a marker opens a themed popup with the name, category, any description and source
+  attribution, and an http(s)-only link to the provider's detail page, and the selected marker gets a
+  highlight ring.
+
+- Navaids now render type-specific symbols instead of one generic marker. The note name is parsed
+  into a kind (lighthouse, light, buoy, daybeacon, or generic) and, for buoys and daybeacons, a
+  lateral side from the aid's number using the US IALA-B convention (even = red, starboard hand;
+  odd = green, port hand). Lights draw as a magenta flare, lighthouses as a lantern-topped tower,
+  starboard marks as a red cone or triangle, port marks as a green cylinder or square, so a channel
+  reads at a glance. The side is carried by shape as well as color, so it survives night-red (where
+  red and green collapse to two red shades). This infers symbols from the note text; full S-52
+  symbology keyed off S-57 ENC attributes (shape, color, category) remains the later vector-chart
+  spec, since notes carry no such attributes.
 
 - Points-of-interest markers cluster at lower zoom and split apart as you zoom in, so a busy harbor
   shows a single counted disc instead of a stack of overlapping markers; clicking a cluster zooms to
