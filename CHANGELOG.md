@@ -46,6 +46,13 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Offline and PWA caching: Binnacle is now an installable progressive web app. A service worker
+  precaches the app shell, runtime-caches the OpenFreeMap base map and the Signal K PMTiles charts
+  cache-first (range-request aware) as they are viewed, and never caches the live Signal K stream or
+  REST API, so anywhere the navigator has looked renders offline while live data stays fresh. The
+  top bar offers an update when a new build is published, and the status strip shows an offline
+  indicator. Service workers require a secure context, so this activates when the Signal K server is
+  served over HTTPS; over plain HTTP the app degrades cleanly to online-only with no errors.
 - The status strip shows the map's center latitude and longitude and the zoom level, updating as
   the chart is panned and zoomed, formatted at the display edge with hemisphere suffixes.
 - Lookout (active-safety, first slice): the headless collision data layer behind the upcoming

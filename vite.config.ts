@@ -1,6 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
+
+const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 
 const alias = {
   $app: fileURLToPath(new URL('./src/app', import.meta.url)),
@@ -17,7 +20,60 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.1.0'),
   },
-  plugins: [svelte()],
+  plugins: [
+    svelte(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['binnacle-icon.svg'],
+      manifest: {
+        name: 'Binnacle',
+        short_name: 'Binnacle',
+        description: 'A next-generation marine chart plotter for Signal K.',
+        start_url: '/binnacle/',
+        scope: '/binnacle/',
+        display: 'standalone',
+        background_color: '#cfe0ec',
+        theme_color: '#cfe0ec',
+        icons: [
+          {
+            src: 'binnacle-icon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+        ],
+      },
+      workbox: {
+        navigateFallback: '/binnacle/index.html',
+        // The app chunk is large (MapLibre), so raise the precache size ceiling.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        runtimeCaching: [
+          {
+            // The online vector base map: cache what the navigator has viewed.
+            urlPattern: ({ url }) => url.origin === 'https://tiles.openfreemap.org',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'binnacle-basemap',
+              expiration: { maxEntries: 4000, maxAgeSeconds: THIRTY_DAYS_SECONDS },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Signal K PMTiles charts, read by many HTTP range requests.
+            urlPattern: ({ url }) => url.pathname.startsWith('/signalk/pmtiles/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'binnacle-pmtiles',
+              rangeRequests: true,
+              expiration: { maxEntries: 200, maxAgeSeconds: THIRTY_DAYS_SECONDS },
+              cacheableResponse: { statuses: [0, 200, 206] },
+            },
+          },
+        ],
+      },
+    }),
+  ],
   resolve: { alias },
   publicDir: 'static',
   build: {

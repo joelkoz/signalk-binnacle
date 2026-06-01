@@ -49,6 +49,11 @@ What is in place now:
 - Identity: self-hosted Inter and JetBrains Mono typography (offline-first, with tabular numeric
   readouts), Lucide chrome icons, own-ship and AIS symbols that recolor per theme so nothing
   glows blue on a night watch, and the build version shown in the top bar.
+- Offline and PWA support: an installable progressive web app that precaches its shell and
+  runtime-caches the base map and Signal K charts as you view them, so previously seen areas render
+  with no internet, while the live Signal K stream is never cached. Service workers require a secure
+  context, so offline caching activates when the Signal K server is served over HTTPS; over plain
+  HTTP the app runs online-only.
 - An SI unit-conversion module in `shared`, built test-first.
 - Lint and format with Biome, type-checking with svelte-check, unit tests with Vitest, an
   end-to-end smoke test with Playwright, and architectural boundary checks with

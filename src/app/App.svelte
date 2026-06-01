@@ -5,6 +5,7 @@ import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { ThemeToggle } from '$features/theme-toggle';
 import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
+import { OnlineStatus, registerPwa } from '$shared/pwa';
 import type { Context } from '$shared/signalk';
 import {
   AuthController,
@@ -23,11 +24,14 @@ const store = new SignalKStore();
 const vessel = new OwnVessel(store);
 const client = createSignalKClient();
 const auth = new AuthController(serverOrigin());
+const net = new OnlineStatus();
 
 let layersView = $state<LayersView | undefined>();
 let recolorMap: ((theme: string) => void) | undefined;
 let chartsToken = $state<string | undefined>();
 let mapView = $state<{ lat: number; lon: number; zoom: number } | undefined>();
+let updateReady = $state(false);
+const pwa = registerPwa(() => (updateReady = true));
 
 const theme = createThemeController((next) => recolorMap?.(next));
 
@@ -84,6 +88,7 @@ onMount(async () => {
 onDestroy(() => {
   if (accessTimer) clearTimeout(accessTimer);
   auth.stop();
+  net.dispose();
   void client.disconnect();
 });
 </script>
@@ -91,7 +96,12 @@ onDestroy(() => {
 <main class="binnacle-shell">
   <header class="topbar">
     <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
-    <ThemeToggle controller={theme} />
+    <span class="topbar-actions">
+      {#if updateReady}
+        <button type="button" class="update" onclick={() => pwa.update()}>Update</button>
+      {/if}
+      <ThemeToggle controller={theme} />
+    </span>
   </header>
   <section class="chart-host" aria-label="Chart">
     <ChartCanvas
@@ -114,6 +124,9 @@ onDestroy(() => {
   </section>
   <footer class="status-strip">
     <span class="status" role="status" aria-live="polite">{connectionLabel}</span>
+    {#if !net.online}
+      <span class="readout offline" role="status" aria-live="polite">Offline</span>
+    {/if}
     <span class="readout">SOG <b>{fmt(vessel.sogKnots, 1)}</b> kn</span>
     <span class="readout">COG <b>{fmt(vessel.cogDegrees, 0)}</b>&deg;</span>
     <span class="spacer"></span>
@@ -147,6 +160,21 @@ onDestroy(() => {
   padding: 0.5rem 1rem;
   border-block-end: 1px solid var(--border);
 }
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.update {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--surface-raised);
+  cursor: pointer;
+}
 .brand {
   font-weight: 600;
 }
@@ -169,6 +197,9 @@ onDestroy(() => {
 }
 .spacer {
   margin-inline-start: auto;
+}
+.offline {
+  color: var(--alarm);
 }
 .readout b {
   color: var(--text);

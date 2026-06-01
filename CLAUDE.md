@@ -120,6 +120,13 @@ must not be repeatable.
   it. Do not replace the base map with a flat inline style to satisfy "offline": that yields a
   blank map. Verify reachability before assuming a host is unreachable; OpenFreeMap resolves and
   returns 200 from the boat network.
+- The offline/PWA caching (vite-plugin-pwa service worker) only activates in a SECURE CONTEXT:
+  HTTPS or http://localhost. The Signal K server serves Binnacle over plain http on the LAN by
+  default, where the browser disables the entire serviceWorker and CacheStorage APIs, so offline
+  caching is inert. The app must DEGRADE CLEANLY there (registerSW no-ops, OnlineStatus falls back
+  to navigator.onLine, zero errors), which it does. To activate offline, enable SSL in the Signal K
+  server (Server > Settings > SSL). Do not chase "the service worker is not registering" as a code
+  bug without first checking `window.isSecureContext`.
 - Never import `@signalk/server-api` in browser or worker code, not even as a type-only import.
   Its entry barrel re-exports `FullSignalK`, which extends Node's `EventEmitter`; bundled into the
   worker with `events` externalized, the base class is `undefined` and the worker dies at load with
