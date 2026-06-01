@@ -135,6 +135,13 @@ All notable changes to Binnacle are documented here. The format follows
   style that the theme recolors, with Signal K charts layered on top. Bundled vector base tiles
   are a later spec; this removes the CDN dependency in line with the offline-first rule.
 
+### Security
+
+- The points-of-interest popup's "View details" link now follows only `http:` and `https:` URLs.
+  A note's link comes from a resource provider Binnacle does not control, so a `javascript:` or
+  `data:` URL would otherwise execute when clicked; non-http schemes and unparseable URLs are now
+  dropped.
+
 ### Added
 
 - Lookout danger strip: collision danger now surfaces on screen. A strip floats at the bottom of

@@ -50,6 +50,19 @@ function plainText(html: string): string {
     .trim();
 }
 
+// A note's url comes from a resource provider we do not control, so only follow
+// http(s) links. This rejects javascript: and data: schemes that would otherwise
+// execute when the link is clicked.
+export function safeHttpUrl(raw: string): string | undefined {
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString();
+  } catch {
+    // Not a parseable absolute URL; drop it.
+  }
+  return undefined;
+}
+
 function popupContent(props: Record<string, unknown>): HTMLElement {
   const root = document.createElement('div');
   root.className = 'poi-popup';
@@ -68,7 +81,7 @@ function popupContent(props: Record<string, unknown>): HTMLElement {
     body.textContent = description;
     root.appendChild(body);
   }
-  const url = String(props.url ?? '');
+  const url = safeHttpUrl(String(props.url ?? ''));
   if (url) {
     const link = document.createElement('a');
     link.className = 'poi-popup-link';
