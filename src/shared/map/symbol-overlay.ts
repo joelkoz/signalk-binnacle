@@ -23,6 +23,9 @@ export interface SymbolOverlayConfig {
   layerId: string;
   iconId: string;
   iconImage: (color: Rgba) => ImageData;
+  // Pixel ratio the icon image is rendered at (default 1). Icons drawn at 2x pass 2 here
+  // so the on-screen size is half the image, kept crisp on retina displays.
+  pixelRatio?: number;
   defaultColor: Rgba;
   paintColor: (paint: MapThemePaint) => Rgba;
   // Builds the current feature set.
@@ -47,7 +50,9 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
     supportsOpacity: true,
     add(ctx) {
       if (!ctx.map.hasImage(config.iconId)) {
-        ctx.map.addImage(config.iconId, config.iconImage(config.defaultColor));
+        ctx.map.addImage(config.iconId, config.iconImage(config.defaultColor), {
+          pixelRatio: config.pixelRatio ?? 1,
+        });
       }
       const source: GeoJSONSourceSpecification = { type: 'geojson', data: config.features() };
       ctx.map.addSource(config.sourceId, source);
@@ -74,7 +79,7 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
       if (ctx.map.hasImage(config.iconId)) {
         ctx.map.updateImage(config.iconId, image);
       } else {
-        ctx.map.addImage(config.iconId, image);
+        ctx.map.addImage(config.iconId, image, { pixelRatio: config.pixelRatio ?? 1 });
       }
     },
     setVisible(ctx, visible) {

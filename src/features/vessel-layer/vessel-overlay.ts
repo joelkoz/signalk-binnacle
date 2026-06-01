@@ -50,6 +50,7 @@ export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
     layerId: LAYER_ID,
     iconId: VESSEL_ICON_ID,
     iconImage: vesselIconImage,
+    pixelRatio: 2,
     defaultColor: DEFAULT_COLOR,
     paintColor: (paint) => paint.ownVessel,
     features: featureCollection,

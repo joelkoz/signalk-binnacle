@@ -52,6 +52,12 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- The own-vessel marker is now a boat hull instead of a flat triangle. It is drawn with the 2D
+  canvas (filled hull, darker outline, sharp bow, flat transom) at 2x for retina crispness, rotates
+  to `headingTrue` (falling back to `courseOverGroundTrue`), and recolors with the theme (blue by
+  day, red at night). The pointed bow makes the heading unambiguous. The symbol-overlay factory
+  gained an optional `pixelRatio` so an icon can be drawn at 2x.
+
 - A tiled chart now hands off to the base map when you zoom past its native detail. Each chart's
   draw layers are capped one zoom level beyond the source's native maximum (read from the loaded
   tile metadata, so it is archive-agnostic), so zooming in past the chart's scale reveals the sharp
