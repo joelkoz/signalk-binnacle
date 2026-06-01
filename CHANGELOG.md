@@ -36,6 +36,13 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- A vector (PMTiles) chart could show blank gaps over a real network. The archive is read
+  uncached (`cache: 'no-store'`, to dodge a Chrome disk-cache write failure), so each chart tile
+  depends on a live HTTP range read; a transient drop or a server hiccup under a burst of reads (a
+  zoom that pulls in new tiles) blanked that tile until a later zoom re-requested it. The PMTiles
+  source now retries a failed or 5xx range read (short backoff, up to two tries) while still
+  honoring a caller abort, so a transient failure no longer leaves a hole.
+
 - AIS targets disappeared from the chart after about six minutes of page uptime. The worker stamped
   each frame's epoch with 0 (`requestAnimationFrame` is absent in the worker, so the batcher's
   fallback passed 0) while the overlay pruned staleness against `performance.now()`, so pruning
