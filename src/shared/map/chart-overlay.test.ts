@@ -34,7 +34,7 @@ describe('chart overlay', () => {
     expect(map.sources.size).toBe(0);
   });
 
-  it('setOpacity uses the adapter opacity property', () => {
+  it('setOpacity uses raster-opacity for a raster chart', () => {
     const overlay = createChartOverlay(
       { identifier: 'noaa', name: 'NOAA', type: 'tilelayer', tilemapUrl: '/t/{z}/{x}/{y}' },
       'http://pi.local',
@@ -46,6 +46,38 @@ describe('chart overlay', () => {
       expect.stringContaining('chart-noaa'),
       'raster-opacity',
       0.4,
+    );
+  });
+
+  it('setOpacity uses fill-opacity and line-opacity for a vector chart', () => {
+    const overlay = createChartOverlay(
+      { identifier: 'vec', name: 'Vec', type: 'tileJSON', url: '/v/tilejson.json', layers: [] },
+      'http://pi.local',
+    );
+    const map = fakeMap();
+    overlay.add(ctxFor(map));
+    overlay.setOpacity?.(ctxFor(map), 0.5);
+    expect(map.setPaintProperty).toHaveBeenCalledWith('chart-vec-water', 'fill-opacity', 0.5);
+    expect(map.setPaintProperty).toHaveBeenCalledWith('chart-vec-roads', 'line-opacity', 0.5);
+  });
+
+  it('caps chart layers one zoom past the source native max zoom', () => {
+    const overlay = createChartOverlay(
+      {
+        identifier: 'noaa',
+        name: 'NOAA',
+        type: 'tilelayer',
+        tilemapUrl: '/t/{z}/{x}/{y}',
+        maxzoom: 14,
+      },
+      'http://pi.local',
+    );
+    const map = fakeMap();
+    overlay.add(ctxFor(map));
+    expect(map.setLayerZoomRange).toHaveBeenCalledWith(
+      expect.stringContaining('chart-noaa'),
+      0,
+      15,
     );
   });
 });

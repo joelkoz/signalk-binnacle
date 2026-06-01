@@ -6,6 +6,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- A tiled chart now hands off to the base map when you zoom past its native detail. Each chart's
+  draw layers are capped one zoom level beyond the source's native maximum (read from the loaded
+  tile metadata, so it is archive-agnostic), so zooming in past the chart's scale reveals the sharp
+  base map instead of a blocky overzoomed chart. The chart stays authoritative within its own zoom
+  range and aligned with the base beyond it.
+
 ### Fixed
 
 - Vector charts (MVT/PMTiles) rendered nothing on the map. A vector tile source paints nothing on

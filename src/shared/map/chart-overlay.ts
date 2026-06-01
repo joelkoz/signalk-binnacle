@@ -1,9 +1,17 @@
+import type { Map as MapLibreMap, MapSourceDataEvent } from 'maplibre-gl';
 import { chartSourceId, chartToSpecs } from './chart-adapter';
 import type { SignalKChart } from './chart-types';
 import { registerPmtilesArchive } from './pmtiles';
 import type { OverlayModule } from './types';
 
 const PMTILES_SCHEME = 'pmtiles://';
+
+// How far past a chart's native max zoom its layers keep drawing before they hand off
+// to the base map. Zooming past a chart's scale overzooms the top tiles into a blocky,
+// low-detail chart, which is worse than the sharp base underneath. Capping the chart a
+// step beyond its native max lets the base map show through when you zoom in past the
+// chart's detail, so the chart stays useful and aligned with the base at every zoom.
+const CHART_OVERZOOM_BUDGET = 1;
 
 const OPACITY_PROPERTY = {
   fill: 'fill-opacity',
@@ -19,6 +27,22 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
   const specs = chartToSpecs(chart, serverBase);
   const sourceIds = Object.keys(specs.sources);
   const layers = specs.layers.map((layer) => ({ id: layer.id, type: layer.type }));
+  const chartSource = sourceIds[0];
+  let onSourceData: ((event: MapSourceDataEvent) => void) | undefined;
+
+  // The native max zoom lives in the source's TileJSON, which a PMTiles archive reports
+  // only once it has loaded, so this is applied after the source is loaded.
+  const capToNativeZoom = (map: MapLibreMap): boolean => {
+    const source = map.getSource(chartSource) as { maxzoom?: number } | undefined;
+    const nativeMax = source?.maxzoom;
+    if (nativeMax === undefined) return false;
+    for (const layer of layers) {
+      if (map.getLayer(layer.id)) {
+        map.setLayerZoomRange(layer.id, 0, nativeMax + CHART_OVERZOOM_BUDGET);
+      }
+    }
+    return true;
+  };
 
   return {
     id: chartSourceId(chart.identifier),
@@ -42,8 +66,22 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
           ctx.map.addLayer(layer, ctx.beforeIdFor('basemap'));
         }
       }
+      const tryCap = () => ctx.map.isSourceLoaded(chartSource) && capToNativeZoom(ctx.map);
+      if (!tryCap()) {
+        onSourceData = (event) => {
+          if (event.sourceId === chartSource && event.isSourceLoaded && tryCap()) {
+            if (onSourceData) ctx.map.off('sourcedata', onSourceData);
+            onSourceData = undefined;
+          }
+        };
+        ctx.map.on('sourcedata', onSourceData);
+      }
     },
     remove(ctx) {
+      if (onSourceData) {
+        ctx.map.off('sourcedata', onSourceData);
+        onSourceData = undefined;
+      }
       for (const layer of layers) {
         if (ctx.map.getLayer(layer.id)) ctx.map.removeLayer(layer.id);
       }

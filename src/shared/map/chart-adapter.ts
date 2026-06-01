@@ -55,7 +55,11 @@ const SOURCE_LAYER_STYLE: Record<string, { kind: DrawKind; paint: keyof MapTheme
   boundary: { kind: 'line', paint: 'boundary' },
 };
 
-// Drawn back to front: land base, ground cover, water, then line work on top.
+// Drawn back to front: land base, ground cover, water, then line work on top. Water is
+// drawn over land on purpose: on a marine chart navigable water must never be hidden by
+// an over-generalized land polygon. The tradeoff is that at low zoom a small island
+// whose archive water tile lacks a hole merges into the water; it reappears once the
+// tiles carry enough detail (a zoom level or two in), which is the safe direction.
 const DRAW_ORDER = [
   'earth',
   'landcover',
