@@ -1,2 +1,8 @@
-export type { Thresholds } from './persisted.svelte';
-export { createThresholds, DEFAULT_THRESHOLDS, PersistedValue } from './persisted.svelte';
+export type { MapView, Thresholds } from './persisted.svelte';
+export {
+  createMapView,
+  createThresholds,
+  DEFAULT_THRESHOLDS,
+  isMapView,
+  PersistedValue,
+} from './persisted.svelte';

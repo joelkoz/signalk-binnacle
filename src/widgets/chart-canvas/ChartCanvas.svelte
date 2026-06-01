@@ -17,18 +17,14 @@ import {
   createChartOverlay,
   installSentinels,
   LayerManager,
+  type LayerSettings,
   mapThemePaint,
   type OverlayContext,
   registerPmtilesProtocol,
 } from '$shared/map';
+import type { MapView } from '$shared/settings';
 import { type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
-
-interface MapView {
-  lat: number;
-  lon: number;
-  zoom: number;
-}
 
 interface Props {
   store: SignalKStore;
@@ -36,6 +32,11 @@ interface Props {
   aisTargets: AisTargets;
   collision: CollisionAssessment;
   chartsToken?: string;
+  // The view to open at, restored from the last visit; defaults to a world view.
+  initialView?: MapView;
+  // Saved per-layer visibility and opacity, and a sink for changes to persist.
+  savedLayers?: LayerSettings;
+  onLayersChange?: (settings: LayerSettings) => void;
   onReady?: (view: LayersView) => void;
   onMapReady?: (recolor: (theme: Theme) => void) => void;
   onViewChange?: (view: MapView) => void;
@@ -47,6 +48,9 @@ const {
   aisTargets,
   collision,
   chartsToken,
+  initialView,
+  savedLayers,
+  onLayersChange,
   onReady,
   onMapReady,
   onViewChange,
@@ -68,8 +72,8 @@ onMount(() => {
     map = new maplibregl.Map({
       container,
       style: baseStyleUrl(),
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
+      center: initialView ? [initialView.lon, initialView.lat] : DEFAULT_CENTER,
+      zoom: initialView ? initialView.zoom : DEFAULT_ZOOM,
       attributionControl: { compact: true },
     });
   } catch (error) {
@@ -96,7 +100,7 @@ onMount(() => {
     emitView();
     const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
     installSentinels(mapInstance);
-    manager = new LayerManager(ctx);
+    manager = new LayerManager(ctx, { saved: savedLayers, onChange: onLayersChange });
 
     const charts = await fetchCharts(serverOrigin(), chartsToken);
     if (destroyed) return;

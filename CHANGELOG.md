@@ -8,6 +8,12 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Binnacle now remembers your session across a page refresh. The map reopens at the last center and
+  zoom, and each layer's visibility and opacity are restored, alongside the theme that was already
+  persisted. The view is saved to local storage after panning settles (one write per gesture, not
+  per frame), layer changes are saved as they happen, and a corrupt or out-of-range saved view is
+  ignored in favor of the default world view.
+
 - Points-of-interest markers now use per-category icons and a rich detail popup. Each note is sorted
   into a category (anchorage, marina, fuel, services, inlet, boat ramp, bridge, hazard, navaid,
   structure, or a generic point of interest), matched from the provider's skIcon against the live

@@ -45,6 +45,38 @@ export class PersistedValue<T> {
   }
 }
 
+// The map's saved center and zoom, restored on the next visit.
+export interface MapView {
+  lat: number;
+  lon: number;
+  zoom: number;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+// Guards a stored view against corruption: a NaN or out-of-range center would break the map.
+export function isMapView(value: unknown): value is MapView {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return (
+    isFiniteNumber(v.lat) &&
+    v.lat >= -90 &&
+    v.lat <= 90 &&
+    isFiniteNumber(v.lon) &&
+    v.lon >= -180 &&
+    v.lon <= 180 &&
+    isFiniteNumber(v.zoom) &&
+    v.zoom >= 0 &&
+    v.zoom <= 24
+  );
+}
+
+export function createMapView(storage?: StorageLike): PersistedValue<MapView | null> {
+  return new PersistedValue('binnacle:map-view', null, storage);
+}
+
 export interface Thresholds {
   dangerCpaMeters: number;
   dangerTcpaSeconds: number;

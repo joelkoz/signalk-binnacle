@@ -91,4 +91,34 @@ describe('LayerManager', () => {
     expect(manager.layers().map((l) => l.id)).toEqual(['a', 'b']);
     expect(manager.layers()[0]).toMatchObject({ visible: true, opacity: 1 });
   });
+
+  it('restores saved visibility and opacity on register', async () => {
+    const overlay = fakeOverlay('ais');
+    const manager = new LayerManager(fakeCtx(), {
+      saved: { ais: { visible: false, opacity: 0.3 } },
+    });
+    await manager.register(overlay);
+    expect(overlay.events).toContain('visible:false');
+    expect(overlay.events).toContain('opacity:0.3');
+  });
+
+  it('a layer with no saved entry takes the visible default', async () => {
+    const overlay = fakeOverlay('charts');
+    const manager = new LayerManager(fakeCtx(), { saved: { ais: { visible: false, opacity: 1 } } });
+    await manager.register(overlay);
+    expect(overlay.events).toContain('visible:true');
+  });
+
+  it('reports the full settings snapshot on toggle and opacity changes', async () => {
+    const changes: Array<Record<string, { visible: boolean; opacity: number }>> = [];
+    const manager = new LayerManager(fakeCtx(), { onChange: (s) => changes.push(s) });
+    await manager.register(fakeOverlay('a'));
+    await manager.register(fakeOverlay('b'));
+    manager.toggle('a', false);
+    manager.setOpacity('b', 0.5);
+    expect(changes.at(-1)).toEqual({
+      a: { visible: false, opacity: 1 },
+      b: { visible: true, opacity: 0.5 },
+    });
+  });
 });

@@ -8,8 +8,15 @@ import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { DangerStrip } from '$features/lookout';
 import { ThemeToggle } from '$features/theme-toggle';
 import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
+import type { LayerSettings } from '$shared/map';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
-import { createThresholds } from '$shared/settings';
+import {
+  createMapView,
+  createThresholds,
+  isMapView,
+  type MapView,
+  PersistedValue,
+} from '$shared/settings';
 import type { Context } from '$shared/signalk';
 import {
   AuthController,
@@ -35,11 +42,25 @@ const collision = new CollisionAssessment(vessel, aisTargets, createThresholds()
 let layersView = $state<LayersView | undefined>();
 let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
-let mapView = $state<{ lat: number; lon: number; zoom: number } | undefined>();
+let mapView = $state<MapView | undefined>();
 let updateReady = $state(false);
 const pwa = registerPwa(() => (updateReady = true));
 
 const theme = createThemeController((next) => recolorMap?.(next));
+
+// Profile state restored across visits: the last map view and the layer settings.
+const mapViewStore = createMapView();
+const savedView = isMapView(mapViewStore.value) ? mapViewStore.value : undefined;
+const layerSettings = new PersistedValue<LayerSettings>('binnacle:layers', {});
+
+// The view changes once per animation frame while panning; persist only after it
+// settles so a drag is one write, not hundreds.
+let viewSaveTimer: ReturnType<typeof setTimeout> | undefined;
+function onViewChange(view: MapView): void {
+  mapView = view;
+  if (viewSaveTimer) clearTimeout(viewSaveTimer);
+  viewSaveTimer = setTimeout(() => mapViewStore.set(view), 400);
+}
 
 const CONNECTION_LABELS: Record<string, string> = {
   open: 'Connected',
@@ -93,6 +114,7 @@ onMount(async () => {
 
 onDestroy(() => {
   if (accessTimer) clearTimeout(accessTimer);
+  if (viewSaveTimer) clearTimeout(viewSaveTimer);
   auth.stop();
   net.dispose();
   void client.disconnect();
@@ -116,12 +138,15 @@ onDestroy(() => {
       {aisTargets}
       {collision}
       {chartsToken}
+      initialView={savedView}
+      savedLayers={layerSettings.value}
+      onLayersChange={(settings) => layerSettings.set(settings)}
       onReady={(view) => (layersView = view)}
       onMapReady={(recolor) => {
         recolorMap = recolor;
         recolor(theme.theme);
       }}
-      onViewChange={(view) => (mapView = view)}
+      {onViewChange}
     />
     <div class="banner-slot">
       <AuthBanner {auth} />
