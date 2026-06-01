@@ -31,6 +31,20 @@ describe('AuthController', () => {
     expect(auth.token).toBeNull();
   });
 
+  it('probes anonymously with credentials omitted so a session cookie cannot mask a secured server', async () => {
+    const fetchFn = vi.fn(async () => res(true, {}));
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: storage(),
+      schedule: noSchedule,
+    });
+    await auth.probe();
+    expect(fetchFn).toHaveBeenCalledWith(
+      `${BASE}/signalk/v1/api/vessels/self`,
+      expect.objectContaining({ credentials: 'omit' }),
+    );
+  });
+
   it('uses a stored token that still works', async () => {
     const fetchFn = vi.fn(async (_url: string, init?: RequestInit) =>
       res(Boolean(init?.headers), {}),

@@ -6,6 +6,18 @@ export class OwnVessel {
 
   constructor(store: SignalKStore) {
     this.#store = store;
+    // Pre-create the cells this vessel reads. The store creates a cell lazily on first
+    // access; if that first access is a reactive template read, the freshly created
+    // $state source is not tracked and later updates do not re-render. Creating the
+    // cells up front means every read finds an existing, tracked cell.
+    for (const path of [
+      SK_PATHS.position,
+      SK_PATHS.speedOverGround,
+      SK_PATHS.courseOverGroundTrue,
+      SK_PATHS.headingTrue,
+    ]) {
+      store.cell(path);
+    }
   }
 
   get sogKnots(): number | undefined {

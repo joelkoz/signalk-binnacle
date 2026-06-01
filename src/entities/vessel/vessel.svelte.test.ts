@@ -39,4 +39,25 @@ describe('OwnVessel', () => {
     expect(vessel.sogKnots).toBeUndefined();
     expect(vessel.position).toBeUndefined();
   });
+
+  it('pre-creates its cells at construction so reactive reads track them', () => {
+    // The store creates a cell lazily on first access. If that first access were a
+    // reactive template read, the freshly created $state source would not be tracked
+    // and later updates would not re-render (this caused the readouts to stay blank
+    // with live data flowing). Constructing the vessel must create the cells up front.
+    const store = new SignalKStore();
+    const created: string[] = [];
+    const realCell = store.cell.bind(store);
+    store.cell = (path: string) => {
+      created.push(path);
+      return realCell(path);
+    };
+    new OwnVessel(store);
+    expect(created).toEqual([
+      'navigation.position',
+      'navigation.speedOverGround',
+      'navigation.courseOverGroundTrue',
+      'navigation.headingTrue',
+    ]);
+  });
 });

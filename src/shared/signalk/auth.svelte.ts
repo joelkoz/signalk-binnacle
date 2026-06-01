@@ -56,11 +56,8 @@ export class AuthController {
   }
 
   async probe(): Promise<void> {
-    const anon = await this.#safeFetch(`${this.#base}${PROBE_PATH}`);
-    if (anon?.ok) {
-      this.status = 'unsecured';
-      return;
-    }
+    // A stored token is the source of truth: the WebSocket stream needs it, and a
+    // working token means the server is secured and we are good. Check it first.
     const stored = this.#identity.value.token;
     if (stored) {
       const authed = await this.#safeFetch(`${this.#base}${PROBE_PATH}`, {
@@ -72,6 +69,15 @@ export class AuthController {
         return;
       }
       this.#store(null);
+    }
+    // Probe anonymously WITHOUT credentials. A browser session cookie would
+    // otherwise make a secured server look unsecured, and the WebSocket stream
+    // (which the cookie does not authenticate) would then connect tokenless and
+    // receive no data. `credentials: 'omit'` forces a true anonymous check.
+    const anon = await this.#safeFetch(`${this.#base}${PROBE_PATH}`, { credentials: 'omit' });
+    if (anon?.ok) {
+      this.status = 'unsecured';
+      return;
     }
     await this.requestAccess();
   }

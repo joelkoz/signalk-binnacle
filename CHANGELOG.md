@@ -8,6 +8,16 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- Own-vessel readouts (SOG and COG) stayed blank while live data flowed. The store creates a
+  path cell lazily on first access; the first access was the shell's reactive readout, so a
+  brand-new `$state` source was created during the effect's tracking pass and never subscribed,
+  and later updates did not re-render. `OwnVessel` now creates its cells at construction, before
+  the readout runs, so the reactive read tracks an existing cell.
+- The auth probe could mistake a secured server for an unsecured one. It checked a REST path that
+  a browser session cookie satisfies, so it concluded "unsecured" and connected the WebSocket
+  stream without a token, which the cookie does not authenticate, leaving no live data. The probe
+  now checks a stored token first and runs the anonymous check with credentials omitted, so a
+  cookie cannot mask the need for a token.
 - The Signal K worker crashed at load with "Class extends value undefined" because the worker
   graph imported the server-side `@signalk/server-api` package, whose entry re-exports a
   `FullSignalK` class extending Node's `EventEmitter`; bundled into the browser worker with
