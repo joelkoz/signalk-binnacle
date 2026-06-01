@@ -8,6 +8,13 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Lookout (active-safety, first slice): the headless collision data layer behind the upcoming
+  danger strip. A pure, test-first closest-point-of-approach module computes CPA and TCPA from the
+  own vessel and a target's position and velocity, a persisted-settings helper holds
+  user-configurable danger and warning thresholds with sensible defaults, and a collision
+  assessment ranks AIS contacts by severity, preferring the server's `navigation.closestApproach`
+  when a provider supplies it and falling back to the computed values otherwise. The danger strip,
+  chart highlight, audible alarm, and Signal K notification publishing follow in later slices.
 - Theming: a design-token system with day, dusk, and night-red palettes, switched by a single
   theme controller that sets `data-theme` on the document and persists the choice. Every surface
   recolors from CSS custom properties, a top-bar toggle cycles the themes, and the map base
