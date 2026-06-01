@@ -1,10 +1,18 @@
 <script lang="ts">
 import { onDestroy, onMount } from 'svelte';
 import { OwnVessel } from '$entities/vessel';
+import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { ThemeToggle } from '$features/theme-toggle';
 import type { Context } from '$shared/signalk';
-import { createSignalKClient, SignalKStore, SK_PATHS, streamUrl } from '$shared/signalk';
+import {
+  AuthController,
+  createSignalKClient,
+  SignalKStore,
+  SK_PATHS,
+  serverOrigin,
+  streamUrl,
+} from '$shared/signalk';
 import { createThemeController } from '$shared/ui';
 import { ChartCanvas } from '$widgets/chart-canvas';
 
@@ -13,9 +21,11 @@ const ALL_VESSELS = 'vessels.*' as Context;
 const store = new SignalKStore();
 const vessel = new OwnVessel(store);
 const client = createSignalKClient();
+const auth = new AuthController(serverOrigin());
 
 let layersView = $state<LayersView | undefined>();
 let recolorMap: ((theme: string) => void) | undefined;
+let chartsToken = $state<string | undefined>();
 
 const theme = createThemeController((next) => recolorMap?.(next));
 
@@ -31,8 +41,23 @@ const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase] ?? 'N
 const fmt = (value: number | undefined, digits: number) =>
   value === undefined ? '--' : value.toFixed(digits);
 
+// Resolve once the server is open to us: either unsecured or an approved token.
+function waitForAccess(): Promise<void> {
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (auth.status === 'authenticated' || auth.status === 'unsecured') resolve();
+      else setTimeout(tick, 500);
+    };
+    tick();
+  });
+}
+
 onMount(async () => {
-  await client.connect(streamUrl(), (frame) => store.applyFrame(frame));
+  await auth.probe();
+  await waitForAccess();
+  const token = auth.token ?? undefined;
+  chartsToken = token;
+  await client.connect(streamUrl(token), (frame) => store.applyFrame(frame));
   await client.raw.subscribe([
     { path: SK_PATHS.headingTrue, policy: 'instant', minPeriod: 200 },
     { path: SK_PATHS.position, policy: 'instant', minPeriod: 1000 },
@@ -51,6 +76,7 @@ onMount(async () => {
 });
 
 onDestroy(() => {
+  auth.stop();
   void client.disconnect();
 });
 </script>
@@ -60,10 +86,12 @@ onDestroy(() => {
     <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     <ThemeToggle controller={theme} />
   </header>
+  <AuthBanner {auth} />
   <section class="chart-host" aria-label="Chart">
     <ChartCanvas
       {store}
       {vessel}
+      {chartsToken}
       onReady={(view) => (layersView = view)}
       onMapReady={(recolor) => {
         recolorMap = recolor;
@@ -84,7 +112,7 @@ onDestroy(() => {
 <style>
 .binnacle-shell {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   block-size: 100vh;
   margin: 0;
   font-family: var(--font-ui);

@@ -23,11 +23,12 @@ import type { Theme } from '$shared/ui';
 interface Props {
   store: SignalKStore;
   vessel: OwnVessel;
+  chartsToken?: string;
   onReady?: (view: LayersView) => void;
   onMapReady?: (recolor: (theme: string) => void) => void;
 }
 
-const { store, vessel, onReady, onMapReady }: Props = $props();
+const { store, vessel, chartsToken, onReady, onMapReady }: Props = $props();
 
 let container: HTMLDivElement;
 let map: maplibregl.Map | undefined;
@@ -57,7 +58,7 @@ onMount(() => {
     installSentinels(mapInstance);
     manager = new LayerManager(ctx);
 
-    const charts = await fetchCharts(serverOrigin());
+    const charts = await fetchCharts(serverOrigin(), chartsToken);
     if (destroyed) return;
     for (const chart of charts) {
       await manager.register(createChartOverlay(chart, serverOrigin()));

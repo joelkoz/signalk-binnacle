@@ -53,4 +53,15 @@ describe('fetchCharts', () => {
     const charts = await fetchCharts('http://pi.local');
     expect(charts).toEqual([]);
   });
+
+  it('sends the auth token as a Bearer header when given', async () => {
+    const fetchMock = vi.fn(() =>
+      jsonResponse({ noaa: { identifier: 'noaa', name: 'NOAA', type: 'tilelayer' } }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await fetchCharts('http://pi.local', 'tok');
+    expect(fetchMock).toHaveBeenCalledWith('http://pi.local/signalk/v2/api/resources/charts', {
+      headers: { Authorization: 'Bearer tok' },
+    });
+  });
 });
