@@ -32,20 +32,22 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
   const layers = specs.layers.map((layer) => ({
     id: layer.id,
     type: layer.type,
+    minzoom: (layer as { minzoom?: number }).minzoom ?? 0,
     themePaint: (layer.metadata as Record<string, MapColorKey> | undefined)?.[THEME_PAINT_KEY],
   }));
   const chartSource = sourceIds[0];
   let onSourceData: ((event: MapSourceDataEvent) => void) | undefined;
 
   // The native max zoom lives in the source's TileJSON, which a PMTiles archive reports
-  // only once it has loaded, so this is applied after the source is loaded.
+  // only once it has loaded, so this is applied after the source is loaded. Each layer's
+  // own minzoom is preserved (e.g. landuse is held back from low zoom for performance).
   const capToNativeZoom = (map: MapLibreMap): boolean => {
     const source = map.getSource(chartSource) as { maxzoom?: number } | undefined;
     const nativeMax = source?.maxzoom;
     if (nativeMax === undefined) return false;
     for (const layer of layers) {
       if (map.getLayer(layer.id)) {
-        map.setLayerZoomRange(layer.id, 0, nativeMax + CHART_OVERZOOM_BUDGET);
+        map.setLayerZoomRange(layer.id, layer.minzoom, nativeMax + CHART_OVERZOOM_BUDGET);
       }
     }
     return true;

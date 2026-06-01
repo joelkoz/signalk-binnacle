@@ -52,7 +52,15 @@ interface DrawStyle {
   sourceLayer: string;
   kind: DrawKind;
   paint: MapColorKey;
+  // Only draw this source-layer at or above this zoom. Some archives ship a source-layer
+  // un-simplified from low zoom (landuse can be ~1700 polygons in a single z9 tile), which
+  // is invisible-but-heavy there and can overwhelm a weaker GPU into dropping tiles. Hold
+  // such layers until the zoom where they are actually legible.
+  minZoom?: number;
 }
+
+// Below this zoom landuse is tiny zoning detail, not worth its polygon weight.
+const LANDUSE_MIN_ZOOM = 12;
 
 // One ordered list is the single source of both draw order and per-source-layer style,
 // so a styled source-layer can never be left out of the draw order. Drawn back to front:
@@ -65,7 +73,7 @@ interface DrawStyle {
 const DRAW_LAYERS: readonly DrawStyle[] = [
   { sourceLayer: 'earth', kind: 'fill', paint: 'land' },
   { sourceLayer: 'landcover', kind: 'fill', paint: 'landcover' },
-  { sourceLayer: 'landuse', kind: 'fill', paint: 'landcover' },
+  { sourceLayer: 'landuse', kind: 'fill', paint: 'landcover', minZoom: LANDUSE_MIN_ZOOM },
   { sourceLayer: 'water', kind: 'fill', paint: 'water' },
   { sourceLayer: 'roads', kind: 'line', paint: 'road' },
   { sourceLayer: 'transportation', kind: 'line', paint: 'road' },
@@ -89,6 +97,7 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
     const id = `${sourceId}-${sourceLayer}`;
     const color = paint[style.paint];
     const metadata = { [THEME_PAINT_KEY]: style.paint };
+    const minzoom = style.minZoom !== undefined ? { minzoom: style.minZoom } : {};
     if (style.kind === 'fill') {
       layers.push({
         id,
@@ -97,6 +106,7 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
         'source-layer': sourceLayer,
         paint: { 'fill-color': color },
         metadata,
+        ...minzoom,
       });
     } else {
       layers.push({
@@ -109,6 +119,7 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
           'line-width': sourceLayer === 'boundaries' || sourceLayer === 'boundary' ? 0.8 : 0.5,
         },
         metadata,
+        ...minzoom,
       });
     }
   }

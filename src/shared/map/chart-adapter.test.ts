@@ -89,6 +89,11 @@ describe('chartToSpecs', () => {
     expect(
       (byId.get('chart-Michigan-pmtiles-water') as { 'source-layer': string })['source-layer'],
     ).toBe('water');
+    // landuse is held back from low zoom (heavy and invisible there); the light layers are not.
+    expect((byId.get('chart-Michigan-pmtiles-landuse') as { minzoom?: number }).minzoom).toBe(12);
+    expect(
+      (byId.get('chart-Michigan-pmtiles-earth') as { minzoom?: number }).minzoom,
+    ).toBeUndefined();
   });
 
   it('draws the full known vector set when a pmtiles chart declares no layers', () => {

@@ -36,6 +36,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- A vector (PMTiles) chart could drop tiles to blank gaps at low-to-mid zoom (around z9) on some
+  GPUs, even though the tiles fetched fine (HTTP 206) and decoded correctly. The cause was render
+  load: the archive ships `landuse` un-simplified from low zoom, so a single z9 tile can carry
+  roughly 1700 polygons that are invisible at that scale but heavy to draw over the full base map,
+  which a weaker or high-DPI GPU silently fails to render. The chart now holds `landuse` until z12,
+  where it is actually legible, cutting the low-zoom chart draw load sharply. Each chart layer's
+  minzoom is preserved through the max-zoom cap.
+
 - A vector (PMTiles) chart could show blank gaps over a real network. The archive is read
   uncached (`cache: 'no-store'`, to dodge a Chrome disk-cache write failure), so each chart tile
   depends on a live HTTP range read; a transient drop or a server hiccup under a burst of reads (a
