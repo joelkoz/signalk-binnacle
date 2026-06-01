@@ -9,6 +9,9 @@ export interface MapThemePaint {
   landcover: string;
   road: string;
   boundary: string;
+  // Base-map text labels (place, road, and water names). Readable on each theme's
+  // background; a muted red at night so labels stay in the red band.
+  label: string;
   // Collision-highlight rings: danger tracks the --alarm token per theme, warning is a
   // distinct, less-urgent hue (night-red keeps both in the red band, danger brighter).
   danger: string;
@@ -43,6 +46,7 @@ const PAINT: Record<Theme, MapThemePaint> = {
     landcover: '#d6e6c8',
     road: '#c9c2b6',
     boundary: '#b6a98f',
+    label: '#33414c',
     danger: '#c8401f',
     warning: '#e0a020',
     note: '#7a3fa0',
@@ -61,6 +65,7 @@ const PAINT: Record<Theme, MapThemePaint> = {
     landcover: '#152b24',
     road: '#2a3b48',
     boundary: '#3a4d5c',
+    label: '#9fb4c6',
     danger: '#e0703a',
     warning: '#d9a441',
     note: '#9a6fc0',
@@ -79,6 +84,7 @@ const PAINT: Record<Theme, MapThemePaint> = {
     landcover: '#0f0402',
     road: '#3a0c08',
     boundary: '#4a0f0a',
+    label: '#9a3a2c',
     danger: '#ff6a5a',
     warning: '#a83a10',
     note: '#9a3020',

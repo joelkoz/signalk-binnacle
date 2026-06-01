@@ -86,6 +86,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- The base map now recolors fully for the theme. Previously only the background and water were
+  themed, so over land at higher zoom the OpenFreeMap roads stayed white and the parks and landcover
+  green even in night-red, breaking the pure-red-on-black contract. Every base layer is now recolored
+  from its source layer (water, landcover, landuse, transportation, building, boundary, and text
+  labels) per theme, fill patterns are cleared so the flat themed color shows, and label text gets a
+  background-colored halo. Day and dusk gain a calmer palette consistent with the app; night-red is
+  red-on-black across the whole map.
+
 - A vector (PMTiles) chart could drop tiles to blank gaps at low-to-mid zoom (around z9) on some
   GPUs, even though the tiles fetched fine (HTTP 206) and decoded correctly. The cause was render
   load: the archive ships `landuse` un-simplified from low zoom, so a single z9 tile can carry

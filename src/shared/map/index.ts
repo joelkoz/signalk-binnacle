@@ -1,4 +1,5 @@
 export { baseStyleUrl } from './base-style';
+export { applyBaseTheme } from './base-theme';
 export { createChartOverlay } from './chart-overlay';
 export type { MapSourceType, SignalKChart } from './chart-types';
 export type { Rgba } from './icon-raster';

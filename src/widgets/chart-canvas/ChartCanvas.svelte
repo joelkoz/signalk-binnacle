@@ -11,6 +11,7 @@ import { createCollisionOverlay } from '$features/lookout';
 import { createNotesOverlay } from '$features/notes';
 import { createVesselOverlay } from '$features/vessel-layer';
 import {
+  applyBaseTheme,
   baseStyleUrl,
   beforeIdFor,
   createChartOverlay,
@@ -126,29 +127,9 @@ onMount(() => {
 
     const recolor = (theme: Theme) => {
       const paint = mapThemePaint(theme);
-      let style: ReturnType<typeof mapInstance.getStyle>;
-      try {
-        style = mapInstance.getStyle();
-      } catch {
-        return;
-      }
-      // Recolor only the base map here (background and its water). Each overlay,
-      // including the chart, recolors its own layers via applyTheme below.
-      for (const layer of style.layers ?? []) {
-        try {
-          if (layer.type === 'background') {
-            mapInstance.setPaintProperty(layer.id, 'background-color', paint.background);
-          } else if (
-            !layer.id.startsWith('chart-') &&
-            layer.id.includes('water') &&
-            layer.type === 'fill'
-          ) {
-            mapInstance.setPaintProperty(layer.id, 'fill-color', paint.water);
-          }
-        } catch {
-          // A base style without this layer or property is fine; skip it.
-        }
-      }
+      // Recolor the base map (background, water, landcover, roads, boundaries, labels).
+      // Each overlay, including the chart, recolors its own layers via applyTheme below.
+      applyBaseTheme(mapInstance, paint);
       manager?.applyTheme(paint);
     };
     onMapReady?.(recolor);
