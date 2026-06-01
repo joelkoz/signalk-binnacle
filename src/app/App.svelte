@@ -86,7 +86,6 @@ onDestroy(() => {
     <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     <ThemeToggle controller={theme} />
   </header>
-  <AuthBanner {auth} />
   <section class="chart-host" aria-label="Chart">
     <ChartCanvas
       {store}
@@ -98,6 +97,9 @@ onDestroy(() => {
         recolor(theme.theme);
       }}
     />
+    <div class="banner-slot">
+      <AuthBanner {auth} />
+    </div>
     {#if layersView}
       <LayersPanel view={layersView} />
     {/if}
@@ -112,12 +114,18 @@ onDestroy(() => {
 <style>
 .binnacle-shell {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
   block-size: 100vh;
   margin: 0;
   font-family: var(--font-ui);
   background: var(--surface);
   color: var(--text);
+}
+.banner-slot {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 1;
 }
 .topbar {
   display: flex;
