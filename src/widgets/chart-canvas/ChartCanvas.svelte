@@ -2,10 +2,12 @@
 import maplibregl from 'maplibre-gl';
 import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
+import type { CollisionAssessment } from '$entities/collision';
 import type { OwnVessel } from '$entities/vessel';
 import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
 import { LayersView } from '$features/layers-panel';
+import { createCollisionOverlay } from '$features/lookout';
 import { createVesselOverlay } from '$features/vessel-layer';
 import {
   baseStyleUrl,
@@ -30,14 +32,23 @@ interface Props {
   store: SignalKStore;
   vessel: OwnVessel;
   aisTargets: AisTargets;
+  collision: CollisionAssessment;
   chartsToken?: string;
   onReady?: (view: LayersView) => void;
   onMapReady?: (recolor: (theme: Theme) => void) => void;
   onViewChange?: (view: MapView) => void;
 }
 
-const { store, vessel, aisTargets, chartsToken, onReady, onMapReady, onViewChange }: Props =
-  $props();
+const {
+  store,
+  vessel,
+  aisTargets,
+  collision,
+  chartsToken,
+  onReady,
+  onMapReady,
+  onViewChange,
+}: Props = $props();
 
 const DEFAULT_CENTER: [number, number] = [0, 30];
 const DEFAULT_ZOOM = 2;
@@ -96,6 +107,10 @@ onMount(() => {
     await manager.register(aisOverlay);
     if (destroyed) return;
 
+    const collisionOverlay = createCollisionOverlay(collision);
+    await manager.register(collisionOverlay);
+    if (destroyed) return;
+
     const overlay = createVesselOverlay(vessel);
     await manager.register(overlay);
     if (destroyed) return;
@@ -135,6 +150,7 @@ onMount(() => {
 
     const tick = () => {
       aisOverlay.sync(ctx);
+      collisionOverlay.sync(ctx);
       overlay.sync(ctx);
       frame = requestAnimationFrame(tick);
     };

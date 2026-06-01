@@ -114,6 +114,7 @@ onDestroy(() => {
       {store}
       {vessel}
       {aisTargets}
+      {collision}
       {chartsToken}
       onReady={(view) => (layersView = view)}
       onMapReady={(recolor) => {

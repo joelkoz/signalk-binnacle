@@ -6,6 +6,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Lookout collision chart highlight (differentiator step 3): dangerous AIS contacts now get a graded
+  ring on the chart in the safety z-band, danger and warning colored from the theme (day, dusk, and
+  night-red, which keeps both in the red band with danger brighter). The overlay is dirty-checked
+  against the assessment so it only rebuilds when a contact's id, severity, or position changes, is
+  theme-aware through the layer manager's applyTheme broadcast, and toggles from the layers panel.
+
 ### Changed
 
 - A tiled chart now hands off to the base map when you zoom past its native detail. Each chart's

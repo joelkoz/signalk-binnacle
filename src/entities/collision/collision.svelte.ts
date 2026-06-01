@@ -11,6 +11,7 @@ export type CpaSource = 'provider' | 'computed';
 export interface DangerContact {
   id: string;
   name?: string;
+  position: LatLon;
   cpaMeters: number;
   tcpaSeconds: number;
   severity: Severity;
@@ -74,7 +75,15 @@ export function assessContacts(
     }
     const severity = classify(cpaMeters, tcpaSeconds, thresholds);
     if (severity === 'clear') continue;
-    contacts.push({ id: t.id, name: t.name, cpaMeters, tcpaSeconds, severity, source });
+    contacts.push({
+      id: t.id,
+      name: t.name,
+      position: t.position,
+      cpaMeters,
+      tcpaSeconds,
+      severity,
+      source,
+    });
   }
   contacts.sort(
     (a, b) =>
