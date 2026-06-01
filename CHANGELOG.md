@@ -8,6 +8,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Points-of-interest overlay: Binnacle now renders Signal K `notes` resources on the map, so POI
+  providers like signalk-crows-nest (Active Captain, OpenSeaMap, NOAA, USCG light list) show up.
+  The overlay fetches notes scoped to the current viewport (`?bbox=...`, no `provider` so every
+  notes provider merges, which is how Freeboard-SK retrieves them), refetched as the map moves and
+  gated below zoom 9. POIs draw as themed dots with names at zoom 12 and up, and toggle from the
+  layers panel. Earlier nothing showed because Binnacle had no consumer for `notes` resources; the
+  data was being served correctly all along.
+
 - Lookout collision chart highlight (differentiator step 3): dangerous AIS contacts now get a graded
   ring on the chart in the safety z-band, danger and warning colored from the theme (day, dusk, and
   night-red, which keeps both in the red band with danger brighter). The overlay is dirty-checked

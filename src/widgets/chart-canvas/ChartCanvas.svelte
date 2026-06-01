@@ -8,6 +8,7 @@ import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
 import { LayersView } from '$features/layers-panel';
 import { createCollisionOverlay } from '$features/lookout';
+import { createNotesOverlay } from '$features/notes';
 import { createVesselOverlay } from '$features/vessel-layer';
 import {
   baseStyleUrl,
@@ -103,6 +104,10 @@ onMount(() => {
       if (destroyed) return;
     }
 
+    const notesOverlay = createNotesOverlay(serverOrigin(), chartsToken);
+    await manager.register(notesOverlay);
+    if (destroyed) return;
+
     const aisOverlay = createAisOverlay(aisTargets, store);
     await manager.register(aisOverlay);
     if (destroyed) return;
@@ -149,6 +154,7 @@ onMount(() => {
     onMapReady?.(recolor);
 
     const tick = () => {
+      notesOverlay.sync(ctx);
       aisOverlay.sync(ctx);
       collisionOverlay.sync(ctx);
       overlay.sync(ctx);
