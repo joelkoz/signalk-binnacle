@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryForSkIcon, categoryLabel, poiIconId } from './poi-categories';
+import { categoryForSkIcon, categoryLabel, poiCategoryForType, poiIconId } from './poi-categories';
 
 describe('poi categories', () => {
   it('maps representative skIcons to their category', () => {
@@ -51,5 +51,20 @@ describe('poi categories', () => {
     expect(categoryLabel('ramp')).toBe('Boat ramp');
     expect(categoryLabel('bridge')).toBe('Bridge');
     expect(poiIconId('hazard')).toBe('binnacle-poi-hazard');
+  });
+});
+
+describe('poiCategoryForType', () => {
+  it('maps known POI types to categories', () => {
+    expect(poiCategoryForType('Marina')).toBe('marina');
+    expect(poiCategoryForType('BoatRamp')).toBe('ramp');
+    expect(poiCategoryForType('Navigational')).toBe('navaid');
+    expect(poiCategoryForType('Lock')).toBe('structure');
+  });
+  it('returns undefined for types with no dedicated marker', () => {
+    expect(poiCategoryForType('Unknown')).toBeUndefined();
+    expect(poiCategoryForType('Airport')).toBeUndefined();
+    expect(poiCategoryForType('LocalKnowledge')).toBeUndefined();
+    expect(poiCategoryForType(undefined)).toBeUndefined();
   });
 });

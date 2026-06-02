@@ -1,3 +1,5 @@
+import type { PoiType } from './notes-detail';
+
 // Crow's Nest (and other notes providers) tag each note with a Freeboard `skIcon`.
 // Binnacle groups them into a handful of marker categories, each with its own glyph and
 // themed color. A category is the single source for both.
@@ -148,4 +150,24 @@ export function categoryLabel(category: PoiCategory): string {
 
 export function poiIconId(category: PoiCategory): string {
   return `binnacle-poi-${category}`;
+}
+
+// Crow's Nest's explicit POI type, mapped to a marker category. Types with no dedicated
+// Binnacle marker return undefined so the caller falls back to skIcon inference.
+const TYPE_CATEGORY: Partial<Record<PoiType, PoiCategory>> = {
+  Marina: 'marina',
+  Anchorage: 'anchorage',
+  Hazard: 'hazard',
+  Business: 'services',
+  BoatRamp: 'ramp',
+  Bridge: 'bridge',
+  Dam: 'structure',
+  Lock: 'structure',
+  Ferry: 'structure',
+  Inlet: 'inlet',
+  Navigational: 'navaid',
+};
+
+export function poiCategoryForType(type: PoiType | undefined): PoiCategory | undefined {
+  return type ? TYPE_CATEGORY[type] : undefined;
 }

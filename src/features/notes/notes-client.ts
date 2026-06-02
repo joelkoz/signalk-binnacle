@@ -1,4 +1,5 @@
-import { categoryForSkIcon, type PoiCategory } from './poi-categories';
+import type { PoiType } from './notes-detail';
+import { categoryForSkIcon, type PoiCategory, poiCategoryForType } from './poi-categories';
 
 // A point-of-interest note from the Signal K resources API. Providers like
 // signalk-crows-nest serve marinas, anchorages, and hazards as `notes`, scoped to a
@@ -13,6 +14,16 @@ export interface NotePoint {
   description?: string;
   source?: string;
   attribution?: string;
+}
+
+// The marker reference handed to the app when a note is selected; enough to title the panel
+// before its detail loads.
+export interface NoteSelection {
+  id: string;
+  name: string;
+  category: PoiCategory;
+  attribution?: string;
+  url?: string;
 }
 
 function str(value: unknown): string | undefined {
@@ -55,7 +66,12 @@ export async function fetchNotes(
       url?: unknown;
       description?: unknown;
       position?: { latitude?: unknown; longitude?: unknown };
-      properties?: { skIcon?: unknown; source?: unknown; attribution?: unknown };
+      properties?: {
+        skIcon?: unknown;
+        source?: unknown;
+        attribution?: unknown;
+        crowsNest?: { type?: unknown };
+      };
     };
     const lat = note.position?.latitude;
     const lon = note.position?.longitude;
@@ -65,7 +81,10 @@ export async function fetchNotes(
       id,
       name: str(note.name) ?? str(note.title) ?? id,
       position: { latitude: lat, longitude: lon },
-      category: categoryForSkIcon(str(props.skIcon)),
+      category:
+        poiCategoryForType(
+          typeof props.crowsNest?.type === 'string' ? (props.crowsNest.type as PoiType) : undefined,
+        ) ?? categoryForSkIcon(str(props.skIcon)),
       url: str(note.url),
       description: str(note.description),
       source: str(props.source),
