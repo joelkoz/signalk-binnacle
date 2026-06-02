@@ -276,17 +276,20 @@ dd {
   font-weight: 400;
 }
 .badge {
-  padding: 0.05rem 0.4rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   font-size: var(--text-xs);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text-muted);
 }
 .badge[data-value="yes"] {
   color: var(--accent);
+  border-color: var(--accent);
 }
 .badge[data-value="nearby"] {
   color: var(--select);
+  border-color: var(--select);
 }
 .prose {
   white-space: pre-line;
