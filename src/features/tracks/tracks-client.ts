@@ -10,9 +10,8 @@ export interface SavedTrack {
   points: TrackPoint[][];
 }
 
-// Build a FeatureCollection of one LineString per segment for the saved tracks the user has
-// chosen to show, so the overlay can render them. Saved tracks draw in a single color, so no
-// per-point speed is needed here.
+// One LineString per segment, for the saved tracks the user has chosen to show. Saved tracks
+// draw in a single color, so no per-point speed is carried.
 export function savedTracksToFeatures(
   tracks: readonly SavedTrack[],
   shownIds: ReadonlySet<string>,
@@ -73,12 +72,14 @@ function lineToPoints(line: unknown): TrackPoint[] {
 }
 
 function geometryToSegments(geom: RawGeometry): TrackPoint[][] {
+  // A line needs two positions; drop degenerate single-coordinate segments so a SavedTrack
+  // never carries a point that cannot draw and would be silently dropped downstream.
   if (geom.type === 'MultiLineString' && Array.isArray(geom.coordinates)) {
-    return geom.coordinates.map(lineToPoints).filter((segment) => segment.length > 0);
+    return geom.coordinates.map(lineToPoints).filter((segment) => segment.length >= 2);
   }
   if (geom.type === 'LineString') {
     const segment = lineToPoints(geom.coordinates);
-    return segment.length > 0 ? [segment] : [];
+    return segment.length >= 2 ? [segment] : [];
   }
   return [];
 }
@@ -121,9 +122,8 @@ export async function fetchSavedTracks(base: string, token?: string): Promise<Sa
   return v1 ?? [];
 }
 
-// PUT a recorded track to the resources API as a GeoJSON Feature(MultiLineString), split at
-// gaps. distance (meters) and timespan (seconds) are stored as SI metadata. Returns whether
-// the write succeeded.
+// Splits the points into a MultiLineString at gaps; distance (meters) and timespan (seconds)
+// ride along as SI metadata. Returns whether the write succeeded.
 export async function saveTrack(
   base: string,
   token: string | undefined,

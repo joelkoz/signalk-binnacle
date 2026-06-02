@@ -163,9 +163,10 @@ async function onSaveTrack(name: string): Promise<void> {
   const id = newTrackId();
   if (!(await saveTrack(serverOrigin(), chartsToken, id, name, recorder.points))) return;
   recorder.clear();
-  await refreshSavedTracks();
+  // Show the new track, then refresh: refreshSavedTracks bumps the version once with both the
+  // new list and the new shown set in place.
   shownSaved = new Set(shownSaved).add(id);
-  bumpSaved();
+  await refreshSavedTracks();
 }
 
 async function onDeleteSavedTrack(id: string): Promise<void> {

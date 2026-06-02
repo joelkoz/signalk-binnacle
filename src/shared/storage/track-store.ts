@@ -1,11 +1,11 @@
-// A small append log persisted in IndexedDB, generic over the record type so this stays
-// domain-free infra (the track point shape lives in entities/track). Node and private-mode
-// browsers have no indexedDB, so it falls back to an in-memory log and never throws.
+// A small append log generic over the record type so this stays domain-free (the track point
+// shape lives in entities/track). It degrades to an in-memory log, and never throws, when
+// IndexedDB is missing (Node, private mode) or fails to open or write (blocked upgrade, quota,
+// corruption), so a persistence failure never breaks recording.
 
 export interface TrackStore<T> {
   all(): Promise<T[]>;
   append(item: T): Promise<void>;
-  replace(items: T[]): Promise<void>;
   clear(): Promise<void>;
 }
 
@@ -19,9 +19,6 @@ function memoryStore<T>(): TrackStore<T> {
     append: async (item) => {
       items.push(item);
     },
-    replace: async (next) => {
-      items = next.slice();
-    },
     clear: async () => {
       items = [];
     },
@@ -33,6 +30,9 @@ export function createTrackStore<T>(
 ): TrackStore<T> {
   if (!factory) return memoryStore<T>();
 
+  const memory = memoryStore<T>();
+  let degraded = false;
+
   let dbPromise: Promise<IDBDatabase> | undefined;
   const db = (): Promise<IDBDatabase> => {
     if (!dbPromise) {
@@ -41,43 +41,50 @@ export function createTrackStore<T>(
         req.onupgradeneeded = () => req.result.createObjectStore(STORE, { autoIncrement: true });
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
+        // A second tab holding the prior version blocks the upgrade; reject instead of hanging.
+        req.onblocked = () => reject(new Error('indexedDB open blocked'));
       });
     }
     return dbPromise;
   };
 
-  const request = <R>(
-    mode: IDBTransactionMode,
-    run: (s: IDBObjectStore) => IDBRequest,
-  ): Promise<R> =>
+  const run = <R>(mode: IDBTransactionMode, op: (s: IDBObjectStore) => IDBRequest): Promise<R> =>
     db().then(
       (conn) =>
         new Promise<R>((resolve, reject) => {
-          const req = run(conn.transaction(STORE, mode).objectStore(STORE));
+          const req = op(conn.transaction(STORE, mode).objectStore(STORE));
           req.onsuccess = () => resolve(req.result as R);
           req.onerror = () => reject(req.error);
         }),
     );
 
   return {
-    all: () => request<T[]>('readonly', (s) => s.getAll()),
-    append: async (item) => {
-      await request('readwrite', (s) => s.add(item));
+    all: async () => {
+      if (degraded) return memory.all();
+      try {
+        return await run<T[]>('readonly', (s) => s.getAll());
+      } catch {
+        degraded = true;
+        return memory.all();
+      }
     },
-    replace: (next) =>
-      db().then(
-        (conn) =>
-          new Promise<void>((resolve, reject) => {
-            const t = conn.transaction(STORE, 'readwrite');
-            const s = t.objectStore(STORE);
-            s.clear();
-            for (const item of next) s.add(item);
-            t.oncomplete = () => resolve();
-            t.onerror = () => reject(t.error);
-          }),
-      ),
+    append: async (item) => {
+      if (degraded) return memory.append(item);
+      try {
+        await run('readwrite', (s) => s.add(item));
+      } catch {
+        degraded = true;
+        await memory.append(item);
+      }
+    },
     clear: async () => {
-      await request('readwrite', (s) => s.clear());
+      if (degraded) return memory.clear();
+      try {
+        await run('readwrite', (s) => s.clear());
+      } catch {
+        degraded = true;
+        await memory.clear();
+      }
     },
   };
 }

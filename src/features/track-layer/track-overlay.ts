@@ -82,6 +82,12 @@ export function createTrackOverlay(
     band: BAND,
     supportsOpacity: true,
     add(ctx) {
+      // Reset the dirty-check state so a reattach (after a base-style swap recreates the
+      // emptied sources) repopulates them on the next sync instead of staying blank.
+      lastLen = -1;
+      lastT = undefined;
+      lastMode = undefined;
+      lastSavedVersion = -1;
       const before = ctx.beforeIdFor(BAND);
       const activeSrc: GeoJSONSourceSpecification = { type: 'geojson', data: EMPTY };
       ctx.map.addSource(ACTIVE_SOURCE, activeSrc);

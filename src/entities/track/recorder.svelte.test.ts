@@ -108,7 +108,6 @@ describe('TrackRecorder', () => {
     const store = {
       all: async () => seeded.slice(),
       append: async () => {},
-      replace: async () => {},
       clear: async () => {},
     };
     const r = new TrackRecorder(createTrackSettings(fakeStorage()), store);

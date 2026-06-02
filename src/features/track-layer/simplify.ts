@@ -1,7 +1,9 @@
 import type { TrackPoint } from '$entities/track';
 
-// Perpendicular distance from p to the segment a-b, in degree space (planar is fine at the
-// scales a display track spans).
+// Perpendicular distance from p to the segment a-b, in degree space. Planar is fine at the
+// scales a display track spans; it ignores the lon/lat scale difference (a degree of longitude
+// shrinks with latitude), so simplification is slightly anisotropic, which is harmless at a
+// roughly 9 m tolerance.
 function perpendicular(p: TrackPoint, a: TrackPoint, b: TrackPoint): number {
   const dx = b.lon - a.lon;
   const dy = b.lat - a.lat;
@@ -11,21 +13,37 @@ function perpendicular(p: TrackPoint, a: TrackPoint, b: TrackPoint): number {
   return Math.hypot(p.lon - (a.lon + t * dx), p.lat - (a.lat + t * dy));
 }
 
+// Iterative Douglas-Peucker over a single run: an explicit index-range stack and a keep mask,
+// so a long jagged voyage cannot blow the call stack and there are no per-split array copies.
 function simplifyRun(run: TrackPoint[], tolerance: number): TrackPoint[] {
-  if (run.length <= 2) return run;
-  let maxDist = 0;
-  let index = 0;
-  for (let i = 1; i < run.length - 1; i += 1) {
-    const dist = perpendicular(run[i], run[0], run[run.length - 1]);
-    if (dist > maxDist) {
-      maxDist = dist;
-      index = i;
+  const n = run.length;
+  if (n <= 2) return run;
+  const keep = new Array<boolean>(n).fill(false);
+  keep[0] = true;
+  keep[n - 1] = true;
+  const stack: Array<[number, number]> = [[0, n - 1]];
+  while (stack.length > 0) {
+    const range = stack.pop();
+    if (!range) break;
+    const [start, end] = range;
+    let maxDist = 0;
+    let index = -1;
+    for (let i = start + 1; i < end; i += 1) {
+      const dist = perpendicular(run[i], run[start], run[end]);
+      if (dist > maxDist) {
+        maxDist = dist;
+        index = i;
+      }
+    }
+    if (maxDist > tolerance && index !== -1) {
+      keep[index] = true;
+      stack.push([start, index]);
+      stack.push([index, end]);
     }
   }
-  if (maxDist <= tolerance) return [run[0], run[run.length - 1]];
-  const left = simplifyRun(run.slice(0, index + 1), tolerance);
-  const right = simplifyRun(run.slice(index), tolerance);
-  return left.slice(0, -1).concat(right);
+  const out: TrackPoint[] = [];
+  for (let i = 0; i < n; i += 1) if (keep[i]) out.push(run[i]);
+  return out;
 }
 
 // Douglas-Peucker simplification that never crosses a break: the points are split into runs

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Download, Eraser, Eye, EyeOff, Pause, Play, Save, Trash2 } from '@lucide/svelte';
 import type { TrackRecorder } from '$entities/track';
-import { formatCpaNm, metersPerSecondToKnots } from '$shared/lib';
+import { formatNm, metersPerSecondToKnots } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
 import type { SavedTrack } from './tracks-client';
 
@@ -98,22 +98,14 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   </div>
 
   <dl class="stats">
-    <div>
-      <dt>Distance</dt>
-      <dd>{formatCpaNm(stats.distanceMeters)} nm</dd>
-    </div>
-    <div>
-      <dt>Duration</dt>
-      <dd>{duration(stats.durationSeconds)}</dd>
-    </div>
-    <div>
-      <dt>Avg</dt>
-      <dd>{knots(stats.avgSog)} kn</dd>
-    </div>
-    <div>
-      <dt>Max</dt>
-      <dd>{knots(stats.maxSog)} kn</dd>
-    </div>
+    <dt>Distance</dt>
+    <dd><span class="num">{formatNm(stats.distanceMeters)}</span><span class="unit">nm</span></dd>
+    <dt>Duration</dt>
+    <dd><span class="num">{duration(stats.durationSeconds)}</span><span class="unit"></span></dd>
+    <dt>Avg</dt>
+    <dd><span class="num">{knots(stats.avgSog)}</span><span class="unit">kn</span></dd>
+    <dt>Max</dt>
+    <dd><span class="num">{knots(stats.maxSog)}</span><span class="unit">kn</span></dd>
   </dl>
 
   <div class="saved">
@@ -129,6 +121,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
               type="button"
               class="icon"
               aria-pressed={shown.has(track.id)}
+              aria-label={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
               title={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
               onclick={() => onToggleSaved(track.id)}
             >
@@ -141,6 +134,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
             <button
               type="button"
               class="icon"
+              aria-label="Export GeoJSON"
               title="Export GeoJSON"
               onclick={() => onExport(track)}
             >
@@ -149,6 +143,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
             <button
               type="button"
               class="icon danger"
+              aria-label="Delete track"
               title="Delete"
               onclick={() => onDelete(track.id)}
             >
@@ -225,20 +220,29 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 .stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.3rem 0.6rem;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: 0.75rem;
+  row-gap: 0.3rem;
   margin: 0;
-}
-.stats div {
-  display: flex;
-  justify-content: space-between;
 }
 .stats dt {
   color: var(--text-muted);
 }
 .stats dd {
   margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1.5rem;
+  align-items: baseline;
+  column-gap: 0.25rem;
+}
+.stats .num {
+  text-align: right;
   font-variant-numeric: tabular-nums;
+}
+.stats .unit {
+  color: var(--text-muted);
+  font-size: 0.72rem;
 }
 .saved {
   display: flex;

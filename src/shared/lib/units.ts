@@ -33,10 +33,15 @@ export function nauticalMilesToMeters(value: number): number {
   return value * METERS_PER_NAUTICAL_MILE;
 }
 
-// Display-edge formatters for the collision metrics: CPA in nautical miles, TCPA in minutes.
-// Centralized so the conversion and rounding do not drift across the readouts that show them.
-export function formatCpaNm(meters: number, digits = 2): string {
+// A meters-to-nautical-miles reading for any distance (track length, range), centralized so
+// the conversion and rounding do not drift across the readouts that show it.
+export function formatNm(meters: number, digits = 2): string {
   return (metersToNauticalMiles(meters) ?? 0).toFixed(digits);
+}
+
+// CPA is just a distance; named for the collision metric at its call sites.
+export function formatCpaNm(meters: number, digits = 2): string {
+  return formatNm(meters, digits);
 }
 
 export function formatTcpaMin(seconds: number, digits = 0): string {

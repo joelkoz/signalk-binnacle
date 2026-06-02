@@ -7,7 +7,7 @@ describe('haversineMeters', () => {
   });
 
   it('measures a known short hop within a meter', () => {
-    // 0.001 deg of latitude is about 111.2 m.
-    expect(haversineMeters(0, 0, 0.001, 0)).toBeCloseTo(111.19, 0);
+    // 0.001 deg of latitude is about 111.2 m; digits=1 pins it to within ~0.05 m.
+    expect(haversineMeters(0, 0, 0.001, 0)).toBeCloseTo(111.19, 1);
   });
 });

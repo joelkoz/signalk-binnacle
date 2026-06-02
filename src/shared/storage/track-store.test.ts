@@ -5,8 +5,19 @@ interface Point {
   t: number;
 }
 
-describe('createTrackStore (in-memory fallback when indexedDB is absent)', () => {
-  it('appends, reads all, and clears', async () => {
+// An IDBFactory whose open() always errors, to exercise the degrade-to-memory path.
+function failingFactory(): IDBFactory {
+  return {
+    open() {
+      const req = { onerror: null as null | (() => void), error: new Error('open failed') };
+      queueMicrotask(() => req.onerror?.());
+      return req as unknown as IDBOpenDBRequest;
+    },
+  } as unknown as IDBFactory;
+}
+
+describe('createTrackStore', () => {
+  it('appends, reads all, and clears with the in-memory fallback (no indexedDB)', async () => {
     const store = createTrackStore<Point>(undefined);
     await store.append({ t: 1 });
     await store.append({ t: 2 });
@@ -15,10 +26,10 @@ describe('createTrackStore (in-memory fallback when indexedDB is absent)', () =>
     expect(await store.all()).toEqual([]);
   });
 
-  it('replace swaps the whole log', async () => {
-    const store = createTrackStore<Point>(undefined);
-    await store.append({ t: 1 });
-    await store.replace([{ t: 5 }, { t: 6 }]);
-    expect((await store.all()).map((x) => x.t)).toEqual([5, 6]);
+  it('degrades to an in-memory log when indexedDB fails to open, never throwing', async () => {
+    const store = createTrackStore<Point>(failingFactory());
+    expect(await store.all()).toEqual([]);
+    await store.append({ t: 7 });
+    expect((await store.all()).map((x) => x.t)).toEqual([7]);
   });
 });
