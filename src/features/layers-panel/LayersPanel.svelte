@@ -1,5 +1,6 @@
 <script lang="ts">
 import { Pin, X } from '@lucide/svelte';
+import type { LayerListItem } from '$shared/map';
 import LayerRow from './LayerRow.svelte';
 import type { LayersView } from './layers-view.svelte';
 
@@ -12,6 +13,12 @@ const { view, onClose }: Props = $props();
 
 const pinned = $derived(view.items.filter((item) => item.pinned));
 const movable = $derived(view.items.filter((item) => !item.pinned));
+
+// Group the movable rows into charts-and-depth versus the live overlays so the list reads as
+// organized. Reorder still operates on the live order; a header marks each category change.
+function categoryOf(item: LayerListItem): string {
+  return item.band === 'basemap' || item.band === 'bathymetry' ? 'Charts & Depth' : 'Overlays';
+}
 
 let listEl = $state<HTMLUListElement>();
 
@@ -123,7 +130,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
           {#each pinned as item (item.id)}
             <li class="pinned-row">
               <span class="pin" aria-hidden="true"><Pin size={16} /></span>
-              <span class="title">{item.title}</span>
+              <span class="title" title={item.title}>{item.title}</span>
               <span class="on-top">On top</span>
             </li>
           {/each}
@@ -133,6 +140,9 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
       <ul class="rows" bind:this={listEl}>
         {#each movable as item, i (item.id)}
           {@const indicator = indicatorFor(item.id)}
+          {#if i === 0 || categoryOf(movable[i - 1]) !== categoryOf(item)}
+            <li class="group-label" aria-hidden="true">{categoryOf(item)}</li>
+          {/if}
           <LayerRow
             {item}
             {view}
@@ -246,6 +256,18 @@ header h2 {
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);
   color: var(--text-muted);
+}
+.group-label {
+  margin-block-start: 0.35rem;
+  padding-inline: 0.2rem;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+.group-label:first-child {
+  margin-block-start: 0;
 }
 @media (max-width: 600px) {
   .layers-panel {

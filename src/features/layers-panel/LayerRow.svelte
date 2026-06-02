@@ -53,7 +53,7 @@ const percent = $derived(Math.round(item.opacity * 100));
         checked={item.visible}
         onchange={(e) => view.toggle(item.id, e.currentTarget.checked)}
       >
-      <span class="title">{item.title}</span>
+      <span class="title" title={item.title}>{item.title}</span>
     </label>
   </div>
   {#if item.supportsOpacity}
@@ -141,9 +141,7 @@ const percent = $derived(Math.round(item.opacity * 100));
   accent-color: var(--accent);
 }
 .title {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 .opacity-line {
   display: flex;

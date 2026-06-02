@@ -27,7 +27,9 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
     ],
     tileSize: 256,
     minzoom: 0,
-    maxzoom: 9,
+    // GEBCO is a coarse ~450 m global grid; this cap keeps the WMS rendering crisp rather than
+    // upscaling low tiles into a blur. For real inshore detail use BlueTopo, EMODnet, or the ENC.
+    maxzoom: 12,
     attribution: 'GEBCO_2024 Grid, GEBCO Compilation Group (2024)',
   },
   {

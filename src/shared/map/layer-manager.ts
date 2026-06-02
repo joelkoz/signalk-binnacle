@@ -1,6 +1,6 @@
 import type { MapThemePaint } from './map-theme';
 import { installSentinels, sentinelId } from './sentinels';
-import { type OverlayContext, type OverlayModule, Z_ORDER } from './types';
+import { type OverlayContext, type OverlayModule, Z_ORDER, type ZBand } from './types';
 
 export interface OverlayState {
   visible: boolean;
@@ -18,6 +18,8 @@ export interface LayerListItem {
   supportsOpacity: boolean;
   // A pinned layer (own vessel, active alarms) is locked to the top and cannot be reordered.
   pinned: boolean;
+  // The overlay's z-band, used by the panel to group charts and depth apart from live overlays.
+  band: ZBand;
 }
 
 interface LayerManagerOptions {
@@ -199,6 +201,7 @@ export class LayerManager {
             opacity: state.opacity,
             supportsOpacity: module.supportsOpacity,
             pinned: this.#pinned.includes(id),
+            band: module.band,
           },
         ];
       });
