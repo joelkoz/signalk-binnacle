@@ -16,6 +16,7 @@ import {
   applyBaseTheme,
   baseStyleUrl,
   beforeIdFor,
+  captureBaseTheme,
   createChartOverlay,
   installSentinels,
   LayerManager,
@@ -23,6 +24,7 @@ import {
   mapThemePaint,
   type OverlayContext,
   registerPmtilesProtocol,
+  restoreBaseTheme,
 } from '$shared/map';
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
 import { type SignalKStore, serverOrigin } from '$shared/signalk';
@@ -148,11 +150,17 @@ onMount(() => {
     view.refresh();
     onReady?.(view);
 
+    // Snapshot the source style's own colors now, before any recolor, so the day theme can
+    // restore the real map rather than approximate it.
+    const baseColors = captureBaseTheme(mapInstance, mapThemePaint('day'));
+
     const recolor = (theme: Theme) => {
       const paint = mapThemePaint(theme);
-      // Recolor the base map (background, water, landcover, roads, boundaries, labels).
-      // Each overlay, including the chart, recolors its own layers via applyTheme below.
-      applyBaseTheme(mapInstance, paint);
+      // Day shows the source style's real colors; dusk and night-red recolor the base map
+      // (background, water, landcover, roads, boundaries, labels). Each overlay, including the
+      // chart, recolors its own layers via applyTheme below.
+      if (theme === 'day') restoreBaseTheme(mapInstance, baseColors);
+      else applyBaseTheme(mapInstance, paint);
       manager?.applyTheme(paint);
     };
     onMapReady?.(recolor);

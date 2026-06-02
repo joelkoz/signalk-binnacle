@@ -96,3 +96,60 @@ export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
     }
   }
 }
+
+// The source style's own paint, captured per base layer so the day theme can restore the real
+// map colors exactly rather than approximate them. Each entry keeps the property the theme would
+// recolor, its original color, the original text-halo (labels), and whether a fill pattern was
+// present. Capture once before the first recolor, while the layers still hold their source paint.
+export type BaseSnapshot = Array<{
+  id: string;
+  property: string;
+  color: unknown;
+  halo?: unknown;
+  pattern?: unknown;
+  isFill?: boolean;
+}>;
+
+export function captureBaseTheme(map: MapLibreMap, paint: MapThemePaint): BaseSnapshot {
+  const snapshot: BaseSnapshot = [];
+  let layers: BaseLayer[];
+  try {
+    layers = (map.getStyle().layers ?? []) as BaseLayer[];
+  } catch {
+    return snapshot;
+  }
+  for (const layer of layers) {
+    if (MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix))) continue;
+    const themed = baseLayerPaint(layer, paint);
+    if (!themed) continue;
+    try {
+      const isFill = layer.type === 'fill';
+      snapshot.push({
+        id: layer.id,
+        property: themed.property,
+        color: map.getPaintProperty(layer.id, themed.property),
+        halo:
+          layer.type === 'symbol' ? map.getPaintProperty(layer.id, 'text-halo-color') : undefined,
+        pattern: isFill ? map.getLayoutProperty(layer.id, 'fill-pattern') : undefined,
+        isFill,
+      });
+    } catch {
+      // A layer without the property is fine; skip it.
+    }
+  }
+  return snapshot;
+}
+
+// Restore the source style's captured colors, halos, and fill patterns, so the day theme shows
+// the real map instead of the recolor approximation.
+export function restoreBaseTheme(map: MapLibreMap, snapshot: BaseSnapshot): void {
+  for (const entry of snapshot) {
+    try {
+      map.setPaintProperty(entry.id, entry.property, entry.color);
+      if (entry.halo !== undefined) map.setPaintProperty(entry.id, 'text-halo-color', entry.halo);
+      if (entry.isFill) map.setLayoutProperty(entry.id, 'fill-pattern', entry.pattern);
+    } catch {
+      // A layer that no longer exists or lacks the property is fine; skip it.
+    }
+  }
+}
