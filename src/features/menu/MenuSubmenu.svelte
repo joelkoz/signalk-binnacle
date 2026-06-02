@@ -12,6 +12,9 @@ const { label, icon, children }: Props = $props();
 
 // Submenus start collapsed; the menu is minimal until you drill into a section.
 let expanded = $state(false);
+
+// Tie the trigger to its content region for assistive tech.
+const contentId = $derived(`submenu-${label.toLowerCase().replace(/\s+/g, '-')}`);
 </script>
 
 <div class="submenu">
@@ -19,6 +22,7 @@ let expanded = $state(false);
     type="button"
     class="submenu-trigger"
     aria-expanded={expanded}
+    aria-controls={contentId}
     onclick={() => (expanded = !expanded)}
   >
     {#if icon}
@@ -33,7 +37,7 @@ let expanded = $state(false);
     {/if}
   </button>
   {#if expanded}
-    <div class="submenu-content">{@render children()}</div>
+    <div class="submenu-content" id={contentId}>{@render children()}</div>
   {/if}
 </div>
 

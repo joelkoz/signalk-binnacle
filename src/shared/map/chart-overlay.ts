@@ -75,6 +75,9 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
           ctx.map.addLayer(layer, ctx.beforeIdFor(BAND));
         }
       }
+      // A chart with no sources (the empty mapstyleJSON specs) has nothing to cap, so skip
+      // the listener entirely rather than waiting forever on an undefined source id.
+      if (!chartSource) return;
       // Clear any listener left by a prior add (the reattach path) before installing a
       // new one, so the handler reference cannot be orphaned.
       if (onSourceData) {

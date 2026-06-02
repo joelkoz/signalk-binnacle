@@ -3,20 +3,20 @@ import type { Path } from './types';
 // Signal K is SI: angles in radians, speed in m/s, depth in meters, temperature
 // in Kelvin. navigation.position is the exception: decimal degrees.
 export const SK_PATHS = {
-  position: 'navigation.position' as Path,
-  headingTrue: 'navigation.headingTrue' as Path,
-  headingMagnetic: 'navigation.headingMagnetic' as Path,
-  courseOverGroundTrue: 'navigation.courseOverGroundTrue' as Path,
-  speedOverGround: 'navigation.speedOverGround' as Path,
-  speedThroughWater: 'navigation.speedThroughWater' as Path,
-  depthBelowTransducer: 'environment.depth.belowTransducer' as Path,
-  windSpeedApparent: 'environment.wind.speedApparent' as Path,
-  windAngleApparent: 'environment.wind.angleApparent' as Path,
-  closestApproach: 'navigation.closestApproach' as Path,
-  navigationState: 'navigation.state' as Path,
-  name: 'name' as Path,
-  mmsi: 'mmsi' as Path,
-  aisShipType: 'design.aisShipType' as Path,
-} as const;
+  position: 'navigation.position',
+  headingTrue: 'navigation.headingTrue',
+  headingMagnetic: 'navigation.headingMagnetic',
+  courseOverGroundTrue: 'navigation.courseOverGroundTrue',
+  speedOverGround: 'navigation.speedOverGround',
+  speedThroughWater: 'navigation.speedThroughWater',
+  depthBelowTransducer: 'environment.depth.belowTransducer',
+  windSpeedApparent: 'environment.wind.speedApparent',
+  windAngleApparent: 'environment.wind.angleApparent',
+  closestApproach: 'navigation.closestApproach',
+  navigationState: 'navigation.state',
+  name: 'name',
+  mmsi: 'mmsi',
+  aisShipType: 'design.aisShipType',
+} as const satisfies Record<string, Path>;
 
 export type SkPathKey = keyof typeof SK_PATHS;

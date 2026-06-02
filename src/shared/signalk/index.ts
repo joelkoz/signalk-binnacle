@@ -17,3 +17,4 @@ export type {
   SubscribeEntry,
   SubscribePolicy,
 } from './types';
+export { SELF_CONTEXT } from './types';

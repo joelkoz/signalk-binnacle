@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { CollisionAssessment } from '$entities/collision';
-import { metersToNauticalMiles } from '$shared/lib';
+import { formatCpaNm, formatTcpaMin } from '$shared/lib';
 
 interface Props {
   collision: CollisionAssessment;
@@ -14,14 +14,6 @@ const contacts = $derived(collision.assessment.contacts);
 const top = $derived(contacts.slice(0, MAX_ROWS));
 const overflow = $derived(Math.max(0, contacts.length - MAX_ROWS));
 const computedFallback = $derived(contacts.some((c) => c.source === 'computed'));
-
-function nm(meters: number): string {
-  return (metersToNauticalMiles(meters) ?? 0).toFixed(2);
-}
-
-function minutes(seconds: number): string {
-  return (seconds / 60).toFixed(1);
-}
 </script>
 
 {#if contacts.length > 0 && !collision.suppressed}
@@ -37,8 +29,8 @@ function minutes(seconds: number): string {
       {#each top as contact (contact.id)}
         <li class="row {contact.severity}">
           <span class="name">{contact.name || contact.id}</span>
-          <span class="metric">CPA <b>{nm(contact.cpaMeters)}</b> nm</span>
-          <span class="metric">TCPA <b>{minutes(contact.tcpaSeconds)}</b> min</span>
+          <span class="metric">CPA <b>{formatCpaNm(contact.cpaMeters)}</b> nm</span>
+          <span class="metric">TCPA <b>{formatTcpaMin(contact.tcpaSeconds, 1)}</b> min</span>
         </li>
       {/each}
     </ul>

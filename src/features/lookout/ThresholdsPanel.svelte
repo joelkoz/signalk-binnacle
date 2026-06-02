@@ -1,5 +1,5 @@
 <script lang="ts">
-import { metersToNauticalMiles, nauticalMilesToMeters } from '$shared/lib';
+import { formatCpaNm, formatTcpaMin, nauticalMilesToMeters } from '$shared/lib';
 import { DEFAULT_THRESHOLDS, type PersistedValue, type Thresholds } from '$shared/settings';
 
 interface Props {
@@ -23,8 +23,8 @@ function setSeconds(key: 'dangerTcpaSeconds' | 'warningTcpaSeconds', minutes: nu
   thresholds.set({ ...thresholds.value, [key]: minutes * 60 });
 }
 
-const nm = (meters: number): string => (metersToNauticalMiles(meters) ?? 0).toFixed(2);
-const min = (seconds: number): string => (seconds / 60).toFixed(0);
+const nm = (meters: number): string => formatCpaNm(meters);
+const min = (seconds: number): string => formatTcpaMin(seconds);
 </script>
 
 <div class="thresholds" aria-label="Collision thresholds">

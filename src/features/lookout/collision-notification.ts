@@ -1,5 +1,5 @@
 import type { Assessment } from '$entities/collision';
-import { metersToNauticalMiles } from '$shared/lib';
+import { formatCpaNm, formatTcpaMin } from '$shared/lib';
 
 // The Signal K path Binnacle publishes its collision alert to, so other clients and
 // devices on the boat see the same alarm.
@@ -16,13 +16,15 @@ export interface SkNotification {
 // The Signal K notification value for the current assessment. Danger raises an alarm with
 // sound, a warning is a visual warn, and clear resets to normal.
 export function buildNotification(assessment: Assessment): SkNotification {
+  // worst is 'clear' exactly when there is no contact (assessContacts drops clear contacts),
+  // so the empty check both clears the alert and narrows the type for the fields below.
   const top = assessment.contacts[0];
-  if (assessment.worst === 'clear' || !top) {
+  if (!top) {
     return { state: 'normal', method: [], message: 'No collision risk' };
   }
   const name = top.name || top.id;
-  const cpa = (metersToNauticalMiles(top.cpaMeters) ?? 0).toFixed(2);
-  const tcpa = (top.tcpaSeconds / 60).toFixed(0);
+  const cpa = formatCpaNm(top.cpaMeters);
+  const tcpa = formatTcpaMin(top.tcpaSeconds);
   const danger = assessment.worst === 'danger';
   return {
     state: danger ? 'alarm' : 'warn',

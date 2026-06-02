@@ -74,7 +74,8 @@ export interface SignalKClientApi {
   subscribe(entries: SubscribeEntry[]): Promise<void>;
   unsubscribe(paths: Path[], context?: Context): Promise<void>;
   // Send a client delta to the server (e.g. to publish a notification). Dropped if the
-  // socket is not open; harmless because the producer republishes on the next change.
+  // socket is not open, with no transport-level replay; the producer resends on its next
+  // changed value.
   publish(delta: Delta): Promise<void>;
   disconnect(): Promise<void>;
 }

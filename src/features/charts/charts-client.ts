@@ -13,8 +13,11 @@ async function tryFetch(url: string, token?: string): Promise<SignalKChart[] | u
       console.warn(`[charts] ${url} returned ${response.status}`);
       return undefined;
     }
-    const body = (await response.json()) as Record<string, SignalKChart>;
-    return Object.values(body);
+    const body = await response.json();
+    // The resources API returns a keyed object; guard against an error envelope or array
+    // arriving with a 200 so a malformed shape does not flow on as bogus charts.
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
+    return Object.values(body as Record<string, SignalKChart>);
   } catch {
     return undefined;
   }

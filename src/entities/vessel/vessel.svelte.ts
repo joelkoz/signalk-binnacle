@@ -1,4 +1,4 @@
-import { metersPerSecondToKnots, radiansToDegrees } from '$shared/lib';
+import { metersPerSecondToKnots, radiansToBearing } from '$shared/lib';
 import { asNumber, isLatLon, type LatLon, type SignalKStore, SK_PATHS } from '$shared/signalk';
 
 export class OwnVessel {
@@ -25,11 +25,11 @@ export class OwnVessel {
   }
 
   get cogDegrees(): number | undefined {
-    return radiansToDegrees(asNumber(this.#raw(SK_PATHS.courseOverGroundTrue)));
+    return radiansToBearing(asNumber(this.#raw(SK_PATHS.courseOverGroundTrue)));
   }
 
   get headingDegrees(): number | undefined {
-    return radiansToDegrees(asNumber(this.#raw(SK_PATHS.headingTrue)));
+    return radiansToBearing(asNumber(this.#raw(SK_PATHS.headingTrue)));
   }
 
   get position(): LatLon | undefined {

@@ -16,7 +16,8 @@ export function chartSourceId(identifier: string): string {
 }
 
 function absolute(url: string, base: string): string {
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // Pass through absolute and protocol-relative (//host/path) URLs; only join true relatives.
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) return url;
   return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 

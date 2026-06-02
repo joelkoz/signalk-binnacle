@@ -84,6 +84,18 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- Whole-repo cleanup pass (audit, cross-verify, fix). The collision assessment is memoized with
+  `$derived`, so the O(targets) CPA loop runs once per real change instead of several times per
+  frame (it was recomputed on every animation frame by the overlay and twice per alarm tick). CPA
+  and TCPA display formatting is centralized in `shared/lib` (`formatCpaNm`, `formatTcpaMin`). The
+  Signal K socket gates every handler on still being the current socket, so a superseded socket
+  cannot inject a delta or schedule a second reconnect. POI classification is case-insensitive, the
+  notes overlay skips per-frame work when the map is idle, the layers view updates one item in place
+  instead of rebuilding the list on every slider tick, the menu submenu is tied to its content with
+  `aria-controls`, and the empty-spec chart overlay no longer installs a dangling listener. Renamed
+  `radiansToDegrees` to `radiansToBearing` (it normalizes to 0..360), exported `SELF_CONTEXT`, and
+  added `nauticalMilesToMeters`. No behavior change beyond the perf and robustness fixes.
+
 - The layers controls (per-layer visibility and opacity) moved off the chart into the app menu.
   They were a panel floating over the top-left of the map; they now live in a collapsible "Layers"
   submenu inside the menu, so the chart is unobstructed and the controls share one place with other

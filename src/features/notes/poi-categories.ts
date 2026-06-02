@@ -131,9 +131,11 @@ const CATEGORY_LABEL: Record<PoiCategory, string> = {
 
 export function categoryForSkIcon(skIcon: string | undefined): PoiCategory {
   if (!skIcon) return 'generic';
-  const exact = SKICON_CATEGORY[skIcon];
-  if (exact) return exact;
+  // Lowercase once: the exact table and keyword needles are all lowercase, so a capitalized
+  // provider variant still classifies instead of falling through to a generic pin.
   const lower = skIcon.toLowerCase();
+  const exact = SKICON_CATEGORY[lower];
+  if (exact) return exact;
   for (const [needle, category] of KEYWORD_CATEGORY) {
     if (lower.includes(needle)) return category;
   }

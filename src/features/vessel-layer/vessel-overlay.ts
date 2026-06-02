@@ -15,6 +15,9 @@ export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
   let lastLat: number | undefined;
   let lastHeading: number | undefined;
 
+  // Heading drives icon-rotate, falling back to course over ground, then north.
+  const resolveHeading = (): number => vessel.headingDegrees ?? vessel.cogDegrees ?? 0;
+
   function featureCollection(): GeoJSON.FeatureCollection {
     const position = vessel.position;
     if (!position) return emptyCollection();
@@ -24,7 +27,7 @@ export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
         {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [position.longitude, position.latitude] },
-          properties: { heading: vessel.headingDegrees ?? vessel.cogDegrees ?? 0 },
+          properties: { heading: resolveHeading() },
         },
       ],
     };
@@ -34,7 +37,7 @@ export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
     const position = vessel.position;
     const lon = position?.longitude;
     const lat = position?.latitude;
-    const heading = position ? (vessel.headingDegrees ?? vessel.cogDegrees ?? 0) : undefined;
+    const heading = position ? resolveHeading() : undefined;
     if (lon === lastLon && lat === lastLat && heading === lastHeading) return false;
     lastLon = lon;
     lastLat = lat;

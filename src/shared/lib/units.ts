@@ -14,9 +14,9 @@ export function knotsToMetersPerSecond(value: number): number {
   return value / MS_TO_KNOTS;
 }
 
-// Normalizes to a 0..360 compass bearing, so this is for bearings (COG, heading,
-// variation), not arbitrary signed angles.
-export function radiansToDegrees(value: number | null | undefined): number | undefined {
+// Radians to a 0..360 compass bearing (COG, heading). The 0..360 normalization is the reason
+// this is bearing-specific; it must not be reused for an arbitrary signed angle.
+export function radiansToBearing(value: number | null | undefined): number | undefined {
   if (value == null) return undefined;
   return (value * DEG_PER_RAD + 360) % 360;
 }
@@ -31,4 +31,14 @@ export function metersToNauticalMiles(value: number | null | undefined): number 
 
 export function nauticalMilesToMeters(value: number): number {
   return value * METERS_PER_NAUTICAL_MILE;
+}
+
+// Display-edge formatters for the collision metrics: CPA in nautical miles, TCPA in minutes.
+// Centralized so the conversion and rounding do not drift across the readouts that show them.
+export function formatCpaNm(meters: number, digits = 2): string {
+  return (metersToNauticalMiles(meters) ?? 0).toFixed(digits);
+}
+
+export function formatTcpaMin(seconds: number, digits = 0): string {
+  return (seconds / 60).toFixed(digits);
 }

@@ -1,6 +1,7 @@
 import { type Rgba, rasterIcon } from '$shared/map';
 
-export const AIS_ICON_ID = 'binnacle-ais';
+// Distinct from the AIS source id ('binnacle-ais'): this is the map image id.
+export const AIS_ICON_ID = 'binnacle-ais-icon';
 const SIZE = 28;
 
 // A hollow triangle for AIS targets, distinct from the filled own-vessel icon,

@@ -29,17 +29,24 @@ export class SkConnection {
     this.#emit('connecting');
     const ws = new WebSocket(withQuery(this.#url, 'subscribe=none'));
     this.#ws = ws;
+    // Gate every handler on still being the current socket, so a superseded socket (after a
+    // reconnect) cannot inject a delta or schedule a second reconnect from its stale closures.
     ws.onopen = () => {
+      if (this.#ws !== ws) return;
       this.#attempt = 0;
       this.#emit('open');
       this.#handlers.onOpen?.();
     };
-    ws.onmessage = (event: MessageEvent) => this.#handlers.onDelta(event.data as string);
+    ws.onmessage = (event: MessageEvent) => {
+      if (this.#ws === ws) this.#handlers.onDelta(event.data as string);
+    };
     ws.onclose = () => {
-      if (this.#stopped) return;
+      if (this.#ws !== ws || this.#stopped) return;
       this.#scheduleReconnect();
     };
-    ws.onerror = () => ws.close();
+    ws.onerror = () => {
+      if (this.#ws === ws) ws.close();
+    };
   }
 
   send(message: unknown): void {

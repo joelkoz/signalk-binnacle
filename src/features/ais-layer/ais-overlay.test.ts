@@ -78,6 +78,6 @@ describe('ais overlay', () => {
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     overlay.applyTheme?.(ctxFor(map), mapThemePaint('night-red'));
-    expect(map.updatedImages).toContain('binnacle-ais');
+    expect(map.updatedImages).toContain('binnacle-ais-icon');
   });
 });

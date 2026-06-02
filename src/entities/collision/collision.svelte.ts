@@ -103,6 +103,19 @@ export class CollisionAssessment {
   // severe contact re-arms the alert automatically. Full mute lifecycle is Lookout step 4.
   #ackSignature = $state<string | null>(null);
 
+  // Memoized so the O(targets) CPA loop runs once per real change, not once per read. The
+  // assessment is read several times per frame (alarm, notifier, danger strip, overlay), and
+  // the overlay reads it every animation frame; $derived recomputes only when traffic, the
+  // own fix, or the thresholds actually change. The version read tracks the non-reactive Map.
+  #assessment = $derived.by<Assessment>(() => {
+    void this.#targets.version;
+    const position = this.#vessel.position;
+    const own = position
+      ? { position, sogKnots: this.#vessel.sogKnots ?? 0, cogDegrees: this.#vessel.cogDegrees ?? 0 }
+      : undefined;
+    return assessContacts(own, this.#targets.list(), this.#thresholds.value);
+  });
+
   constructor(vessel: OwnVessel, targets: AisTargets, thresholds: PersistedValue<Thresholds>) {
     this.#vessel = vessel;
     this.#targets = targets;
@@ -110,14 +123,7 @@ export class CollisionAssessment {
   }
 
   get assessment(): Assessment {
-    // Take a reactive dependency on AIS updates; list() iterates a non-reactive Map, so
-    // without this read a reactive consumer would not re-render when traffic changes.
-    void this.#targets.version;
-    const position = this.#vessel.position;
-    const own = position
-      ? { position, sogKnots: this.#vessel.sogKnots ?? 0, cogDegrees: this.#vessel.cogDegrees ?? 0 }
-      : undefined;
-    return assessContacts(own, this.#targets.list(), this.#thresholds.value);
+    return this.#assessment;
   }
 
   // True when the current worst contact has been acknowledged and has not since changed.

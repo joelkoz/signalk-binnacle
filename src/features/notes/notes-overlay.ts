@@ -24,6 +24,8 @@ const MIN_ZOOM = 9;
 // Past this zoom each point unclusters and shows its own icon.
 const CLUSTER_MAX_ZOOM = 13;
 const CLUSTER_RADIUS = 48;
+// Cluster disc translucency, shared by the base paint and the opacity slider math.
+const CLUSTER_OPACITY = 0.85;
 
 interface NotesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -121,8 +123,12 @@ function popupContent(props: Record<string, unknown>): HTMLElement {
 
 export function createNotesOverlay(serverBase: string, token: string | undefined): NotesOverlay {
   // Refetch only when the viewport key changes (coarse so a small pan does not refetch),
-  // and never while a fetch is in flight.
+  // and never while a fetch is in flight. The raw zoom/center are tracked too, for a cheap
+  // idle fast-path that skips the per-frame key build when the map has not moved at all.
   let lastKey: string | undefined;
+  let lastZoom: number | undefined;
+  let lastLng: number | undefined;
+  let lastLat: number | undefined;
   let fetching = false;
   let popup: Popup | undefined;
   let onClick: ((event: MapLayerMouseEvent) => void) | undefined;
@@ -193,7 +199,7 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
         minzoom: MIN_ZOOM,
         paint: {
           'circle-color': paint.note,
-          'circle-opacity': 0.85,
+          'circle-opacity': CLUSTER_OPACITY,
           'circle-stroke-color': paint.background,
           'circle-stroke-width': 1.5,
           'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 50, 24],
@@ -288,6 +294,12 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
     sync(ctx) {
       if (fetching) return;
       const zoom = ctx.map.getZoom();
+      const center = ctx.map.getCenter();
+      // Idle fast-path: nothing moved since the last sync, so skip the key build entirely.
+      if (zoom === lastZoom && center.lng === lastLng && center.lat === lastLat) return;
+      lastZoom = zoom;
+      lastLng = center.lng;
+      lastLat = center.lat;
       if (zoom < MIN_ZOOM) {
         if (lastKey !== 'lowzoom') {
           lastKey = 'lowzoom';
@@ -295,7 +307,6 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
         }
         return;
       }
-      const center = ctx.map.getCenter();
       const key = `${zoom.toFixed(0)}|${center.lng.toFixed(2)}|${center.lat.toFixed(2)}`;
       if (key === lastKey) return;
       lastKey = key;
@@ -327,7 +338,7 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(LAYER_ID, 'icon-opacity', opacity);
       ctx.map.setPaintProperty(LAYER_ID, 'text-opacity', opacity);
-      ctx.map.setPaintProperty(CLUSTER_LAYER, 'circle-opacity', opacity * 0.85);
+      ctx.map.setPaintProperty(CLUSTER_LAYER, 'circle-opacity', opacity * CLUSTER_OPACITY);
       ctx.map.setPaintProperty(CLUSTER_LAYER, 'circle-stroke-opacity', opacity);
       ctx.map.setPaintProperty(CLUSTER_COUNT_LAYER, 'text-opacity', opacity);
       ctx.map.setPaintProperty(SELECT_LAYER, 'circle-stroke-opacity', opacity);

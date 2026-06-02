@@ -21,13 +21,18 @@ export class LayersView {
     this.items = this.#manager.layers();
   }
 
+  // Mutate the one changed item in place rather than rebuilding the whole array, so a slider
+  // drag (a stream of oninput events) does not reallocate the list on every pixel. $state is
+  // deeply reactive, so the in-place field write still updates the UI.
   toggle(id: string, visible: boolean): void {
     this.#manager.toggle(id, visible);
-    this.refresh();
+    const item = this.items.find((i) => i.id === id);
+    if (item) item.visible = visible;
   }
 
   setOpacity(id: string, opacity: number): void {
     this.#manager.setOpacity(id, opacity);
-    this.refresh();
+    const item = this.items.find((i) => i.id === id);
+    if (item) item.opacity = opacity;
   }
 }

@@ -41,12 +41,14 @@ What is in place now:
 - A MapLibre GL map with a vector base and an extensible layer manager, with the own vessel
   drawn as a GPU symbol layer that rotates with heading.
 - Chart layers discovered from the Signal K server's `/resources/charts` API, rendered through
-  a generic adapter and controlled from a layers panel (per-layer toggle and opacity).
+  a generic adapter and controlled from the app menu (per-layer toggle and opacity).
 - AIS targets: other vessels render as GPU symbols in the traffic band, rotate with course, age
   out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
-- A collision danger strip (the first slice of the active-safety Lookout feature) that surfaces the
-  most dangerous AIS contacts with closest point of approach and time to closest approach, computing
-  them on the client when no Signal K provider supplies them, and staying dark when nothing is close.
+- The active-safety Lookout feature: a collision danger strip with chart-highlight rings, an audible
+  alarm, editable CPA and TCPA thresholds, and a published `notifications.navigation.collision` so
+  other Signal K clients share the alarm. It surfaces the most dangerous AIS contacts with closest
+  point of approach and time to closest approach, computing them on the client when no Signal K
+  provider supplies them, and stays dark when nothing is close.
 - Day, dusk, and night-red themes switched from a top-bar toggle, recoloring the chrome and the
   map base; night-red is pure red on true black to preserve dark adaptation on a night watch.
 - Identity: self-hosted Inter and JetBrains Mono typography (offline-first, with tabular numeric

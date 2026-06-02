@@ -23,6 +23,7 @@ import type { Context } from '$shared/signalk';
 import {
   AuthController,
   createSignalKClient,
+  SELF_CONTEXT,
   SignalKStore,
   SK_PATHS,
   serverOrigin,
@@ -46,7 +47,7 @@ const alarmMuted = new PersistedValue<boolean>('binnacle:alarm-muted', false);
 // Publish the collision alert to Signal K so other clients and devices share it.
 const collisionNotifier = new CollisionNotifier(
   (path, value) =>
-    void client.publish({ context: 'vessels.self', updates: [{ values: [{ path, value }] }] }),
+    void client.publish({ context: SELF_CONTEXT, updates: [{ values: [{ path, value }] }] }),
 );
 
 let layersView = $state<LayersView | undefined>();
@@ -160,7 +161,7 @@ onDestroy(() => {
   if (accessTimer) clearTimeout(accessTimer);
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   window.removeEventListener('pointerdown', primeAudio);
-  lookoutAlarm.update('clear', false, false);
+  lookoutAlarm.stop();
   auth.stop();
   net.dispose();
   void client.disconnect();

@@ -19,4 +19,9 @@ export class LookoutAlarm {
     if (worst === 'danger' && !suppressed && !muted) this.#alarm.start(DANGER_TONE);
     else this.#alarm.stop();
   }
+
+  // Silence the alarm outright (e.g. on teardown).
+  stop(): void {
+    this.#alarm.stop();
+  }
 }

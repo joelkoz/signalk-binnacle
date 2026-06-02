@@ -58,8 +58,9 @@ export class WorkerCore {
     this.#registry?.remove(paths, context);
   }
 
-  // Send a client delta to the server. The connection drops the send when the socket is
-  // not open, which is safe: the producer republishes on the next state change.
+  // Send a client delta to the server. The connection drops the send when the socket is not
+  // open. Unlike subscriptions, a published delta has no transport-level replay on reconnect,
+  // so a delta sent mid-reconnect is lost until the producer next publishes a changed value.
   publish(delta: Delta): void {
     this.#connection?.send(delta);
   }

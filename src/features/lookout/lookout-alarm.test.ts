@@ -42,4 +42,10 @@ describe('LookoutAlarm', () => {
     new LookoutAlarm(fake).prime();
     expect(fake.events).toEqual(['prime']);
   });
+
+  it('stop() silences the alarm', () => {
+    const fake = new FakeAlarm();
+    new LookoutAlarm(fake).stop();
+    expect(fake.events).toEqual(['stop']);
+  });
 });

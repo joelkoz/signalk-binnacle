@@ -1,4 +1,4 @@
-import { metersPerSecondToKnots, radiansToDegrees } from '$shared/lib';
+import { metersPerSecondToKnots, radiansToBearing } from '$shared/lib';
 import type { LatLon, SignalKStore } from '$shared/signalk';
 import { asNumber, isLatLon, SK_PATHS } from '$shared/signalk';
 
@@ -45,8 +45,8 @@ export class AisTargets {
         id,
         name: typeof name === 'string' ? name : undefined,
         position,
-        cogDegrees: radiansToDegrees(asNumber(target.values.get(SK_PATHS.courseOverGroundTrue))),
-        headingDegrees: radiansToDegrees(asNumber(target.values.get(SK_PATHS.headingTrue))),
+        cogDegrees: radiansToBearing(asNumber(target.values.get(SK_PATHS.courseOverGroundTrue))),
+        headingDegrees: radiansToBearing(asNumber(target.values.get(SK_PATHS.headingTrue))),
         sogKnots: metersPerSecondToKnots(asNumber(target.values.get(SK_PATHS.speedOverGround))),
         shipTypeId: this.#numField(target.values.get(SK_PATHS.aisShipType), 'id'),
         cpaMeters: this.#numField(approach, 'distance'),
