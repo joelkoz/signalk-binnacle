@@ -18,6 +18,7 @@ import {
   baseStyleUrl,
   beforeIdFor,
   captureBaseTheme,
+  chartSourceId,
   createChartOverlay,
   installSentinels,
   LayerManager,
@@ -30,7 +31,7 @@ import {
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
 import { type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
-import type { MapCommands } from './commands';
+import type { MapCommands, UserChartRegistrar } from './commands';
 
 interface Props {
   store: SignalKStore;
@@ -53,6 +54,7 @@ interface Props {
   onReady?: (view: LayersView) => void;
   onMapReady?: (recolor: (theme: Theme) => void) => void;
   onCommandsReady?: (commands: MapCommands) => void;
+  onUserChartsReady?: (registrar: UserChartRegistrar) => void;
   onViewChange?: (view: MapView) => void;
   onNoteSelect?: (selection: NoteSelection | undefined) => void;
 }
@@ -74,6 +76,7 @@ const {
   onReady,
   onMapReady,
   onCommandsReady,
+  onUserChartsReady,
   onViewChange,
   onNoteSelect,
 }: Props = $props();
@@ -170,6 +173,19 @@ onMount(() => {
     const view = new LayersView(manager);
     view.refresh();
     onReady?.(view);
+
+    const userChartRegistrar: UserChartRegistrar = {
+      register: async (chart) => {
+        if (destroyed || !manager) return;
+        await manager.register(createChartOverlay(chart, serverOrigin(), 'bathymetry'));
+        view.refresh();
+      },
+      unregister: (identifier) => {
+        manager?.unregister(chartSourceId(identifier));
+        view.refresh();
+      },
+    };
+    onUserChartsReady?.(userChartRegistrar);
 
     // Snapshot the source style's own colors now, before any recolor, so the day theme can
     // restore the real map rather than approximate it.

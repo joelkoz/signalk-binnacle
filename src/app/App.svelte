@@ -4,6 +4,7 @@ import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
+import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
 import { OwnVessel } from '$entities/vessel';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
@@ -53,9 +54,9 @@ import {
   serverOrigin,
   streamUrl,
 } from '$shared/signalk';
-import { createTrackStore } from '$shared/storage';
+import { createPmtilesStore, createTrackStore } from '$shared/storage';
 import { createThemeController, type Theme } from '$shared/ui';
-import { ChartCanvas, type MapCommands } from '$widgets/chart-canvas';
+import { ChartCanvas, type MapCommands, type UserChartRegistrar } from '$widgets/chart-canvas';
 
 const ALL_VESSELS = 'vessels.*' as Context;
 
@@ -109,6 +110,16 @@ const savedView = isMapView(mapViewStore.value) ? mapViewStore.value : undefined
 const layerSettings = new PersistedValue<LayerSettings>('binnacle:layers', {});
 const layerOrder = new PersistedValue<string[]>('binnacle:layer-order', []);
 
+// User-imported PMTiles charts: the descriptor list is persisted, the files live in the browser
+// PMTiles store, and the chart-canvas registers an overlay per source.
+const pmtilesStore = createPmtilesStore();
+const userChartsStore = new PersistedValue<UserChartSource[]>('binnacle:user-charts', []);
+const userCharts = new UserCharts(pmtilesStore, userChartsStore.value, (sources) =>
+  userChartsStore.set(sources),
+);
+let userChartRegistrar = $state<UserChartRegistrar | undefined>();
+const registeredUserCharts = new Map<string, string | undefined>();
+
 // The view changes once per animation frame while panning; persist only after it
 // settles so a drag is one write, not hundreds.
 let viewSaveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -160,6 +171,47 @@ $effect(() => {
   const position = vessel.position;
   if (position) recorder.consider(position.latitude, position.longitude, vessel.sogMps ?? 0);
 });
+
+// Reconcile the registered user-chart overlays with the entity's source list: register an added
+// chart (resolving a stored file to a blob url first), unregister a removed one, and free its blob.
+$effect(() => {
+  const registrar = userChartRegistrar;
+  const sources = userCharts.sources;
+  if (!registrar) return;
+  const wanted = new Set(sources.map((source) => source.id));
+  for (const [id, blobUrl] of registeredUserCharts) {
+    if (wanted.has(id)) continue;
+    registeredUserCharts.delete(id);
+    registrar.unregister(id);
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+  }
+  for (const source of sources) {
+    if (registeredUserCharts.has(source.id)) continue;
+    registeredUserCharts.set(source.id, undefined);
+    void addUserChartOverlay(source, registrar);
+  }
+});
+
+async function addUserChartOverlay(
+  source: UserChartSource,
+  registrar: UserChartRegistrar,
+): Promise<void> {
+  let url: string;
+  if (source.origin.type === 'url') {
+    url = source.origin.url;
+  } else {
+    const blob = await userCharts.resolveBlob(source.origin.storeId);
+    if (!blob) {
+      registeredUserCharts.delete(source.id);
+      return;
+    }
+    const blobUrl = URL.createObjectURL(blob);
+    registeredUserCharts.set(source.id, blobUrl);
+    url = `pmtiles://${blobUrl}`;
+  }
+  await registrar.register(userChartToSignalK(source, url));
+  recolorMap?.(theme.theme);
+}
 
 function bumpSaved(): void {
   savedVersion += 1;
@@ -341,6 +393,7 @@ onDestroy(() => {
         recolor(theme.theme);
       }}
       onCommandsReady={(commands) => (mapCommands = commands)}
+      onUserChartsReady={(registrar) => (userChartRegistrar = registrar)}
       {onViewChange}
       onNoteSelect={(selection) => (selectedNote = selection)}
     />
@@ -357,7 +410,7 @@ onDestroy(() => {
     {/if}
     {#if layersPanelOpen && layersView}
       <div class="layers-panel-slot">
-        <LayersPanel view={layersView} onClose={() => (layersPanelOpen = false)} />
+        <LayersPanel view={layersView} {userCharts} onClose={() => (layersPanelOpen = false)} />
       </div>
     {/if}
   </section>

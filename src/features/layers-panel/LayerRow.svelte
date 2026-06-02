@@ -1,5 +1,5 @@
 <script lang="ts">
-import { GripVertical } from '@lucide/svelte';
+import { GripVertical, Trash2 } from '@lucide/svelte';
 import type { LayerListItem } from '$shared/map';
 import type { LayersView } from './layers-view.svelte';
 
@@ -13,6 +13,8 @@ interface Props {
   dropAfter: boolean;
   onHandlePointerDown: (event: PointerEvent) => void;
   onHandleKeydown: (event: KeyboardEvent) => void;
+  // Present only on a user-imported chart row, which can be deleted.
+  onRemove?: () => void;
 }
 
 const {
@@ -25,6 +27,7 @@ const {
   dropAfter,
   onHandlePointerDown,
   onHandleKeydown,
+  onRemove,
 }: Props = $props();
 
 const percent = $derived(Math.round(item.opacity * 100));
@@ -55,6 +58,11 @@ const percent = $derived(Math.round(item.opacity * 100));
       >
       <span class="title" title={item.title}>{item.title}</span>
     </label>
+    {#if onRemove}
+      <button type="button" class="remove" aria-label={`Remove ${item.title}`} onclick={onRemove}>
+        <Trash2 size={16} aria-hidden="true" />
+      </button>
+    {/if}
   </div>
   {#if item.supportsOpacity && item.visible}
     <div class="opacity-line">
@@ -124,6 +132,22 @@ const percent = $derived(Math.round(item.opacity * 100));
 }
 .handle:hover {
   color: var(--text);
+}
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--control-size);
+  min-block-size: var(--control-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.remove:hover {
+  color: var(--alarm);
 }
 .toggle {
   display: flex;

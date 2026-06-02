@@ -1,18 +1,28 @@
 <script lang="ts">
 import { Pin, X } from '@lucide/svelte';
-import type { LayerListItem } from '$shared/map';
+import type { UserCharts } from '$entities/user-charts';
+import { chartSourceId, type LayerListItem } from '$shared/map';
+import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
 import type { LayersView } from './layers-view.svelte';
 
 interface Props {
   view: LayersView;
+  userCharts?: UserCharts;
   onClose: () => void;
 }
 
-const { view, onClose }: Props = $props();
+const { view, userCharts, onClose }: Props = $props();
 
 const pinned = $derived(view.items.filter((item) => item.pinned));
 const movable = $derived(view.items.filter((item) => !item.pinned));
+
+// The overlay id of each user-imported chart maps back to its source id, so its row can show a
+// remove control and a delete hits the right source.
+const userChartIds = $derived(
+  new Map((userCharts?.sources ?? []).map((source) => [chartSourceId(source.id), source.id])),
+);
+let addOpen = $state(false);
 
 // Group the movable rows into charts-and-depth versus the live overlays so the list reads as
 // organized. Reorder still operates on the live order; a header marks each category change.
@@ -140,6 +150,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
       <ul class="rows" bind:this={listEl}>
         {#each movable as item, i (item.id)}
           {@const indicator = indicatorFor(item.id)}
+          {@const removeId = userChartIds.get(item.id)}
           {#if i === 0 || categoryOf(movable[i - 1]) !== categoryOf(item)}
             <li class="group-label" aria-hidden="true">{categoryOf(item)}</li>
           {/if}
@@ -153,9 +164,21 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
             dropAfter={indicator.after}
             onHandlePointerDown={(e) => handlePointerDown(item.id, e)}
             onHandleKeydown={(e) => handleKeydown(item.id, e)}
+            onRemove={removeId ? () => userCharts?.remove(removeId) : undefined}
           />
         {/each}
       </ul>
+    {/if}
+    {#if userCharts}
+      <div class="add-chart-area">
+        {#if addOpen}
+          <AddChartForm {userCharts} onDone={() => (addOpen = false)} />
+        {:else}
+          <button type="button" class="add-chart" onclick={() => (addOpen = true)}>
+            + Add a chart
+          </button>
+        {/if}
+      </div>
     {/if}
   </div>
 </aside>
@@ -268,6 +291,25 @@ header h2 {
 }
 .group-label:first-child {
   margin-block-start: 0;
+}
+.add-chart-area {
+  margin-block-start: 0.5rem;
+  padding-block-start: 0.5rem;
+  border-block-start: 1px solid var(--border);
+}
+.add-chart {
+  inline-size: 100%;
+  min-block-size: var(--control-size);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.add-chart:hover {
+  border-color: var(--accent);
 }
 @media (max-width: 600px) {
   .layers-panel {
