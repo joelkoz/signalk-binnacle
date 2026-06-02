@@ -9,6 +9,12 @@ import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
 import { AppMenu, type MenuItem, MenuSubmenu } from '$features/menu';
+import {
+  createNoteDetailLoader,
+  type NoteDetailLoader,
+  NoteDetailPanel,
+  type NoteSelection,
+} from '$features/notes';
 import { ThemeToggle } from '$features/theme-toggle';
 import type { SavedTracksSource } from '$features/track-layer';
 import {
@@ -81,6 +87,10 @@ const savedSource: SavedTracksSource = {
 let layersView = $state<LayersView | undefined>();
 let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
+
+// The selected POI and a cache-owning detail loader, both set once auth resolves.
+let selectedNote = $state<NoteSelection | undefined>();
+let noteLoader = $state<NoteDetailLoader | undefined>();
 let mapView = $state<MapView | undefined>();
 let updateReady = $state(false);
 const pwa = registerPwa(() => (updateReady = true));
@@ -197,6 +207,11 @@ function onExportSavedTrack(track: SavedTrack): void {
   downloadGeoJson(track.name, points);
 }
 
+function closeNote(): void {
+  selectedNote = undefined;
+  mapCommands?.clearNoteSelection();
+}
+
 // Browsers block audio until a user gesture; prime the audio context on the first one so
 // the alarm can sound later on its own.
 const primeAudio = () => lookoutAlarm.prime();
@@ -234,6 +249,7 @@ onMount(async () => {
   await waitForAccess();
   const token = auth.token ?? undefined;
   chartsToken = token;
+  noteLoader = createNoteDetailLoader(serverOrigin(), token);
   await client.connect(streamUrl(token), (frame) => store.applyFrame(frame));
   await client.raw.subscribe([
     { path: SK_PATHS.headingTrue, policy: 'instant', minPeriod: 200 },
@@ -318,6 +334,7 @@ onDestroy(() => {
       }}
       onCommandsReady={(commands) => (mapCommands = commands)}
       {onViewChange}
+      onNoteSelect={(selection) => (selectedNote = selection)}
     />
     <div class="banner-slot">
       <AuthBanner {auth} />
@@ -332,6 +349,11 @@ onDestroy(() => {
           mid={legendPaint.trackMid}
           fast={legendPaint.trackFast}
         />
+      </div>
+    {/if}
+    {#if selectedNote && noteLoader}
+      <div class="note-panel-slot">
+        <NoteDetailPanel selection={selectedNote} load={noteLoader.load} onClose={closeNote} />
       </div>
     {/if}
   </section>
@@ -419,6 +441,18 @@ onDestroy(() => {
   inset-block-start: 0.75rem;
   inset-inline-end: 0.75rem;
   z-index: 1;
+}
+.note-panel-slot {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: 2;
+}
+@media (max-width: 600px) {
+  .note-panel-slot {
+    inset-block-start: auto;
+    inset-inline: 0;
+  }
 }
 .danger-slot :global(.danger-strip) {
   pointer-events: auto;

@@ -1,17 +1,16 @@
-import {
-  type CircleLayerSpecification,
-  type GeoJSONSource,
-  type GeoJSONSourceSpecification,
-  type MapGeoJSONFeature,
-  type MapLayerMouseEvent,
-  Popup,
-  type SymbolLayerSpecification,
+import type {
+  CircleLayerSpecification,
+  GeoJSONSource,
+  GeoJSONSourceSpecification,
+  MapGeoJSONFeature,
+  MapLayerMouseEvent,
+  SymbolLayerSpecification,
 } from 'maplibre-gl';
 import { mapThemePaint, type OverlayContext, type OverlayModule } from '$shared/map';
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
-import { type Bbox, fetchNotes, type NotePoint } from './notes-client';
-import { categoryLabel, type PoiCategory, poiIconId } from './poi-categories';
+import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
+import { type PoiCategory, poiIconId } from './poi-categories';
 
 const SOURCE_ID = 'binnacle-notes';
 const LAYER_ID = 'binnacle-notes-symbol';
@@ -29,6 +28,7 @@ const CLUSTER_OPACITY = 0.85;
 
 interface NotesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
+  deselect(ctx: OverlayContext): void;
 }
 
 // The registered map-image id for a note. Navaids resolve to a type- and side-specific
@@ -48,11 +48,11 @@ function featureCollection(notes: readonly NotePoint[]): GeoJSON.FeatureCollecti
         coordinates: [note.position.longitude, note.position.latitude],
       },
       properties: {
+        id: note.id,
         name: note.name,
         category: note.category,
         icon: iconFor(note),
         url: note.url ?? '',
-        description: note.description ?? '',
         source: note.source ?? '',
         attribution: note.attribution ?? '',
       },
@@ -62,66 +62,11 @@ function featureCollection(notes: readonly NotePoint[]): GeoJSON.FeatureCollecti
 
 const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
-function plainText(html: string): string {
-  // Descriptions can carry HTML; show it as text rather than injecting markup.
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-// A note's url comes from a resource provider we do not control, so only follow
-// http(s) links. This rejects javascript: and data: schemes that would otherwise
-// execute when the link is clicked.
-export function safeHttpUrl(raw: string): string | undefined {
-  try {
-    const parsed = new URL(raw);
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString();
-  } catch {
-    // Not a parseable absolute URL; drop it.
-  }
-  return undefined;
-}
-
-function popupContent(props: Record<string, unknown>): HTMLElement {
-  const root = document.createElement('div');
-  root.className = 'poi-popup';
-  const name = document.createElement('div');
-  name.className = 'poi-popup-name';
-  name.textContent = String(props.name ?? 'Point of interest');
-  root.appendChild(name);
-  const cat = document.createElement('div');
-  cat.className = 'poi-popup-category';
-  cat.textContent = categoryLabel(String(props.category) as PoiCategory);
-  root.appendChild(cat);
-  const description = plainText(String(props.description ?? ''));
-  if (description) {
-    const body = document.createElement('p');
-    body.className = 'poi-popup-body';
-    body.textContent = description;
-    root.appendChild(body);
-  }
-  const url = safeHttpUrl(String(props.url ?? ''));
-  if (url) {
-    const link = document.createElement('a');
-    link.className = 'poi-popup-link';
-    link.href = url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = 'View details';
-    root.appendChild(link);
-  }
-  const credit = String(props.attribution || props.source || '');
-  if (credit) {
-    const small = document.createElement('div');
-    small.className = 'poi-popup-credit';
-    small.textContent = credit;
-    root.appendChild(small);
-  }
-  return root;
-}
-
-export function createNotesOverlay(serverBase: string, token: string | undefined): NotesOverlay {
+export function createNotesOverlay(
+  serverBase: string,
+  token: string | undefined,
+  onSelect?: (selection: NoteSelection | undefined) => void,
+): NotesOverlay {
   // Refetch only when the viewport key changes (coarse so a small pan does not refetch),
   // and never while a fetch is in flight. The raw zoom/center are tracked too, for a cheap
   // idle fast-path that skips the per-frame key build when the map has not moved at all.
@@ -130,7 +75,6 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
   let lastLng: number | undefined;
   let lastLat: number | undefined;
   let fetching = false;
-  let popup: Popup | undefined;
   let onClick: ((event: MapLayerMouseEvent) => void) | undefined;
   let onClusterClick: ((event: MapLayerMouseEvent) => void) | undefined;
   let onEnter: (() => void) | undefined;
@@ -255,13 +199,18 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
       onClick = (event) => {
         const feature = event.features?.[0];
         if (!feature) return;
-        popup?.remove();
-        popup = new Popup({ closeButton: true, offset: 14, className: 'poi-popup-wrap' })
-          .setLngLat(event.lngLat)
-          .setDOMContent(popupContent(feature.properties ?? {}))
-          .addTo(ctx.map);
-        popup.on('close', () => setSelected(ctx, undefined));
+        const props = feature.properties ?? {};
+        const id = String(props.id ?? '');
+        // A note with no id cannot be fetched for detail, so do not select it.
+        if (!id) return;
         setSelected(ctx, feature);
+        onSelect?.({
+          id,
+          name: String(props.name ?? 'Point of interest'),
+          category: String(props.category) as PoiCategory,
+          attribution: String(props.attribution || props.source || '') || undefined,
+          url: String(props.url ?? '') || undefined,
+        });
       };
       onClusterClick = (event) => {
         const feature = event.features?.[0];
@@ -319,6 +268,9 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
           fetching = false;
         });
     },
+    deselect(ctx) {
+      setSelected(ctx, undefined);
+    },
     applyTheme(ctx, paint) {
       void registerPoiIcons(ctx.map, paint);
       void registerNavaidIcons(ctx.map, paint);
@@ -344,8 +296,6 @@ export function createNotesOverlay(serverBase: string, token: string | undefined
       ctx.map.setPaintProperty(SELECT_LAYER, 'circle-stroke-opacity', opacity);
     },
     remove(ctx) {
-      popup?.remove();
-      popup = undefined;
       if (onClick) ctx.map.off('click', LAYER_ID, onClick);
       if (onClusterClick) ctx.map.off('click', CLUSTER_LAYER, onClusterClick);
       if (onEnter) {

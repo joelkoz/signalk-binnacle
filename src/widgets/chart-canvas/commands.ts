@@ -2,4 +2,6 @@
 // handed up once the map is ready.
 export interface MapCommands {
   centerOnVessel: () => void;
+  // Clear any selected note (drop the selection ring); used when the detail panel closes.
+  clearNoteSelection: () => void;
 }

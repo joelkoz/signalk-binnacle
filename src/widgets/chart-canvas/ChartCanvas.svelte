@@ -9,7 +9,7 @@ import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
 import { LayersView } from '$features/layers-panel';
 import { createCollisionOverlay } from '$features/lookout';
-import { createNotesOverlay } from '$features/notes';
+import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay } from '$features/vessel-layer';
 import {
@@ -48,6 +48,7 @@ interface Props {
   onMapReady?: (recolor: (theme: Theme) => void) => void;
   onCommandsReady?: (commands: MapCommands) => void;
   onViewChange?: (view: MapView) => void;
+  onNoteSelect?: (selection: NoteSelection | undefined) => void;
 }
 
 const {
@@ -66,6 +67,7 @@ const {
   onMapReady,
   onCommandsReady,
   onViewChange,
+  onNoteSelect,
 }: Props = $props();
 
 const DEFAULT_CENTER: [number, number] = [0, 30];
@@ -121,7 +123,7 @@ onMount(() => {
       if (destroyed) return;
     }
 
-    const notesOverlay = createNotesOverlay(serverOrigin(), chartsToken);
+    const notesOverlay = createNotesOverlay(serverOrigin(), chartsToken, onNoteSelect);
     await manager.register(notesOverlay);
     if (destroyed) return;
 
@@ -165,6 +167,7 @@ onMount(() => {
           zoom: zoom < 12 ? 14 : zoom,
         });
       },
+      clearNoteSelection: () => notesOverlay.deselect(ctx),
     });
 
     const tick = () => {
