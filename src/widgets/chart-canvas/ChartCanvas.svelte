@@ -7,6 +7,7 @@ import type { TrackRecorder } from '$entities/track';
 import type { OwnVessel } from '$entities/vessel';
 import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
+import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
 import { LayersView } from '$features/layers-panel';
 import { createCollisionOverlay } from '$features/lookout';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
@@ -135,6 +136,13 @@ onMount(() => {
     if (destroyed) return;
     for (const chart of charts) {
       await manager.register(createChartOverlay(chart, serverOrigin()));
+      if (destroyed) return;
+    }
+
+    // App-provided streaming bathymetry sources (off by default), registered after the
+    // server charts so they sit just above the base in the bathymetry band.
+    for (const source of STREAMING_CHART_SOURCES) {
+      await manager.register(createStreamingChartOverlay(source));
       if (destroyed) return;
     }
 

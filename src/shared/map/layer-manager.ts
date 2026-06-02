@@ -60,7 +60,9 @@ export class LayerManager {
     }
     this.#modules.set(module.id, module);
     const restored = this.#saved[module.id];
-    const fallback = restored ? { ...restored } : { visible: true, opacity: 1 };
+    const fallback = restored
+      ? { ...restored }
+      : { visible: module.defaultVisible ?? true, opacity: 1 };
     const state = this.#state.get(module.id) ?? fallback;
     this.#state.set(module.id, state);
     await module.add(this.#ctx);

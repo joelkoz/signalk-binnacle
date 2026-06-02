@@ -39,6 +39,11 @@ export interface MapThemePaint {
   trackSolid: string;
   ownVessel: Rgba;
   aisTarget: Rgba;
+  // Raster depth and chart layers cannot be recolored, so each theme adjusts them instead: day
+  // and dusk show them as served, night-red desaturates and dims them so they carry no blue and
+  // keep the brightest pixel low. This is an approximation, not true night-red color.
+  rasterSaturation: number;
+  rasterBrightnessMax: number;
 }
 
 // The base-map color keys a vector chart's source-layer can be themed to. The other color keys
@@ -72,6 +77,8 @@ const PAINT: Record<Theme, MapThemePaint> = {
     trackSolid: '#1f6fb2',
     ownVessel: { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff },
     aisTarget: { r: 0xe0, g: 0xa0, b: 0x20, a: 0xff },
+    rasterSaturation: 0,
+    rasterBrightnessMax: 1,
   },
   dusk: {
     background: '#0a151f',
@@ -95,6 +102,8 @@ const PAINT: Record<Theme, MapThemePaint> = {
     trackSolid: '#4f9fd8',
     ownVessel: { r: 0x4f, g: 0x9f, b: 0xd8, a: 0xff },
     aisTarget: { r: 0xd9, g: 0xa4, b: 0x41, a: 0xff },
+    rasterSaturation: 0,
+    rasterBrightnessMax: 1,
   },
   'night-red': {
     background: '#000000',
@@ -118,6 +127,8 @@ const PAINT: Record<Theme, MapThemePaint> = {
     trackSolid: '#c8442e',
     ownVessel: { r: 0xe0, g: 0x47, b: 0x3a, a: 0xff },
     aisTarget: { r: 0xb0, g: 0x6a, b: 0x10, a: 0xff },
+    rasterSaturation: -1,
+    rasterBrightnessMax: 0.45,
   },
 };
 

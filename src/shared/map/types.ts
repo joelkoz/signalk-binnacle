@@ -34,6 +34,9 @@ export interface OverlayModule {
   readonly title: string;
   readonly band: ZBand;
   readonly supportsOpacity: boolean;
+  // Initial visibility when there is no saved state. Defaults to visible; streaming depth layers
+  // set this false so they start off until the user enables one for their area.
+  readonly defaultVisible?: boolean;
   // The MapLibre layer ids this overlay manages, bottom to top, so the LayerManager can
   // restack the whole overlay group when the user reorders layers.
   readonly layerIds: readonly string[];
