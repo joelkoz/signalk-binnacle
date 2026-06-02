@@ -74,6 +74,8 @@ const { view }: Props = $props();
 .toggle input[type="checkbox"] {
   inline-size: 1.25rem;
   block-size: 1.25rem;
+  /* Theme the check fill, so it follows the accent (and shows no blue at night). */
+  accent-color: var(--accent);
 }
 .opacity {
   inline-size: 100%;

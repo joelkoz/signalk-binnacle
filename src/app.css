@@ -1,7 +1,9 @@
 @import "maplibre-gl/dist/maplibre-gl.css";
 
 :root {
-  color-scheme: dark;
+  /* Day is a light theme: native controls (checkboxes, scrollbars) must render light, or an
+     unchecked checkbox shows as a dark-mode black square on the light panel. */
+  color-scheme: light;
 
   --font-ui: "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;

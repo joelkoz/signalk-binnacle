@@ -124,6 +124,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
   color: var(--text);
+  accent-color: var(--accent);
   font: inherit;
   font-variant-numeric: tabular-nums;
 }
