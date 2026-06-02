@@ -13,6 +13,7 @@
   --text: #0b2233;
   --text-muted: #4a6378;
   --accent: #1f6fb2;
+  --select: #ffb300;
   --alarm: #c8401f;
   --map-background: #aecbe0;
   --map-water: #a8c9e0;
@@ -28,6 +29,7 @@
   --text: #bcd2e4;
   --text-muted: #7f9bb3;
   --accent: #2c6da3;
+  --select: #ffc24d;
   --alarm: #e0703a;
   --map-background: #0a151f;
   --map-water: #10212e;
@@ -43,6 +45,7 @@
   --text: #c8362a;
   --text-muted: #8e2a22;
   --accent: #e0473a;
+  --select: #ffb39a;
   --alarm: #ff6a5a;
   --map-background: #000000;
   --map-water: #140402;
