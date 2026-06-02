@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Download, Eraser, Eye, EyeOff, Pause, Play, Save, Trash2 } from '@lucide/svelte';
 import type { TrackRecorder } from '$entities/track';
-import { formatNm, metersPerSecondToKnots } from '$shared/lib';
+import { formatKnots, formatNm } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
 import type { SavedTrack } from './tracks-client';
 
@@ -21,10 +21,6 @@ const { recorder, settings, saved, shown, onSave, onDelete, onToggleSaved, onExp
 
 const stats = $derived(recorder.stats);
 const colorMode = $derived(settings.value.colorMode);
-
-function knots(metersPerSecond: number): string {
-  return (metersPerSecondToKnots(metersPerSecond) ?? 0).toFixed(1);
-}
 
 function duration(seconds: number): string {
   const total = Math.max(0, Math.round(seconds));
@@ -103,9 +99,9 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     <dt>Duration</dt>
     <dd><span class="num">{duration(stats.durationSeconds)}</span><span class="unit"></span></dd>
     <dt>Avg</dt>
-    <dd><span class="num">{knots(stats.avgSog)}</span><span class="unit">kn</span></dd>
+    <dd><span class="num">{formatKnots(stats.avgSog)}</span><span class="unit">kn</span></dd>
     <dt>Max</dt>
-    <dd><span class="num">{knots(stats.maxSog)}</span><span class="unit">kn</span></dd>
+    <dd><span class="num">{formatKnots(stats.maxSog)}</span><span class="unit">kn</span></dd>
   </dl>
 
   <div class="saved">

@@ -26,7 +26,13 @@ import {
   saveTrack,
   TracksPanel,
 } from '$features/tracks';
-import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
+import {
+  formatLatitude,
+  formatLongitude,
+  metersPerSecondToKnots,
+  PLACEHOLDER,
+  radiansToBearing,
+} from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
 import {
@@ -37,7 +43,7 @@ import {
   type MapView,
   PersistedValue,
 } from '$shared/settings';
-import type { Context } from '$shared/signalk';
+import type { ConnectionPhase, Context } from '$shared/signalk';
 import {
   AuthController,
   createSignalKClient,
@@ -212,14 +218,14 @@ function closeNote(): void {
 // the alarm can sound later on its own.
 const primeAudio = () => lookoutAlarm.prime();
 
-const CONNECTION_LABELS: Record<string, string> = {
+const CONNECTION_LABELS: Record<ConnectionPhase, string> = {
   open: 'Connected',
   connecting: 'Connecting',
   reconnecting: 'Reconnecting',
   closed: 'Not connected',
 };
 
-const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase] ?? 'Not connected');
+const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase]);
 
 const fmt = (value: number | undefined, digits: number) =>
   value === undefined ? PLACEHOLDER : value.toFixed(digits);
@@ -349,8 +355,8 @@ onDestroy(() => {
     {#if !net.online}
       <span class="readout offline" role="status" aria-live="polite">Offline</span>
     {/if}
-    <span class="readout">SOG <b>{fmt(vessel.sogKnots, 1)}</b> kn</span>
-    <span class="readout">COG <b>{fmt(vessel.cogDegrees, 0)}</b>&deg;</span>
+    <span class="readout">SOG <b>{fmt(metersPerSecondToKnots(vessel.sogMps), 1)}</b> kn</span>
+    <span class="readout">COG <b>{fmt(radiansToBearing(vessel.cogRad), 0)}</b>&deg;</span>
     <span class="spacer"></span>
     <span class="readout">Center</span>
     <span class="readout"><b>{formatLatitude(mapView?.lat)}</b></span>

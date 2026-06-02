@@ -1,20 +1,12 @@
-import type { TrackPoint } from '$entities/track';
+import { splitAtGaps, type TrackPoint } from '$entities/track';
 
 // Split a flat point list into per-segment coordinate arrays, breaking at gap points so a
 // dropout shows as a real break. Each coordinate is GeoJSON [lon, lat]. Single-coordinate
 // segments are dropped: a LineString needs two positions, so a lone fix cannot form a line.
 export function coordinateSegments(points: readonly TrackPoint[]): [number, number][][] {
-  const segments: [number, number][][] = [];
-  let current: [number, number][] = [];
-  for (const point of points) {
-    if (point.gap && current.length > 0) {
-      segments.push(current);
-      current = [];
-    }
-    current.push([point.lon, point.lat]);
-  }
-  if (current.length > 0) segments.push(current);
-  return segments.filter((segment) => segment.length >= 2);
+  return splitAtGaps(points)
+    .map((run) => run.map((point): [number, number] => [point.lon, point.lat]))
+    .filter((segment) => segment.length >= 2);
 }
 
 // A GeoJSON Feature with MultiLineString geometry: the portable, importable form of a track.

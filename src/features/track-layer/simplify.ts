@@ -1,4 +1,4 @@
-import type { TrackPoint } from '$entities/track';
+import { splitAtGaps, type TrackPoint } from '$entities/track';
 
 // Perpendicular distance from p to the segment a-b, in degree space. Planar is fine at the
 // scales a display track spans; it ignores the lon/lat scale difference (a degree of longitude
@@ -47,21 +47,10 @@ function simplifyRun(run: TrackPoint[], tolerance: number): TrackPoint[] {
 }
 
 // Douglas-Peucker simplification that never crosses a break: the points are split into runs
-// at every gap point, each run is simplified independently, and the gap point that starts a
-// run is always preserved.
+// at every gap point and each run is simplified independently.
 export function douglasPeucker(points: readonly TrackPoint[], tolerance: number): TrackPoint[] {
   if (points.length <= 2) return points.slice();
-  const runs: TrackPoint[][] = [];
-  let current: TrackPoint[] = [];
-  for (let i = 0; i < points.length; i += 1) {
-    if (i > 0 && points[i].gap) {
-      runs.push(current);
-      current = [];
-    }
-    current.push(points[i]);
-  }
-  if (current.length > 0) runs.push(current);
   const out: TrackPoint[] = [];
-  for (const run of runs) out.push(...simplifyRun(run, tolerance));
+  for (const run of splitAtGaps(points)) out.push(...simplifyRun(run, tolerance));
   return out;
 }

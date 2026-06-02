@@ -49,7 +49,7 @@ export async function fetchNotes(
   } catch {
     return [];
   }
-  if (!body || typeof body !== 'object') return [];
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return [];
   const out: NotePoint[] = [];
   for (const [id, raw] of Object.entries(body as Record<string, unknown>)) {
     // An error payload ({state, statusCode, message}) has non-object values, which fall

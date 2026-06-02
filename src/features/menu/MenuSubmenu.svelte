@@ -1,10 +1,10 @@
 <script lang="ts">
-import { ChevronDown, ChevronRight } from '@lucide/svelte';
-import type { Component, Snippet } from 'svelte';
+import { ChevronDown, ChevronRight, type LucideIcon } from '@lucide/svelte';
+import type { Snippet } from 'svelte';
 
 interface Props {
   label: string;
-  icon?: Component;
+  icon?: LucideIcon;
   children: Snippet;
 }
 

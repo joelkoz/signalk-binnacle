@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { AisTargets, type AisTargetView } from '$entities/ais';
 import { OwnVessel } from '$entities/vessel';
+import { degreesToRadians, knotsToMetersPerSecond } from '$shared/lib';
 import { createThresholds, DEFAULT_THRESHOLDS } from '$shared/settings';
 import { SignalKStore } from '$shared/signalk';
 import { assessContacts, CollisionAssessment } from './collision.svelte';
 
-const ownStationary = { position: { latitude: 0, longitude: 0 }, sogKnots: 0, cogDegrees: 0 };
+const ownStationary = { position: { latitude: 0, longitude: 0 }, sogMps: 0, cogRad: 0 };
 
 function target(partial: Partial<AisTargetView>): AisTargetView {
   return { id: 't', position: { latitude: 0, longitude: 0 }, ...partial };
@@ -15,12 +16,15 @@ function dangerStore(targetId: string): SignalKStore {
   const store = new SignalKStore();
   store.applyFrame({
     self: { 'navigation.position': { latitude: 0, longitude: 0 } },
-    ais: {
-      [targetId]: {
-        'navigation.position': { latitude: 0.01, longitude: 0 },
-        'navigation.closestApproach': { distance: 100, timeTo: 60 },
-      },
-    },
+    ais: new Map([
+      [
+        targetId,
+        new Map<string, unknown>([
+          ['navigation.position', { latitude: 0.01, longitude: 0 }],
+          ['navigation.closestApproach', { distance: 100, timeTo: 60 }],
+        ]),
+      ],
+    ]),
     connection: { phase: 'open', attempt: 0 },
     epoch: Date.now(),
   });
@@ -55,8 +59,8 @@ describe('assessContacts', () => {
     const t = target({
       id: 'c',
       position: { latitude: 1852 / 111320, longitude: 0 },
-      sogKnots: 10,
-      cogDegrees: 180,
+      sogMps: knotsToMetersPerSecond(10),
+      cogRad: degreesToRadians(180),
     });
     const r = assessContacts(ownStationary, [t], DEFAULT_THRESHOLDS);
     expect(r.contacts[0].source).toBe('computed');
@@ -67,8 +71,8 @@ describe('assessContacts', () => {
     const t = target({
       id: 'o',
       position: { latitude: 0.2, longitude: 0 },
-      sogKnots: 10,
-      cogDegrees: 0,
+      sogMps: knotsToMetersPerSecond(10),
+      cogRad: degreesToRadians(0),
     });
     const r = assessContacts(ownStationary, [t], DEFAULT_THRESHOLDS);
     expect(r.contacts).toHaveLength(0);
@@ -100,12 +104,15 @@ describe('CollisionAssessment acknowledge', () => {
     // A different vessel becomes the worst contact, which re-arms the alert.
     store.applyFrame({
       self: {},
-      ais: {
-        'vessels.b': {
-          'navigation.position': { latitude: 0.005, longitude: 0 },
-          'navigation.closestApproach': { distance: 50, timeTo: 30 },
-        },
-      },
+      ais: new Map([
+        [
+          'vessels.b',
+          new Map<string, unknown>([
+            ['navigation.position', { latitude: 0.005, longitude: 0 }],
+            ['navigation.closestApproach', { distance: 50, timeTo: 30 }],
+          ]),
+        ],
+      ]),
       connection: { phase: 'open', attempt: 0 },
       epoch: Date.now(),
     });

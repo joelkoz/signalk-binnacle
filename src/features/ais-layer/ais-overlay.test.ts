@@ -39,10 +39,13 @@ describe('ais overlay', () => {
     overlay.add(ctxFor(map));
     store.applyFrame({
       self: {},
-      ais: {
-        'vessels.a': { 'navigation.position': { latitude: 1, longitude: 2 } },
-        'vessels.b': { name: 'no pos' },
-      },
+      ais: new Map([
+        [
+          'vessels.a',
+          new Map<string, unknown>([['navigation.position', { latitude: 1, longitude: 2 }]]),
+        ],
+        ['vessels.b', new Map<string, unknown>([['name', 'no pos']])],
+      ]),
       connection: { phase: 'open', attempt: 0 },
       // The worker stamps targets with a wall clock; a recent epoch keeps them
       // inside the staleness window when sync prunes.
@@ -61,7 +64,12 @@ describe('ais overlay', () => {
     overlay.add(ctxFor(map));
     store.applyFrame({
       self: {},
-      ais: { 'vessels.a': { 'navigation.position': { latitude: 1, longitude: 2 } } },
+      ais: new Map([
+        [
+          'vessels.a',
+          new Map<string, unknown>([['navigation.position', { latitude: 1, longitude: 2 }]]),
+        ],
+      ]),
       connection: { phase: 'open', attempt: 0 },
       epoch: Date.now(),
     });

@@ -1,4 +1,5 @@
 import type { OwnVessel } from '$entities/vessel';
+import { radiansToBearing } from '$shared/lib';
 import { createSymbolOverlay, type Rgba, type SymbolOverlay } from '$shared/map';
 import { VESSEL_ICON_ID, vesselIconImage } from './vessel-icon';
 
@@ -15,8 +16,9 @@ export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
   let lastLat: number | undefined;
   let lastHeading: number | undefined;
 
-  // Heading drives icon-rotate, falling back to course over ground, then north.
-  const resolveHeading = (): number => vessel.headingDegrees ?? vessel.cogDegrees ?? 0;
+  // Heading drives icon-rotate (degrees), falling back to course over ground, then north.
+  const resolveHeading = (): number =>
+    radiansToBearing(vessel.headingRad) ?? radiansToBearing(vessel.cogRad) ?? 0;
 
   function featureCollection(): GeoJSON.FeatureCollection {
     const position = vessel.position;

@@ -119,7 +119,7 @@ async function tryFetch(
     const response = await fetch(url, authInit(token));
     if (!response.ok) return undefined;
     const body = await response.json();
-    if (!body || typeof body !== 'object') return undefined;
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
     const note = body as {
       name?: unknown;
       title?: unknown;

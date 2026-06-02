@@ -36,16 +36,7 @@ export class WorkerCore {
     });
     this.#registry = new SubscriptionRegistry((message) => this.#connection?.send(message));
     this.#batcher.onFlush = (self, ais, epoch) => {
-      const aisRecord: Record<string, Record<string, unknown>> = {};
-      for (const [context, values] of ais) {
-        aisRecord[context] = Object.fromEntries(values);
-      }
-      this.#onFrame?.({
-        self,
-        ais: aisRecord,
-        connection: this.#connectionState,
-        epoch,
-      });
+      this.#onFrame?.({ self, ais, connection: this.#connectionState, epoch });
     };
     this.#connection.connect();
   }

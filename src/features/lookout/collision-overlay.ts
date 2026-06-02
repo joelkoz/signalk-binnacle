@@ -46,15 +46,11 @@ function featureCollection(contacts: readonly DangerContact[]): GeoJSON.FeatureC
   };
 }
 
-// Cheap dirty check: the rings change only when a contact's id, severity, or position does.
-function signature(contacts: readonly DangerContact[]): string {
-  return contacts
-    .map((c) => `${c.id}:${c.severity}:${c.position.latitude},${c.position.longitude}`)
-    .join('|');
-}
-
 export function createCollisionOverlay(collision: CollisionAssessment): CollisionOverlay {
-  let lastSignature: string | undefined;
+  // The assessment is a memoized derived value, so its contacts array keeps the same identity
+  // until traffic, the own fix, or the thresholds actually change. A reference check is the
+  // dirty check, with no per-frame string to build in the animation loop.
+  let lastContacts: readonly DangerContact[] | undefined;
 
   return {
     id: 'collision',
@@ -80,13 +76,12 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
         },
       };
       ctx.map.addLayer(layer, ctx.beforeIdFor('safety'));
-      lastSignature = signature(contacts);
+      lastContacts = contacts;
     },
     sync(ctx) {
       const contacts = collision.assessment.contacts;
-      const sig = signature(contacts);
-      if (sig === lastSignature) return;
-      lastSignature = sig;
+      if (contacts === lastContacts) return;
+      lastContacts = contacts;
       const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
       source?.setData(featureCollection(contacts));
     },

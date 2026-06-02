@@ -11,6 +11,11 @@ function frame(self: Record<string, unknown>): SKFrame {
   };
 }
 
+// Build the frame's nested AIS Map from a readable record literal.
+function aisMap(record: Record<string, Record<string, unknown>>): SKFrame['ais'] {
+  return new Map(Object.entries(record).map(([ctx, vals]) => [ctx, new Map(Object.entries(vals))]));
+}
+
 describe('SignalKStore', () => {
   it('exposes the latest value of a path through its cell', () => {
     const store = new SignalKStore();
@@ -23,11 +28,16 @@ describe('SignalKStore', () => {
     const before = store.aisVersion;
     // An empty ais object (a self-only worker frame) must not bump the version,
     // or the consumers' version guards would fire every frame.
-    store.applyFrame({ self: {}, ais: {}, connection: { phase: 'open', attempt: 0 }, epoch: 1000 });
+    store.applyFrame({
+      self: {},
+      ais: aisMap({}),
+      connection: { phase: 'open', attempt: 0 },
+      epoch: 1000,
+    });
     expect(store.aisVersion).toBe(before);
     store.applyFrame({
       self: {},
-      ais: { 'vessels.a': { name: 'A' } },
+      ais: aisMap({ 'vessels.a': { name: 'A' } }),
       connection: { phase: 'open', attempt: 0 },
       epoch: 1001,
     });
@@ -65,7 +75,7 @@ describe('SignalKStore', () => {
     const store = new SignalKStore();
     store.applyFrame({
       self: {},
-      ais: { 'vessels.a': { 'navigation.speedOverGround': 4 } },
+      ais: aisMap({ 'vessels.a': { 'navigation.speedOverGround': 4 } }),
       connection: { phase: 'open', attempt: 0 },
       epoch: 5,
     });
@@ -77,7 +87,7 @@ describe('SignalKStore', () => {
     const store = new SignalKStore();
     const aisFrame = (epoch: number, value: number): SKFrame => ({
       self: {},
-      ais: { 'vessels.a': { 'navigation.speedOverGround': value } },
+      ais: aisMap({ 'vessels.a': { 'navigation.speedOverGround': value } }),
       connection: { phase: 'open', attempt: 0 },
       epoch,
     });
@@ -91,13 +101,13 @@ describe('SignalKStore', () => {
     const store = new SignalKStore();
     store.applyFrame({
       self: {},
-      ais: { 'vessels.a': { name: 'A' }, 'vessels.b': { name: 'B' } },
+      ais: aisMap({ 'vessels.a': { name: 'A' }, 'vessels.b': { name: 'B' } }),
       connection: { phase: 'open', attempt: 0 },
       epoch: 1000,
     });
     store.applyFrame({
       self: {},
-      ais: { 'vessels.b': { name: 'B' } },
+      ais: aisMap({ 'vessels.b': { name: 'B' } }),
       connection: { phase: 'open', attempt: 0 },
       epoch: 400000,
     });

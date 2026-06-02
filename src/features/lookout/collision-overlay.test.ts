@@ -16,12 +16,15 @@ function dangerCollision(): CollisionAssessment {
   const store = new SignalKStore();
   store.applyFrame({
     self: { 'navigation.position': { latitude: 0, longitude: 0 } },
-    ais: {
-      'vessels.a': {
-        'navigation.position': { latitude: 0.01, longitude: 0 },
-        'navigation.closestApproach': { distance: 100, timeTo: 60 },
-      },
-    },
+    ais: new Map([
+      [
+        'vessels.a',
+        new Map<string, unknown>([
+          ['navigation.position', { latitude: 0.01, longitude: 0 }],
+          ['navigation.closestApproach', { distance: 100, timeTo: 60 }],
+        ]),
+      ],
+    ]),
     connection: { phase: 'open', attempt: 0 },
     epoch: Date.now(),
   });

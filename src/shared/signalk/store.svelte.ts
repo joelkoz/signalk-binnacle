@@ -31,14 +31,13 @@ export class SignalKStore {
     }
     if (frame.ais) {
       let changed = false;
-      for (const context in frame.ais) {
+      for (const [context, incoming] of frame.ais) {
         let target = this.aisTargets.get(context);
         if (!target) {
           target = { values: new Map(), lastUpdate: frame.epoch };
           this.aisTargets.set(context, target);
         }
-        const incoming = frame.ais[context];
-        for (const path in incoming) target.values.set(path, incoming[path]);
+        for (const [path, value] of incoming) target.values.set(path, value);
         target.lastUpdate = frame.epoch;
         changed = true;
       }

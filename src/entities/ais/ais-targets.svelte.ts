@@ -1,14 +1,15 @@
-import { metersPerSecondToKnots, radiansToBearing } from '$shared/lib';
 import type { LatLon, SignalKStore } from '$shared/signalk';
 import { asNumber, isLatLon, SK_PATHS } from '$shared/signalk';
 
+// All angular and speed fields are SI (radians, m/s), like the rest of the store. Consumers
+// convert to a compass bearing or knots at their own display edge.
 export interface AisTargetView {
   id: string;
   name?: string;
   position: LatLon;
-  cogDegrees?: number;
-  headingDegrees?: number;
-  sogKnots?: number;
+  cogRad?: number;
+  headingRad?: number;
+  sogMps?: number;
   shipTypeId?: number;
   cpaMeters?: number;
   tcpaSeconds?: number;
@@ -45,9 +46,9 @@ export class AisTargets {
         id,
         name: typeof name === 'string' ? name : undefined,
         position,
-        cogDegrees: radiansToBearing(asNumber(target.values.get(SK_PATHS.courseOverGroundTrue))),
-        headingDegrees: radiansToBearing(asNumber(target.values.get(SK_PATHS.headingTrue))),
-        sogKnots: metersPerSecondToKnots(asNumber(target.values.get(SK_PATHS.speedOverGround))),
+        cogRad: asNumber(target.values.get(SK_PATHS.courseOverGroundTrue)),
+        headingRad: asNumber(target.values.get(SK_PATHS.headingTrue)),
+        sogMps: asNumber(target.values.get(SK_PATHS.speedOverGround)),
         shipTypeId: this.#numField(target.values.get(SK_PATHS.aisShipType), 'id'),
         cpaMeters: this.#numField(approach, 'distance'),
         tcpaSeconds: this.#numField(approach, 'timeTo'),

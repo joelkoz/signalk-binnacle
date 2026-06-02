@@ -1,6 +1,5 @@
 import type { AisTargets, AisTargetView } from '$entities/ais';
 import type { OwnVessel } from '$entities/vessel';
-import { degreesToRadians, knotsToMetersPerSecond } from '$shared/lib';
 import { computeCpa } from '$shared/nav';
 import type { PersistedValue, Thresholds } from '$shared/settings';
 import type { LatLon } from '$shared/signalk';
@@ -25,8 +24,8 @@ export interface Assessment {
 
 interface OwnFix {
   position: LatLon;
-  sogKnots: number;
-  cogDegrees: number;
+  sogMps: number;
+  cogRad: number;
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { danger: 0, warning: 1, clear: 2 };
@@ -46,8 +45,8 @@ export function assessContacts(
   const ownK = {
     latitude: own.position.latitude,
     longitude: own.position.longitude,
-    sogMps: knotsToMetersPerSecond(own.sogKnots),
-    cogRad: degreesToRadians(own.cogDegrees),
+    sogMps: own.sogMps,
+    cogRad: own.cogRad,
   };
   const contacts: DangerContact[] = [];
   for (const t of targets) {
@@ -65,8 +64,8 @@ export function assessContacts(
       const r = computeCpa(ownK, {
         latitude: t.position.latitude,
         longitude: t.position.longitude,
-        sogMps: knotsToMetersPerSecond(t.sogKnots ?? 0),
-        cogRad: degreesToRadians(t.cogDegrees ?? 0),
+        sogMps: t.sogMps ?? 0,
+        cogRad: t.cogRad ?? 0,
       });
       if (!r.closing) continue;
       cpaMeters = r.cpaMeters;
@@ -111,7 +110,7 @@ export class CollisionAssessment {
     void this.#targets.version;
     const position = this.#vessel.position;
     const own = position
-      ? { position, sogKnots: this.#vessel.sogKnots ?? 0, cogDegrees: this.#vessel.cogDegrees ?? 0 }
+      ? { position, sogMps: this.#vessel.sogMps ?? 0, cogRad: this.#vessel.cogRad ?? 0 }
       : undefined;
     return assessContacts(own, this.#targets.list(), this.#thresholds.value);
   });

@@ -68,8 +68,8 @@ describe('WorkerCore', () => {
     vi.runAllTimers();
     const frame = frames.at(-1);
     expect(frame?.self['navigation.speedOverGround']).toBe(5);
-    expect(frame?.ais?.['vessels.other']?.['navigation.speedOverGround']).toBe(9);
-    expect(frame?.ais?.['vessels.self-urn']).toBeUndefined();
+    expect(frame?.ais?.get('vessels.other')?.get('navigation.speedOverGround')).toBe(9);
+    expect(frame?.ais?.get('vessels.self-urn')).toBeUndefined();
   });
 
   it('treats vessels.self context as own vessel', () => {

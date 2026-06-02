@@ -116,6 +116,19 @@ All notable changes to Binnacle are documented here. The format follows
   `radiansToDegrees` to `radiansToBearing` (it normalizes to 0..360), exported `SELF_CONTEXT`, and
   added `nauticalMilesToMeters`. No behavior change beyond the perf and robustness fixes.
 
+- Second whole-repo cleanup pass (audit, cross-verify, fix). The vessel, AIS, and collision
+  entities now expose speed and course in SI (m/s and radians); knots and compass-bearing
+  conversion moved to the display edge (the status strip, the vessel and AIS overlays, and a shared
+  `formatKnots`), removing a knots-to-m/s and degrees-to-radians round-trip in the collision math.
+  The worker hands the AIS batch to the main thread as a nested `Map` across the Comlink boundary,
+  dropping a per-frame object rebuild on each side. The collision overlay dirty-checks the
+  assessment by reference instead of building a per-frame signature string. Gap-splitting for track
+  simplification and export is one shared `splitAtGaps` helper, the theme and settings localStorage
+  writes are guarded against quota and private-mode failures, the menu-icon, connection-phase, and
+  theme label maps are typed to their unions, and dead code (an unused `metersToNauticalMiles`
+  export, a `LatLon` re-export, the entry-module default export, and a redundant callback wrapper)
+  was removed.
+
 - The layers controls (per-layer visibility and opacity) moved off the chart into the app menu.
   They were a panel floating over the top-left of the map; they now live in a collapsible "Layers"
   submenu inside the menu, so the chart is unobstructed and the controls share one place with other
@@ -154,6 +167,17 @@ All notable changes to Binnacle are documented here. The format follows
   truncating the contact list.
 
 ### Fixed
+
+- Switching the theme from night-red or dusk back to day no longer leaves the base map broken. The
+  day restore brings the water and land fills back to their real colors and clears the dark label
+  halo from street names. `fill-pattern` is a paint property in MapLibre, not a layout one, so the
+  day-restore snapshot had silently dropped every fill layer, and the label halo was reset only when
+  the source style already defined one.
+
+- In the day theme, an unchecked layer checkbox no longer renders as a solid black square. The day
+  theme declared a dark `color-scheme` despite being a light theme, so native controls rendered in
+  dark mode; day now uses a light `color-scheme`, and checkboxes follow the theme accent (no blue at
+  night).
 
 - The base map now recolors fully for the theme. Previously only the background and water were
   themed, so over land at higher zoom the OpenFreeMap roads stayed white and the parks and landcover

@@ -41,9 +41,9 @@ export interface MapThemePaint {
   aisTarget: Rgba;
 }
 
-// The base-map color keys a vector chart's source-layer can be themed to. The other string
-// color keys on MapThemePaint (label, overlay, and track colors) are not chart-paintable, so
-// they are intentionally excluded.
+// The base-map color keys a vector chart's source-layer can be themed to. The other color keys
+// on MapThemePaint (the label color and the per-overlay feature and track colors) are not
+// chart-paintable, so they are intentionally excluded.
 export type MapColorKey = 'background' | 'water' | 'land' | 'landcover' | 'road' | 'boundary';
 
 const PAINT: Record<Theme, MapThemePaint> = {

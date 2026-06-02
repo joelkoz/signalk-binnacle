@@ -39,6 +39,11 @@ export function formatNm(meters: number, digits = 2): string {
   return (metersToNauticalMiles(meters) ?? 0).toFixed(digits);
 }
 
+// A knots reading for a speed in m/s (SI), centralized so the SOG readouts do not drift.
+export function formatKnots(metersPerSecond: number | null | undefined, digits = 1): string {
+  return (metersPerSecondToKnots(metersPerSecond) ?? 0).toFixed(digits);
+}
+
 // CPA is just a distance; named for the collision metric at its call sites.
 export function formatCpaNm(meters: number, digits = 2): string {
   return formatNm(meters, digits);

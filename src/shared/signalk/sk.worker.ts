@@ -6,7 +6,7 @@ class SignalKWorker implements SignalKClientApi {
   #core = new WorkerCore();
 
   async connect(url: string, onFrame: (frame: SKFrame) => void): Promise<void> {
-    this.#core.connect(url, (frame) => onFrame(frame));
+    this.#core.connect(url, onFrame);
   }
 
   async subscribe(entries: SubscribeEntry[]): Promise<void> {

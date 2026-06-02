@@ -6,14 +6,14 @@ import { AisTargets } from './ais-targets.svelte';
 function frame(ais: Record<string, Record<string, unknown>>, epoch = 1): SKFrame {
   return {
     self: {},
-    ais: ais as SKFrame['ais'],
+    ais: new Map(Object.entries(ais).map(([ctx, vals]) => [ctx, new Map(Object.entries(vals))])),
     connection: { phase: 'open', attempt: 0 },
     epoch,
   };
 }
 
 describe('AisTargets', () => {
-  it('lists targets with converted display values', () => {
+  it('lists targets with SI values straight from the store', () => {
     const store = new SignalKStore();
     const ais = new AisTargets(store);
     store.applyFrame(
@@ -31,8 +31,8 @@ describe('AisTargets', () => {
     expect(list[0].id).toBe('vessels.urn:mrn:imo:mmsi:123');
     expect(list[0].name).toBe('OTHER');
     expect(list[0].position).toEqual({ latitude: 36, longitude: -121 });
-    expect(list[0].cogDegrees).toBeCloseTo(180, 6);
-    expect(list[0].sogKnots).toBeCloseTo(1.943844, 5);
+    expect(list[0].cogRad).toBe(Math.PI);
+    expect(list[0].sogMps).toBe(1);
   });
 
   it('skips targets without a position', () => {

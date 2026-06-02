@@ -12,25 +12,21 @@ function frame(self: Record<string, unknown>): SKFrame {
 }
 
 describe('OwnVessel', () => {
-  it('exposes speed over ground in knots', () => {
-    const store = new SignalKStore();
-    const vessel = new OwnVessel(store);
-    store.applyFrame(frame({ 'navigation.speedOverGround': 1 }));
-    expect(vessel.sogKnots).toBeCloseTo(1.943844, 5);
-  });
-
-  it('exposes raw speed over ground in m/s for SI consumers', () => {
+  it('exposes speed over ground in m/s (SI)', () => {
     const store = new SignalKStore();
     const vessel = new OwnVessel(store);
     store.applyFrame(frame({ 'navigation.speedOverGround': 3.5 }));
     expect(vessel.sogMps).toBe(3.5);
   });
 
-  it('exposes course over ground in degrees', () => {
+  it('exposes course over ground and heading in radians (SI)', () => {
     const store = new SignalKStore();
     const vessel = new OwnVessel(store);
-    store.applyFrame(frame({ 'navigation.courseOverGroundTrue': Math.PI }));
-    expect(vessel.cogDegrees).toBeCloseTo(180, 6);
+    store.applyFrame(
+      frame({ 'navigation.courseOverGroundTrue': Math.PI, 'navigation.headingTrue': 1 }),
+    );
+    expect(vessel.cogRad).toBe(Math.PI);
+    expect(vessel.headingRad).toBe(1);
   });
 
   it('returns the position object unchanged (already degrees)', () => {
@@ -43,7 +39,7 @@ describe('OwnVessel', () => {
   it('returns undefined readouts before any data arrives', () => {
     const store = new SignalKStore();
     const vessel = new OwnVessel(store);
-    expect(vessel.sogKnots).toBeUndefined();
+    expect(vessel.sogMps).toBeUndefined();
     expect(vessel.position).toBeUndefined();
   });
 

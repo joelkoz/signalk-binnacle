@@ -38,17 +38,32 @@ export class ThemeController {
 
 // Wires a ThemeController to the document and localStorage for app use.
 export function createThemeController(onApply?: (theme: Theme) => void): ThemeController {
-  const initial = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
   return new ThemeController(
-    initial,
+    readStoredTheme(),
     (theme) => {
       if (typeof document !== 'undefined') {
         document.documentElement.dataset.theme = theme;
       }
       onApply?.(theme);
     },
-    (theme) => {
-      if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, theme);
-    },
+    writeStoredTheme,
   );
+}
+
+// localStorage can be absent (SSR) or throw (private mode, quota); guard both so a read or a
+// failed persist never breaks theming. The stored value is a bare theme string, not JSON.
+function readStoredTheme(): string | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredTheme(theme: Theme): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, theme);
+  } catch {
+    // Private mode or quota: keep the in-memory theme, skip persistence.
+  }
 }

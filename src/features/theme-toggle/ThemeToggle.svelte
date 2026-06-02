@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Moon, Sun, Sunset } from '@lucide/svelte';
 import type { Component } from 'svelte';
-import type { ThemeController } from '$shared/ui';
+import type { Theme, ThemeController } from '$shared/ui';
 
 interface Props {
   controller: ThemeController;
@@ -9,20 +9,20 @@ interface Props {
 
 const { controller }: Props = $props();
 
-const ICONS: Record<string, Component> = {
+const ICONS: Record<Theme, Component> = {
   day: Sun,
   dusk: Sunset,
   'night-red': Moon,
 };
 
-const LABELS: Record<string, string> = {
+const LABELS: Record<Theme, string> = {
   day: 'Day theme',
   dusk: 'Dusk theme',
   'night-red': 'Night theme',
 };
 
-const Icon = $derived(ICONS[controller.theme] ?? Sun);
-const label = $derived(LABELS[controller.theme] ?? controller.theme);
+const Icon = $derived(ICONS[controller.theme]);
+const label = $derived(LABELS[controller.theme]);
 </script>
 
 <button

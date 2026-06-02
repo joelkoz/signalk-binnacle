@@ -1,4 +1,3 @@
-import { metersPerSecondToKnots, radiansToBearing } from '$shared/lib';
 import { asNumber, isLatLon, type LatLon, type SignalKStore, SK_PATHS } from '$shared/signalk';
 
 export class OwnVessel {
@@ -20,22 +19,19 @@ export class OwnVessel {
     }
   }
 
-  get sogKnots(): number | undefined {
-    return metersPerSecondToKnots(asNumber(this.#raw(SK_PATHS.speedOverGround)));
-  }
-
-  // Raw speed over ground in m/s (SI), for consumers that store SI and convert at their own
-  // edge (the track recorder). Use sogKnots for display.
+  // Speed over ground in m/s (SI). Consumers convert to knots at the display edge.
   get sogMps(): number | undefined {
     return asNumber(this.#raw(SK_PATHS.speedOverGround));
   }
 
-  get cogDegrees(): number | undefined {
-    return radiansToBearing(asNumber(this.#raw(SK_PATHS.courseOverGroundTrue)));
+  // Course over ground in radians (SI). Display converts to a compass bearing at its edge.
+  get cogRad(): number | undefined {
+    return asNumber(this.#raw(SK_PATHS.courseOverGroundTrue));
   }
 
-  get headingDegrees(): number | undefined {
-    return radiansToBearing(asNumber(this.#raw(SK_PATHS.headingTrue)));
+  // Heading (true) in radians (SI).
+  get headingRad(): number | undefined {
+    return asNumber(this.#raw(SK_PATHS.headingTrue));
   }
 
   get position(): LatLon | undefined {

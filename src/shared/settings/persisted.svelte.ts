@@ -28,7 +28,11 @@ export class PersistedValue<T> {
 
   set(next: T): void {
     this.value = next;
-    this.#storage?.setItem(this.#key, JSON.stringify(next));
+    try {
+      this.#storage?.setItem(this.#key, JSON.stringify(next));
+    } catch {
+      // A failed persist (quota exceeded, private mode) must not break the in-memory update.
+    }
   }
 
   // Reports whether the value came from storage by key presence and a successful
