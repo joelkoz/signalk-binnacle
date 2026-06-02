@@ -100,28 +100,33 @@ function measure(item: NormalizedItem): string {
                 item.kind === 'link' && typeof item.value === 'string'
                   ? safeHttpUrl(item.value)
                   : undefined}
-              <div class="item">
-                <dt>{item.label}</dt>
-                <dd>
-                  {#if item.kind === 'availability'}
-                    <span class="badge" data-value={String(item.value).toLowerCase()}
-                      >{item.value}</span
-                    >
-                  {:else if item.kind === 'flag'}
-                    <span class="badge" data-value={item.value === true ? 'yes' : 'no'}>
-                      {item.value === true ? 'Yes' : 'No'}
-                    </span>
-                  {:else if linkUrl}
-                    <a href={linkUrl} target="_blank" rel="noopener noreferrer">{item.label}</a>
-                  {:else if item.kind === 'measure'}
-                    {measure(item)}
-                  {:else if item.kind === 'note'}
-                    <span class="prose">{item.value}</span>
-                  {:else}
-                    {item.value}
-                  {/if}
-                </dd>
-              </div>
+              {#if item.kind === 'note'}
+                <div class="note-item">
+                  <dt>{item.label}</dt>
+                  <dd class="prose">{item.value}</dd>
+                </div>
+              {:else}
+                <div class="item">
+                  <dt>{item.label}</dt>
+                  <dd>
+                    {#if item.kind === 'availability'}
+                      <span class="badge" data-value={String(item.value).toLowerCase()}
+                        >{item.value}</span
+                      >
+                    {:else if item.kind === 'flag'}
+                      <span class="badge" data-value={item.value === true ? 'yes' : 'no'}>
+                        {item.value === true ? 'Yes' : 'No'}
+                      </span>
+                    {:else if linkUrl}
+                      <a href={linkUrl} target="_blank" rel="noopener noreferrer">{item.label}</a>
+                    {:else if item.kind === 'measure'}
+                      {measure(item)}
+                    {:else}
+                      {item.value}
+                    {/if}
+                  </dd>
+                </div>
+              {/if}
             {/each}
           </dl>
         </section>
@@ -219,19 +224,30 @@ header {
 dl {
   margin: 0;
 }
+dt {
+  color: var(--text-muted);
+}
+dd {
+  margin: 0;
+}
 .item {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 0.5rem;
   padding-block: 0.15rem;
 }
-dt {
-  color: var(--text-muted);
-}
-dd {
-  margin: 0;
+.item dd {
   text-align: end;
   font-variant-numeric: tabular-nums;
+}
+/* A note carries prose, so it spans the full width below its label instead of being squeezed
+   into the value column and right-aligned. */
+.note-item {
+  padding-block: 0.2rem;
+}
+.note-item dd {
+  margin-block-start: 0.15rem;
+  line-height: 1.4;
 }
 .badge {
   padding: 0.05rem 0.4rem;
