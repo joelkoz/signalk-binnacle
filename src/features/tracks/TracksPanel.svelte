@@ -218,11 +218,15 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   color: var(--accent);
   border-color: var(--accent);
 }
+/* One grid for the whole list (label, number, unit) so every number shares a column and
+   every unit shares a column. The dd is display: contents so its number and unit become
+   direct grid items; a row with no unit (Duration) leaves a blank unit cell without
+   nudging the number out of the shared column. */
 .stats {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: baseline;
-  column-gap: 0.75rem;
+  column-gap: 0.5rem;
   row-gap: 0.3rem;
   margin: 0;
 }
@@ -230,17 +234,14 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   color: var(--text-muted);
 }
 .stats dd {
-  margin: 0;
-  display: grid;
-  grid-template-columns: 1fr 1.5rem;
-  align-items: baseline;
-  column-gap: 0.25rem;
+  display: contents;
 }
 .stats .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 .stats .unit {
+  min-inline-size: 1.25rem;
   color: var(--text-muted);
   font-size: 0.72rem;
 }
