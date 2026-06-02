@@ -31,6 +31,12 @@ export interface MapThemePaint {
   navPort: string;
   // Light flare and lighthouse lantern: chart magenta in day and dusk, a light red at night.
   navLight: string;
+  // Own-track speed ramp (slow to fast) and the solid-mode track color. Night-red is a
+  // dark-to-bright red ramp so the brightest pixel stays low and no blue or green appears.
+  trackSlow: string;
+  trackMid: string;
+  trackFast: string;
+  trackSolid: string;
   ownVessel: Rgba;
   aisTarget: Rgba;
 }
@@ -55,6 +61,10 @@ const PAINT: Record<Theme, MapThemePaint> = {
     navStarboard: '#d8392f',
     navPort: '#1f9e54',
     navLight: '#c026d3',
+    trackSlow: '#1a3a5a',
+    trackMid: '#2c6da3',
+    trackFast: '#6fb1e0',
+    trackSolid: '#1f6fb2',
     ownVessel: { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff },
     aisTarget: { r: 0xe0, g: 0xa0, b: 0x20, a: 0xff },
   },
@@ -74,6 +84,10 @@ const PAINT: Record<Theme, MapThemePaint> = {
     navStarboard: '#e0573f',
     navPort: '#3fae6a',
     navLight: '#cf5bd9',
+    trackSlow: '#22455f',
+    trackMid: '#3f87bf',
+    trackFast: '#84c0ea',
+    trackSolid: '#4f9fd8',
     ownVessel: { r: 0x4f, g: 0x9f, b: 0xd8, a: 0xff },
     aisTarget: { r: 0xd9, g: 0xa4, b: 0x41, a: 0xff },
   },
@@ -93,6 +107,10 @@ const PAINT: Record<Theme, MapThemePaint> = {
     navStarboard: '#ff6a5a',
     navPort: '#8e2a22',
     navLight: '#ff9a86',
+    trackSlow: '#3a0c08',
+    trackMid: '#9a3020',
+    trackFast: '#ff6a5a',
+    trackSolid: '#9a3020',
     ownVessel: { r: 0xe0, g: 0x47, b: 0x3a, a: 0xff },
     aisTarget: { r: 0xb0, g: 0x6a, b: 0x10, a: 0xff },
   },

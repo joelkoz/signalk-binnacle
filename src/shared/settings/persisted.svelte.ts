@@ -77,6 +77,23 @@ export function createMapView(storage?: StorageLike): PersistedValue<MapView | n
   return new PersistedValue('binnacle:map-view', null, storage);
 }
 
+// Track recording policy and rendering preference, persisted across visits.
+export interface TrackSettings {
+  intervalSeconds: number;
+  minMeters: number;
+  colorMode: 'speed' | 'solid';
+}
+
+export const DEFAULT_TRACK_SETTINGS: TrackSettings = {
+  intervalSeconds: 10,
+  minMeters: 10,
+  colorMode: 'speed',
+};
+
+export function createTrackSettings(storage?: StorageLike): PersistedValue<TrackSettings> {
+  return new PersistedValue('binnacle:track-settings', DEFAULT_TRACK_SETTINGS, storage);
+}
+
 export interface Thresholds {
   dangerCpaMeters: number;
   dangerTcpaSeconds: number;

@@ -4,6 +4,7 @@ import type { MapThemePaint } from './map-theme';
 export type ZBand =
   | 'basemap'
   | 'bathymetry'
+  | 'track'
   | 'weather'
   | 'routes'
   | 'safety'
@@ -14,6 +15,7 @@ export type ZBand =
 export const Z_ORDER: readonly ZBand[] = [
   'basemap',
   'bathymetry',
+  'track',
   'weather',
   'routes',
   'safety',
