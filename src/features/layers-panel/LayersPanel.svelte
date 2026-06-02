@@ -223,7 +223,7 @@ header h2 {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.3rem;
 }
 .pinned-list {
   margin-block-end: 0.45rem;

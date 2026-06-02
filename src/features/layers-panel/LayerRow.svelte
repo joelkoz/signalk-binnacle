@@ -56,7 +56,7 @@ const percent = $derived(Math.round(item.opacity * 100));
       <span class="title" title={item.title}>{item.title}</span>
     </label>
   </div>
-  {#if item.supportsOpacity}
+  {#if item.supportsOpacity && item.visible}
     <div class="opacity-line">
       <span class="lbl">Opacity</span>
       <input
@@ -80,7 +80,7 @@ const percent = $derived(Math.round(item.opacity * 100));
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
-  padding: 0.45rem 0.5rem 0.55rem;
+  padding: 0.1rem 0.5rem;
 }
 .row.dragging {
   background: var(--surface);
@@ -141,13 +141,15 @@ const percent = $derived(Math.round(item.opacity * 100));
   accent-color: var(--accent);
 }
 .title {
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .opacity-line {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-block-start: 0.4rem;
+  margin-block-start: 0.1rem;
 }
 .opacity-line .lbl {
   min-inline-size: 3.2rem;
