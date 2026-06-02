@@ -35,6 +35,7 @@ export function createFakeMap() {
     getLayer: (id: string) => (layers.has(id) ? { id } : undefined),
     addLayer: (layer: { id: string }) => layers.add(layer.id),
     removeLayer: (id: string) => layers.delete(id),
+    moveLayer: vi.fn(),
     removeSource: (id: string) => sources.delete(id),
     setLayerZoomRange: vi.fn(),
     setLayoutProperty: vi.fn(),

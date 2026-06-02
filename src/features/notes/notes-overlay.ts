@@ -105,6 +105,7 @@ export function createNotesOverlay(
     title: 'Points of interest',
     band: 'routes',
     supportsOpacity: true,
+    layerIds: [SELECT_LAYER, CLUSTER_LAYER, CLUSTER_COUNT_LAYER, LAYER_ID],
     async add(ctx) {
       const paint = mapThemePaint('day');
       const before = ctx.beforeIdFor('routes');

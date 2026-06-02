@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createFakeMap } from '$shared/testing/fake-map';
 import { LayerManager } from './layer-manager';
-import type { OverlayContext, OverlayModule } from './types';
+import type { OverlayContext, OverlayModule, ZBand } from './types';
 
 function fakeCtx(): OverlayContext {
   return {
@@ -10,13 +10,14 @@ function fakeCtx(): OverlayContext {
   };
 }
 
-function fakeOverlay(id: string): OverlayModule & { events: string[] } {
+function fakeOverlay(id: string, band: ZBand = 'traffic'): OverlayModule & { events: string[] } {
   const events: string[] = [];
   return {
     id,
     title: id,
-    band: 'traffic',
+    band,
     supportsOpacity: true,
+    layerIds: [`${id}-layer`],
     events,
     add: () => {
       events.push('add');
@@ -84,11 +85,12 @@ describe('LayerManager', () => {
     expect(overlay.events).toContain('opacity:0.5');
   });
 
-  it('layers() returns a snapshot of registered overlays in order', async () => {
+  it('layers() returns overlays top of the map first', async () => {
     const manager = new LayerManager(fakeCtx());
     await manager.register(fakeOverlay('a'));
     await manager.register(fakeOverlay('b'));
-    expect(manager.layers().map((l) => l.id)).toEqual(['a', 'b']);
+    // Same band, so b (registered later) sits above a; layers() lists the top layer first.
+    expect(manager.layers().map((l) => l.id)).toEqual(['b', 'a']);
     expect(manager.layers()[0]).toMatchObject({ visible: true, opacity: 1 });
   });
 
@@ -120,5 +122,43 @@ describe('LayerManager', () => {
       a: { visible: false, opacity: 1 },
       b: { visible: true, opacity: 0.5 },
     });
+  });
+
+  it('orders overlays by band by default, top of the map first', async () => {
+    const manager = new LayerManager(fakeCtx());
+    await manager.register(fakeOverlay('chart', 'basemap'));
+    await manager.register(fakeOverlay('vessel', 'vessel'));
+    await manager.register(fakeOverlay('track', 'track'));
+    expect(manager.layers().map((l) => l.id)).toEqual(['vessel', 'track', 'chart']);
+  });
+
+  it('reorder moves a non-pinned layer and persists the new bottom-to-top order', async () => {
+    const orders: string[][] = [];
+    const manager = new LayerManager(fakeCtx(), { onOrderChange: (o) => orders.push(o) });
+    await manager.register(fakeOverlay('a'));
+    await manager.register(fakeOverlay('b'));
+    await manager.register(fakeOverlay('c'));
+    // Display order top to bottom starts [c, b, a]; move 'a' to the top.
+    manager.reorder('a', 0);
+    expect(manager.layers().map((l) => l.id)).toEqual(['a', 'c', 'b']);
+    expect(orders.at(-1)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('restores a saved order on register', async () => {
+    const manager = new LayerManager(fakeCtx(), { savedOrder: ['b', 'c', 'a'] });
+    await manager.register(fakeOverlay('a'));
+    await manager.register(fakeOverlay('b'));
+    await manager.register(fakeOverlay('c'));
+    // Saved bottom-to-top [b, c, a] reads top to bottom as [a, c, b].
+    expect(manager.layers().map((l) => l.id)).toEqual(['a', 'c', 'b']);
+  });
+
+  it('keeps pinned overlays on top and immovable', async () => {
+    const manager = new LayerManager(fakeCtx(), { pinned: ['vessel'] });
+    await manager.register(fakeOverlay('a'));
+    await manager.register(fakeOverlay('vessel', 'vessel'));
+    expect(manager.layers()[0]).toMatchObject({ id: 'vessel', pinned: true });
+    manager.reorder('a', 0);
+    expect(manager.layers()[0].id).toBe('vessel');
   });
 });

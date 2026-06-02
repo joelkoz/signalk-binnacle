@@ -81,6 +81,7 @@ export function createTrackOverlay(
     title: 'Track',
     band: BAND,
     supportsOpacity: true,
+    layerIds: [SAVED_LAYER, ACTIVE_LAYER],
     add(ctx) {
       // Reset the dirty-check state so a reattach (after a base-style swap recreates the
       // emptied sources) repopulates them on the next sync instead of staying blank.

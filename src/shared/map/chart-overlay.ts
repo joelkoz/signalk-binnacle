@@ -58,6 +58,7 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
     title: chart.name,
     band: BAND,
     supportsOpacity: true,
+    layerIds: layers.map((layer) => layer.id),
     add(ctx) {
       for (const sourceId of sourceIds) {
         const spec = specs.sources[sourceId];

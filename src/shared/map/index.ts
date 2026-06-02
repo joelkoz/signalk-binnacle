@@ -9,7 +9,7 @@ export { createChartOverlay } from './chart-overlay';
 export type { MapSourceType, SignalKChart } from './chart-types';
 export type { Rgba } from './icon-raster';
 export { rasterIcon } from './icon-raster';
-export type { LayerSettings, OverlayState } from './layer-manager';
+export type { LayerListItem, LayerSettings, OverlayState } from './layer-manager';
 export { LayerManager } from './layer-manager';
 export type { MapThemePaint } from './map-theme';
 export { mapThemePaint } from './map-theme';

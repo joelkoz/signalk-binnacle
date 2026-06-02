@@ -34,6 +34,9 @@ export interface OverlayModule {
   readonly title: string;
   readonly band: ZBand;
   readonly supportsOpacity: boolean;
+  // The MapLibre layer ids this overlay manages, bottom to top, so the LayerManager can
+  // restack the whole overlay group when the user reorders layers.
+  readonly layerIds: readonly string[];
   add(ctx: OverlayContext): void | Promise<void>;
   remove(ctx: OverlayContext): void;
   setVisible(ctx: OverlayContext, visible: boolean): void;

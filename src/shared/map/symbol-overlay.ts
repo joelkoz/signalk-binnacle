@@ -48,6 +48,7 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
     title: config.title,
     band: config.band,
     supportsOpacity: true,
+    layerIds: [config.layerId],
     add(ctx) {
       if (!ctx.map.hasImage(config.iconId)) {
         ctx.map.addImage(config.iconId, config.iconImage(config.defaultColor), {

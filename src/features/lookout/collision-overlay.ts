@@ -57,6 +57,7 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
     title: 'Collision risk',
     band: 'safety',
     supportsOpacity: true,
+    layerIds: [LAYER_ID],
     add(ctx) {
       const contacts = collision.assessment.contacts;
       const source: GeoJSONSourceSpecification = {

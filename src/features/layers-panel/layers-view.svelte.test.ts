@@ -13,6 +13,7 @@ function fakeOverlay(id: string): OverlayModule {
     title: id.toUpperCase(),
     band: 'basemap',
     supportsOpacity: true,
+    layerIds: [id],
     add: () => {},
     remove: () => {},
     setVisible: () => {},

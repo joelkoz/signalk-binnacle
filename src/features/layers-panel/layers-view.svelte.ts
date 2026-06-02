@@ -1,15 +1,7 @@
-import type { LayerManager } from '$shared/map';
-
-interface LayerItem {
-  id: string;
-  title: string;
-  visible: boolean;
-  opacity: number;
-  supportsOpacity: boolean;
-}
+import type { LayerListItem, LayerManager } from '$shared/map';
 
 export class LayersView {
-  items = $state<LayerItem[]>([]);
+  items = $state<LayerListItem[]>([]);
 
   #manager: LayerManager;
 
@@ -34,5 +26,13 @@ export class LayersView {
     this.#manager.setOpacity(id, opacity);
     const item = this.items.find((i) => i.id === id);
     if (item) item.opacity = opacity;
+  }
+
+  // Move a layer to a new index in the top-to-bottom display order, then rebuild the list in
+  // the new order. A reorder is a discrete drop, not a per-pixel stream, so a full refresh is
+  // fine here (unlike the in-place toggle and opacity writes above).
+  reorder(id: string, toIndex: number): void {
+    this.#manager.reorder(id, toIndex);
+    this.refresh();
   }
 }

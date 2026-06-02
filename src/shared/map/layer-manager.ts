@@ -1,6 +1,6 @@
 import type { MapThemePaint } from './map-theme';
-import { installSentinels } from './sentinels';
-import type { OverlayContext, OverlayModule } from './types';
+import { installSentinels, sentinelId } from './sentinels';
+import { type OverlayContext, type OverlayModule, Z_ORDER } from './types';
 
 export interface OverlayState {
   visible: boolean;
@@ -10,11 +10,28 @@ export interface OverlayState {
 // Per-layer visibility and opacity, keyed by overlay id, for save and restore.
 export type LayerSettings = Record<string, OverlayState>;
 
+export interface LayerListItem {
+  id: string;
+  title: string;
+  visible: boolean;
+  opacity: number;
+  supportsOpacity: boolean;
+  // A pinned layer (own vessel, active alarms) is locked to the top and cannot be reordered.
+  pinned: boolean;
+}
+
 interface LayerManagerOptions {
   // Settings to restore on register (a layer absent here takes the visible default).
   saved?: LayerSettings;
   // Called with the full settings snapshot whenever a layer's state changes.
   onChange?: (settings: LayerSettings) => void;
+  // Persisted bottom-to-top order of non-pinned overlay ids, and the callback to persist it.
+  savedOrder?: string[];
+  onOrderChange?: (order: string[]) => void;
+  // Overlay ids pinned to the top of the stack, in bottom-to-top order, so the vessel and
+  // active alarms can never be hidden beneath a chart. The core stays generic: the wiring
+  // decides which ids are pinned rather than the manager hardcoding any feature.
+  pinned?: string[];
 }
 
 export class LayerManager {
@@ -23,11 +40,18 @@ export class LayerManager {
   #state = new Map<string, OverlayState>();
   #saved: LayerSettings;
   #onChange?: (settings: LayerSettings) => void;
+  // The explicit user order (bottom to top) of non-pinned overlays; seeds the effective order.
+  #explicitOrder: string[];
+  #onOrderChange?: (order: string[]) => void;
+  #pinned: string[];
 
   constructor(ctx: OverlayContext, options: LayerManagerOptions = {}) {
     this.#ctx = ctx;
     this.#saved = options.saved ?? {};
     this.#onChange = options.onChange;
+    this.#explicitOrder = options.savedOrder ? [...options.savedOrder] : [];
+    this.#onOrderChange = options.onOrderChange;
+    this.#pinned = options.pinned ?? [];
   }
 
   async register(module: OverlayModule): Promise<void> {
@@ -42,6 +66,7 @@ export class LayerManager {
     await module.add(this.#ctx);
     module.setVisible(this.#ctx, state.visible);
     module.setOpacity?.(this.#ctx, state.opacity);
+    this.#applyOrder();
   }
 
   unregister(id: string): void {
@@ -69,6 +94,23 @@ export class LayerManager {
     this.#persist();
   }
 
+  // Move a non-pinned overlay to a new index in the non-pinned, top-to-bottom display order
+  // (index 0 is the top of the map). Pinned layers are never moved or displaced.
+  reorder(id: string, toIndex: number): void {
+    if (this.#pinned.includes(id) || !this.#modules.has(id)) return;
+    const topDown = this.#effectiveOrder()
+      .filter((other) => !this.#pinned.includes(other))
+      .reverse();
+    const from = topDown.indexOf(id);
+    if (from < 0) return;
+    topDown.splice(from, 1);
+    const clamped = Math.max(0, Math.min(toIndex, topDown.length));
+    topDown.splice(clamped, 0, id);
+    this.#explicitOrder = [...topDown].reverse();
+    this.#applyOrder();
+    this.#onOrderChange?.([...this.#explicitOrder]);
+  }
+
   #persist(): void {
     if (!this.#onChange) return;
     const snapshot: LayerSettings = {};
@@ -76,6 +118,46 @@ export class LayerManager {
       snapshot[id] = { visible: state.visible, opacity: state.opacity };
     }
     this.#onChange(snapshot);
+  }
+
+  // The effective stacking order, bottom to top: pinned overlays on top, the rest by the
+  // saved explicit order, with any overlay missing from it slotted in at its band default.
+  #effectiveOrder(): string[] {
+    const bandRank = (id: string): number =>
+      Z_ORDER.indexOf(this.#modules.get(id)?.band ?? 'basemap');
+    const nonPinned = [...this.#modules.keys()].filter((id) => !this.#pinned.includes(id));
+    const seq = this.#explicitOrder.filter((id) => nonPinned.includes(id));
+    for (const id of nonPinned) {
+      if (seq.includes(id)) continue;
+      const rank = bandRank(id);
+      let at = seq.findIndex((other) => bandRank(other) > rank);
+      if (at < 0) at = seq.length;
+      seq.splice(at, 0, id);
+    }
+    const pinned = this.#pinned.filter((id) => this.#modules.has(id));
+    return [...seq, ...pinned];
+  }
+
+  // Realize the effective order on the map by chaining moveLayer from the top down, anchoring
+  // the whole overlay group just beneath the top sentinel so it stays above the base style.
+  #applyOrder(): void {
+    // Band insertion already yields the default order, so a restack only matters once a saved
+    // order or a pin makes the desired order differ from the plain band sequence.
+    if (!this.#explicitOrder.length && !this.#pinned.length) return;
+    const desired: string[] = [];
+    for (const id of this.#effectiveOrder()) {
+      const module = this.#modules.get(id);
+      if (!module) continue;
+      for (const layerId of module.layerIds) {
+        if (this.#ctx.map.getLayer(layerId)) desired.push(layerId);
+      }
+    }
+    const anchor = sentinelId('overlay-top');
+    let cursor = this.#ctx.map.getLayer(anchor) ? anchor : undefined;
+    for (let k = desired.length - 1; k >= 0; k--) {
+      this.#ctx.map.moveLayer(desired[k], cursor);
+      cursor = desired[k];
+    }
   }
 
   // Broadcast a theme change to every overlay that recolors itself, so each slice owns
@@ -96,24 +178,27 @@ export class LayerManager {
       module.setVisible(this.#ctx, state.visible);
       module.setOpacity?.(this.#ctx, state.opacity);
     }
+    this.#applyOrder();
   }
 
-  layers(): Array<{
-    id: string;
-    title: string;
-    visible: boolean;
-    opacity: number;
-    supportsOpacity: boolean;
-  }> {
-    return [...this.#modules.values()].map((module) => {
-      const state = this.#state.get(module.id) ?? { visible: true, opacity: 1 };
-      return {
-        id: module.id,
-        title: module.title,
-        visible: state.visible,
-        opacity: state.opacity,
-        supportsOpacity: module.supportsOpacity,
-      };
-    });
+  // The layer list for the panel, top of the map first, so the panel's top row is the top layer.
+  layers(): LayerListItem[] {
+    return this.#effectiveOrder()
+      .reverse()
+      .flatMap((id) => {
+        const module = this.#modules.get(id);
+        if (!module) return [];
+        const state = this.#state.get(id) ?? { visible: true, opacity: 1 };
+        return [
+          {
+            id,
+            title: module.title,
+            visible: state.visible,
+            opacity: state.opacity,
+            supportsOpacity: module.supportsOpacity,
+            pinned: this.#pinned.includes(id),
+          },
+        ];
+      });
   }
 }
