@@ -1,0 +1,110 @@
+import { haversineMeters } from '$shared/nav';
+import type { PersistedValue, TrackSettings } from '$shared/settings';
+import type { TrackStore } from '$shared/storage';
+import type { TrackPoint, TrackStats } from './track-types';
+
+// A fix this far in time after the previous one starts a new segment (GPS dropout, app
+// closed, reconnect), so the line is not drawn straight across the gap.
+const GAP_MS = 5 * 60 * 1000;
+
+export interface RecordDecision {
+  append: boolean;
+  gap: boolean;
+}
+
+// Whether a candidate fix should be recorded, given the last fix and the settings. A fix is
+// kept when both the interval and the min-distance have passed (the min-distance doubles as a
+// min-move threshold so the track does not pile up at anchor); a long time gap always records
+// and starts a break.
+export function decideRecord(
+  last: TrackPoint | undefined,
+  lat: number,
+  lon: number,
+  now: number,
+  settings: TrackSettings,
+): RecordDecision {
+  if (!last) return { append: true, gap: false };
+  const dt = now - last.t;
+  if (dt > GAP_MS) return { append: true, gap: true };
+  const moved = haversineMeters(last.lat, last.lon, lat, lon);
+  if (dt >= settings.intervalSeconds * 1000 && moved >= settings.minMeters) {
+    return { append: true, gap: false };
+  }
+  return { append: false, gap: false };
+}
+
+export function computeStats(points: readonly TrackPoint[]): TrackStats {
+  if (points.length === 0) {
+    return { distanceMeters: 0, durationSeconds: 0, avgSog: 0, maxSog: 0 };
+  }
+  let distanceMeters = 0;
+  let maxSog = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const point = points[i];
+    if (point.sog > maxSog) maxSog = point.sog;
+    const prev = points[i - 1];
+    if (prev && !point.gap) {
+      distanceMeters += haversineMeters(prev.lat, prev.lon, point.lat, point.lon);
+    }
+  }
+  const durationSeconds = (points[points.length - 1].t - points[0].t) / 1000;
+  const avgSog = durationSeconds > 0 ? distanceMeters / durationSeconds : 0;
+  return { distanceMeters, durationSeconds, avgSog, maxSog };
+}
+
+export class TrackRecorder {
+  points = $state<TrackPoint[]>([]);
+  paused = $state(false);
+  stats = $derived(computeStats(this.points));
+
+  #settings: PersistedValue<TrackSettings>;
+  #store: TrackStore<TrackPoint>;
+  // Set when recording resumes or a paused fix arrives, so the next kept fix starts a break.
+  #resumeGap = false;
+
+  constructor(settings: PersistedValue<TrackSettings>, store: TrackStore<TrackPoint>) {
+    this.#settings = settings;
+    this.#store = store;
+    void this.#restore();
+  }
+
+  async #restore(): Promise<void> {
+    const saved = await this.#store.all();
+    if (saved.length > 0) this.points = saved;
+  }
+
+  consider(lat: number, lon: number, sog: number, now: number = Date.now()): void {
+    if (this.paused) {
+      this.#resumeGap = true;
+      return;
+    }
+    const last = this.points[this.points.length - 1];
+    const decision = decideRecord(last, lat, lon, now, this.#settings.value);
+    if (!decision.append) return;
+    const point: TrackPoint = {
+      lat,
+      lon,
+      t: now,
+      sog,
+      gap: decision.gap || this.#resumeGap || undefined,
+    };
+    this.#resumeGap = false;
+    this.points.push(point);
+    void this.#store.append(point);
+  }
+
+  pause(): void {
+    this.paused = true;
+  }
+
+  resume(): void {
+    this.paused = false;
+    this.#resumeGap = true;
+  }
+
+  clear(): void {
+    this.points = [];
+    this.#resumeGap = false;
+    void this.#store.clear();
+  }
+}
