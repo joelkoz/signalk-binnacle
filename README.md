@@ -52,6 +52,11 @@ What is in place now:
 - Tracks: the voyage is recorded behind the boat, colored by speed or solid, with breaks marking
   GPS dropouts. The whole track persists across a refresh, and a Tracks menu shows live stats and
   saves, lists, shows or hides, deletes, and exports tracks via the Signal K `/resources/tracks` API.
+- Points of interest: notes from Crow's Nest, ActiveCaptain, the USCG Light List, and other Signal K
+  notes providers render as themed, clustered markers, and tapping one opens a slide-in detail panel.
+  Binnacle renders Crow's Nest's structured `properties.crowsNest` sections natively (measures,
+  availability, ratings, and more), and falls back to the plain-text description for any other
+  provider.
 - Day, dusk, and night-red themes switched from a top-bar toggle, recoloring the chrome and the
   map base; night-red is pure red on true black to preserve dark adaptation on a night watch.
 - Identity: self-hosted Inter and JetBrains Mono typography (offline-first, with tabular numeric

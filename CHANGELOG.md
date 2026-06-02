@@ -8,6 +8,16 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Note detail panel: tapping a point of interest now opens a slide-in side panel with native,
+  structured detail instead of a plain-text popup that bounced you to an external viewer. Binnacle
+  consumes Crow's Nest's presentation-neutral `properties.crowsNest` sections from
+  `/resources/notes/{id}`, rendering each item by kind (measures with units, availability badges,
+  rating stars, flag toggles, links, and notes), and falls back cleanly to the plain-text
+  description for any other notes provider or schema version. The marker icon now uses the
+  explicit POI type when present, the structured values render as text with scheme-checked links
+  (no HTML injection), and the panel is themed for day, dusk, and night-red and becomes a bottom
+  sheet on a narrow screen.
+
 - Tracks: Binnacle now records and shows where you have been. The active track is drawn behind the
   boat as you move, colored by speed (with a slow-to-fast legend) or a single solid color, and a
   break in the line marks a GPS dropout or a gap between sessions. The whole voyage is kept in the
