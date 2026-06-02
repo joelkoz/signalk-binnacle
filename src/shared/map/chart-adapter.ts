@@ -16,8 +16,17 @@ export function chartSourceId(identifier: string): string {
 }
 
 function absolute(url: string, base: string): string {
-  // Pass through absolute and protocol-relative (//host/path) URLs; only join true relatives.
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) return url;
+  // Pass through absolute, protocol-relative, blob, and pmtiles URLs; only join true relatives.
+  // A user-imported file resolves to a pmtiles://blob: URL, which is already absolute.
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('//') ||
+    url.startsWith('blob:') ||
+    url.startsWith('pmtiles://')
+  ) {
+    return url;
+  }
   return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 

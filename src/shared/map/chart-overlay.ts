@@ -6,8 +6,6 @@ import { registerPmtilesArchive } from './pmtiles';
 import type { OverlayModule, ZBand } from './types';
 
 const PMTILES_SCHEME = 'pmtiles://';
-// Charts render in the basemap band; the single source of the band string.
-const BAND: ZBand = 'basemap';
 
 // How far past a chart's native max zoom its layers keep drawing before they hand off
 // to the base map. Zooming past a chart's scale overzooms the top tiles into a blocky,
@@ -26,7 +24,13 @@ function opacityProperty(layerType: string): string {
   return OPACITY_PROPERTY[layerType as keyof typeof OPACITY_PROPERTY] ?? 'raster-opacity';
 }
 
-export function createChartOverlay(chart: SignalKChart, serverBase: string): OverlayModule {
+// Server charts default to the basemap band; a user-imported chart passes 'bathymetry' so it
+// layers above the base map.
+export function createChartOverlay(
+  chart: SignalKChart,
+  serverBase: string,
+  band: ZBand = 'basemap',
+): OverlayModule {
   const specs = chartToSpecs(chart, serverBase);
   const sourceIds = Object.keys(specs.sources);
   const layers = specs.layers.map((layer) => ({
@@ -56,7 +60,7 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
   return {
     id: chartSourceId(chart.identifier),
     title: chart.name,
-    band: BAND,
+    band,
     supportsOpacity: true,
     layerIds: layers.map((layer) => layer.id),
     add(ctx) {
@@ -73,7 +77,7 @@ export function createChartOverlay(chart: SignalKChart, serverBase: string): Ove
       }
       for (const layer of specs.layers) {
         if (!ctx.map.getLayer(layer.id)) {
-          ctx.map.addLayer(layer, ctx.beforeIdFor(BAND));
+          ctx.map.addLayer(layer, ctx.beforeIdFor(band));
         }
       }
       // A chart with no sources (the empty mapstyleJSON specs) has nothing to cap, so skip
