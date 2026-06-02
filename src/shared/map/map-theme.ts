@@ -48,7 +48,10 @@ export type MapColorKey = 'background' | 'water' | 'land' | 'landcover' | 'road'
 
 const PAINT: Record<Theme, MapThemePaint> = {
   day: {
-    background: '#dfe4e8',
+    // The base map renders land and empty areas as the background layer, so this is the land
+    // tone, not a water tone. A warm light neutral (close to the source style's cream) keeps the
+    // map from taking on a blue cast once the theme recolor runs over the warm default.
+    background: '#f2efe8',
     water: '#a8c9e0',
     land: '#eae6dd',
     landcover: '#d6e6c8',
