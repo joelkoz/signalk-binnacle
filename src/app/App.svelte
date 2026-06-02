@@ -90,6 +90,7 @@ const savedSource: SavedTracksSource = {
 };
 
 let layersView = $state<LayersView | undefined>();
+let layersPanelOpen = $state(false);
 let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
 
@@ -106,6 +107,7 @@ const theme = createThemeController((next) => recolorMap?.(next));
 const mapViewStore = createMapView();
 const savedView = isMapView(mapViewStore.value) ? mapViewStore.value : undefined;
 const layerSettings = new PersistedValue<LayerSettings>('binnacle:layers', {});
+const layerOrder = new PersistedValue<string[]>('binnacle:layer-order', []);
 
 // The view changes once per animation frame while panning; persist only after it
 // settles so a drag is one write, not hundreds.
@@ -118,9 +120,16 @@ function onViewChange(view: MapView): void {
 
 let mapCommands = $state<MapCommands | undefined>();
 
-// The app menu's action options. Adding one is a single entry here; the layers controls
-// are rendered into the menu as a submenu below (see the AppMenu children).
+// The app menu's action options. Adding one is a single entry here. "Layers & charts" opens
+// the layers slide-over; Tracks and the collision thresholds stay as inline submenus below.
 const menuItems = $derived<MenuItem[]>([
+  {
+    id: 'layers',
+    label: 'Layers & charts',
+    icon: Layers,
+    disabled: !layersView,
+    onSelect: () => (layersPanelOpen = true),
+  },
   {
     id: 'center-on-boat',
     label: 'Center on boat',
@@ -286,11 +295,6 @@ onDestroy(() => {
   <header class="topbar">
     <span class="topbar-start">
       <AppMenu items={menuItems}>
-        {#if layersView}
-          <MenuSubmenu label="Layers" icon={Layers}>
-            <LayersPanel view={layersView} />
-          </MenuSubmenu>
-        {/if}
         <MenuSubmenu label="Tracks" icon={Spline}>
           <TracksPanel
             {recorder}
@@ -329,6 +333,8 @@ onDestroy(() => {
       initialView={savedView}
       savedLayers={layerSettings.value}
       onLayersChange={(settings) => layerSettings.set(settings)}
+      savedOrder={layerOrder.value}
+      onOrderChange={(order) => layerOrder.set(order)}
       onReady={(view) => (layersView = view)}
       onMapReady={(recolor) => {
         recolorMap = recolor;
@@ -347,6 +353,11 @@ onDestroy(() => {
     {#if selectedNote && noteLoader}
       <div class="note-panel-slot">
         <NoteDetailPanel selection={selectedNote} load={noteLoader.load} onClose={closeNote} />
+      </div>
+    {/if}
+    {#if layersPanelOpen && layersView}
+      <div class="layers-panel-slot">
+        <LayersPanel view={layersView} onClose={() => (layersPanelOpen = false)} />
       </div>
     {/if}
   </section>
@@ -436,8 +447,17 @@ onDestroy(() => {
   inset-inline-end: 0;
   z-index: var(--z-panel);
 }
+/* The Layers panel docks at the opposite (leading) edge from the note detail, so both can be
+   open at once without overlapping; the menu popout closes on selection, leaving the edge free. */
+.layers-panel-slot {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-panel);
+}
 @media (max-width: 600px) {
-  .note-panel-slot {
+  .note-panel-slot,
+  .layers-panel-slot {
     inset-block-start: auto;
     inset-inline: 0;
   }

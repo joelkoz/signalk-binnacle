@@ -46,6 +46,9 @@ interface Props {
   // Saved per-layer visibility and opacity, and a sink for changes to persist.
   savedLayers?: LayerSettings;
   onLayersChange?: (settings: LayerSettings) => void;
+  // Saved bottom-to-top order of non-pinned layers, and a sink for reorder changes.
+  savedOrder?: string[];
+  onOrderChange?: (order: string[]) => void;
   onReady?: (view: LayersView) => void;
   onMapReady?: (recolor: (theme: Theme) => void) => void;
   onCommandsReady?: (commands: MapCommands) => void;
@@ -65,6 +68,8 @@ const {
   initialView,
   savedLayers,
   onLayersChange,
+  savedOrder,
+  onOrderChange,
   onReady,
   onMapReady,
   onCommandsReady,
@@ -116,7 +121,15 @@ onMount(() => {
     emitView();
     const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
     installSentinels(mapInstance);
-    manager = new LayerManager(ctx, { saved: savedLayers, onChange: onLayersChange });
+    manager = new LayerManager(ctx, {
+      saved: savedLayers,
+      onChange: onLayersChange,
+      savedOrder,
+      onOrderChange,
+      // The own vessel and active collision alarms stay pinned on top so a chart or traffic
+      // can never hide them; bottom to top, collision sits just beneath the vessel.
+      pinned: ['collision', 'own-vessel'],
+    });
 
     const charts = await fetchCharts(serverOrigin(), chartsToken);
     if (destroyed) return;

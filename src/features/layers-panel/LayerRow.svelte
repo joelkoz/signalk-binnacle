@@ -1,0 +1,201 @@
+<script lang="ts">
+import { GripVertical } from '@lucide/svelte';
+import type { LayerListItem } from '$shared/map';
+import type { LayersView } from './layers-view.svelte';
+
+interface Props {
+  item: LayerListItem;
+  view: LayersView;
+  index: number;
+  count: number;
+  dragging: boolean;
+  dropBefore: boolean;
+  dropAfter: boolean;
+  onHandlePointerDown: (event: PointerEvent) => void;
+  onHandleKeydown: (event: KeyboardEvent) => void;
+}
+
+const {
+  item,
+  view,
+  index,
+  count,
+  dragging,
+  dropBefore,
+  dropAfter,
+  onHandlePointerDown,
+  onHandleKeydown,
+}: Props = $props();
+
+const percent = $derived(Math.round(item.opacity * 100));
+</script>
+
+<li
+  class="row"
+  class:dragging
+  class:drop-before={dropBefore}
+  class:drop-after={dropAfter}
+  data-layer-row={item.id}
+>
+  <div class="row-main">
+    <button
+      type="button"
+      class="handle"
+      aria-label={`Move ${item.title}, position ${index + 1} of ${count}`}
+      onpointerdown={onHandlePointerDown}
+      onkeydown={onHandleKeydown}
+    >
+      <GripVertical size={18} aria-hidden="true" />
+    </button>
+    <label class="toggle">
+      <input
+        type="checkbox"
+        checked={item.visible}
+        onchange={(e) => view.toggle(item.id, e.currentTarget.checked)}
+      >
+      <span class="title">{item.title}</span>
+    </label>
+  </div>
+  {#if item.supportsOpacity}
+    <div class="opacity-line">
+      <span class="lbl">Opacity</span>
+      <input
+        class="opacity"
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={item.opacity}
+        aria-label={`${item.title} opacity`}
+        oninput={(e) => view.setOpacity(item.id, Number(e.currentTarget.value))}
+      >
+      <span class="opacity-val">{percent}%</span>
+    </div>
+  {/if}
+</li>
+
+<style>
+.row {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  padding: 0.45rem 0.5rem 0.55rem;
+}
+.row.dragging {
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-overlay);
+  opacity: 0.9;
+}
+/* A drop indicator line at the leading or trailing edge of the row the dragged item will land at. */
+.row.drop-before::before,
+.row.drop-after::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  block-size: 2px;
+  background: var(--accent);
+}
+.row.drop-before::before {
+  inset-block-start: -3px;
+}
+.row.drop-after::after {
+  inset-block-end: -3px;
+}
+.row-main {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--control-size);
+  min-block-size: var(--control-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+}
+.handle:hover {
+  color: var(--text);
+}
+.toggle {
+  display: flex;
+  flex: 1;
+  min-inline-size: 0;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: var(--control-size);
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+.toggle input[type="checkbox"] {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  accent-color: var(--accent);
+}
+.title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.opacity-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block-start: 0.4rem;
+}
+.opacity-line .lbl {
+  min-inline-size: 3.2rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.opacity-val {
+  min-inline-size: 2.4rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-align: end;
+  color: var(--text-muted);
+}
+.opacity {
+  flex: 1;
+  min-block-size: var(--control-size);
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+  margin: 0;
+}
+.opacity::-webkit-slider-runnable-track {
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.opacity::-moz-range-track {
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.opacity::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  inline-size: 24px;
+  block-size: 24px;
+  margin-block-start: -9px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--accent);
+}
+.opacity::-moz-range-thumb {
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--accent);
+}
+</style>
