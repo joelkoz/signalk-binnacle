@@ -22,13 +22,12 @@ import {
   downloadGeoJson,
   fetchSavedTracks,
   type SavedTrack,
-  SpeedLegend,
   savedTracksToFeatures,
   saveTrack,
   TracksPanel,
 } from '$features/tracks';
 import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
-import { type LayerSettings, mapThemePaint } from '$shared/map';
+import type { LayerSettings } from '$shared/map';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
 import {
   createMapView,
@@ -96,9 +95,6 @@ let updateReady = $state(false);
 const pwa = registerPwa(() => (updateReady = true));
 
 const theme = createThemeController((next) => recolorMap?.(next));
-
-// Track speed-legend colors follow the active theme's track paint tokens.
-const legendPaint = $derived(mapThemePaint(theme.theme));
 
 // Profile state restored across visits: the last map view and the layer settings.
 const mapViewStore = createMapView();
@@ -342,15 +338,6 @@ onDestroy(() => {
     <div class="danger-slot">
       <DangerStrip {collision} />
     </div>
-    {#if trackSettings.value.colorMode === 'speed'}
-      <div class="legend-slot">
-        <SpeedLegend
-          slow={legendPaint.trackSlow}
-          mid={legendPaint.trackMid}
-          fast={legendPaint.trackFast}
-        />
-      </div>
-    {/if}
     {#if selectedNote && noteLoader}
       <div class="note-panel-slot">
         <NoteDetailPanel selection={selectedNote} load={noteLoader.load} onClose={closeNote} />
@@ -435,12 +422,6 @@ onDestroy(() => {
   display: flex;
   justify-content: center;
   pointer-events: none;
-  z-index: var(--z-overlay);
-}
-.legend-slot {
-  position: absolute;
-  inset-block-start: 0.75rem;
-  inset-inline-end: 0.75rem;
   z-index: var(--z-overlay);
 }
 .note-panel-slot {

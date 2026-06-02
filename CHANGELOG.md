@@ -19,7 +19,7 @@ All notable changes to Binnacle are documented here. The format follows
   sheet on a narrow screen.
 
 - Tracks: Binnacle now records and shows where you have been. The active track is drawn behind the
-  boat as you move, colored by speed (with a slow-to-fast legend) or a single solid color, and a
+  boat as you move, colored by speed (dark for slow, bright for fast) or a single solid color, and a
   break in the line marks a GPS dropout or a gap between sessions. The whole voyage is kept in the
   browser (IndexedDB) and reappears after a refresh. A "Tracks" submenu in the menu pauses and
   resumes recording, shows live voyage stats (distance, duration, and average and maximum speed),
