@@ -1,10 +1,11 @@
 <script lang="ts">
 import { Pin, X } from '@lucide/svelte';
-import type { UserChartSource, UserCharts } from '$entities/user-charts';
+import type { UserCharts } from '$entities/user-charts';
 import { chartSourceId, type LayerListItem } from '$shared/map';
 import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
 import type { LayersView } from './layers-view.svelte';
+import SourceDetail from './SourceDetail.svelte';
 
 interface Props {
   view: LayersView;
@@ -17,29 +18,16 @@ const { view, userCharts, onClose }: Props = $props();
 const pinned = $derived(view.items.filter((item) => item.pinned));
 const movable = $derived(view.items.filter((item) => !item.pinned));
 
-// The overlay id of each user-imported chart maps back to its source id, so its row can show a
-// remove control and a delete hits the right source.
+// The overlay id of each user-imported chart maps back to its source id, so its row can open a
+// detail (rename, info, delete) for the right source.
 const userChartIds = $derived(
   new Map((userCharts?.sources ?? []).map((source) => [chartSourceId(source.id), source.id])),
 );
 let addOpen = $state(false);
-let pendingRemove = $state<UserChartSource | undefined>();
-
-function requestRemove(sourceId: string): void {
-  pendingRemove = userCharts?.sources.find((source) => source.id === sourceId);
-}
-
-async function confirmRemove(): Promise<void> {
-  const source = pendingRemove;
-  pendingRemove = undefined;
-  if (source) await userCharts?.remove(source.id);
-}
-
-function formatSize(bytes: number | undefined): string {
-  if (!bytes) return '';
-  const mb = bytes / (1024 * 1024);
-  return mb >= 1 ? `${Math.round(mb)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-}
+let manageId = $state<string | undefined>();
+const manageSource = $derived(
+  manageId ? userCharts?.sources.find((source) => source.id === manageId) : undefined,
+);
 
 // Group the movable rows into charts-and-depth versus the live overlays so the list reads as
 // organized. Reorder still operates on the live order; a header marks each category change.
@@ -149,66 +137,59 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
   </header>
 
   <div class="body">
-    {#if view.items.length === 0}
-      <p class="empty">No layers</p>
+    {#if manageSource && userCharts}
+      {#key manageSource.id}
+        <SourceDetail source={manageSource} {userCharts} onBack={() => (manageId = undefined)} />
+      {/key}
     {:else}
-      {#if pinned.length > 0}
-        <ul class="pinned-list">
-          {#each pinned as item (item.id)}
-            <li class="pinned-row">
-              <span class="pin" aria-hidden="true"><Pin size={16} /></span>
-              <span class="title" title={item.title}>{item.title}</span>
-              <span class="on-top">On top</span>
-            </li>
+      {#if view.items.length === 0}
+        <p class="empty">No layers</p>
+      {:else}
+        {#if pinned.length > 0}
+          <ul class="pinned-list">
+            {#each pinned as item (item.id)}
+              <li class="pinned-row">
+                <span class="pin" aria-hidden="true"><Pin size={16} /></span>
+                <span class="title" title={item.title}>{item.title}</span>
+                <span class="on-top">On top</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        <ul class="rows" bind:this={listEl}>
+          {#each movable as item, i (item.id)}
+            {@const indicator = indicatorFor(item.id)}
+            {@const removeId = userChartIds.get(item.id)}
+            {#if i === 0 || categoryOf(movable[i - 1]) !== categoryOf(item)}
+              <li class="group-label" aria-hidden="true">{categoryOf(item)}</li>
+            {/if}
+            <LayerRow
+              {item}
+              {view}
+              index={i}
+              count={movable.length}
+              dragging={dragId === item.id}
+              dropBefore={indicator.before}
+              dropAfter={indicator.after}
+              onHandlePointerDown={(e) => handlePointerDown(item.id, e)}
+              onHandleKeydown={(e) => handleKeydown(item.id, e)}
+              onManage={removeId ? () => (manageId = removeId) : undefined}
+            />
           {/each}
         </ul>
       {/if}
-
-      <ul class="rows" bind:this={listEl}>
-        {#each movable as item, i (item.id)}
-          {@const indicator = indicatorFor(item.id)}
-          {@const removeId = userChartIds.get(item.id)}
-          {#if i === 0 || categoryOf(movable[i - 1]) !== categoryOf(item)}
-            <li class="group-label" aria-hidden="true">{categoryOf(item)}</li>
+      {#if userCharts}
+        <div class="add-chart-area">
+          {#if addOpen}
+            <AddChartForm {userCharts} onDone={() => (addOpen = false)} />
+          {:else}
+            <button type="button" class="add-chart" onclick={() => (addOpen = true)}>
+              + Add a chart
+            </button>
           {/if}
-          <LayerRow
-            {item}
-            {view}
-            index={i}
-            count={movable.length}
-            dragging={dragId === item.id}
-            dropBefore={indicator.before}
-            dropAfter={indicator.after}
-            onHandlePointerDown={(e) => handlePointerDown(item.id, e)}
-            onHandleKeydown={(e) => handleKeydown(item.id, e)}
-            onRemove={removeId ? () => requestRemove(removeId) : undefined}
-          />
-        {/each}
-      </ul>
-    {/if}
-    {#if userCharts}
-      {#if pendingRemove}
-        <div class="confirm-remove">
-          <p>
-            Remove "{pendingRemove.name}"?{pendingRemove.byteSize
-              ? ` Frees ${formatSize(pendingRemove.byteSize)}.`
-              : ''}
-          </p>
-          <div class="confirm-actions">
-            <button type="button" onclick={() => (pendingRemove = undefined)}>Cancel</button>
-            <button type="button" class="danger" onclick={confirmRemove}>Remove</button>
-          </div>
         </div>
       {/if}
-      <div class="add-chart-area">
-        {#if addOpen}
-          <AddChartForm {userCharts} onDone={() => (addOpen = false)} />
-        {:else}
-          <button type="button" class="add-chart" onclick={() => (addOpen = true)}>
-            + Add a chart
-          </button>
-        {/if}
-      </div>
     {/if}
   </div>
 </aside>
@@ -340,36 +321,6 @@ header h2 {
 }
 .add-chart:hover {
   border-color: var(--accent);
-}
-.confirm-remove {
-  margin-block-start: 0.5rem;
-  padding: 0.5rem;
-  border: 1px solid var(--alarm);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-}
-.confirm-remove p {
-  margin: 0 0 0.4rem;
-}
-.confirm-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.4rem;
-}
-.confirm-actions button {
-  min-block-size: var(--control-size);
-  padding-inline: 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-.confirm-actions .danger {
-  border-color: var(--alarm);
-  color: var(--alarm);
 }
 @media (max-width: 600px) {
   .layers-panel {

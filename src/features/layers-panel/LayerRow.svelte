@@ -1,5 +1,5 @@
 <script lang="ts">
-import { GripVertical, Trash2 } from '@lucide/svelte';
+import { GripVertical, Settings2 } from '@lucide/svelte';
 import type { LayerListItem } from '$shared/map';
 import type { LayersView } from './layers-view.svelte';
 
@@ -13,8 +13,8 @@ interface Props {
   dropAfter: boolean;
   onHandlePointerDown: (event: PointerEvent) => void;
   onHandleKeydown: (event: KeyboardEvent) => void;
-  // Present only on a user-imported chart row, which can be deleted.
-  onRemove?: () => void;
+  // Present only on a user-imported chart row, which opens a detail (rename, info, delete).
+  onManage?: () => void;
 }
 
 const {
@@ -27,7 +27,7 @@ const {
   dropAfter,
   onHandlePointerDown,
   onHandleKeydown,
-  onRemove,
+  onManage,
 }: Props = $props();
 
 const percent = $derived(Math.round(item.opacity * 100));
@@ -58,9 +58,9 @@ const percent = $derived(Math.round(item.opacity * 100));
       >
       <span class="title" title={item.title}>{item.title}</span>
     </label>
-    {#if onRemove}
-      <button type="button" class="remove" aria-label={`Remove ${item.title}`} onclick={onRemove}>
-        <Trash2 size={16} aria-hidden="true" />
+    {#if onManage}
+      <button type="button" class="manage" aria-label={`Manage ${item.title}`} onclick={onManage}>
+        <Settings2 size={16} aria-hidden="true" />
       </button>
     {/if}
   </div>
@@ -133,7 +133,7 @@ const percent = $derived(Math.round(item.opacity * 100));
 .handle:hover {
   color: var(--text);
 }
-.remove {
+.manage {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -146,8 +146,8 @@ const percent = $derived(Math.round(item.opacity * 100));
   color: var(--text-muted);
   cursor: pointer;
 }
-.remove:hover {
-  color: var(--alarm);
+.manage:hover {
+  color: var(--accent);
 }
 .toggle {
   display: flex;
