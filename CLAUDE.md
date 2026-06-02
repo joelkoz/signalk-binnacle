@@ -61,6 +61,18 @@ per the SignalK pack-banner caveat above):
 - `pre-commit` runs `biome ci .` and `npm run cruise`.
 - `pre-push` runs the full chain: `biome ci`, `cruise`, `check`, `test`, and a production `build`.
   A failure blocks the push.
+- `pre-push` also prints a non-blocking drift report: any uncommitted tracked changes and any
+  local branch besides `main`. This exists so stray work is seen at the moment of pushing, not
+  rediscovered later with unknown provenance. When it fires, commit, discard, or stash the
+  changes and delete merged branches before moving on; do not let the tree drift.
+
+## Working-tree hygiene and the scratch directory
+
+The project works directly on `main`, so the working tree should stay clean between commits.
+Scratch artifacts (Playwright screenshots, throwaway debug scripts, captured logs) go in the
+gitignored `tmp/` directory at the repo root, never loose at the root or inside `src/`. A stray
+`*.png` at the repo root is also gitignored as a backstop. Real app and store screenshots
+(`signalk.screenshots`) are not scratch: they live under `public/` or `src/` and are committed.
 
 The working rhythm: write every file, run the gate capturing each result to a file and reading it
 back (shell output on this Pi intermittently truncates, so trust the file, not a glanced line),

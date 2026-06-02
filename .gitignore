@@ -47,6 +47,13 @@ test-results/
 .DS_Store
 Thumbs.db
 
+# Scratch directory for screenshots, throwaway debug scripts, and captured logs.
+/tmp/
+
+# Local debug screenshots dropped at the repo root during live verification (real
+# app and store screenshots live under public/ or src/, never at the root).
+/*.png
+
 # Agent and session scratch (local only, not for contributors)
 .claude/
 .superpowers/
