@@ -1,0 +1,219 @@
+export type NormalizedItemKind =
+  | 'text'
+  | 'measure'
+  | 'count'
+  | 'availability'
+  | 'flag'
+  | 'rating'
+  | 'link'
+  | 'note';
+
+export interface NormalizedItem {
+  label: string;
+  value: string | number | boolean;
+  kind?: NormalizedItemKind;
+  unit?: string;
+}
+
+export interface NormalizedSection {
+  id: string;
+  title: string;
+  items: NormalizedItem[];
+}
+
+export type PoiType =
+  | 'Marina'
+  | 'Anchorage'
+  | 'Hazard'
+  | 'Business'
+  | 'BoatRamp'
+  | 'Bridge'
+  | 'Dam'
+  | 'Ferry'
+  | 'Inlet'
+  | 'Lock'
+  | 'LocalKnowledge'
+  | 'Navigational'
+  | 'Airport'
+  | 'Unknown';
+
+export interface NoteDetail {
+  id: string;
+  name: string;
+  type?: PoiType;
+  sections?: NormalizedSection[];
+  fallbackText?: string;
+  attribution?: string;
+  sources?: string[];
+  url?: string;
+}
+
+const V2 = '/signalk/v2/api/resources/notes';
+const V1 = '/signalk/v1/api/resources/notes';
+
+// Reduce HTML to plain text; we never inject provider markup.
+export function plainText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// A provider url is untrusted, so follow only http(s); this rejects javascript: and data:.
+export function safeHttpUrl(raw: string): string | undefined {
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString();
+  } catch {
+    // not a parseable absolute url
+  }
+  return undefined;
+}
+
+function str(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function strArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out = value.filter((v): v is string => typeof v === 'string' && v.length > 0);
+  return out.length > 0 ? out : undefined;
+}
+
+function isItemKind(value: unknown): value is NormalizedItemKind {
+  return (
+    value === 'text' ||
+    value === 'measure' ||
+    value === 'count' ||
+    value === 'availability' ||
+    value === 'flag' ||
+    value === 'rating' ||
+    value === 'link' ||
+    value === 'note'
+  );
+}
+
+function parseItem(raw: unknown): NormalizedItem | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as { label?: unknown; value?: unknown; kind?: unknown; unit?: unknown };
+  const label = str(r.label);
+  if (label === undefined) return undefined;
+  const value = r.value;
+  if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+    return undefined;
+  }
+  const item: NormalizedItem = { label, value };
+  if (isItemKind(r.kind)) item.kind = r.kind;
+  const unit = str(r.unit);
+  if (unit !== undefined) item.unit = unit;
+  return item;
+}
+
+function parseSections(raw: unknown): NormalizedSection[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const sections: NormalizedSection[] = [];
+  for (const s of raw) {
+    if (!s || typeof s !== 'object') continue;
+    const sec = s as { id?: unknown; title?: unknown; items?: unknown };
+    const title = str(sec.title);
+    if (title === undefined || !Array.isArray(sec.items)) continue;
+    const items = sec.items.map(parseItem).filter((i): i is NormalizedItem => i !== undefined);
+    if (items.length === 0) continue;
+    sections.push({ id: str(sec.id) ?? title, title, items });
+  }
+  return sections.length > 0 ? sections : undefined;
+}
+
+async function tryFetch(
+  url: string,
+  token: string | undefined,
+  id: string,
+): Promise<NoteDetail | undefined> {
+  try {
+    const init = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined;
+    const response = await fetch(url, init);
+    if (!response.ok) return undefined;
+    const body = await response.json();
+    if (!body || typeof body !== 'object') return undefined;
+    const note = body as {
+      name?: unknown;
+      title?: unknown;
+      url?: unknown;
+      description?: unknown;
+      properties?: {
+        attribution?: unknown;
+        sources?: unknown;
+        crowsNest?: { schemaVersion?: unknown; type?: unknown; sections?: unknown };
+      };
+    };
+    const props = note.properties ?? {};
+    const cn = props.crowsNest;
+    const detail: NoteDetail = {
+      id,
+      name: str(note.name) ?? str(note.title) ?? id,
+      type: typeof cn?.type === 'string' ? (cn.type as PoiType) : undefined,
+      attribution: str(props.attribution),
+      sources: strArray(props.sources),
+      url: str(note.url),
+    };
+    const sections = cn?.schemaVersion === 1 ? parseSections(cn.sections) : undefined;
+    if (sections) detail.sections = sections;
+    else detail.fallbackText = plainText(str(note.description) ?? '') || undefined;
+    return detail;
+  } catch (error) {
+    // Non-ok responses already returned undefined above, so reaching here is a genuine
+    // network or parse failure: leave a breadcrumb so a provider misconfiguration is not
+    // indistinguishable from "no detail exists".
+    console.warn(`[notes] detail fetch failed: ${url}`, error);
+    return undefined;
+  }
+}
+
+export async function fetchNoteDetail(
+  base: string,
+  token: string | undefined,
+  id: string,
+): Promise<NoteDetail | undefined> {
+  // An empty id would hit the collection endpoint and parse as a bogus detail; refuse it.
+  if (!id) return undefined;
+  const path = `/${encodeURIComponent(id)}`;
+  return (
+    (await tryFetch(`${base}${V2}${path}`, token, id)) ??
+    (await tryFetch(`${base}${V1}${path}`, token, id))
+  );
+}
+
+export interface NoteDetailLoader {
+  load(id: string): Promise<NoteDetail | undefined>;
+  clear(): void;
+}
+
+// Memoizes detail by id so reopening a marker is instant; a failed fetch is not cached, so it
+// stays retryable. An in-flight load is shared rather than duplicated.
+export function createNoteDetailLoader(base: string, token: string | undefined): NoteDetailLoader {
+  const cache = new Map<string, NoteDetail>();
+  const inflight = new Map<string, Promise<NoteDetail | undefined>>();
+  return {
+    load(id) {
+      const cached = cache.get(id);
+      if (cached) return Promise.resolve(cached);
+      const pending = inflight.get(id);
+      if (pending) return pending;
+      const promise = fetchNoteDetail(base, token, id)
+        .then((detail) => {
+          if (detail) cache.set(id, detail);
+          return detail;
+        })
+        .finally(() => {
+          // Clear on settle (resolve or reject) so a failure never wedges the id.
+          inflight.delete(id);
+        });
+      inflight.set(id, promise);
+      return promise;
+    },
+    clear() {
+      cache.clear();
+      inflight.clear();
+    },
+  };
+}
