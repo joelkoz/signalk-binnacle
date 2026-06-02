@@ -63,10 +63,17 @@ const contentId = $derived(`submenu-${label.toLowerCase().replace(/\s+/g, '-')}`
 .submenu-trigger:hover {
   background: var(--surface);
 }
+.submenu-trigger[aria-expanded="true"] {
+  color: var(--accent);
+  font-weight: 600;
+}
 .submenu-label {
   flex: 1;
 }
 .submenu-content {
-  padding: 0.2rem 0.3rem 0.4rem 0.6rem;
+  margin-block: 0.1rem 0.3rem;
+  margin-inline-start: 0.85rem;
+  padding-inline-start: 0.6rem;
+  border-inline-start: 1px solid var(--border);
 }
 </style>

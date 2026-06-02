@@ -61,6 +61,9 @@ function onWindowKeydown(event: KeyboardEvent): void {
           <span>{item.label}</span>
         </button>
       {/each}
+      {#if items.length > 0 && children}
+        <div class="divider" aria-hidden="true"></div>
+      {/if}
       {@render children?.()}
       {#if items.length === 0 && !children}
         <span class="empty">No options</span>
@@ -97,7 +100,8 @@ function onWindowKeydown(event: KeyboardEvent): void {
   z-index: 5;
   display: flex;
   flex-direction: column;
-  min-inline-size: 15rem;
+  gap: 0.1rem;
+  inline-size: 18rem;
   max-block-size: calc(100vh - 4rem);
   overflow-y: auto;
   padding: 0.4rem;
@@ -127,6 +131,11 @@ function onWindowKeydown(event: KeyboardEvent): void {
 .item:disabled {
   color: var(--text-muted);
   cursor: default;
+}
+.divider {
+  block-size: 1px;
+  margin: 0.25rem 0.3rem;
+  background: var(--border);
 }
 .empty {
   display: block;
