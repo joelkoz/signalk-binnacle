@@ -3,7 +3,6 @@ export type { Bbox, NotePoint, NoteSelection } from './notes-client';
 export { fetchNotes } from './notes-client';
 export {
   createNoteDetailLoader,
-  fetchNoteDetail,
   type NormalizedItem,
   type NormalizedItemKind,
   type NormalizedSection,

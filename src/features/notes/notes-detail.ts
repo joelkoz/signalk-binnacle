@@ -1,12 +1,17 @@
-export type NormalizedItemKind =
-  | 'text'
-  | 'measure'
-  | 'count'
-  | 'availability'
-  | 'flag'
-  | 'rating'
-  | 'link'
-  | 'note';
+import { authInit, str, strArray } from '$shared/signalk';
+
+const ITEM_KINDS = [
+  'text',
+  'measure',
+  'count',
+  'availability',
+  'flag',
+  'rating',
+  'link',
+  'note',
+] as const;
+
+export type NormalizedItemKind = (typeof ITEM_KINDS)[number];
 
 export interface NormalizedItem {
   label: string;
@@ -70,27 +75,8 @@ export function safeHttpUrl(raw: string): string | undefined {
   return undefined;
 }
 
-function str(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function strArray(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const out = value.filter((v): v is string => typeof v === 'string' && v.length > 0);
-  return out.length > 0 ? out : undefined;
-}
-
 function isItemKind(value: unknown): value is NormalizedItemKind {
-  return (
-    value === 'text' ||
-    value === 'measure' ||
-    value === 'count' ||
-    value === 'availability' ||
-    value === 'flag' ||
-    value === 'rating' ||
-    value === 'link' ||
-    value === 'note'
-  );
+  return (ITEM_KINDS as readonly string[]).includes(value as string);
 }
 
 function parseItem(raw: unknown): NormalizedItem | undefined {
@@ -130,8 +116,7 @@ async function tryFetch(
   id: string,
 ): Promise<NoteDetail | undefined> {
   try {
-    const init = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined;
-    const response = await fetch(url, init);
+    const response = await fetch(url, authInit(token));
     if (!response.ok) return undefined;
     const body = await response.json();
     if (!body || typeof body !== 'object') return undefined;
@@ -185,7 +170,6 @@ export async function fetchNoteDetail(
 
 export interface NoteDetailLoader {
   load(id: string): Promise<NoteDetail | undefined>;
-  clear(): void;
 }
 
 // Memoizes detail by id so reopening a marker is instant; a failed fetch is not cached, so it
@@ -210,10 +194,6 @@ export function createNoteDetailLoader(base: string, token: string | undefined):
         });
       inflight.set(id, promise);
       return promise;
-    },
-    clear() {
-      cache.clear();
-      inflight.clear();
     },
   };
 }

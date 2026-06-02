@@ -1,12 +1,12 @@
 import type { SignalKChart } from '$shared/map';
+import { authInit } from '$shared/signalk';
 
 const V2 = '/signalk/v2/api/resources/charts';
 const V1 = '/signalk/v1/api/resources/charts';
 
 async function tryFetch(url: string, token?: string): Promise<SignalKChart[] | undefined> {
   try {
-    const init = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined;
-    const response = await fetch(url, init);
+    const response = await fetch(url, authInit(token));
     if (!response.ok) {
       // A reachable server returning an error is distinct from being offline, so
       // surface it rather than treating it as "no charts".

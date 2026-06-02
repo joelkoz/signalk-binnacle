@@ -7,6 +7,7 @@ export { asNumber, isLatLon } from './geo-guards';
 export { serverOrigin, streamUrl } from './origin';
 export type { SkPathKey } from './paths';
 export { SK_PATHS } from './paths';
+export { authInit, str, strArray } from './resource';
 export { PathCell, SignalKStore } from './store.svelte';
 export type {
   AisTargetState,

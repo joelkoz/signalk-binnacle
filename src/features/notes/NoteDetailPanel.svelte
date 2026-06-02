@@ -44,14 +44,7 @@ $effect(() => {
   };
 });
 
-const rating = $derived.by(() => {
-  for (const section of detail?.sections ?? []) {
-    for (const item of section.items) {
-      if (item.kind === 'rating') return Number(item.value);
-    }
-  }
-  return undefined;
-});
+const STARS = [1, 2, 3, 4, 5];
 
 const credit = $derived(detail?.attribution ?? selection.attribution);
 const extraSources = $derived((detail?.sources ?? []).filter((s) => s !== credit));
@@ -68,17 +61,6 @@ function measure(item: NormalizedItem): string {
       <h2>{selection.name}</h2>
       <span class="type">{categoryLabel(selection.category)}</span>
     </div>
-    {#if rating !== undefined}
-      <div class="rating" aria-label={`Rating ${rating} of 5`}>
-        {#each [1, 2, 3, 4, 5] as n (n)}
-          <Star
-            size={14}
-            fill={n <= Math.round(rating) ? 'currentColor' : 'none'}
-            aria-hidden="true"
-          />
-        {/each}
-      </div>
-    {/if}
     <button type="button" class="close" aria-label="Close detail" onclick={onClose}>
       <X size={18} aria-hidden="true" />
     </button>
@@ -119,6 +101,16 @@ function measure(item: NormalizedItem): string {
                       </span>
                     {:else if linkUrl}
                       <a href={linkUrl} target="_blank" rel="noopener noreferrer">{item.label}</a>
+                    {:else if item.kind === 'rating'}
+                      <span class="rating" aria-label={`Rating ${Number(item.value)} of 5`}>
+                        {#each STARS as n (n)}
+                          <Star
+                            size={14}
+                            fill={n <= Math.round(Number(item.value)) ? 'currentColor' : 'none'}
+                            aria-hidden="true"
+                          />
+                        {/each}
+                      </span>
                     {:else if item.kind === 'measure'}
                       {measure(item)}
                     {:else}

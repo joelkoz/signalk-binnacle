@@ -1,3 +1,4 @@
+import { authInit, str } from '$shared/signalk';
 import type { PoiType } from './notes-detail';
 import { categoryForSkIcon, type PoiCategory, poiCategoryForType } from './poi-categories';
 
@@ -9,9 +10,8 @@ export interface NotePoint {
   name: string;
   position: { latitude: number; longitude: number };
   category: PoiCategory;
-  // Optional detail surfaced in the marker popup.
+  // Optional credit and link surfaced for the marker and its detail panel.
   url?: string;
-  description?: string;
   source?: string;
   attribution?: string;
 }
@@ -24,10 +24,6 @@ export interface NoteSelection {
   category: PoiCategory;
   attribution?: string;
   url?: string;
-}
-
-function str(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 // [west, south, east, north] in decimal degrees (GeoJSON / longitude-first order).
@@ -45,10 +41,9 @@ export async function fetchNotes(
   bbox: Bbox,
 ): Promise<NotePoint[]> {
   const params = new URLSearchParams({ bbox: JSON.stringify(bbox) });
-  const init = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined;
   let body: unknown;
   try {
-    const response = await fetch(`${serverBase}${NOTES_PATH}?${params}`, init);
+    const response = await fetch(`${serverBase}${NOTES_PATH}?${params}`, authInit(token));
     if (!response.ok) return [];
     body = await response.json();
   } catch {
@@ -64,7 +59,6 @@ export async function fetchNotes(
       name?: unknown;
       title?: unknown;
       url?: unknown;
-      description?: unknown;
       position?: { latitude?: unknown; longitude?: unknown };
       properties?: {
         skIcon?: unknown;
@@ -86,7 +80,6 @@ export async function fetchNotes(
           typeof props.crowsNest?.type === 'string' ? (props.crowsNest.type as PoiType) : undefined,
         ) ?? categoryForSkIcon(str(props.skIcon)),
       url: str(note.url),
-      description: str(note.description),
       source: str(props.source),
       attribution: str(props.attribution),
     });

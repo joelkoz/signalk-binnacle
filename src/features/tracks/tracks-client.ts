@@ -1,4 +1,5 @@
 import { computeStats, type TrackPoint } from '$entities/track';
+import { authInit } from '$shared/signalk';
 import { coordinateSegments } from './track-export';
 
 // A track read back from the Signal K resources API. Points are grouped one array per segment
@@ -33,12 +34,6 @@ export function savedTracksToFeatures(
 
 const V2 = '/signalk/v2/api/resources/tracks';
 const V1 = '/signalk/v1/api/resources/tracks';
-
-function authInit(token: string | undefined, extra?: RequestInit): RequestInit | undefined {
-  if (!token && !extra) return undefined;
-  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-  return { ...extra, headers: { ...headers, ...extra?.headers } };
-}
 
 interface RawGeometry {
   type?: unknown;
