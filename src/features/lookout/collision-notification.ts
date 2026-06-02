@@ -1,0 +1,55 @@
+import type { Assessment } from '$entities/collision';
+import { metersToNauticalMiles } from '$shared/lib';
+
+// The Signal K path Binnacle publishes its collision alert to, so other clients and
+// devices on the boat see the same alarm.
+export const NOTIFICATION_PATH = 'notifications.navigation.collision';
+
+export type NotificationState = 'normal' | 'warn' | 'alarm';
+
+export interface SkNotification {
+  state: NotificationState;
+  method: string[];
+  message: string;
+}
+
+// The Signal K notification value for the current assessment. Danger raises an alarm with
+// sound, a warning is a visual warn, and clear resets to normal.
+export function buildNotification(assessment: Assessment): SkNotification {
+  const top = assessment.contacts[0];
+  if (assessment.worst === 'clear' || !top) {
+    return { state: 'normal', method: [], message: 'No collision risk' };
+  }
+  const name = top.name || top.id;
+  const cpa = (metersToNauticalMiles(top.cpaMeters) ?? 0).toFixed(2);
+  const tcpa = (top.tcpaSeconds / 60).toFixed(0);
+  const danger = assessment.worst === 'danger';
+  return {
+    state: danger ? 'alarm' : 'warn',
+    method: danger ? ['visual', 'sound'] : ['visual'],
+    message: `Collision ${assessment.worst}: ${name} CPA ${cpa} nm, TCPA ${tcpa} min`,
+  };
+}
+
+// Publishes the collision notification when its state or the worst contact changes, so the
+// server is not written on every per-second CPA tick. A clear is published only after an
+// active alert, so loading the app does not write a redundant "normal".
+export class CollisionNotifier {
+  #publish: (path: string, value: unknown) => void;
+  #last: string | undefined;
+  #active = false;
+
+  constructor(publish: (path: string, value: unknown) => void) {
+    this.#publish = publish;
+  }
+
+  update(assessment: Assessment): void {
+    const value = buildNotification(assessment);
+    const signature = `${value.state}|${assessment.contacts[0]?.id ?? ''}`;
+    if (signature === this.#last) return;
+    this.#last = signature;
+    if (value.state === 'normal' && !this.#active) return;
+    this.#active = value.state !== 'normal';
+    this.#publish(NOTIFICATION_PATH, value);
+  }
+}

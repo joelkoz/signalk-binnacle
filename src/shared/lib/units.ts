@@ -28,3 +28,7 @@ export function degreesToRadians(value: number): number {
 export function metersToNauticalMiles(value: number | null | undefined): number | undefined {
   return value == null ? undefined : value / METERS_PER_NAUTICAL_MILE;
 }
+
+export function nauticalMilesToMeters(value: number): number {
+  return value * METERS_PER_NAUTICAL_MILE;
+}

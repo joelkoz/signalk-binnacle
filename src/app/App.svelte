@@ -1,12 +1,12 @@
 <script lang="ts">
-import { Layers, LocateFixed, Volume2, VolumeX } from '@lucide/svelte';
+import { Layers, LocateFixed, SlidersHorizontal, Volume2, VolumeX } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
 import { OwnVessel } from '$entities/vessel';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
-import { DangerStrip, LookoutAlarm } from '$features/lookout';
+import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
 import { AppMenu, type MenuItem, MenuSubmenu } from '$features/menu';
 import { ThemeToggle } from '$features/theme-toggle';
 import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
@@ -39,9 +39,15 @@ const aisTargets = new AisTargets(store);
 const client = createSignalKClient();
 const auth = new AuthController(serverOrigin());
 const net = new OnlineStatus();
-const collision = new CollisionAssessment(vessel, aisTargets, createThresholds());
+const thresholds = createThresholds();
+const collision = new CollisionAssessment(vessel, aisTargets, thresholds);
 const lookoutAlarm = new LookoutAlarm();
 const alarmMuted = new PersistedValue<boolean>('binnacle:alarm-muted', false);
+// Publish the collision alert to Signal K so other clients and devices share it.
+const collisionNotifier = new CollisionNotifier(
+  (path, value) =>
+    void client.publish({ context: 'vessels.self', updates: [{ values: [{ path, value }] }] }),
+);
 
 let layersView = $state<LayersView | undefined>();
 let recolorMap: ((theme: Theme) => void) | undefined;
@@ -88,6 +94,11 @@ const menuItems = $derived<MenuItem[]>([
 // Sound the collision alarm whenever the assessment, acknowledgement, or mute changes.
 $effect(() => {
   lookoutAlarm.update(collision.assessment.worst, collision.suppressed, alarmMuted.value);
+});
+
+// Publish the collision notification to Signal K as the assessment changes.
+$effect(() => {
+  collisionNotifier.update(collision.assessment);
 });
 
 // Browsers block audio until a user gesture; prime the audio context on the first one so
@@ -165,6 +176,9 @@ onDestroy(() => {
             <LayersPanel view={layersView} />
           </MenuSubmenu>
         {/if}
+        <MenuSubmenu label="Collision thresholds" icon={SlidersHorizontal}>
+          <ThresholdsPanel {thresholds} />
+        </MenuSubmenu>
       </AppMenu>
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>

@@ -73,5 +73,8 @@ export interface SignalKClientApi {
   connect(url: string, onFrame: (frame: SKFrame) => void): Promise<void>;
   subscribe(entries: SubscribeEntry[]): Promise<void>;
   unsubscribe(paths: Path[], context?: Context): Promise<void>;
+  // Send a client delta to the server (e.g. to publish a notification). Dropped if the
+  // socket is not open; harmless because the producer republishes on the next change.
+  publish(delta: Delta): Promise<void>;
   disconnect(): Promise<void>;
 }

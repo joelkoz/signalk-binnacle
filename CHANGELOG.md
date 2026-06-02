@@ -8,6 +8,17 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Lookout collision thresholds are now editable (differentiator step 6). A "Collision thresholds"
+  submenu in the menu sets the danger and warning CPA (nautical miles) and TCPA (minutes); changes
+  apply live to the assessment and persist across visits, with a reset to defaults. Values are stored
+  in SI and edited at the display edge in nm and minutes.
+
+- Lookout publishes its collision alert to Signal K (differentiator step 5). When the assessment
+  crosses a threshold, Binnacle writes `notifications.navigation.collision` over the streaming API
+  (state alarm for danger, warn for warning, with the appropriate method) so other Signal K clients
+  and devices share the alarm; it clears to normal when the risk passes. It is published only when
+  the state or worst contact changes, not on every per-second tick.
+
 - Lookout now sounds an audible collision alarm (differentiator step 4). When an AIS contact
   crosses the danger CPA/TCPA threshold, a repeating two-beep tone plays, synthesized with the Web
   Audio API so nothing is downloaded. Acknowledging the contact on the danger strip silences it, and

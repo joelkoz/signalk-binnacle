@@ -4,5 +4,6 @@ export {
   knotsToMetersPerSecond,
   metersPerSecondToKnots,
   metersToNauticalMiles,
+  nauticalMilesToMeters,
   radiansToDegrees,
 } from './units';
