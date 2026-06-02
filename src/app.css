@@ -6,17 +6,35 @@
   --font-ui: "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
 
+  /* Geometry and type scales (theme-independent), so radii, type sizes, z-order, the touch
+     target, caps tracking, and the disabled dim are one vocabulary across every component. */
+  --radius-sm: 0.3rem;
+  --radius-md: 0.5rem;
+  --radius-pill: 999px;
+  --text-xs: 0.72rem;
+  --text-sm: 0.8rem;
+  --text-base: 0.85rem;
+  --text-md: 0.9rem;
+  --text-lg: 1rem;
+  --z-overlay: 1;
+  --z-panel: 2;
+  --z-menu: 5;
+  --control-size: 2.75rem;
+  --tracking-caps: 0.04em;
+  --disabled-opacity: 0.45;
+
   --surface: #cfe0ec;
   --surface-raised: #ffffff;
-  --surface-overlay: rgba(255, 255, 255, 0.85);
+  --surface-overlay: rgba(255, 255, 255, 0.92);
   --border: #aac3d6;
   --text: #0b2233;
-  --text-muted: #4a6378;
+  --text-muted: #3f586b;
   --accent: #1f6fb2;
   --select: #ffb300;
   --alarm: #c8401f;
-  --map-background: #aecbe0;
-  --map-water: #a8c9e0;
+  /* Floating-card lift; dropped on night-red, where a black shadow on true black is invisible
+     and the surface border is the only separation. */
+  --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.25);
 }
 
 :root[data-theme="dusk"] {
@@ -24,15 +42,14 @@
 
   --surface: #0f1a24;
   --surface-raised: #10212e;
-  --surface-overlay: rgba(13, 24, 33, 0.85);
+  --surface-overlay: rgba(13, 24, 33, 0.92);
   --border: #233646;
   --text: #bcd2e4;
-  --text-muted: #7f9bb3;
+  --text-muted: #8aa6bd;
   --accent: #2c6da3;
   --select: #ffc24d;
   --alarm: #e0703a;
-  --map-background: #0a151f;
-  --map-water: #10212e;
+  --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.45);
 }
 
 :root[data-theme="night-red"] {
@@ -40,15 +57,14 @@
 
   --surface: #000000;
   --surface-raised: #0a0000;
-  --surface-overlay: rgba(8, 0, 0, 0.88);
+  --surface-overlay: rgba(8, 0, 0, 0.92);
   --border: #3a0c08;
   --text: #c8362a;
-  --text-muted: #8e2a22;
+  --text-muted: #b8473a;
   --accent: #e0473a;
   --select: #ffb39a;
   --alarm: #ff6a5a;
-  --map-background: #000000;
-  --map-water: #140402;
+  --shadow-overlay: none;
 }
 
 * {
@@ -66,53 +82,20 @@ body {
   block-size: 100vh;
 }
 
-/* Point-of-interest marker popup, themed from the tokens above. */
-.poi-popup-wrap .maplibregl-popup-content {
-  background: var(--surface-overlay);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.6rem 0.75rem;
-  font-family: var(--font-ui);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
-  max-width: 16rem;
+/* One keyboard-focus indicator for every interactive control, visible on every theme. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
-.poi-popup-wrap .maplibregl-popup-tip {
-  border-top-color: var(--surface-overlay);
-  border-bottom-color: var(--surface-overlay);
-}
-.poi-popup-wrap .maplibregl-popup-close-button {
-  color: var(--text-muted);
-  font-size: 1.1rem;
-  padding-inline-end: 0.3rem;
-}
-.poi-popup-name {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-.poi-popup-category {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  margin-block-start: 0.1rem;
-}
-.poi-popup-body {
-  margin: 0.4rem 0 0;
-  font-size: 0.8rem;
-}
-.poi-popup-link {
-  display: inline-block;
-  margin-block-start: 0.4rem;
-  font-size: 0.8rem;
-  color: var(--accent);
-  text-decoration: none;
-}
-.poi-popup-link:hover {
-  text-decoration: underline;
-}
-.poi-popup-credit {
-  margin-block-start: 0.4rem;
-  font-size: 0.65rem;
-  color: var(--text-muted);
+
+/* Respect a reduced-motion preference: drop transitions and animations app-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -20,6 +20,18 @@
       "recommended": true
     }
   },
+  "overrides": [
+    {
+      "includes": ["src/app.css"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      }
+    }
+  ],
   "assist": {
     "enabled": true,
     "actions": {
