@@ -24,6 +24,12 @@ export class OwnVessel {
     return metersPerSecondToKnots(asNumber(this.#raw(SK_PATHS.speedOverGround)));
   }
 
+  // Raw speed over ground in m/s (SI), for consumers that store SI and convert at their own
+  // edge (the track recorder). Use sogKnots for display.
+  get sogMps(): number | undefined {
+    return asNumber(this.#raw(SK_PATHS.speedOverGround));
+  }
+
   get cogDegrees(): number | undefined {
     return radiansToBearing(asNumber(this.#raw(SK_PATHS.courseOverGroundTrue)));
   }

@@ -99,4 +99,22 @@ describe('TrackRecorder', () => {
     r.clear();
     expect(r.points).toEqual([]);
   });
+
+  it('restores persisted points from the store on construction', async () => {
+    const seeded: TrackPoint[] = [
+      { lat: 36.8, lon: -121.7, t: 0, sog: 1 },
+      { lat: 36.81, lon: -121.7, t: 12000, sog: 2 },
+    ];
+    const store = {
+      all: async () => seeded.slice(),
+      append: async () => {},
+      replace: async () => {},
+      clear: async () => {},
+    };
+    const r = new TrackRecorder(createTrackSettings(fakeStorage()), store);
+    // #restore runs asynchronously in the constructor; let its microtasks settle.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(r.points).toEqual(seeded);
+  });
 });

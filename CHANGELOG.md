@@ -8,6 +8,16 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Tracks: Binnacle now records and shows where you have been. The active track is drawn behind the
+  boat as you move, colored by speed (with a slow-to-fast legend) or a single solid color, and a
+  break in the line marks a GPS dropout or a gap between sessions. The whole voyage is kept in the
+  browser (IndexedDB) and reappears after a refresh. A "Tracks" submenu in the menu pauses and
+  resumes recording, shows live voyage stats (distance, duration, and average and maximum speed),
+  saves the current track to the Signal K server (`/resources/tracks` as GeoJSON), clears it, and
+  toggles the color mode. Saved tracks list with show or hide on the chart, delete, and a GeoJSON
+  export you can download. Track speeds are stored in SI (m/s) and converted to knots only at the
+  display edge; the track layer is a normal layer, so it toggles and fades from the Layers submenu.
+
 - Lookout collision thresholds are now editable (differentiator step 6). A "Collision thresholds"
   submenu in the menu sets the danger and warning CPA (nautical miles) and TCPA (minutes); changes
   apply live to the assessment and persist across visits, with a reset to defaults. Values are stored

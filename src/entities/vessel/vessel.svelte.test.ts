@@ -19,6 +19,13 @@ describe('OwnVessel', () => {
     expect(vessel.sogKnots).toBeCloseTo(1.943844, 5);
   });
 
+  it('exposes raw speed over ground in m/s for SI consumers', () => {
+    const store = new SignalKStore();
+    const vessel = new OwnVessel(store);
+    store.applyFrame(frame({ 'navigation.speedOverGround': 3.5 }));
+    expect(vessel.sogMps).toBe(3.5);
+  });
+
   it('exposes course over ground in degrees', () => {
     const store = new SignalKStore();
     const vessel = new OwnVessel(store);

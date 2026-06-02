@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TrackPoint } from '$entities/track';
-import { deleteTrack, fetchSavedTracks, saveTrack } from './tracks-client';
+import {
+  deleteTrack,
+  fetchSavedTracks,
+  type SavedTrack,
+  savedTracksToFeatures,
+  saveTrack,
+} from './tracks-client';
 
 const p = (lat: number, lon: number, gap?: boolean): TrackPoint => ({
   lat,
@@ -122,6 +128,31 @@ describe('saveTrack', () => {
   it('returns false when the fetch throws', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network')));
     expect(await saveTrack('http://pi', 't', 'id', 'n', [p(0, 0), p(1, 1)])).toBe(false);
+  });
+});
+
+describe('savedTracksToFeatures', () => {
+  const track: SavedTrack = {
+    id: 'a',
+    name: 'A',
+    points: [[p(0, 0), p(1, 1)], [p(2, 2)]],
+  };
+
+  it('emits a LineString per shown segment and drops single-point segments', () => {
+    const fc = savedTracksToFeatures([track], new Set(['a']));
+    expect(fc.features).toHaveLength(1);
+    expect(fc.features[0].geometry).toEqual({
+      type: 'LineString',
+      coordinates: [
+        [0, 0],
+        [1, 1],
+      ],
+    });
+    expect(fc.features[0].properties).toEqual({ id: 'a' });
+  });
+
+  it('omits tracks that are not shown', () => {
+    expect(savedTracksToFeatures([track], new Set()).features).toHaveLength(0);
   });
 });
 

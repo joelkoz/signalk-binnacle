@@ -1,20 +1,33 @@
 <script lang="ts">
-import { Layers, LocateFixed, SlidersHorizontal, Volume2, VolumeX } from '@lucide/svelte';
+import { Layers, LocateFixed, SlidersHorizontal, Spline, Volume2, VolumeX } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
+import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { OwnVessel } from '$entities/vessel';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
 import { AppMenu, type MenuItem, MenuSubmenu } from '$features/menu';
 import { ThemeToggle } from '$features/theme-toggle';
+import type { SavedTracksSource } from '$features/track-layer';
+import {
+  deleteTrack,
+  downloadGeoJson,
+  fetchSavedTracks,
+  type SavedTrack,
+  SpeedLegend,
+  savedTracksToFeatures,
+  saveTrack,
+  TracksPanel,
+} from '$features/tracks';
 import { formatLatitude, formatLongitude, PLACEHOLDER } from '$shared/lib';
-import type { LayerSettings } from '$shared/map';
+import { type LayerSettings, mapThemePaint } from '$shared/map';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
 import {
   createMapView,
   createThresholds,
+  createTrackSettings,
   isMapView,
   type MapView,
   PersistedValue,
@@ -29,6 +42,7 @@ import {
   serverOrigin,
   streamUrl,
 } from '$shared/signalk';
+import { createTrackStore } from '$shared/storage';
 import { createThemeController, type Theme } from '$shared/ui';
 import { ChartCanvas, type MapCommands } from '$widgets/chart-canvas';
 
@@ -50,6 +64,20 @@ const collisionNotifier = new CollisionNotifier(
     void client.publish({ context: SELF_CONTEXT, updates: [{ values: [{ path, value }] }] }),
 );
 
+// Track recording: client-side from navigation.position, persisted whole-voyage in IndexedDB.
+const trackSettings = createTrackSettings();
+const recorder = new TrackRecorder(trackSettings, createTrackStore<TrackPoint>());
+
+// Saved tracks fetched from /resources/tracks, and the subset the user has chosen to show on
+// the chart. The overlay polls savedSource each frame, so a version counter signals changes.
+let savedTracks = $state<SavedTrack[]>([]);
+let shownSaved = $state<ReadonlySet<string>>(new Set());
+let savedVersion = 0;
+const savedSource: SavedTracksSource = {
+  version: () => savedVersion,
+  features: () => savedTracksToFeatures(savedTracks, shownSaved),
+};
+
 let layersView = $state<LayersView | undefined>();
 let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
@@ -58,6 +86,9 @@ let updateReady = $state(false);
 const pwa = registerPwa(() => (updateReady = true));
 
 const theme = createThemeController((next) => recolorMap?.(next));
+
+// Track speed-legend colors follow the active theme's track paint tokens.
+const legendPaint = $derived(mapThemePaint(theme.theme));
 
 // Profile state restored across visits: the last map view and the layer settings.
 const mapViewStore = createMapView();
@@ -101,6 +132,69 @@ $effect(() => {
 $effect(() => {
   collisionNotifier.update(collision.assessment);
 });
+
+// Record the track from the vessel position (about 1 Hz); the recorder thins by the
+// configured interval and min-distance. SOG is stored raw in m/s (SI).
+$effect(() => {
+  const position = vessel.position;
+  if (position) recorder.consider(position.latitude, position.longitude, vessel.sogMps ?? 0);
+});
+
+function bumpSaved(): void {
+  savedVersion += 1;
+}
+
+async function refreshSavedTracks(): Promise<void> {
+  savedTracks = await fetchSavedTracks(serverOrigin(), chartsToken);
+  bumpSaved();
+}
+
+// crypto.randomUUID needs a secure context; the Signal K server serves over plain http on the
+// LAN, so fall back to a timestamp-plus-random id there.
+function newTrackId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `track-${Date.now()}-${Math.floor(Math.random() * 1e9).toString(36)}`;
+}
+
+async function onSaveTrack(name: string): Promise<void> {
+  if (recorder.points.length < 2) return;
+  const id = newTrackId();
+  if (!(await saveTrack(serverOrigin(), chartsToken, id, name, recorder.points))) return;
+  recorder.clear();
+  await refreshSavedTracks();
+  shownSaved = new Set(shownSaved).add(id);
+  bumpSaved();
+}
+
+async function onDeleteSavedTrack(id: string): Promise<void> {
+  if (!(await deleteTrack(serverOrigin(), chartsToken, id))) return;
+  const next = new Set(shownSaved);
+  next.delete(id);
+  shownSaved = next;
+  await refreshSavedTracks();
+}
+
+function onToggleSaved(id: string): void {
+  const next = new Set(shownSaved);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  shownSaved = next;
+  bumpSaved();
+}
+
+// Flatten a saved track's segments back into points, marking the first point of each later
+// segment as a gap so the export re-splits into the same MultiLineString.
+function onExportSavedTrack(track: SavedTrack): void {
+  const points: TrackPoint[] = [];
+  track.points.forEach((segment, segmentIndex) => {
+    segment.forEach((point, pointIndex) => {
+      points.push(pointIndex === 0 && segmentIndex > 0 ? { ...point, gap: true } : point);
+    });
+  });
+  downloadGeoJson(track.name, points);
+}
 
 // Browsers block audio until a user gesture; prime the audio context on the first one so
 // the alarm can sound later on its own.
@@ -155,6 +249,7 @@ onMount(async () => {
     { path: SK_PATHS.aisShipType, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.closestApproach, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
   ]);
+  await refreshSavedTracks();
 });
 
 onDestroy(() => {
@@ -177,6 +272,18 @@ onDestroy(() => {
             <LayersPanel view={layersView} />
           </MenuSubmenu>
         {/if}
+        <MenuSubmenu label="Tracks" icon={Spline}>
+          <TracksPanel
+            {recorder}
+            settings={trackSettings}
+            saved={savedTracks}
+            shown={shownSaved}
+            onSave={onSaveTrack}
+            onDelete={onDeleteSavedTrack}
+            {onToggleSaved}
+            onExport={onExportSavedTrack}
+          />
+        </MenuSubmenu>
         <MenuSubmenu label="Collision thresholds" icon={SlidersHorizontal}>
           <ThresholdsPanel {thresholds} />
         </MenuSubmenu>
@@ -196,6 +303,9 @@ onDestroy(() => {
       {vessel}
       {aisTargets}
       {collision}
+      {recorder}
+      {trackSettings}
+      savedTracks={savedSource}
       {chartsToken}
       initialView={savedView}
       savedLayers={layerSettings.value}
@@ -214,6 +324,15 @@ onDestroy(() => {
     <div class="danger-slot">
       <DangerStrip {collision} />
     </div>
+    {#if trackSettings.value.colorMode === 'speed'}
+      <div class="legend-slot">
+        <SpeedLegend
+          slow={legendPaint.trackSlow}
+          mid={legendPaint.trackMid}
+          fast={legendPaint.trackFast}
+        />
+      </div>
+    {/if}
   </section>
   <footer class="status-strip">
     <span class="status" role="status" aria-live="polite">{connectionLabel}</span>
@@ -292,6 +411,12 @@ onDestroy(() => {
   display: flex;
   justify-content: center;
   pointer-events: none;
+  z-index: 1;
+}
+.legend-slot {
+  position: absolute;
+  inset-block-start: 0.75rem;
+  inset-inline-end: 0.75rem;
   z-index: 1;
 }
 .danger-slot :global(.danger-strip) {

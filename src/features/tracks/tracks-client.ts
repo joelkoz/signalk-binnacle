@@ -10,6 +10,28 @@ export interface SavedTrack {
   points: TrackPoint[][];
 }
 
+// Build a FeatureCollection of one LineString per segment for the saved tracks the user has
+// chosen to show, so the overlay can render them. Saved tracks draw in a single color, so no
+// per-point speed is needed here.
+export function savedTracksToFeatures(
+  tracks: readonly SavedTrack[],
+  shownIds: ReadonlySet<string>,
+): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  for (const track of tracks) {
+    if (!shownIds.has(track.id)) continue;
+    for (const segment of track.points) {
+      if (segment.length < 2) continue;
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: segment.map((pt) => [pt.lon, pt.lat]) },
+        properties: { id: track.id },
+      });
+    }
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 const V2 = '/signalk/v2/api/resources/tracks';
 const V1 = '/signalk/v1/api/resources/tracks';
 

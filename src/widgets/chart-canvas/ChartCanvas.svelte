@@ -3,12 +3,14 @@ import maplibregl from 'maplibre-gl';
 import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
+import type { TrackRecorder } from '$entities/track';
 import type { OwnVessel } from '$entities/vessel';
 import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
 import { LayersView } from '$features/layers-panel';
 import { createCollisionOverlay } from '$features/lookout';
 import { createNotesOverlay } from '$features/notes';
+import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay } from '$features/vessel-layer';
 import {
   applyBaseTheme,
@@ -22,7 +24,7 @@ import {
   type OverlayContext,
   registerPmtilesProtocol,
 } from '$shared/map';
-import type { MapView } from '$shared/settings';
+import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
 import { type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 import type { MapCommands } from './commands';
@@ -32,6 +34,10 @@ interface Props {
   vessel: OwnVessel;
   aisTargets: AisTargets;
   collision: CollisionAssessment;
+  recorder: TrackRecorder;
+  trackSettings: PersistedValue<TrackSettings>;
+  // Saved tracks to draw, pulled each frame so show/hide and edits reflect without a remount.
+  savedTracks?: SavedTracksSource;
   chartsToken?: string;
   // The view to open at, restored from the last visit; defaults to a world view.
   initialView?: MapView;
@@ -49,6 +55,9 @@ const {
   vessel,
   aisTargets,
   collision,
+  recorder,
+  trackSettings,
+  savedTracks,
   chartsToken,
   initialView,
   savedLayers,
@@ -124,6 +133,11 @@ onMount(() => {
     await manager.register(collisionOverlay);
     if (destroyed) return;
 
+    // Register the trail before the vessel so the boat draws on top of its own track.
+    const trackOverlay = createTrackOverlay(recorder, trackSettings, savedTracks);
+    await manager.register(trackOverlay);
+    if (destroyed) return;
+
     const overlay = createVesselOverlay(vessel);
     await manager.register(overlay);
     if (destroyed) return;
@@ -157,6 +171,7 @@ onMount(() => {
       notesOverlay.sync(ctx);
       aisOverlay.sync(ctx);
       collisionOverlay.sync(ctx);
+      trackOverlay.sync(ctx);
       overlay.sync(ctx);
       frame = requestAnimationFrame(tick);
     };

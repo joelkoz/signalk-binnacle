@@ -49,6 +49,9 @@ What is in place now:
   other Signal K clients share the alarm. It surfaces the most dangerous AIS contacts with closest
   point of approach and time to closest approach, computing them on the client when no Signal K
   provider supplies them, and stays dark when nothing is close.
+- Tracks: the voyage is recorded behind the boat, colored by speed or solid, with breaks marking
+  GPS dropouts. The whole track persists across a refresh, and a Tracks menu shows live stats and
+  saves, lists, shows or hides, deletes, and exports tracks via the Signal K `/resources/tracks` API.
 - Day, dusk, and night-red themes switched from a top-bar toggle, recoloring the chrome and the
   map base; night-red is pure red on true black to preserve dark adaptation on a night watch.
 - Identity: self-hosted Inter and JetBrains Mono typography (offline-first, with tabular numeric
