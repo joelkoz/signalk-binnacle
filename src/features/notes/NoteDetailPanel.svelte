@@ -3,6 +3,7 @@ import { ExternalLink, Star, X } from '@lucide/svelte';
 import type { NoteSelection } from './notes-client';
 import type { NormalizedItem, NoteDetail } from './notes-detail';
 import { safeHttpUrl } from './notes-detail';
+import { isDangerFlag, isRedundantNoteLabel, orderSections } from './notes-present';
 import { categoryLabel } from './poi-categories';
 
 interface Props {
@@ -46,6 +47,9 @@ $effect(() => {
 
 const STARS = [1, 2, 3, 4, 5];
 
+// Order sections by helm relevance: facts first, reviews and provenance last.
+const sections = $derived(detail?.sections ? orderSections(detail.sections) : undefined);
+
 const credit = $derived(detail?.attribution ?? selection.attribution);
 const extraSources = $derived((detail?.sources ?? []).filter((s) => s !== credit));
 const sourceUrl = $derived(safeHttpUrl(detail?.url ?? selection.url ?? ''));
@@ -72,8 +76,8 @@ function measure(item: NormalizedItem): string {
     {:else if failed}
       <p class="status">Could not load detail.</p>
       <button type="button" class="retry" onclick={() => (attempt += 1)}>Retry</button>
-    {:else if detail?.sections}
-      {#each detail.sections as section (section.id)}
+    {:else if sections}
+      {#each sections as section (section.id)}
         <section>
           <h3>{section.title}</h3>
           <dl>
@@ -82,9 +86,15 @@ function measure(item: NormalizedItem): string {
                 item.kind === 'link' && typeof item.value === 'string'
                   ? safeHttpUrl(item.value)
                   : undefined}
-              {#if item.kind === 'note'}
+              {#if isDangerFlag(item.label, item.kind)}
+                <div class="alert" data-danger={item.value === true}>
+                  {item.value === true ? 'Dangerous to navigation' : 'Not a danger to navigation'}
+                </div>
+              {:else if item.kind === 'note'}
                 <div class="note-item">
-                  <dt>{item.label}</dt>
+                  {#if !isRedundantNoteLabel(item.label, section.title)}
+                    <dt>{item.label}</dt>
+                  {/if}
                   <dd class="prose">{item.value}</dd>
                 </div>
               {:else}
@@ -240,6 +250,24 @@ dd {
 .note-item dd {
   margin-block-start: 0.15rem;
   line-height: 1.4;
+}
+/* The hazard danger status leads its section as a full-width banner: an alarm fill when the
+   feature is dangerous to navigation, a quiet outline when it is explicitly not. */
+.alert {
+  margin-block: 0.2rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.alert[data-danger="true"] {
+  background: var(--alarm);
+  color: var(--surface-raised);
+}
+.alert[data-danger="false"] {
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 400;
 }
 .badge {
   padding: 0.05rem 0.4rem;
