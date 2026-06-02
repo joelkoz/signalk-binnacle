@@ -88,7 +88,9 @@ export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
     if (!themed) continue;
     try {
       map.setPaintProperty(layer.id, themed.property, themed.color);
-      if (layer.type === 'fill') map.setLayoutProperty(layer.id, 'fill-pattern', undefined);
+      // fill-pattern is a paint property in MapLibre, not a layout one; clearing it lets the
+      // flat themed color show through the wetland hatch and paved-area textures.
+      if (layer.type === 'fill') map.setPaintProperty(layer.id, 'fill-pattern', undefined);
       if (layer.type === 'symbol')
         map.setPaintProperty(layer.id, 'text-halo-color', paint.background);
     } catch {
@@ -108,6 +110,7 @@ export type BaseSnapshot = Array<{
   halo?: unknown;
   pattern?: unknown;
   isFill?: boolean;
+  isSymbol?: boolean;
 }>;
 
 export function captureBaseTheme(map: MapLibreMap, paint: MapThemePaint): BaseSnapshot {
@@ -122,20 +125,41 @@ export function captureBaseTheme(map: MapLibreMap, paint: MapThemePaint): BaseSn
     if (MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix))) continue;
     const themed = baseLayerPaint(layer, paint);
     if (!themed) continue;
+    const isFill = layer.type === 'fill';
+    // Capture the themed color first and on its own; a failure reading an optional field (halo,
+    // pattern) must never drop the whole entry, or the day theme cannot restore that layer.
+    let color: unknown;
     try {
-      const isFill = layer.type === 'fill';
-      snapshot.push({
-        id: layer.id,
-        property: themed.property,
-        color: map.getPaintProperty(layer.id, themed.property),
-        halo:
-          layer.type === 'symbol' ? map.getPaintProperty(layer.id, 'text-halo-color') : undefined,
-        pattern: isFill ? map.getLayoutProperty(layer.id, 'fill-pattern') : undefined,
-        isFill,
-      });
+      color = map.getPaintProperty(layer.id, themed.property);
     } catch {
-      // A layer without the property is fine; skip it.
+      continue;
     }
+    const isSymbol = layer.type === 'symbol';
+    const entry: BaseSnapshot[number] = {
+      id: layer.id,
+      property: themed.property,
+      color,
+      isFill,
+      isSymbol,
+    };
+    if (isSymbol) {
+      // Capture the source halo even when it is absent (undefined): the theme adds a halo to
+      // every label, so the restore must put back exactly what was there, including nothing.
+      try {
+        entry.halo = map.getPaintProperty(layer.id, 'text-halo-color');
+      } catch {
+        // No halo to read; restore resets it to the style default either way.
+      }
+    }
+    if (isFill) {
+      // fill-pattern is a paint property in MapLibre, not a layout one.
+      try {
+        entry.pattern = map.getPaintProperty(layer.id, 'fill-pattern');
+      } catch {
+        // No pattern on this fill; restore clears it to undefined either way.
+      }
+    }
+    snapshot.push(entry);
   }
   return snapshot;
 }
@@ -146,8 +170,12 @@ export function restoreBaseTheme(map: MapLibreMap, snapshot: BaseSnapshot): void
   for (const entry of snapshot) {
     try {
       map.setPaintProperty(entry.id, entry.property, entry.color);
-      if (entry.halo !== undefined) map.setPaintProperty(entry.id, 'text-halo-color', entry.halo);
-      if (entry.isFill) map.setLayoutProperty(entry.id, 'fill-pattern', entry.pattern);
+      // Restore the label halo for every symbol, including back to undefined (the style default),
+      // so the theme's added halo does not linger as a dark outline on the day map.
+      if (entry.isSymbol) map.setPaintProperty(entry.id, 'text-halo-color', entry.halo);
+      // fill-pattern is a paint property in MapLibre; restoring it (often undefined) brings back
+      // the source style's hatch where the recolor had cleared it.
+      if (entry.isFill) map.setPaintProperty(entry.id, 'fill-pattern', entry.pattern);
     } catch {
       // A layer that no longer exists or lacks the property is fine; skip it.
     }

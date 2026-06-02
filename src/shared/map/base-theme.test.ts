@@ -5,18 +5,29 @@ import { mapThemePaint } from './map-theme';
 const paint = mapThemePaint('night-red');
 
 // A minimal MapLibre-shaped stub: it stores paint and layout values so capture and restore can
-// round-trip them.
+// round-trip them. Crucially, MapLibre treats fill-pattern as a PAINT property and throws if you
+// reach it through the layout API, so the stub does too. That faithfulness is what makes these
+// tests catch the layout-vs-paint mistake that once dropped every fill from the snapshot.
 function fakeStyleMap(layers: Array<Record<string, unknown>>) {
   const paintStore = new Map<string, unknown>();
   const layoutStore = new Map<string, unknown>();
+  const guardLayout = (prop: string) => {
+    if (prop === 'fill-pattern')
+      throw new Error('fill-pattern is a PAINT property not a LAYOUT property.');
+  };
   return {
     getStyle: () => ({ layers }),
     getPaintProperty: (id: string, prop: string) => paintStore.get(`${id}|${prop}`),
     setPaintProperty: (id: string, prop: string, value: unknown) =>
       paintStore.set(`${id}|${prop}`, value),
-    getLayoutProperty: (id: string, prop: string) => layoutStore.get(`${id}|${prop}`),
-    setLayoutProperty: (id: string, prop: string, value: unknown) =>
-      layoutStore.set(`${id}|${prop}`, value),
+    getLayoutProperty: (id: string, prop: string) => {
+      guardLayout(prop);
+      return layoutStore.get(`${id}|${prop}`);
+    },
+    setLayoutProperty: (id: string, prop: string, value: unknown) => {
+      guardLayout(prop);
+      layoutStore.set(`${id}|${prop}`, value);
+    },
   };
 }
 
@@ -81,33 +92,65 @@ describe('baseLayerPaint', () => {
 });
 
 describe('captureBaseTheme and restoreBaseTheme', () => {
+  const night = mapThemePaint('night-red');
+
   it('restores the source colors after a recolor (day shows the real map)', () => {
     const layers = [
       { id: 'background', type: 'background' },
       { id: 'water', type: 'fill', 'source-layer': 'water' },
+      // A label that defines its own halo, and one that relies on the style default (no halo).
       { id: 'label_city', type: 'symbol', 'source-layer': 'place' },
+      { id: 'road_label', type: 'symbol', 'source-layer': 'transportation_name' },
       { id: 'mystery', type: 'fill', 'source-layer': 'who_knows' },
     ];
     const map = fakeStyleMap(layers);
-    // Seed the source-style values.
+    // Seed the source-style values. fill-pattern is a paint property, like MapLibre treats it.
     map.setPaintProperty('background', 'background-color', '#f8f4f0');
     map.setPaintProperty('water', 'fill-color', 'rgb(158,189,255)');
-    map.setLayoutProperty('water', 'fill-pattern', 'wetland');
+    map.setPaintProperty('water', 'fill-pattern', 'wetland');
     map.setPaintProperty('label_city', 'text-color', '#333333');
     map.setPaintProperty('label_city', 'text-halo-color', '#ffffff');
+    map.setPaintProperty('road_label', 'text-color', '#666');
 
     // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
     const snapshot = captureBaseTheme(map as any, mapThemePaint('day'));
+    // Every base layer the recolor touches must be captured, fills included (the layout-vs-paint
+    // bug once dropped all of them, leaving water and land stuck dark after switching to day).
+    expect(snapshot.map((e) => e.id).sort()).toEqual([
+      'background',
+      'label_city',
+      'road_label',
+      'water',
+    ]);
+
     // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
-    applyBaseTheme(map as any, mapThemePaint('night-red'));
-    expect(map.getPaintProperty('background', 'background-color')).toBe('#000000');
-    expect(map.getLayoutProperty('water', 'fill-pattern')).toBeUndefined();
+    applyBaseTheme(map as any, night);
+    expect(map.getPaintProperty('background', 'background-color')).toBe(night.background);
+    expect(map.getPaintProperty('water', 'fill-pattern')).toBeUndefined();
+    // The theme gives every label a background-colored halo, even the one with none of its own.
+    expect(map.getPaintProperty('road_label', 'text-halo-color')).toBe(night.background);
 
     // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
     restoreBaseTheme(map as any, snapshot);
     expect(map.getPaintProperty('background', 'background-color')).toBe('#f8f4f0');
     expect(map.getPaintProperty('water', 'fill-color')).toBe('rgb(158,189,255)');
-    expect(map.getLayoutProperty('water', 'fill-pattern')).toBe('wetland');
+    expect(map.getPaintProperty('water', 'fill-pattern')).toBe('wetland');
     expect(map.getPaintProperty('label_city', 'text-halo-color')).toBe('#ffffff');
+    // The label with no source halo must lose the theme's added halo, not keep it dark.
+    expect(map.getPaintProperty('road_label', 'text-halo-color')).toBeUndefined();
+  });
+
+  it('keeps an entry even when an optional getter throws', () => {
+    const map = fakeStyleMap([{ id: 'water', type: 'fill', 'source-layer': 'water' }]);
+    map.setPaintProperty('water', 'fill-color', 'rgb(1,2,3)');
+    // Simulate a map where reading the optional fill-pattern throws; the color must still capture.
+    map.getPaintProperty = (id: string, prop: string) => {
+      if (prop === 'fill-pattern') throw new Error('boom');
+      return id === 'water' && prop === 'fill-color' ? 'rgb(1,2,3)' : undefined;
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
+    const snapshot = captureBaseTheme(map as any, mapThemePaint('day'));
+    expect(snapshot).toHaveLength(1);
+    expect(snapshot[0]).toMatchObject({ id: 'water', property: 'fill-color', color: 'rgb(1,2,3)' });
   });
 });
