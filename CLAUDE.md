@@ -77,8 +77,17 @@ gitignored `tmp/` directory at the repo root, never loose at the root or inside 
 The working rhythm: write every file, run the gate capturing each result to a file and reading it
 back (shell output on this Pi intermittently truncates, so trust the file, not a glanced line),
 confirm all green, and only then commit and push. Run heavy commands one at a time. Prefer
-lead-driven implementation over agent teams on this Pi; teams have dropped lane files silently
-("Lock file is already being held" on spawn), which is how broken trees reached commits.
+lead-driven implementation over agent teams on this Pi; `TeamCreate` teams have dropped lane files
+silently ("Lock file is already being held" on spawn), which is how broken trees reached commits.
+
+When a team IS explicitly requested for implementation, use parallel **Agent-tool subagents scoped
+to disjoint files, not `TeamCreate`** (the Agent tool has no lane-lock plumbing, so it avoids that
+failure; it is also what `/cleanup` uses for read-only audits). Each implementer subagent edits a
+non-overlapping file set, is forbidden from running heavy commands and git, and reports back; the
+lead integrates the shared and wiring files itself, runs the single gate one heavy command at a
+time, commits in logical chunks, and only then optionally runs review subagents (code-reviewer,
+silent-failure-hunter) on the integrated diff and fixes every finding. No tmux panes or
+`shutdown_request` to manage because there is no `TeamCreate`.
 
 ## Modularity is a first-class rule
 
