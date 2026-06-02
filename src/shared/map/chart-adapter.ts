@@ -30,22 +30,36 @@ function absolute(url: string, base: string): string {
   return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-function tileTemplate(chart: SignalKChart, base: string): string {
-  const template = chart.tilemapUrl ?? chart.url ?? '';
-  return absolute(template, base);
+// A pmtiles archive url for MapLibre's protocol: an already-pmtiles url stays as is, a .pmtiles
+// document gets the scheme, and anything else is not a pmtiles archive.
+function pmtilesUrl(resolved: string): string | undefined {
+  if (resolved.startsWith('pmtiles://')) return resolved;
+  if (resolved.endsWith('.pmtiles')) return `pmtiles://${resolved}`;
+  return undefined;
 }
 
 function rasterSpecs(chart: SignalKChart, base: string): ChartSpecs {
   const sourceId = chartSourceId(chart.identifier);
   const layerId = `${sourceId}-layer`;
-  const source: SourceSpecification = {
-    type: 'raster',
-    tiles: [tileTemplate(chart, base)],
-    tileSize: 256,
-    ...(chart.minzoom !== undefined ? { minzoom: chart.minzoom } : {}),
-    ...(chart.maxzoom !== undefined ? { maxzoom: chart.maxzoom } : {}),
-    ...(chart.bounds ? { bounds: chart.bounds } : {}),
-  };
+  const resolved = absolute(chart.tilemapUrl ?? chart.url ?? '', base);
+  const pmtiles = pmtilesUrl(resolved);
+  // A raster PMTiles archive serves its own TileJSON through the protocol, so it is referenced by
+  // url; a tile-server raster uses a {z}/{x}/{y} template.
+  const source: SourceSpecification = pmtiles
+    ? {
+        type: 'raster',
+        url: pmtiles,
+        tileSize: 256,
+        ...(chart.bounds ? { bounds: chart.bounds } : {}),
+      }
+    : {
+        type: 'raster',
+        tiles: [resolved],
+        tileSize: 256,
+        ...(chart.minzoom !== undefined ? { minzoom: chart.minzoom } : {}),
+        ...(chart.maxzoom !== undefined ? { maxzoom: chart.maxzoom } : {}),
+        ...(chart.bounds ? { bounds: chart.bounds } : {}),
+      };
   return {
     sources: { [sourceId]: source },
     layers: [{ id: layerId, type: 'raster', source: sourceId }],
@@ -142,7 +156,7 @@ function vectorSpecs(chart: SignalKChart, base: string): ChartSpecs {
   // `{z}/{x}/{y}` template in `tilemapUrl`; the raster path prefers them the other way.
   const raw = chart.url ?? chart.tilemapUrl ?? '';
   const resolved = absolute(raw, base);
-  const url = resolved.endsWith('.pmtiles') ? `pmtiles://${resolved}` : resolved;
+  const url = pmtilesUrl(resolved) ?? resolved;
   const source: SourceSpecification = {
     type: 'vector',
     url,
@@ -158,9 +172,13 @@ function vectorSpecs(chart: SignalKChart, base: string): ChartSpecs {
 // A chart is vector when it declares a vector type or an MVT/PMTiles payload. Some
 // Signal K servers label a vector PMTiles archive as "tilelayer" but mark it with
 // format "mvt", so the format and the .pmtiles suffix are checked, not just the type.
+const RASTER_FORMATS = new Set(['png', 'jpg', 'jpeg', 'webp', 'avif']);
+
 function isVector(chart: SignalKChart): boolean {
   if (chart.type === 'tileJSON') return true;
   if (chart.format === 'mvt' || chart.format === 'pbf') return true;
+  // An explicit raster format wins over the .pmtiles suffix, so a raster PMTiles is not vector.
+  if (chart.format && RASTER_FORMATS.has(chart.format)) return false;
   const candidate = chart.url ?? chart.tilemapUrl ?? '';
   return candidate.endsWith('.pmtiles');
 }

@@ -6,21 +6,25 @@ import type { PmtilesStore } from '$shared/storage';
 export interface UserChartSource {
   id: string;
   name: string;
+  kind: 'vector' | 'raster';
   origin: { type: 'url'; url: string } | { type: 'file'; storeId: string };
   bounds?: [number, number, number, number];
   minzoom?: number;
   maxzoom?: number;
   layers?: string[];
+  // Stored byte size for a file-backed chart, shown in the delete confirm.
+  byteSize?: number;
 }
 
 // Build the SignalKChart the existing chart overlay renders, with the tile url already resolved:
 // a remote .pmtiles URL, or a pmtiles://blob: URL for a stored file.
 export function userChartToSignalK(source: UserChartSource, url: string): SignalKChart {
+  const vector = source.kind !== 'raster';
   return {
     identifier: source.id,
     name: source.name,
-    type: 'tileJSON',
-    format: 'mvt',
+    type: vector ? 'tileJSON' : 'tilelayer',
+    format: vector ? 'mvt' : 'png',
     url,
     bounds: source.bounds,
     minzoom: source.minzoom,
@@ -67,12 +71,10 @@ export class UserCharts {
 
   async addUrl(url: string): Promise<void> {
     const meta = await readPmtilesMeta(url);
-    if (meta.kind !== 'vector') {
-      throw new Error('Only vector PMTiles are supported right now.');
-    }
     this.#add({
       id: newId(),
       name: meta.name ?? nameFromUrl(url),
+      kind: meta.kind,
       origin: { type: 'url', url },
       bounds: meta.bounds,
       minzoom: meta.minzoom,
@@ -83,19 +85,18 @@ export class UserCharts {
 
   async addFile(file: File): Promise<void> {
     const meta = await readPmtilesMeta(file);
-    if (meta.kind !== 'vector') {
-      throw new Error('Only vector PMTiles are supported right now.');
-    }
     const storeId = newId();
     await this.#store.put(storeId, file);
     this.#add({
       id: newId(),
       name: meta.name ?? file.name.replace(/\.pmtiles$/i, ''),
+      kind: meta.kind,
       origin: { type: 'file', storeId },
       bounds: meta.bounds,
       minzoom: meta.minzoom,
       maxzoom: meta.maxzoom,
       layers: meta.vectorLayers,
+      byteSize: meta.byteSize ?? file.size,
     });
   }
 

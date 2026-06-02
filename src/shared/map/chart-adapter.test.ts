@@ -149,4 +149,22 @@ describe('chartToSpecs', () => {
       'https://tile.example/{z}/{x}/{y}.png',
     );
   });
+
+  it('builds a raster source referencing the pmtiles protocol for a raster pmtiles archive', () => {
+    const chart: SignalKChart = {
+      identifier: 'bathy',
+      name: 'Bathy',
+      type: 'tilelayer',
+      format: 'png',
+      url: '/signalk/pmtiles/bathy.pmtiles',
+      bounds: [-10, 40, 10, 60],
+    };
+    const { sources, layers } = chartToSpecs(chart, base);
+    const sourceId = Object.keys(sources)[0];
+    expect(sources[sourceId].type).toBe('raster');
+    expect((sources[sourceId] as { url: string }).url).toBe(
+      'pmtiles://http://pi.local/signalk/pmtiles/bathy.pmtiles',
+    );
+    expect(layers[0].type).toBe('raster');
+  });
 });

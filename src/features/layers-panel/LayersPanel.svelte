@@ -1,6 +1,6 @@
 <script lang="ts">
 import { Pin, X } from '@lucide/svelte';
-import type { UserCharts } from '$entities/user-charts';
+import type { UserChartSource, UserCharts } from '$entities/user-charts';
 import { chartSourceId, type LayerListItem } from '$shared/map';
 import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
@@ -23,6 +23,23 @@ const userChartIds = $derived(
   new Map((userCharts?.sources ?? []).map((source) => [chartSourceId(source.id), source.id])),
 );
 let addOpen = $state(false);
+let pendingRemove = $state<UserChartSource | undefined>();
+
+function requestRemove(sourceId: string): void {
+  pendingRemove = userCharts?.sources.find((source) => source.id === sourceId);
+}
+
+async function confirmRemove(): Promise<void> {
+  const source = pendingRemove;
+  pendingRemove = undefined;
+  if (source) await userCharts?.remove(source.id);
+}
+
+function formatSize(bytes: number | undefined): string {
+  if (!bytes) return '';
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${Math.round(mb)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 // Group the movable rows into charts-and-depth versus the live overlays so the list reads as
 // organized. Reorder still operates on the live order; a header marks each category change.
@@ -164,12 +181,25 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
             dropAfter={indicator.after}
             onHandlePointerDown={(e) => handlePointerDown(item.id, e)}
             onHandleKeydown={(e) => handleKeydown(item.id, e)}
-            onRemove={removeId ? () => userCharts?.remove(removeId) : undefined}
+            onRemove={removeId ? () => requestRemove(removeId) : undefined}
           />
         {/each}
       </ul>
     {/if}
     {#if userCharts}
+      {#if pendingRemove}
+        <div class="confirm-remove">
+          <p>
+            Remove "{pendingRemove.name}"?{pendingRemove.byteSize
+              ? ` Frees ${formatSize(pendingRemove.byteSize)}.`
+              : ''}
+          </p>
+          <div class="confirm-actions">
+            <button type="button" onclick={() => (pendingRemove = undefined)}>Cancel</button>
+            <button type="button" class="danger" onclick={confirmRemove}>Remove</button>
+          </div>
+        </div>
+      {/if}
       <div class="add-chart-area">
         {#if addOpen}
           <AddChartForm {userCharts} onDone={() => (addOpen = false)} />
@@ -310,6 +340,36 @@ header h2 {
 }
 .add-chart:hover {
   border-color: var(--accent);
+}
+.confirm-remove {
+  margin-block-start: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--alarm);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+.confirm-remove p {
+  margin: 0 0 0.4rem;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+.confirm-actions button {
+  min-block-size: var(--control-size);
+  padding-inline: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.confirm-actions .danger {
+  border-color: var(--alarm);
+  color: var(--alarm);
 }
 @media (max-width: 600px) {
   .layers-panel {
