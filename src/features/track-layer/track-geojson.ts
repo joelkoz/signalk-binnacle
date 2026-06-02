@@ -1,0 +1,25 @@
+import type { TrackPoint } from '$entities/track';
+
+// One two-point LineString per consecutive non-gap pair, carrying the segment's speed so the
+// line can be data-driven colored. A point flagged gap emits no segment, which is how a break
+// (GPS dropout, reconnect) shows as a real gap instead of a straight line across the chart.
+export function trackSegments(points: readonly TrackPoint[]): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  for (let i = 1; i < points.length; i += 1) {
+    const point = points[i];
+    if (point.gap) continue;
+    const prev = points[i - 1];
+    features.push({
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [prev.lon, prev.lat],
+          [point.lon, point.lat],
+        ],
+      },
+      properties: { sog: point.sog },
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
