@@ -48,7 +48,7 @@ const { view }: Props = $props();
 }
 .empty {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 .list {
@@ -67,10 +67,47 @@ const { view }: Props = $props();
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  min-block-size: var(--control-size);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+.toggle input[type="checkbox"] {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
 }
 .opacity {
   inline-size: 100%;
+  min-block-size: var(--control-size);
   margin-block-start: 0.25rem;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.opacity::-webkit-slider-runnable-track {
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.opacity::-moz-range-track {
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.opacity::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  inline-size: 24px;
+  block-size: 24px;
+  margin-block-start: -9px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--accent);
+}
+.opacity::-moz-range-thumb {
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--accent);
 }
 </style>

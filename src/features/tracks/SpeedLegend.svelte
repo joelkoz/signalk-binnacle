@@ -29,22 +29,22 @@ const gradient = $derived(`linear-gradient(to right, ${slow}, ${mid}, ${fast})`)
   flex-direction: column;
   gap: 0.2rem;
   padding: 0.4rem 0.55rem;
-  border-radius: 0.4rem;
-  background: var(--surface-raised);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
-  font-size: 0.7rem;
+  box-shadow: var(--shadow-overlay);
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 .caption {
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-caps);
 }
 .bar {
   inline-size: 9rem;
   block-size: 0.5rem;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
 }
 .ticks {
   display: flex;

@@ -48,7 +48,7 @@ function onWindowKeydown(event: KeyboardEvent): void {
     title={label}
     onclick={() => (menuOpen = !menuOpen)}
   >
-    <Menu size={18} aria-hidden="true" />
+    <Menu size={20} aria-hidden="true" />
   </button>
   {#if menuOpen}
     <div class="popout" id="app-menu-popout">
@@ -81,11 +81,11 @@ function onWindowKeydown(event: KeyboardEvent): void {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  inline-size: 2rem;
-  block-size: 2rem;
+  inline-size: var(--control-size);
+  block-size: var(--control-size);
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-raised);
   color: var(--accent);
   cursor: pointer;
@@ -97,7 +97,7 @@ function onWindowKeydown(event: KeyboardEvent): void {
   position: absolute;
   inset-block-start: calc(100% + 0.4rem);
   inset-inline-start: 0;
-  z-index: 5;
+  z-index: var(--z-menu);
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -107,21 +107,22 @@ function onWindowKeydown(event: KeyboardEvent): void {
   padding: 0.4rem;
   background: var(--surface-overlay);
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
 }
 .item {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   inline-size: 100%;
-  padding: 0.45rem 0.6rem;
+  padding-block: 0.6rem;
+  padding-inline: 0.6rem;
   border: 0;
-  border-radius: 0.35rem;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   text-align: start;
   cursor: pointer;
 }
@@ -134,13 +135,14 @@ function onWindowKeydown(event: KeyboardEvent): void {
 }
 .divider {
   block-size: 1px;
-  margin: 0.25rem 0.3rem;
+  margin-block: 0.25rem;
+  margin-inline: 0.3rem;
   background: var(--border);
 }
 .empty {
   display: block;
   padding: 0.45rem 0.6rem;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   color: var(--text-muted);
 }
 </style>

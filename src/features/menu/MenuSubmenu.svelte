@@ -50,13 +50,14 @@ const contentId = $derived(`submenu-${label.toLowerCase().replace(/\s+/g, '-')}`
   align-items: center;
   gap: 0.6rem;
   inline-size: 100%;
-  padding: 0.45rem 0.6rem;
+  padding-block: 0.55rem;
+  padding-inline: 0.6rem;
   border: 0;
-  border-radius: 0.35rem;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   text-align: start;
   cursor: pointer;
 }

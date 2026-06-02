@@ -46,7 +46,7 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
   padding: 0.5rem 0.75rem;
   background: var(--surface-overlay);
   border: 1px solid var(--alarm);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   color: var(--text);
   font-family: var(--font-ui);
 }
@@ -57,23 +57,24 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
   margin-block-end: 0.4rem;
 }
 .title {
-  font-size: 0.75rem;
+  font-size: var(--text-md);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-caps);
   color: var(--alarm);
 }
 .note {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 .ack {
   margin-inline-start: auto;
   font: inherit;
-  font-size: 0.75rem;
-  padding: 0.2rem 0.6rem;
+  font-size: var(--text-base);
+  padding: 0.5rem 0.9rem;
+  min-block-size: var(--control-size);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-raised);
   color: var(--accent);
   cursor: pointer;
@@ -90,7 +91,7 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
   display: flex;
   align-items: baseline;
   gap: 0.75rem;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
 }
 .name {
   flex: 1;
@@ -105,11 +106,14 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
 .metric b {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-size: var(--text-lg);
+  font-weight: 600;
   color: var(--text);
 }
 .more {
-  margin: 0.3rem 0 0;
-  font-size: 0.7rem;
+  margin: 0;
+  margin-block-start: 0.3rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 </style>

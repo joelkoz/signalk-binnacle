@@ -88,7 +88,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
 }
 .group {
   display: flex;
@@ -96,10 +96,10 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   gap: 0.25rem;
 }
 .group-title {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-caps);
 }
 .group-title.danger {
   color: var(--alarm);
@@ -117,10 +117,11 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   color: var(--text-muted);
 }
 .field input {
-  inline-size: 4rem;
-  padding: 0.2rem 0.35rem;
+  inline-size: 5rem;
+  min-block-size: var(--control-size);
+  padding: 0.2rem 0.5rem;
   border: 1px solid var(--border);
-  border-radius: 0.3rem;
+  border-radius: var(--radius-sm);
   background: var(--surface-raised);
   color: var(--text);
   font: inherit;
@@ -131,14 +132,15 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
 }
 .reset {
   align-self: flex-start;
+  min-block-size: var(--control-size);
   margin-block-start: 0.1rem;
-  padding: 0.3rem 0.5rem;
+  padding: 0.3rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 0.3rem;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--accent);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 .reset:hover {

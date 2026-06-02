@@ -166,9 +166,9 @@ function measure(item: NormalizedItem): string {
   max-inline-size: 100%;
   background: var(--surface-overlay);
   border-inline-start: 1px solid var(--border);
-  box-shadow: -2px 0 12px rgb(0 0 0 / 0.25);
+  box-shadow: var(--shadow-overlay);
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   overflow: hidden;
 }
 header {
@@ -184,12 +184,12 @@ header {
 }
 .heading h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--text-lg);
   font-weight: 600;
 }
 .type {
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 .rating {
   display: inline-flex;
@@ -197,9 +197,13 @@ header {
 }
 .close {
   display: inline-flex;
-  padding: 0.2rem;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--control-size);
+  min-inline-size: var(--control-size);
+  padding: 0.5rem;
   border: 0;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -211,16 +215,18 @@ header {
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 .body section {
   margin-block-end: 0.75rem;
 }
 .body h3 {
-  margin: 0 0 0.25rem;
-  font-size: 0.7rem;
+  margin-block: 0 0.25rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-caps);
   color: var(--text-muted);
 }
 dl {
@@ -271,8 +277,8 @@ dd {
 }
 .badge {
   padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
   background: var(--surface);
   color: var(--text-muted);
 }
@@ -287,17 +293,20 @@ dd {
   text-align: start;
 }
 .status {
-  margin: 0.25rem 0;
+  margin-block: 0.25rem;
   color: var(--text-muted);
 }
 .retry {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--control-size);
   padding: 0.3rem 0.6rem;
   border: 1px solid var(--border);
-  border-radius: 0.3rem;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--accent);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 footer {
@@ -308,12 +317,13 @@ footer {
   padding: 0.5rem 0.75rem;
   border-block-start: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
 }
 .source-link {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  min-block-size: var(--control-size);
   margin-inline-start: auto;
   color: var(--accent);
 }

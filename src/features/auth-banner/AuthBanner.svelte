@@ -23,7 +23,7 @@ const { auth }: Props = $props();
 <style>
 .auth-banner {
   padding: 0.5rem 1rem;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   background: var(--surface-raised);
   color: var(--text);
   border-block-end: 1px solid var(--border);
@@ -34,9 +34,10 @@ const { auth }: Props = $props();
 .auth-banner button {
   font: inherit;
   margin-inline-start: 0.5rem;
-  padding: 0.15rem 0.6rem;
+  padding: 0.5rem 0.9rem;
+  min-block-size: var(--control-size);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--accent);
   cursor: pointer;

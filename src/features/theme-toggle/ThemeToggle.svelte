@@ -32,7 +32,7 @@ const label = $derived(LABELS[controller.theme] ?? controller.theme);
   title={label}
   onclick={() => controller.cycle()}
 >
-  <Icon size={18} aria-hidden="true" />
+  <Icon size={20} aria-hidden="true" />
 </button>
 
 <style>
@@ -40,11 +40,11 @@ const label = $derived(LABELS[controller.theme] ?? controller.theme);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  inline-size: 2rem;
-  block-size: 2rem;
+  inline-size: var(--control-size);
+  block-size: var(--control-size);
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-raised);
   color: var(--accent);
   cursor: pointer;

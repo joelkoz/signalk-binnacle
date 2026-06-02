@@ -126,9 +126,9 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
               onclick={() => onToggleSaved(track.id)}
             >
               {#if shown.has(track.id)}
-                <Eye size={15} aria-hidden="true" />
+                <Eye size={18} aria-hidden="true" />
               {:else}
-                <EyeOff size={15} aria-hidden="true" />
+                <EyeOff size={18} aria-hidden="true" />
               {/if}
             </button>
             <button
@@ -138,7 +138,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
               title="Export GeoJSON"
               onclick={() => onExport(track)}
             >
-              <Download size={15} aria-hidden="true" />
+              <Download size={18} aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -147,7 +147,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
               title="Delete"
               onclick={() => onDelete(track.id)}
             >
-              <Trash2 size={15} aria-hidden="true" />
+              <Trash2 size={18} aria-hidden="true" />
             </button>
           </li>
         {/each}
@@ -161,7 +161,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
 }
 .controls {
   display: flex;
@@ -170,21 +170,23 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 .controls button {
   display: flex;
   align-items: center;
+  justify-content: center;
+  min-block-size: var(--control-size);
   gap: 0.3rem;
   padding: 0.3rem 0.5rem;
   border: 1px solid var(--border);
-  border-radius: 0.3rem;
+  border-radius: var(--radius-sm);
   background: var(--surface-raised);
   color: var(--text);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 .controls button:hover:not(:disabled) {
   border-color: var(--accent);
 }
 .controls button:disabled {
-  opacity: 0.45;
+  opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }
 .controls button.danger {
@@ -196,21 +198,22 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 .color-mode button {
   flex: 1;
+  min-block-size: var(--control-size);
   padding: 0.3rem 0.5rem;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 .color-mode button:first-child {
-  border-start-start-radius: 0.3rem;
-  border-end-start-radius: 0.3rem;
+  border-start-start-radius: var(--radius-sm);
+  border-end-start-radius: var(--radius-sm);
 }
 .color-mode button:last-child {
-  border-start-end-radius: 0.3rem;
-  border-end-end-radius: 0.3rem;
+  border-start-end-radius: var(--radius-sm);
+  border-end-end-radius: var(--radius-sm);
   border-inline-start: 0;
 }
 .color-mode button.active {
@@ -237,13 +240,13 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   display: contents;
 }
 .stats .num {
-  text-align: right;
+  text-align: end;
   font-variant-numeric: tabular-nums;
 }
 .stats .unit {
   min-inline-size: 1.25rem;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
 }
 .saved {
   display: flex;
@@ -251,16 +254,16 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   gap: 0.3rem;
 }
 .saved-title {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-caps);
   color: var(--text-muted);
 }
 .empty {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 .saved ul {
   list-style: none;
@@ -268,7 +271,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.35rem;
 }
 .saved li {
   display: flex;
@@ -283,9 +286,13 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 .icon {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--control-size);
+  min-inline-size: var(--control-size);
   padding: 0.25rem;
   border: 0;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;

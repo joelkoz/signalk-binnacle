@@ -377,7 +377,8 @@ onDestroy(() => {
   display: grid;
   grid-template-rows: auto 1fr auto;
   block-size: 100vh;
-  margin: 0;
+  margin-block: 0;
+  margin-inline: 0;
   font-family: var(--font-ui);
   background: var(--surface);
   color: var(--text);
@@ -386,7 +387,7 @@ onDestroy(() => {
   position: absolute;
   inset-block-start: 0;
   inset-inline: 0;
-  z-index: 1;
+  z-index: var(--z-overlay);
 }
 .topbar {
   display: flex;
@@ -407,10 +408,10 @@ onDestroy(() => {
 }
 .update {
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   padding: 0.3rem 0.7rem;
   border: 1px solid var(--accent);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--surface-raised);
   cursor: pointer;
@@ -420,7 +421,7 @@ onDestroy(() => {
 }
 .version {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -434,19 +435,19 @@ onDestroy(() => {
   display: flex;
   justify-content: center;
   pointer-events: none;
-  z-index: 1;
+  z-index: var(--z-overlay);
 }
 .legend-slot {
   position: absolute;
   inset-block-start: 0.75rem;
   inset-inline-end: 0.75rem;
-  z-index: 1;
+  z-index: var(--z-overlay);
 }
 .note-panel-slot {
   position: absolute;
   inset-block: 0;
   inset-inline-end: 0;
-  z-index: 2;
+  z-index: var(--z-panel);
 }
 @media (max-width: 600px) {
   .note-panel-slot {
@@ -464,6 +465,7 @@ onDestroy(() => {
   padding: 0.5rem 1rem;
   border-block-start: 1px solid var(--border);
   color: var(--text-muted);
+  font-size: var(--text-md);
 }
 .spacer {
   margin-inline-start: auto;
