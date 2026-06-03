@@ -5,6 +5,7 @@ import type {
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import type { OverlayContext, OverlayModule } from '$shared/map';
+import { emptyFeatureCollection } from './feature-collection';
 import { windArrowFeatures } from './wind-arrows';
 import { windColorExpression } from './wind-colormap';
 
@@ -15,10 +16,6 @@ const LAYER_ID = 'binnacle-weather-wind-line';
 // widget's animation loop like the other live overlays.
 export interface WindOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
-}
-
-function emptyCollection(): GeoJSON.FeatureCollection {
-  return { type: 'FeatureCollection', features: [] };
 }
 
 // The wind layer: a line per grid cell pointing toward the wind, colored by speed, in the weather
@@ -41,7 +38,10 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
     layerIds: [LAYER_ID],
     add(ctx) {
       if (!ctx.map.getSource(SOURCE_ID)) {
-        const source: GeoJSONSourceSpecification = { type: 'geojson', data: emptyCollection() };
+        const source: GeoJSONSourceSpecification = {
+          type: 'geojson',
+          data: emptyFeatureCollection(),
+        };
         ctx.map.addSource(SOURCE_ID, source);
       }
       if (!ctx.map.getLayer(LAYER_ID)) {
@@ -61,7 +61,7 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
       lastGrid = grid;
       lastTime = store.selectedTime;
       const source = ctx.map.getSource(SOURCE_ID) as { setData(d: unknown): void } | undefined;
-      source?.setData(grid ? windArrowFeatures(grid, store.bracket) : emptyCollection());
+      source?.setData(grid ? windArrowFeatures(grid, store.bracket) : emptyFeatureCollection());
     },
     remove(ctx) {
       if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);

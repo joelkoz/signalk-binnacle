@@ -1,5 +1,6 @@
 import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
+import { emptyFeatureCollection } from './feature-collection';
 import { type CanvasFactory, createFieldOverlay, type FieldOverlay } from './field-overlay';
 import { waveArrowFeatures } from './wave-arrows';
 import { waveArrowColor } from './wave-colormap';
@@ -11,10 +12,6 @@ const ARROW_SOURCE = 'binnacle-weather-waves-arrows';
 const ARROW_LAYER = 'binnacle-weather-waves-arrow-layer';
 
 export type WavesOverlay = FieldOverlay;
-
-function emptyCollection(): GeoJSON.FeatureCollection {
-  return { type: 'FeatureCollection', features: [] };
-}
 
 // The waves overlay: the shared canvas height field plus a sparse direction-arrow line layer. It
 // composes createFieldOverlay for the smooth height field and manages the arrow source and layer
@@ -44,7 +41,10 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
     add(ctx) {
       field.add(ctx);
       if (!ctx.map.getSource(ARROW_SOURCE)) {
-        const source: GeoJSONSourceSpecification = { type: 'geojson', data: emptyCollection() };
+        const source: GeoJSONSourceSpecification = {
+          type: 'geojson',
+          data: emptyFeatureCollection(),
+        };
         ctx.map.addSource(ARROW_SOURCE, source);
       }
       if (!ctx.map.getLayer(ARROW_LAYER)) {
@@ -65,7 +65,7 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
       lastGrid = grid;
       lastTime = store.selectedTime;
       const source = ctx.map.getSource(ARROW_SOURCE) as { setData(d: unknown): void } | undefined;
-      source?.setData(grid ? waveArrowFeatures(grid, store.bracket) : emptyCollection());
+      source?.setData(grid ? waveArrowFeatures(grid, store.bracket) : emptyFeatureCollection());
     },
     remove(ctx) {
       if (ctx.map.getLayer(ARROW_LAYER)) ctx.map.removeLayer(ARROW_LAYER);

@@ -112,8 +112,8 @@ export function createFieldOverlay(
       lastTheme = theme;
       redraw();
       const coords = fieldCoords();
-      const source = ctx.map.getSource(sourceId) as { setCoordinates?(c: Quad): void } | undefined;
-      if (coords) source?.setCoordinates?.(coords);
+      const source = ctx.map.getSource(sourceId) as { setCoordinates(c: Quad): void } | undefined;
+      if (coords) source?.setCoordinates(coords);
     },
     remove(ctx) {
       if (ctx.map.getLayer(layerId)) ctx.map.removeLayer(layerId);

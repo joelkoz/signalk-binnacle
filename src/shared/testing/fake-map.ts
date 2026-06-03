@@ -5,7 +5,12 @@ import { vi } from 'vitest';
 export function createFakeMap() {
   const sources = new Map<
     string,
-    { setData: (data: unknown) => void; data: unknown; maxzoom?: number }
+    {
+      setData: (data: unknown) => void;
+      setCoordinates: (coordinates: unknown) => void;
+      data: unknown;
+      maxzoom?: number;
+    }
   >();
   const layers = new Set<string>();
   const images = new Set<string>();
@@ -28,6 +33,7 @@ export function createFakeMap() {
         setData(data: unknown) {
           this.data = data;
         },
+        setCoordinates: vi.fn(),
       });
     },
     getSource: (id: string) => sources.get(id),
