@@ -36,12 +36,18 @@ import {
   saveTrack,
   TracksPanel,
 } from '$features/tracks';
-import { fetchForecast, readoutAt, WeatherTimeControl, type WindReadout } from '$features/weather';
+import {
+  fetchForecast,
+  readoutAt,
+  type WeatherReadout,
+  WeatherTimeControl,
+} from '$features/weather';
 import {
   formatLatitude,
   formatLongitude,
   metersPerSecondToKnots,
   PLACEHOLDER,
+  pascalsToHectopascals,
   radiansToBearing,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
@@ -154,7 +160,7 @@ const weatherActive = $derived(
   layersView?.items.some((i) => i.band === 'weather' && i.visible) ?? false,
 );
 // The wind value at the last map tap, shown as a transient chip.
-let windReadout = $state<WindReadout | undefined>();
+let weatherReadout = $state<WeatherReadout | undefined>();
 
 // The app menu's action options. Adding one is a single entry here. "Layers and charts" opens
 // the layers slide-over; Tracks and the collision thresholds stay as inline submenus below.
@@ -230,16 +236,17 @@ $effect(() => {
   if (weatherActive && !weather.grid) scheduleWeather();
 });
 
-// Show the wind at the tapped point for the selected forecast time; clears after a few seconds.
+// Show the wind and pressure at the tapped point for the selected forecast time; clears after a
+// few seconds.
 let readoutTimer: ReturnType<typeof setTimeout> | undefined;
 function onMapTap(lngLat: { lng: number; lat: number }): void {
   if (!weatherActive || !weather.grid) {
-    windReadout = undefined;
+    weatherReadout = undefined;
     return;
   }
-  windReadout = readoutAt(weather.grid, lngLat.lng, lngLat.lat, weather.bracket.lo);
+  weatherReadout = readoutAt(weather.grid, lngLat.lng, lngLat.lat, weather.bracket.lo);
   if (readoutTimer) clearTimeout(readoutTimer);
-  if (windReadout) readoutTimer = setTimeout(() => (windReadout = undefined), 6000);
+  if (weatherReadout) readoutTimer = setTimeout(() => (weatherReadout = undefined), 6000);
 }
 
 // Reconcile the registered user-chart overlays with the entity's source list: register an added
@@ -498,10 +505,13 @@ onDestroy(() => {
         <LayersPanel view={layersView} {userCharts} onClose={() => (layersPanelOpen = false)} />
       </div>
     {/if}
-    {#if windReadout}
+    {#if weatherReadout}
       <div class="wind-readout" role="status" aria-live="polite">
-        Wind <b>{fmt(metersPerSecondToKnots(windReadout.speedMs), 0)}</b> kn from
-        <b>{fmt(radiansToBearing(windReadout.fromRad), 0)}</b>&deg;
+        Wind <b>{fmt(metersPerSecondToKnots(weatherReadout.speedMs), 0)}</b> kn from
+        <b>{fmt(radiansToBearing(weatherReadout.fromRad), 0)}</b>&deg;
+        {#if weatherReadout.pressurePa !== undefined}
+          &middot; <b>{fmt(pascalsToHectopascals(weatherReadout.pressurePa), 0)}</b> hPa
+        {/if}
       </div>
     {/if}
   </section>
