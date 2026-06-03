@@ -14,8 +14,12 @@ export interface WeatherGrid {
   windU: number[][]; // m/s, eastward
   windV: number[][]; // m/s, northward
   // Supplementary fields, present only when fetched; absent (undefined) for a wind-only grid or
-  // over cells the provider omits. All SI: pressure in Pa.
+  // over cells the provider omits. All SI: pressure in Pa, wave height in m, direction in radians,
+  // period in s. Marine fields are NaN over land cells.
   pressureMsl?: number[][]; // Pa
+  waveHeight?: number[][]; // m
+  waveDirection?: number[][]; // radians, direction the waves come from
+  wavePeriod?: number[][]; // s
 }
 
 // Sample a bbox into a grid no larger than maxCells, keeping the axes roughly proportional to the
