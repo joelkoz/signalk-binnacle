@@ -34,6 +34,9 @@ interface LayerManagerOptions {
   // active alarms can never be hidden beneath a chart. The core stays generic: the wiring
   // decides which ids are pinned rather than the manager hardcoding any feature.
   pinned?: string[];
+  // Groups of overlay ids that are mutually exclusive: enabling one hides the others in its group.
+  // The wiring decides the groups (the weather area fills) rather than the manager hardcoding any.
+  exclusive?: string[][];
 }
 
 export class LayerManager {
@@ -46,6 +49,7 @@ export class LayerManager {
   #explicitOrder: string[];
   #onOrderChange?: (order: string[]) => void;
   #pinned: string[];
+  #exclusive: string[][];
 
   constructor(ctx: OverlayContext, options: LayerManagerOptions = {}) {
     this.#ctx = ctx;
@@ -54,6 +58,7 @@ export class LayerManager {
     this.#explicitOrder = options.savedOrder ? [...options.savedOrder] : [];
     this.#onOrderChange = options.onOrderChange;
     this.#pinned = options.pinned ?? [];
+    this.#exclusive = options.exclusive ?? [];
   }
 
   async register(module: OverlayModule): Promise<void> {
@@ -64,7 +69,7 @@ export class LayerManager {
     const restored = this.#saved[module.id];
     const fallback = restored
       ? { ...restored }
-      : { visible: module.defaultVisible ?? true, opacity: 1 };
+      : { visible: module.defaultVisible ?? true, opacity: module.defaultOpacity ?? 1 };
     const state = this.#state.get(module.id) ?? fallback;
     this.#state.set(module.id, state);
     await module.add(this.#ctx);
@@ -84,6 +89,19 @@ export class LayerManager {
     const module = this.#modules.get(id);
     const state = this.#state.get(id);
     if (!module || !state) return;
+    // Enabling a member of an exclusive group hides the other members of that group.
+    if (visible) {
+      const group = this.#exclusive.find((g) => g.includes(id));
+      for (const other of group ?? []) {
+        if (other === id) continue;
+        const om = this.#modules.get(other);
+        const os = this.#state.get(other);
+        if (om && os?.visible) {
+          os.visible = false;
+          om.setVisible(this.#ctx, false);
+        }
+      }
+    }
     state.visible = visible;
     module.setVisible(this.#ctx, visible);
     this.#persist();

@@ -13,13 +13,12 @@ export class LayersView {
     this.items = this.#manager.layers();
   }
 
-  // Mutate the one changed item in place rather than rebuilding the whole array, so a slider
-  // drag (a stream of oninput events) does not reallocate the list on every pixel. $state is
-  // deeply reactive, so the in-place field write still updates the UI.
+  // A toggle can flip several rows at once (the weather fills are mutually exclusive), so rebuild
+  // the list from the manager rather than mutating one item. A discrete toggle is not a per-pixel
+  // stream, so a full refresh is fine here (unlike the opacity slider below).
   toggle(id: string, visible: boolean): void {
     this.#manager.toggle(id, visible);
-    const item = this.items.find((i) => i.id === id);
-    if (item) item.visible = visible;
+    this.refresh();
   }
 
   setOpacity(id: string, opacity: number): void {
