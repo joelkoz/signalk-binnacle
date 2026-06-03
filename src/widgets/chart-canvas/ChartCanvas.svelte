@@ -222,10 +222,6 @@ onMount(() => {
       recenterOnVessel: (latitude, longitude) => {
         mapInstance.setCenter([longitude, latitude]);
       },
-      getBounds: () => {
-        const b = mapInstance.getBounds();
-        return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
-      },
       clearNoteSelection: () => notesOverlay.deselect(ctx),
     });
 

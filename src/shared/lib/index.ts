@@ -4,9 +4,11 @@ export { lerp } from './math';
 export {
   degreesToRadians,
   formatCpaNm,
+  formatFixed,
   formatKnots,
   formatNm,
   formatTcpaMin,
+  kelvinToCelsius,
   knotsToMetersPerSecond,
   metersPerSecondToKnots,
   nauticalMilesToMeters,

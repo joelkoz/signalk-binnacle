@@ -5,6 +5,20 @@ export interface Bbox {
   north: number;
 }
 
+// The corner-getter surface of a MapLibre LngLatBounds, so the bbox conversion does not depend on
+// the map library type.
+export interface MapBoundsLike {
+  getWest(): number;
+  getSouth(): number;
+  getEast(): number;
+  getNorth(): number;
+}
+
+// A MapLibre bounds object to a plain Bbox, shared by every map surface that fetches for its view.
+export function boundsToBbox(b: MapBoundsLike): Bbox {
+  return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
+}
+
 // A regular lat/lon forecast grid. Variable arrays are indexed [timeIndex][cellIndex], where
 // cellIndex is row-major over (lat, lon). All values are SI.
 export interface WeatherGrid {

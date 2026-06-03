@@ -45,17 +45,21 @@ What is in place now:
   and ENC sources (GEBCO, EMODnet, NOAA ENC, and NOAA BlueTopo), and your own PMTiles archives
   imported by URL or file and stored in the browser for offline use. Every layer is managed from a
   Layers panel that toggles, fades, and drag-reorders the z-order.
-- Weather: wind, pressure, wave, precipitation, cloud, and real-time radar overlays from browser-only
-  data (Open-Meteo and RainViewer), toggled from a Weather menu section or their own Layers-panel
-  group. Wind draws as speed-colored arrows, mean-sea-level pressure as labeled isobar contours
-  (marching squares), significant wave height as a smooth color field with direction arrows,
-  precipitation as a smooth rain-rate color field, cloud cover as a translucent overcast field, and
-  RainViewer precipitation radar. The four area fills are mutually exclusive (one at a time) and
-  translucent so the chart reads through, while wind and pressure stay combinable; a Forecast time
-  slider scrubs the coming days, a legend shows a continuous color ramp per active layer, and a tap
-  reads the value (wind, pressure, sea state, and rain) for the layers you have on. Off by default,
-  themed for day, dusk, and night-red (a deep low-brightness red at night, no blue), and cached for
-  offline. An animated radar loop and animated wind particles follow.
+- Weather: a dedicated weather mini-map opened by the Forecast button, so the navigation chart stays
+  clean and the weather stays within its data resolution (the mini-map caps at zoom 7, RainViewer's
+  real radar resolution, so it can never be zoomed past the data). Toggle wind, pressure, waves,
+  precipitation, cloud, or radar in the panel; wind draws as speed-colored arrows, mean-sea-level
+  pressure as labeled isobar contours (marching squares), significant wave height, precipitation, and
+  cloud as smooth color fields, and RainViewer precipitation radar as an animated loop. The four area
+  fills are mutually exclusive (one at a time) while wind and pressure stay combinable; a time slider
+  scrubs the coming days, a legend shows a color ramp per active layer, a tap reads the value at any
+  point, and a "Here" panel shows the conditions, forecast, and any gale or storm warnings for the
+  vessel's position. Point data (the tap readout and the "Here" panel) prefers a configured Signal K
+  weather provider such as AccuWeather and falls back to the free browser-only sources when none is
+  set; the area fields and radar are always free (Open-Meteo and RainViewer, no key, no server).
+  Results are cached by viewport in memory, and the responses, radar index, and radar tiles are cached
+  for offline use. Themed for day, dusk, and night-red (a deep low-brightness red at night, no blue).
+  Animated wind particles follow.
 - AIS targets: other vessels render as GPU symbols in the traffic band, rotate with course, age
   out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
 - The active-safety Lookout feature: a collision danger strip with chart-highlight rings, an audible

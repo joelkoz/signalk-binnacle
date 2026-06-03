@@ -1,6 +1,9 @@
+import { PLACEHOLDER } from './coords';
+
 const MS_TO_KNOTS = 1.943844492;
 const METERS_PER_NAUTICAL_MILE = 1852;
 const DEG_PER_RAD = 180 / Math.PI;
+const KELVIN_OFFSET = 273.15;
 export const PA_PER_HPA = 100;
 
 // The store-to-display converters accept null and undefined because a Signal K value
@@ -28,6 +31,17 @@ export function degreesToRadians(value: number): number {
 
 export function pascalsToHectopascals(value: number | null | undefined): number | undefined {
   return value == null ? undefined : value / PA_PER_HPA;
+}
+
+// Signal K temperatures are Kelvin; the display edge shows Celsius.
+export function kelvinToCelsius(value: number | null | undefined): number | undefined {
+  return value == null ? undefined : value - KELVIN_OFFSET;
+}
+
+// A null-safe fixed-digit reading: the placeholder when absent, otherwise the value to `digits`.
+// Centralized so the readouts that show "value or --" do not each re-implement it.
+export function formatFixed(value: number | null | undefined, digits: number): string {
+  return value == null ? PLACEHOLDER : value.toFixed(digits);
 }
 
 export function metersToNauticalMiles(value: number | null | undefined): number | undefined {

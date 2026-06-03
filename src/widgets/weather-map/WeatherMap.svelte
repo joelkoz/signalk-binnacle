@@ -2,7 +2,7 @@
 import { Pause, Play, X } from '@lucide/svelte';
 import maplibregl from 'maplibre-gl';
 import { onDestroy, onMount } from 'svelte';
-import type { Bbox, WeatherStore } from '$entities/weather';
+import { boundsToBbox, type WeatherStore } from '$entities/weather';
 import { LayersView } from '$features/layers-panel';
 import {
   advancePlay,
@@ -13,21 +13,23 @@ import {
   createRadarOverlay,
   createWavesOverlay,
   createWindOverlay,
-  fetchForecast,
-  fetchMarine,
-  fetchRadar,
-  mergeMarine,
+  fetchObservations,
+  fetchPointForecasts,
+  nearestInTime,
   readoutAt,
+  readoutFromSignalK,
   stepTime,
   type TimeRange,
   WEATHER_FILL_IDS,
+  WeatherConditions,
   type WeatherLegend,
+  type WeatherLoader,
   type WeatherReadout,
   weatherLegend,
 } from '$features/weather';
 import {
+  formatFixed,
   metersPerSecondToKnots,
-  PLACEHOLDER,
   pascalsToHectopascals,
   radiansToBearing,
 } from '$shared/lib';
@@ -44,10 +46,13 @@ import {
   restoreBaseTheme,
 } from '$shared/map';
 import type { MapView } from '$shared/settings';
+import { serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 
 interface Props {
   store: WeatherStore;
+  // The shared, cached weather loader (Open-Meteo plus RainViewer), constructed in App.
+  loader: WeatherLoader;
   theme: Theme;
   // Where the nav chart is looking, used the first time the panel opens.
   initialView?: MapView;
@@ -57,17 +62,28 @@ interface Props {
   // The panel's own weather-layer visibility, separate from the nav chart's layers.
   savedLayers?: LayerSettings;
   onLayersChange?: (settings: LayerSettings) => void;
+  // The Signal K auth token and the default weather provider's display name, when one is configured.
+  // With a provider, the tap readout prefers it and falls back to the free grid; without one, the
+  // grid answers. The area overlays and radar always use the free sources.
+  token?: string;
+  providerName?: string;
+  // The vessel position, for the "Here" conditions panel.
+  position?: { latitude: number; longitude: number };
   onClose: () => void;
 }
 
 const {
   store,
+  loader,
   theme,
   initialView,
   savedView,
   onViewChange,
   savedLayers,
   onLayersChange,
+  token,
+  providerName,
+  position,
   onClose,
 }: Props = $props();
 
@@ -79,6 +95,8 @@ const MIN_ZOOM = 1;
 const DEFAULT_CENTER: [number, number] = [0, 30];
 const DEFAULT_ZOOM = 3;
 const STEP_MS = 3 * 3_600_000;
+// The free fallback source's label, also used to decide readout field gating.
+const GRID_SOURCE = 'Open-Meteo';
 
 let container: HTMLDivElement;
 let map: maplibregl.Map | undefined;
@@ -88,11 +106,15 @@ let layersView = $state<LayersView | undefined>();
 let frame = 0;
 let destroyed = false;
 
+let conditionsOpen = $state(false);
 let playing = $state(false);
 let playTimer: ReturnType<typeof setInterval> | undefined;
 let fetchTimer: ReturnType<typeof setTimeout> | undefined;
 let readout = $state<WeatherReadout | undefined>();
+let readoutSource = $state<string | undefined>();
 let readoutTimer: ReturnType<typeof setTimeout> | undefined;
+// Each tap bumps this so a slow provider response from an earlier tap cannot overwrite a newer one.
+let tapSeq = 0;
 
 const items = $derived(layersView?.items ?? []);
 const fills = $derived(items.filter((i) => WEATHER_FILL_IDS.includes(i.id)));
@@ -149,44 +171,70 @@ function togglePlay(): void {
   );
 }
 
-// Fetch a forecast for the mini-map's own viewport, debounced. Atmospheric always; marine only
-// when waves is on and radar only when radar is on, so a wind-only view pulls nothing extra.
+// Fetch a forecast for the mini-map's own viewport, debounced. The loader fetches atmospheric data
+// always, marine only when waves is on, and radar only when radar is on, so a wind-only view pulls
+// nothing extra, and it caches by view so small pans reuse a recent fetch.
+const FORECAST_OPTS = { maxCells: 600, forecastDays: 5 };
 function scheduleFetch(): void {
   if (fetchTimer) clearTimeout(fetchTimer);
-  fetchTimer = setTimeout(async () => {
+  fetchTimer = setTimeout(() => {
     if (!map || !anyActive) return;
-    const b = map.getBounds();
-    const bounds: Bbox = {
-      west: b.getWest(),
-      south: b.getSouth(),
-      east: b.getEast(),
-      north: b.getNorth(),
-    };
-    store.setStatus('loading');
-    const opts = { maxCells: 600, forecastDays: 5 };
-    const [grid, marine, radar] = await Promise.all([
-      fetchForecast(bounds, opts),
-      wavesActive ? fetchMarine(bounds, opts) : Promise.resolve(undefined),
-      radarActive ? fetchRadar() : Promise.resolve(undefined),
-    ]);
-    if (grid) store.setGrid(marine ? mergeMarine(grid, marine) : grid);
-    else store.setStatus(store.grid ? 'stale' : 'error');
-    if (radar) store.setRadar(radar);
+    void loader.load(store, boundsToBbox(map.getBounds()), FORECAST_OPTS, {
+      waves: wavesActive,
+      radar: radarActive,
+    });
   }, 400);
 }
 
-function onTap(lng: number, lat: number): void {
-  if (!anyActive || !store.grid) {
-    readout = undefined;
-    return;
-  }
-  readout = readoutAt(store.grid, lng, lat, store.bracket.lo);
+function showReadout(value: WeatherReadout | undefined, source: string | undefined): void {
+  readout = value;
+  readoutSource = value ? source : undefined;
   if (readoutTimer) clearTimeout(readoutTimer);
-  if (readout) readoutTimer = setTimeout(() => (readout = undefined), 8000);
+  if (value) readoutTimer = setTimeout(() => (readout = undefined), 8000);
 }
 
-const fmt = (value: number | undefined, digits: number): string =>
-  value === undefined ? PLACEHOLDER : value.toFixed(digits);
+// Conditions at the tapped point for the selected time. Prefer the configured Signal K weather
+// provider (observations when the selected time is near now, else the nearest point-forecast step),
+// and fall back to the free grid sample. The provider answer is async, so a sequence guard drops a
+// stale response from an earlier tap.
+async function onTap(lng: number, lat: number): Promise<void> {
+  const seq = ++tapSeq;
+  if (providerName) {
+    const value = await providerReadout(lat, lng);
+    if (seq !== tapSeq) return;
+    if (value) {
+      showReadout(value, providerName);
+      return;
+    }
+  }
+  if (anyActive && store.grid) {
+    showReadout(readoutAt(store.grid, lng, lat, store.bracket.lo), GRID_SOURCE);
+  } else {
+    showReadout(undefined, undefined);
+  }
+}
+
+// In the readout, show a field when it came from the provider (which returns every point field) or
+// when its layer is on. The grid carries all fields regardless of which is drawn, so for the free
+// source it is gated to what is visualized.
+const showField = (id: string): boolean => (readoutSource === GRID_SOURCE ? layerOn(id) : true);
+
+const NEAR_NOW_MS = 90 * 60 * 1000;
+
+async function providerReadout(lat: number, lon: number): Promise<WeatherReadout | undefined> {
+  const origin = serverOrigin();
+  const target = store.selectedTime;
+  if (Math.abs(target - Date.now()) < NEAR_NOW_MS) {
+    const obs = await fetchObservations(origin, lat, lon, token);
+    const reading = obs && readoutFromSignalK(obs);
+    if (reading) return reading;
+  }
+  const series = await fetchPointForecasts(origin, lat, lon, 48, token);
+  const step = series && nearestInTime(series, target);
+  return step ? readoutFromSignalK(step) : undefined;
+}
+
+const fmt = formatFixed;
 
 // Refetch once when waves or radar is turned on, so the new source appears without a pan. Keyed on
 // the rising edge with a plain flag so a failed fetch cannot loop.
@@ -250,7 +298,7 @@ onMount(() => {
   };
   mapInstance.on('move', emitView);
   mapInstance.on('moveend', scheduleFetch);
-  mapInstance.on('click', (e) => onTap(e.lngLat.lng, e.lngLat.lat));
+  mapInstance.on('click', (e) => void onTap(e.lngLat.lng, e.lngLat.lat));
 
   mapInstance.on('load', async () => {
     const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
@@ -263,25 +311,20 @@ onMount(() => {
       exclusive: [WEATHER_FILL_IDS],
     });
 
-    // Waves first so the height field sits at the bottom of the band, with wind and pressure over it.
-    const wavesOverlay = createWavesOverlay(store);
-    await manager.register(wavesOverlay);
-    if (destroyed) return;
-    const precipOverlay = createPrecipOverlay(store);
-    await manager.register(precipOverlay);
-    if (destroyed) return;
-    const cloudOverlay = createCloudOverlay(store);
-    await manager.register(cloudOverlay);
-    if (destroyed) return;
-    const radarOverlay = createRadarOverlay(store);
-    await manager.register(radarOverlay);
-    if (destroyed) return;
-    const windOverlay = createWindOverlay(store);
-    await manager.register(windOverlay);
-    if (destroyed) return;
-    const pressureOverlay = createPressureOverlay(store);
-    await manager.register(pressureOverlay);
-    if (destroyed) return;
+    // Band order, bottom to top: the waves height field sits at the bottom, then the precip, cloud,
+    // and radar fills, with wind arrows and pressure isobars drawn over them.
+    const overlays = [
+      createWavesOverlay(store),
+      createPrecipOverlay(store),
+      createCloudOverlay(store),
+      createRadarOverlay(store),
+      createWindOverlay(store),
+      createPressureOverlay(store),
+    ];
+    for (const overlay of overlays) {
+      await manager.register(overlay);
+      if (destroyed) return;
+    }
 
     const view = new LayersView(manager);
     view.refresh();
@@ -297,12 +340,7 @@ onMount(() => {
     recolor(theme);
 
     const tick = () => {
-      wavesOverlay.sync(ctx);
-      precipOverlay.sync(ctx);
-      cloudOverlay.sync(ctx);
-      radarOverlay.sync(ctx);
-      windOverlay.sync(ctx);
-      pressureOverlay.sync(ctx);
+      for (const overlay of overlays) overlay.sync(ctx);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -350,6 +388,15 @@ onDestroy(() => {
         </button>
       {/each}
     </div>
+    <button
+      type="button"
+      class="pill"
+      class:on={conditionsOpen}
+      aria-pressed={conditionsOpen}
+      onclick={() => (conditionsOpen = !conditionsOpen)}
+    >
+      Here
+    </button>
     <button type="button" class="close" aria-label="Close weather" onclick={onClose}>
       <X size={18} aria-hidden="true" />
     </button>
@@ -357,21 +404,31 @@ onDestroy(() => {
 
   <div class="panel-map">
     <div class="map" bind:this={container}></div>
+    {#if conditionsOpen}
+      <div class="conditions-slot">
+        <WeatherConditions origin={serverOrigin()} {token} {providerName} {position} {store} />
+      </div>
+    {/if}
     {#if readout}
       <div class="readout" role="status" aria-live="polite">
-        Wind <b>{fmt(metersPerSecondToKnots(readout.speedMs), 0)}</b> kn from
-        <b>{fmt(radiansToBearing(readout.fromRad), 0)}</b>&deg;
-        {#if layerOn('weather-pressure') && readout.pressurePa !== undefined}
-          &middot; <b>{fmt(pascalsToHectopascals(readout.pressurePa), 0)}</b> hPa
-        {/if}
-        {#if layerOn('weather-waves') && readout.waveHeightM !== undefined}
-          &middot; sea <b>{fmt(readout.waveHeightM, 1)}</b> m
-          {#if readout.wavePeriodS !== undefined}
-            / <b>{fmt(readout.wavePeriodS, 0)}</b> s
+        <span class="readout-line">
+          Wind <b>{fmt(metersPerSecondToKnots(readout.speedMs), 0)}</b> kn from
+          <b>{fmt(radiansToBearing(readout.fromRad), 0)}</b>&deg;
+          {#if showField('weather-pressure') && readout.pressurePa !== undefined}
+            &middot; <b>{fmt(pascalsToHectopascals(readout.pressurePa), 0)}</b> hPa
           {/if}
-        {/if}
-        {#if (layerOn('weather-precip') || layerOn('weather-radar')) && readout.precipitationMm !== undefined && readout.precipitationMm >= 0.1}
-          &middot; rain <b>{fmt(readout.precipitationMm, 1)}</b> mm/h
+          {#if showField('weather-waves') && readout.waveHeightM !== undefined}
+            &middot; sea <b>{fmt(readout.waveHeightM, 1)}</b> m
+            {#if readout.wavePeriodS !== undefined}
+              / <b>{fmt(readout.wavePeriodS, 0)}</b> s
+            {/if}
+          {/if}
+          {#if (showField('weather-precip') || showField('weather-radar')) && readout.precipitationMm !== undefined && readout.precipitationMm >= 0.1}
+            &middot; rain <b>{fmt(readout.precipitationMm, 1)}</b> mm/h
+          {/if}
+        </span>
+        {#if readoutSource}
+          <span class="readout-source">{readoutSource}</span>
         {/if}
       </div>
     {/if}
@@ -550,6 +607,19 @@ onDestroy(() => {
 .readout b {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+.readout-source {
+  display: block;
+  margin-block-start: 0.1rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.conditions-slot {
+  position: absolute;
+  inset-block: 0.5rem;
+  inset-inline-end: 0.5rem;
+  max-block-size: calc(100% - 1rem);
+  display: flex;
 }
 .hint {
   position: absolute;

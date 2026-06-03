@@ -37,7 +37,9 @@ import {
   saveTrack,
   TracksPanel,
 } from '$features/tracks';
+import { createWeatherLoader, defaultProviderName, fetchWeatherProviders } from '$features/weather';
 import {
+  formatFixed,
   formatLatitude,
   formatLongitude,
   metersPerSecondToKnots,
@@ -95,14 +97,21 @@ const recorder = new TrackRecorder(trackSettings, createTrackStore<TrackPoint>()
 // (the Forecast button), not on the nav chart, so the chart stays clean and the weather can never
 // be zoomed past its data resolution. The panel owns the fetch, keyed off its own viewport.
 const weather = new WeatherStore();
+// The cached weather loader (Open-Meteo plus RainViewer), constructed here and passed to the panel
+// so it is swappable in tests and its in-memory cache lives for the session.
+const weatherLoader = createWeatherLoader();
 let weatherPanelOpen = $state(false);
+// The default Signal K weather provider's display name (for example AccuWeather), detected once the
+// stream connects. When set, the weather panel prefers the provider for point data and falls back to
+// the free grid; when undefined (no provider configured), the grid answers.
+let weatherProviderName = $state<string | undefined>();
 // The panel's own weather-layer visibility and view, separate from the nav chart. Default wind and
 // waves on so the first open shows something without hunting through toggles.
 const weatherLayerSettings = new PersistedValue<LayerSettings>('binnacle:weather-layers', {
   'weather-wind': { visible: true, opacity: 1 },
   'weather-waves': { visible: true, opacity: 0.7 },
 });
-const weatherViewStore = new PersistedValue<unknown>('binnacle:weather-view', null);
+const weatherViewStore = createMapView('binnacle:weather-view');
 const savedWeatherView = isMapView(weatherViewStore.value) ? weatherViewStore.value : undefined;
 
 // Saved tracks fetched from /resources/tracks, and the subset the user has chosen to show on
@@ -343,8 +352,7 @@ const CONNECTION_LABELS: Record<ConnectionPhase, string> = {
 
 const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase]);
 
-const fmt = (value: number | undefined, digits: number) =>
-  value === undefined ? PLACEHOLDER : value.toFixed(digits);
+const fmt = formatFixed;
 
 const accessRequestsUrl = `${serverOrigin()}/admin/#/security/access/requests`;
 
@@ -377,6 +385,9 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.closestApproach, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
   ]);
   await refreshSavedTracks();
+  // Detect a configured Signal K weather provider so the panel can prefer it over the free sources.
+  // Best-effort: a server without the weather API leaves the provider undefined and the grid answers.
+  weatherProviderName = defaultProviderName(await fetchWeatherProviders(serverOrigin(), token));
 }
 
 onMount(() => {
@@ -470,12 +481,16 @@ onDestroy(() => {
     {#if weatherPanelOpen}
       <WeatherMap
         store={weather}
+        loader={weatherLoader}
         theme={theme.theme}
         initialView={mapView ?? savedView}
         savedView={savedWeatherView}
         onViewChange={(view) => weatherViewStore.set(view)}
         savedLayers={weatherLayerSettings.value}
         onLayersChange={(settings) => weatherLayerSettings.set(settings)}
+        token={chartsToken}
+        providerName={weatherProviderName}
+        position={vessel.position}
         onClose={() => (weatherPanelOpen = false)}
       />
     {/if}

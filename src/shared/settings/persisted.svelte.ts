@@ -77,8 +77,11 @@ export function isMapView(value: unknown): value is MapView {
   );
 }
 
-export function createMapView(storage?: StorageLike): PersistedValue<MapView | null> {
-  return new PersistedValue('binnacle:map-view', null, storage);
+export function createMapView(
+  key = 'binnacle:map-view',
+  storage?: StorageLike,
+): PersistedValue<MapView | null> {
+  return new PersistedValue(key, null, storage);
 }
 
 // Track recording policy and rendering preference, persisted across visits.

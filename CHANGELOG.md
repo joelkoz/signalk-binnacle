@@ -8,24 +8,29 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
-- Weather overlay (first cut). Toggle Wind, Pressure, Waves, Precipitation, Cloud cover, or Rain
-  radar from the new Weather section in the menu, or from their own group in the Layers panel, to see
-  the weather over the chart: wind as speed-colored arrows, mean-sea-level pressure as labeled isobar
-  contours drawn by marching squares at a 4 hPa interval, significant wave height as a smooth color
-  field with sparse direction arrows, precipitation as a smooth rain-rate color field, cloud cover as
-  a translucent overcast field, and real-time precipitation radar from RainViewer. Wind, pressure,
-  precipitation, and cloud come from a browser-only Open-Meteo forecast, waves from the Open-Meteo
-  marine API, and radar from RainViewer (no key, no server), sampled for the viewport and refetched as
-  you pan. The four area fills (waves, precipitation, cloud, and radar) are mutually exclusive, one at
-  a time, so they never stack into mud, and they paint at a translucent default so the chart reads
-  through; wind arrows and pressure isobars stay freely combinable on top. The Weather menu groups
-  the fills ("one at a time") apart from the overlays. A Forecast button centered in the status strip
-  opens a draggable time slider to scrub the coming days plus a legend showing a continuous color
-  ramp for each active layer, and a tap on the chart reads the wind speed and direction, pressure,
-  sea state, and rain rate for the layers you have on. They are off by default, themed for day, dusk,
+- Weather. A dedicated weather mini-map, opened by the Forecast button centered in the status strip,
+  keeps the navigation chart clean and the weather within its data resolution. The mini-map is capped
+  at zoom 7 (RainViewer's real radar resolution) and panned independently of the chart, so weather can
+  never be zoomed past what the data supports: no "zoom not supported" tiles, no pretending a coarse
+  grid has street-level detail. In the panel you toggle Wind, Pressure, Waves, Precipitation, Cloud
+  cover, or Rain radar, scrub the coming days with a time slider, read a per-layer color-ramp legend,
+  and tap anywhere for the wind, pressure, sea state, and rain at that point and time. Wind draws as
+  speed-colored arrows, mean-sea-level pressure as labeled isobar contours (marching squares, 4 hPa),
+  significant wave height, precipitation, and cloud cover as smooth color fields, and precipitation
+  radar as an animated RainViewer loop. The four area fills (waves, precipitation, cloud, and radar)
+  are mutually exclusive, one at a time, so they never stack into mud; wind arrows and pressure
+  isobars stay freely combinable on top. A "Here" panel shows the current conditions, a short
+  forecast, and any gale or storm warnings for the vessel's own position.
+- Weather data prefers a configured Signal K weather provider (for example AccuWeather) for point
+  data: the tap readout and the "Here" conditions and warnings come from the provider when one is
+  set, and fall back automatically to the free, browser-only sources when none is configured. Area
+  data is always free, because no provider exposes gridded fields through Signal K: the atmospheric
+  grid and the marine wave field come from Open-Meteo, and radar from RainViewer, with no key and no
+  server plugin. Results are cached by viewport in memory so panning reuses a recent fetch, and the
+  Open-Meteo responses, the RainViewer frame index, and the radar tiles are cached by the service
+  worker for offline use. Layers beyond wind and waves are off on first open, themed for day, dusk,
   and night-red (a deep, low-brightness red on black at night, no blue; the radar raster is
-  desaturated and dimmed), and the forecast is cached for offline use. An animated radar loop and
-  animated wind particles follow in later iterations.
+  desaturated and dimmed). Animated wind particles follow in a later iteration.
 
 - Approving Binnacle's Signal K access is now self-explanatory and recognizable. The request uses a
   named client id (`binnacle-<short>`) instead of a bare UUID, so it is easy to spot in the Signal K

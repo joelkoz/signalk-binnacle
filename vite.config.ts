@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
+const TWO_HOURS_SECONDS = 60 * 60 * 2;
 
 const alias = {
   $app: fileURLToPath(new URL('./src/app', import.meta.url)),
@@ -78,6 +79,30 @@ export default defineConfig({
               cacheName: 'binnacle-weather',
               networkTimeoutSeconds: 8,
               expiration: { maxEntries: 64, maxAgeSeconds: 6 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // RainViewer radar frame index: prefer fresh frames, fall back to the last list offline.
+            urlPattern: ({ url }) =>
+              url.hostname.endsWith('rainviewer.com') && url.pathname.endsWith('.json'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'binnacle-radar-index',
+              networkTimeoutSeconds: 6,
+              expiration: { maxEntries: 4, maxAgeSeconds: TWO_HOURS_SECONDS },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // RainViewer radar tiles: each frame's tiles are immutable (the timestamp is in the path),
+            // so cache them for offline and repeat use. The window is short because frames roll.
+            urlPattern: ({ url }) =>
+              url.hostname.endsWith('rainviewer.com') && url.pathname.endsWith('.png'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'binnacle-radar-tiles',
+              expiration: { maxEntries: 600, maxAgeSeconds: TWO_HOURS_SECONDS },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
