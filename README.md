@@ -50,10 +50,12 @@ What is in place now:
   group. Wind draws as speed-colored arrows, mean-sea-level pressure as labeled isobar contours
   (marching squares), significant wave height as a smooth color field with direction arrows,
   precipitation as a smooth rain-rate color field, cloud cover as a translucent overcast field, and
-  RainViewer precipitation radar, with a Forecast time slider in the status strip to scrub the coming
-  days, a themed legend for the active layers, and a tap-to-read value (wind, pressure, sea state, and
-  rain) for the layers you have on. Off by default, themed for day, dusk, and night-red, and cached
-  for offline. An animated radar loop and animated wind particles follow.
+  RainViewer precipitation radar. The four area fills are mutually exclusive (one at a time) and
+  translucent so the chart reads through, while wind and pressure stay combinable; a Forecast time
+  slider scrubs the coming days, a legend shows a continuous color ramp per active layer, and a tap
+  reads the value (wind, pressure, sea state, and rain) for the layers you have on. Off by default,
+  themed for day, dusk, and night-red (a deep low-brightness red at night, no blue), and cached for
+  offline. An animated radar loop and animated wind particles follow.
 - AIS targets: other vessels render as GPU symbols in the traffic band, rotate with course, age
   out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
 - The active-safety Lookout feature: a collision danger strip with chart-highlight rings, an audible

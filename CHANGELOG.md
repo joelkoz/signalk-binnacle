@@ -16,12 +16,16 @@ All notable changes to Binnacle are documented here. The format follows
   a translucent overcast field, and real-time precipitation radar from RainViewer. Wind, pressure,
   precipitation, and cloud come from a browser-only Open-Meteo forecast, waves from the Open-Meteo
   marine API, and radar from RainViewer (no key, no server), sampled for the viewport and refetched as
-  you pan. A Forecast button centered in the status strip opens a draggable time slider to scrub the
-  coming days plus a themed legend for the active layers, and a tap on the chart reads the wind speed
-  and direction, pressure, sea state, and rain rate for the layers you have on. They are off by
-  default, themed for day, dusk, and night-red (red on black at night; the radar raster is desaturated
-  and dimmed), and the forecast is cached for offline use. An animated radar loop and animated wind
-  particles follow in later iterations.
+  you pan. The four area fills (waves, precipitation, cloud, and radar) are mutually exclusive, one at
+  a time, so they never stack into mud, and they paint at a translucent default so the chart reads
+  through; wind arrows and pressure isobars stay freely combinable on top. The Weather menu groups
+  the fills ("one at a time") apart from the overlays. A Forecast button centered in the status strip
+  opens a draggable time slider to scrub the coming days plus a legend showing a continuous color
+  ramp for each active layer, and a tap on the chart reads the wind speed and direction, pressure,
+  sea state, and rain rate for the layers you have on. They are off by default, themed for day, dusk,
+  and night-red (a deep, low-brightness red on black at night, no blue; the radar raster is
+  desaturated and dimmed), and the forecast is cached for offline use. An animated radar loop and
+  animated wind particles follow in later iterations.
 
 - Approving Binnacle's Signal K access is now self-explanatory and recognizable. The request uses a
   named client id (`binnacle-<short>`) instead of a bare UUID, so it is easy to spot in the Signal K
