@@ -1,5 +1,5 @@
 import type { Theme } from '$shared/ui';
-import { type Rgba, sampleRamp } from './color-ramp';
+import { type Rgba, rgbaCss, sampleRamp } from './color-ramp';
 
 // Speed stops in m/s. Day and dusk use a marine wind ramp: teal, green, yellow, orange, red.
 const DAY: Array<[number, Rgba]> = [
@@ -20,15 +20,11 @@ const NIGHT: Array<[number, Rgba]> = [
 
 const EXPR_SPEEDS = [0, 3, 7, 12, 18, 26];
 
-function rgbaString([r, g, b, a]: Rgba): string {
-  return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a.toFixed(2)})`;
-}
-
 // A MapLibre interpolate expression that colors a feature by its numeric `speed` property (m/s) for
 // the theme. Returned as a plain nested array so this module stays free of MapLibre types; the
 // overlay casts it to ExpressionSpecification.
 export function windColorExpression(theme: Theme): unknown[] {
-  const stops = EXPR_SPEEDS.flatMap((s) => [s, rgbaString(windColor(s, theme))]);
+  const stops = EXPR_SPEEDS.flatMap((s) => [s, rgbaCss(windColor(s, theme))]);
   return ['interpolate', ['linear'], ['get', 'speed'], ...stops];
 }
 

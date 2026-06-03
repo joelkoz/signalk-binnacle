@@ -20,3 +20,9 @@ export function sampleRamp(stops: Array<[number, Rgba]>, x: number): Rgba {
   }
   return stops[stops.length - 1][1];
 }
+
+// An Rgba (0..1 channels) as a CSS rgba() string. Shared by the wind color expression and the
+// legend swatches.
+export function rgbaCss([r, g, b, a]: Rgba): string {
+  return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a.toFixed(2)})`;
+}
