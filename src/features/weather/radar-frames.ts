@@ -1,6 +1,6 @@
 import type { RadarFrame } from '$entities/weather';
 
-const TILE_SIZE = 256;
+export const TILE_SIZE = 256;
 const COLOR_SCHEME = 2; // RainViewer "universal blue" intensity palette
 const OPTIONS = '1_1'; // smoothed, with snow
 

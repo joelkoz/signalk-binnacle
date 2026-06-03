@@ -1,7 +1,7 @@
 import type { RasterLayerSpecification, RasterSourceSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import type { OverlayContext, OverlayModule } from '$shared/map';
-import { frameTiles, latestFrame } from './radar-frames';
+import { frameTiles, latestFrame, TILE_SIZE } from './radar-frames';
 
 const SOURCE_ID = 'binnacle-weather-radar';
 const LAYER_ID = 'binnacle-weather-radar-layer';
@@ -25,11 +25,14 @@ export function createRadarOverlay(store: WeatherStore): RadarOverlay {
     defaultVisible: false,
     layerIds: [LAYER_ID],
     add(ctx) {
+      // Reset the dirty-check so a reattach (after a base-style swap recreates the source with empty
+      // tiles) re-points it at the latest frame on the next sync instead of staying blank.
+      lastRadar = undefined;
       if (!ctx.map.getSource(SOURCE_ID)) {
         const spec: RasterSourceSpecification = {
           type: 'raster',
           tiles: [],
-          tileSize: 256,
+          tileSize: TILE_SIZE,
           attribution: 'RainViewer',
         };
         ctx.map.addSource(SOURCE_ID, spec);

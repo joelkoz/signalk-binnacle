@@ -263,28 +263,22 @@ $effect(() => {
   if (weatherActive && !weather.grid) scheduleWeather();
 });
 
-// Refetch once when the waves layer is turned on so its field appears without waiting for a pan.
-// Keyed on the edge (a plain flag, not the grid) so a failed marine fetch cannot loop.
-let wavesRequested = false;
-$effect(() => {
-  if (wavesActive && !wavesRequested) {
-    wavesRequested = true;
-    scheduleWeather();
-  } else if (!wavesActive) {
-    wavesRequested = false;
-  }
-});
-
-// Same one-shot pattern for the radar layer, so enabling it fetches the frames right away.
-let radarRequested = false;
-$effect(() => {
-  if (radarActive && !radarRequested) {
-    radarRequested = true;
-    scheduleWeather();
-  } else if (!radarActive) {
-    radarRequested = false;
-  }
-});
+// Refetch once when a layer-gated weather source (waves marine data, radar frames) is turned on, so
+// it appears without waiting for a pan. Keyed on the rising edge (a plain flag, not the grid) so a
+// failed fetch cannot loop.
+function refetchOnEnable(isActive: () => boolean): void {
+  let requested = false;
+  $effect(() => {
+    if (isActive() && !requested) {
+      requested = true;
+      scheduleWeather();
+    } else if (!isActive()) {
+      requested = false;
+    }
+  });
+}
+refetchOnEnable(() => wavesActive);
+refetchOnEnable(() => radarActive);
 
 // Show the wind and pressure at the tapped point for the selected forecast time; clears after a
 // few seconds.
