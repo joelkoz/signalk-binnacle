@@ -14,7 +14,7 @@ import { createCollisionOverlay } from '$features/lookout';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay } from '$features/vessel-layer';
-import { createPressureOverlay, createWindOverlay } from '$features/weather';
+import { createPressureOverlay, createWavesOverlay, createWindOverlay } from '$features/weather';
 import {
   applyBaseTheme,
   baseStyleUrl,
@@ -164,6 +164,12 @@ onMount(() => {
       if (destroyed) return;
     }
 
+    // Register waves first so the height field sits at the bottom of the weather band, with the
+    // wind arrows and pressure isobars drawn over it.
+    const wavesOverlay = createWavesOverlay(weather);
+    await manager.register(wavesOverlay);
+    if (destroyed) return;
+
     const windOverlay = createWindOverlay(weather);
     await manager.register(windOverlay);
     if (destroyed) return;
@@ -246,6 +252,7 @@ onMount(() => {
     });
 
     const tick = () => {
+      wavesOverlay.sync(ctx);
       windOverlay.sync(ctx);
       pressureOverlay.sync(ctx);
       notesOverlay.sync(ctx);

@@ -38,6 +38,8 @@ import {
 } from '$features/tracks';
 import {
   fetchForecast,
+  fetchMarine,
+  mergeMarine,
   readoutAt,
   type WeatherReadout,
   WeatherTimeControl,
@@ -226,8 +228,14 @@ function scheduleWeather(): void {
     const bounds = mapCommands?.getBounds();
     if (!weatherActive || !bounds) return;
     weather.setStatus('loading');
-    const grid = await fetchForecast(bounds, { maxCells: 600, forecastDays: 5 });
-    if (grid) weather.setGrid(grid);
+    const opts = { maxCells: 600, forecastDays: 5 };
+    // Atmospheric and marine come from two Open-Meteo endpoints on the same grid; marine is
+    // best-effort so waves degrade without blocking wind and pressure.
+    const [grid, marine] = await Promise.all([
+      fetchForecast(bounds, opts),
+      fetchMarine(bounds, opts),
+    ]);
+    if (grid) weather.setGrid(marine ? mergeMarine(grid, marine) : grid);
     else weather.setStatus(weather.grid ? 'stale' : 'error');
   }, 500);
 }
@@ -511,6 +519,12 @@ onDestroy(() => {
         <b>{fmt(radiansToBearing(weatherReadout.fromRad), 0)}</b>&deg;
         {#if weatherReadout.pressurePa !== undefined}
           &middot; <b>{fmt(pascalsToHectopascals(weatherReadout.pressurePa), 0)}</b> hPa
+        {/if}
+        {#if weatherReadout.waveHeightM !== undefined && !Number.isNaN(weatherReadout.waveHeightM)}
+          &middot; sea <b>{fmt(weatherReadout.waveHeightM, 1)}</b> m
+          {#if weatherReadout.wavePeriodS !== undefined && !Number.isNaN(weatherReadout.wavePeriodS)}
+            / <b>{fmt(weatherReadout.wavePeriodS, 0)}</b> s
+          {/if}
         {/if}
       </div>
     {/if}
