@@ -47,6 +47,9 @@ describe('fetchForecast', () => {
     expect(grid?.pressureMsl?.[1]?.[0]).toBe(101200);
     expect(grid?.precipitation?.[0]?.[0]).toBe(0);
     expect(grid?.precipitation?.[1]?.[0]).toBeCloseTo(0.2, 4);
+    // cloud_cover is percent on the wire; the grid stores a 0..1 fraction.
+    expect(grid?.cloudCover?.[0]?.[0]).toBeCloseTo(0.1, 4);
+    expect(grid?.cloudCover?.[1]?.[0]).toBeCloseTo(0.5, 4);
   });
 
   it('returns undefined on a fetch failure', async () => {
