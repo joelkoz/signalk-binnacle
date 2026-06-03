@@ -121,14 +121,22 @@ $effect(() => () => stop());
     {#each legends as legend (legend.id)}
       <div class="legend-row">
         <span class="legend-title">{legend.title}</span>
-        <span class="legend-swatches">
-          {#each legend.swatches as swatch (swatch.label)}
-            <span class="legend-swatch">
-              <span class="legend-chip" style="background:{swatch.color}"></span>
-              {swatch.label}
-            </span>
-          {/each}
-        </span>
+        {#if legend.gradient}
+          <span class="legend-scale">
+            <span class="legend-end">{legend.lowLabel}</span>
+            <span class="legend-bar" style="background:{legend.gradient}"></span>
+            <span class="legend-end">{legend.highLabel}</span>
+          </span>
+        {:else if legend.swatches}
+          <span class="legend-swatches">
+            {#each legend.swatches as swatch (swatch.label)}
+              <span class="legend-swatch">
+                <span class="legend-chip" style="background:{swatch.color}"></span>
+                {swatch.label}
+              </span>
+            {/each}
+          </span>
+        {/if}
       </div>
     {/each}
   </div>
@@ -239,6 +247,24 @@ $effect(() => () => stop());
   inline-size: 0.85rem;
   block-size: 0.85rem;
   border-radius: 2px;
+  border: 1px solid var(--border);
+}
+.legend-scale {
+  flex: 1;
+  min-inline-size: 8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.legend-end {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.legend-bar {
+  flex: 1;
+  block-size: 0.55rem;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
 }
 </style>
