@@ -21,6 +21,7 @@ import {
   createRadarOverlay,
   createWavesOverlay,
   createWindOverlay,
+  WEATHER_FILL_IDS,
 } from '$features/weather';
 import {
   applyBaseTheme,
@@ -157,7 +158,7 @@ onMount(() => {
       pinned: ['collision', 'own-vessel'],
       // The weather area fills are mutually exclusive: only one fill at a time so they do not stack
       // into mud. Wind arrows and pressure isobars stay freely combinable on top.
-      exclusive: [['weather-waves', 'weather-precip', 'weather-cloud', 'weather-radar']],
+      exclusive: [WEATHER_FILL_IDS],
     });
 
     const charts = await fetchCharts(serverOrigin(), chartsToken);

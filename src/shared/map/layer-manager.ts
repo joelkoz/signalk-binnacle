@@ -71,6 +71,14 @@ export class LayerManager {
       ? { ...restored }
       : { visible: module.defaultVisible ?? true, opacity: module.defaultOpacity ?? 1 };
     const state = this.#state.get(module.id) ?? fallback;
+    // Enforce exclusion on restore too: a saved or legacy state with two members of an exclusive
+    // group both visible would otherwise bypass the toggle-time rule. Keep the first registered.
+    if (state.visible) {
+      const group = this.#exclusive.find((g) => g.includes(module.id));
+      if (group?.some((other) => other !== module.id && this.#state.get(other)?.visible)) {
+        state.visible = false;
+      }
+    }
     this.#state.set(module.id, state);
     await module.add(this.#ctx);
     module.setVisible(this.#ctx, state.visible);

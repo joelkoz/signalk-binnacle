@@ -43,6 +43,7 @@ import {
   fetchRadar,
   mergeMarine,
   readoutAt,
+  WEATHER_FILL_IDS,
   type WeatherLegend,
   type WeatherReadout,
   WeatherTimeControl,
@@ -169,9 +170,10 @@ const weatherLayers = $derived((layersView?.items ?? []).filter((i) => i.band ==
 const layerVisible = (id: string): boolean => weatherLayers.some((i) => i.id === id && i.visible);
 // The area fills are mutually exclusive (one at a time); wind and pressure are combinable overlays.
 // The menu groups them so the one-fill rule reads clearly.
-const FILL_IDS = ['weather-waves', 'weather-precip', 'weather-cloud', 'weather-radar'];
-const weatherFills = $derived(weatherLayers.filter((i) => FILL_IDS.includes(i.id)));
-const weatherOverlayLayers = $derived(weatherLayers.filter((i) => !FILL_IDS.includes(i.id)));
+const weatherFills = $derived(weatherLayers.filter((i) => WEATHER_FILL_IDS.includes(i.id)));
+const weatherOverlayLayers = $derived(
+  weatherLayers.filter((i) => !WEATHER_FILL_IDS.includes(i.id)),
+);
 // True when any weather layer is on, which gates the forecast fetch and the Forecast control.
 const weatherActive = $derived(weatherLayers.some((i) => i.visible));
 // True when the waves layer specifically is on, which gates the extra marine fetch so wind-only or

@@ -171,6 +171,18 @@ describe('LayerManager', () => {
     expect(items.find((i) => i.id === 'b')?.visible).toBe(true);
   });
 
+  it('does not restore two visible members of an exclusive group', async () => {
+    const manager = new LayerManager(fakeCtx(), {
+      exclusive: [['a', 'b']],
+      saved: { a: { visible: true, opacity: 1 }, b: { visible: true, opacity: 1 } },
+    });
+    await manager.register(fakeOverlay('a'));
+    await manager.register(fakeOverlay('b'));
+    const items = manager.layers();
+    expect(items.find((i) => i.id === 'a')?.visible).toBe(true);
+    expect(items.find((i) => i.id === 'b')?.visible).toBe(false);
+  });
+
   it('keeps pinned overlays on top and immovable', async () => {
     const manager = new LayerManager(fakeCtx(), { pinned: ['vessel'] });
     await manager.register(fakeOverlay('a'));

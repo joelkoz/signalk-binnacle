@@ -1,4 +1,5 @@
 export { createCloudOverlay } from './cloud-overlay';
+export { WEATHER_FILL_IDS } from './fills';
 export { type WeatherLegend, weatherLegend } from './legend';
 export { createPrecipOverlay } from './precip-overlay';
 export { createPressureOverlay } from './pressure-overlay';
