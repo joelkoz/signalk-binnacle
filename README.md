@@ -45,13 +45,14 @@ What is in place now:
   and ENC sources (GEBCO, EMODnet, NOAA ENC, and NOAA BlueTopo), and your own PMTiles archives
   imported by URL or file and stored in the browser for offline use. Every layer is managed from a
   Layers panel that toggles, fades, and drag-reorders the z-order.
-- Weather: wind, pressure, wave, precipitation, and cloud overlays from browser-only Open-Meteo data.
-  Wind draws as speed-colored arrows, mean-sea-level pressure as labeled isobar contours (marching
-  squares), significant wave height as a smooth color field with direction arrows, precipitation as a
-  smooth rain-rate color field, and cloud cover as a translucent overcast field, with a Forecast time
-  slider in the status strip to scrub the coming days and a tap-to-read value (wind, pressure, sea
-  state, rain, and cloud). Off by default, themed for day, dusk, and night-red, and cached for offline.
-  A weather legend and panel group, real-time RainViewer radar, and animated wind particles follow.
+- Weather: wind, pressure, wave, precipitation, and cloud overlays from browser-only Open-Meteo data,
+  toggled from a Weather menu section or their own Layers-panel group. Wind draws as speed-colored
+  arrows, mean-sea-level pressure as labeled isobar contours (marching squares), significant wave
+  height as a smooth color field with direction arrows, precipitation as a smooth rain-rate color
+  field, and cloud cover as a translucent overcast field, with a Forecast time slider in the status
+  strip to scrub the coming days, a themed legend for the active layers, and a tap-to-read value
+  (wind, pressure, sea state, rain, and cloud). Off by default, themed for day, dusk, and night-red,
+  and cached for offline. Real-time RainViewer radar and animated wind particles follow.
 - AIS targets: other vessels render as GPU symbols in the traffic band, rotate with course, age
   out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
 - The active-safety Lookout feature: a collision danger strip with chart-highlight rings, an audible
