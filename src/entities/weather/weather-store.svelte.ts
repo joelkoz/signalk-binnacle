@@ -1,4 +1,4 @@
-import type { Bbox, TimeBracket, WeatherGrid } from './weather-grid';
+import type { Bbox, RadarData, TimeBracket, WeatherGrid } from './weather-grid';
 import { timeBracket } from './weather-grid';
 
 export type WeatherStatus = 'idle' | 'loading' | 'ready' | 'error' | 'stale';
@@ -8,6 +8,8 @@ export class WeatherStore {
   status = $state<WeatherStatus>('idle');
   bbox = $state<Bbox | undefined>(undefined);
   selectedTime = $state<number>(0);
+  // RainViewer radar frames, fetched when the radar layer is on.
+  radar = $state<RadarData | undefined>(undefined);
 
   // The two forecast indices and blend fraction for the selected time. Overlays read this to render
   // the right step; it recomputes only when the grid or the selected time changes.
@@ -31,5 +33,9 @@ export class WeatherStore {
 
   setSelectedTime(time: number): void {
     this.selectedTime = time;
+  }
+
+  setRadar(radar: RadarData): void {
+    this.radar = radar;
   }
 }

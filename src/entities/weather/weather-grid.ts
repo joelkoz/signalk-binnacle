@@ -24,6 +24,16 @@ export interface WeatherGrid {
   wavePeriod?: number[][]; // s
 }
 
+export interface RadarFrame {
+  time: number; // epoch ms
+  path: string;
+}
+
+export interface RadarData {
+  host: string;
+  frames: RadarFrame[]; // ascending by time
+}
+
 // Sample a bbox into a grid no larger than maxCells, keeping the axes roughly proportional to the
 // bbox so neither is starved. Inclusive of both corners so the field covers the whole viewport.
 export function sampleGrid(bbox: Bbox, maxCells: number): { lats: number[]; lons: number[] } {
