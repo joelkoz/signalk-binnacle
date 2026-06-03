@@ -8,13 +8,15 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
-- Weather overlay (first cut). Toggle Wind in the Layers panel to see the wind over the chart as
-  speed-colored arrows, drawn from a browser-only Open-Meteo forecast (no key, no server) sampled for
-  the viewport and refetched as you pan. A Forecast button centered in the status strip opens a
-  draggable time slider to scrub the coming days, and a tap on the chart reads the wind speed and
-  direction at that point. It is off by default, themed for day, dusk, and night-red, and the forecast
-  is cached for offline use. Pressure isobars, waves, precipitation, and cloud layers, plus animated
-  wind particles, follow in later iterations.
+- Weather overlay (first cut). Toggle Wind or Pressure in the Layers panel to see the weather over
+  the chart: wind as speed-colored arrows, and mean-sea-level pressure as labeled isobar contours
+  drawn by marching squares at a 4 hPa interval. Both come from a browser-only Open-Meteo forecast
+  (no key, no server) sampled for the viewport and refetched as you pan. A Forecast button centered in
+  the status strip opens a draggable time slider to scrub the coming days, and a tap on the chart
+  reads the wind speed, direction, and pressure at that point. They are off by default, themed for
+  day, dusk, and night-red (red isobars on black at night), and the forecast is cached for offline
+  use. Waves, precipitation, and cloud layers, plus animated wind particles, follow in later
+  iterations.
 
 - Approving Binnacle's Signal K access is now self-explanatory and recognizable. The request uses a
   named client id (`binnacle-<short>`) instead of a bare UUID, so it is easy to spot in the Signal K
@@ -35,15 +37,15 @@ All notable changes to Binnacle are documented here. The format follows
   the order persists across visits. The panel docks opposite the note detail so both can be open at
   once, and it themes for day, dusk, and night-red.
 
-- Streaming depth charts. Four free hosted bathymetry and chart sources toggle on from the Charts &
-  Depth section, off by default and cached as you pan: GEBCO global bathymetry, EMODnet (Europe), the
+- Streaming depth charts. Four free hosted bathymetry and chart sources toggle on from the Charts
+  and Depth section, off by default and cached as you pan: GEBCO global bathymetry, EMODnet (Europe), the
   NOAA ENC chart (US), and NOAA BlueTopo (US). They are reference overlays, not certified for
   navigation. A raster source cannot be recolored, so at night it is desaturated and dimmed (no blue,
   low brightness) rather than left full-color.
 
 - Import your own charts. Add a PMTiles archive by URL or by dropping a file into a themed drop zone;
-  Binnacle reads its name, bounds, zoom, and whether it is vector or raster, lists it under Charts &
-  Depth as a normal reorderable layer, and stores an uploaded file in the browser for offline use. A
+  Binnacle reads its name, bounds, zoom, and whether it is vector or raster, lists it under Charts
+  and Depth as a normal reorderable layer, and stores an uploaded file in the browser for offline use. A
   per-chart detail view renames it, shows its metadata, and deletes it (stating the storage freed).
   Both vector and raster PMTiles render; full S-52 styling of converted ENC depth features is a later
   spec.
