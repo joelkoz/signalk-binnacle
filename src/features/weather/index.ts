@@ -1,4 +1,5 @@
 export { createCloudOverlay } from './cloud-overlay';
+export { type WeatherLegend, weatherLegend } from './legend';
 export { createPrecipOverlay } from './precip-overlay';
 export { createPressureOverlay } from './pressure-overlay';
 export { default as WeatherTimeControl } from './WeatherTimeControl.svelte';

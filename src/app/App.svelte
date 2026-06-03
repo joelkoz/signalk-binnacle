@@ -1,5 +1,6 @@
 <script lang="ts">
 import {
+  CloudSun,
   Layers,
   LocateFixed,
   Navigation,
@@ -41,8 +42,10 @@ import {
   fetchMarine,
   mergeMarine,
   readoutAt,
+  type WeatherLegend,
   type WeatherReadout,
   WeatherTimeControl,
+  weatherLegend,
 } from '$features/weather';
 import {
   formatLatitude,
@@ -165,6 +168,15 @@ const weatherActive = $derived(
 // pressure-only viewing does not pull wave data it will not draw.
 const wavesActive = $derived(
   layersView?.items.some((i) => i.id === 'weather-waves' && i.visible) ?? false,
+);
+// Every weather-band layer, for the menu's Weather section toggles (regardless of visibility).
+const weatherLayers = $derived((layersView?.items ?? []).filter((i) => i.band === 'weather'));
+// Legends for the active weather layers in the current theme, shown in the Forecast window.
+const weatherLegends = $derived<WeatherLegend[]>(
+  (layersView?.items ?? [])
+    .filter((i) => i.band === 'weather' && i.visible)
+    .map((i) => weatherLegend(i.id, theme.theme))
+    .filter((l): l is WeatherLegend => l !== undefined),
 );
 // The wind value at the last map tap, shown as a transient chip.
 let weatherReadout = $state<WeatherReadout | undefined>();
@@ -461,6 +473,25 @@ onDestroy(() => {
   <header class="topbar">
     <span class="topbar-start">
       <AppMenu items={menuItems}>
+        <MenuSubmenu label="Weather" icon={CloudSun}>
+          <ul class="weather-toggles">
+            {#each weatherLayers as layer (layer.id)}
+              <li>
+                <label class="weather-toggle">
+                  <input
+                    type="checkbox"
+                    checked={layer.visible}
+                    onchange={(e) => layersView?.toggle(layer.id, e.currentTarget.checked)}
+                  >
+                  <span>{layer.title}</span>
+                </label>
+              </li>
+            {/each}
+            {#if weatherLayers.length === 0}
+              <li class="weather-empty">Weather loads with the chart</li>
+            {/if}
+          </ul>
+        </MenuSubmenu>
         <MenuSubmenu label="Tracks" icon={Spline}>
           <TracksPanel
             {recorder}
@@ -554,7 +585,7 @@ onDestroy(() => {
   </section>
   <footer class="status-strip">
     <div class="forecast-center">
-      <WeatherTimeControl store={weather} active={weatherActive} />
+      <WeatherTimeControl store={weather} active={weatherActive} legends={weatherLegends} />
     </div>
     <span class="status" role="status" aria-live="polite">{connectionLabel}</span>
     {#if !net.online}
@@ -706,5 +737,30 @@ onDestroy(() => {
   color: var(--text);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+.weather-toggles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.weather-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: var(--control-size);
+  padding-inline: 0.2rem;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.weather-toggle input {
+  accent-color: var(--accent);
+}
+.weather-empty {
+  padding: 0.2rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 </style>
