@@ -8,17 +8,18 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
-- Weather overlay (first cut). Toggle Wind, Pressure, Waves, or Precipitation in the Layers panel to
-  see the weather over the chart: wind as speed-colored arrows, mean-sea-level pressure as labeled
-  isobar contours drawn by marching squares at a 4 hPa interval, significant wave height as a smooth
-  color field with sparse direction arrows, and precipitation as a smooth rain-rate color field. Wind,
-  pressure, and precipitation come from a browser-only Open-Meteo forecast and waves from the
-  Open-Meteo marine API (no key, no server), sampled for the viewport and refetched as you pan. A
-  Forecast button centered in the status strip opens a draggable time slider to scrub the coming days,
-  and a tap on the chart reads the wind speed and direction, pressure, sea state (wave height and
-  period), and rain rate at that point. They are off by default, themed for day, dusk, and night-red
-  (red on black at night), and the forecast is cached for offline use. A cloud-cover layer, real-time
-  RainViewer precipitation radar, and animated wind particles follow in later iterations.
+- Weather overlay (first cut). Toggle Wind, Pressure, Waves, Precipitation, or Cloud cover in the
+  Layers panel to see the weather over the chart: wind as speed-colored arrows, mean-sea-level
+  pressure as labeled isobar contours drawn by marching squares at a 4 hPa interval, significant wave
+  height as a smooth color field with sparse direction arrows, precipitation as a smooth rain-rate
+  color field, and cloud cover as a translucent overcast field. Wind, pressure, precipitation, and
+  cloud come from a browser-only Open-Meteo forecast and waves from the Open-Meteo marine API (no key,
+  no server), sampled for the viewport and refetched as you pan. A Forecast button centered in the
+  status strip opens a draggable time slider to scrub the coming days, and a tap on the chart reads
+  the wind speed and direction, pressure, sea state (wave height and period), rain rate, and cloud
+  cover at that point. They are off by default, themed for day, dusk, and night-red (red on black at
+  night), and the forecast is cached for offline use. A weather legend and Layers-panel group,
+  real-time RainViewer precipitation radar, and animated wind particles follow in later iterations.
 
 - Approving Binnacle's Signal K access is now self-explanatory and recognizable. The request uses a
   named client id (`binnacle-<short>`) instead of a bare UUID, so it is easy to spot in the Signal K
