@@ -70,6 +70,17 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200, 206] },
             },
           },
+          {
+            // Open-Meteo forecast and marine data: prefer fresh, fall back to the last fetch offline.
+            urlPattern: ({ url }) => url.hostname.endsWith('open-meteo.com'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'binnacle-weather',
+              networkTimeoutSeconds: 8,
+              expiration: { maxEntries: 64, maxAgeSeconds: 6 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
         ],
       },
     }),
