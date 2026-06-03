@@ -15,6 +15,7 @@ import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay } from '$features/vessel-layer';
 import {
+  createCloudOverlay,
   createPrecipOverlay,
   createPressureOverlay,
   createWavesOverlay,
@@ -179,6 +180,10 @@ onMount(() => {
     await manager.register(precipOverlay);
     if (destroyed) return;
 
+    const cloudOverlay = createCloudOverlay(weather);
+    await manager.register(cloudOverlay);
+    if (destroyed) return;
+
     const windOverlay = createWindOverlay(weather);
     await manager.register(windOverlay);
     if (destroyed) return;
@@ -263,6 +268,7 @@ onMount(() => {
     const tick = () => {
       wavesOverlay.sync(ctx);
       precipOverlay.sync(ctx);
+      cloudOverlay.sync(ctx);
       windOverlay.sync(ctx);
       pressureOverlay.sync(ctx);
       notesOverlay.sync(ctx);

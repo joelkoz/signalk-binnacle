@@ -546,6 +546,9 @@ onDestroy(() => {
         {#if weatherReadout.precipitationMm !== undefined && weatherReadout.precipitationMm >= 0.1}
           &middot; rain <b>{fmt(weatherReadout.precipitationMm, 1)}</b> mm/h
         {/if}
+        {#if weatherReadout.cloudCoverFraction !== undefined}
+          &middot; cloud <b>{fmt(weatherReadout.cloudCoverFraction * 100, 0)}</b>%
+        {/if}
       </div>
     {/if}
   </section>
