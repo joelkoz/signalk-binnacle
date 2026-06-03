@@ -137,6 +137,9 @@ $effect(() => () => stop());
             {/each}
           </span>
         {/if}
+        {#if legend.note}
+          <span class="legend-note">{legend.note}</span>
+        {/if}
       </div>
     {/each}
   </div>
@@ -266,5 +269,11 @@ $effect(() => () => stop());
   block-size: 0.55rem;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
+}
+.legend-note {
+  flex-basis: 100%;
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--text-muted);
 }
 </style>

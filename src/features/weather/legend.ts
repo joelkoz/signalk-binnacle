@@ -22,6 +22,8 @@ export interface WeatherLegend {
   highLabel?: string;
   // Or discrete swatches, for the isobar line and the fixed radar palette.
   swatches?: LegendSwatch[];
+  // An optional short footnote, for example the radar's resolution limit.
+  note?: string;
 }
 
 const WIND_STOPS = [0, 5, 10, 15, 20, 26]; // m/s
@@ -113,6 +115,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
           { color: 'rgb(230, 200, 60)', label: 'heavy' },
           { color: 'rgb(220, 70, 60)', label: 'intense' },
         ],
+        note: 'live radar, detail to ~zoom 11',
       };
     default:
       return undefined;
