@@ -6,6 +6,9 @@ import { type MapColorKey, mapThemePaint } from './map-theme';
 // change without re-deriving the source-layer to color mapping.
 export const THEME_PAINT_KEY = 'binnacle:themePaint';
 
+// The pmtiles protocol scheme prefix, shared so the overlay can detect and strip it.
+export const PMTILES_SCHEME = 'pmtiles://';
+
 export interface ChartSpecs {
   sources: Record<string, SourceSpecification>;
   layers: LayerSpecification[];
@@ -23,7 +26,7 @@ function absolute(url: string, base: string): string {
     url.startsWith('https://') ||
     url.startsWith('//') ||
     url.startsWith('blob:') ||
-    url.startsWith('pmtiles://')
+    url.startsWith(PMTILES_SCHEME)
   ) {
     return url;
   }
@@ -33,8 +36,8 @@ function absolute(url: string, base: string): string {
 // A pmtiles archive url for MapLibre's protocol: an already-pmtiles url stays as is, a .pmtiles
 // document gets the scheme, and anything else is not a pmtiles archive.
 function pmtilesUrl(resolved: string): string | undefined {
-  if (resolved.startsWith('pmtiles://')) return resolved;
-  if (resolved.endsWith('.pmtiles')) return `pmtiles://${resolved}`;
+  if (resolved.startsWith(PMTILES_SCHEME)) return resolved;
+  if (resolved.endsWith('.pmtiles')) return `${PMTILES_SCHEME}${resolved}`;
   return undefined;
 }
 

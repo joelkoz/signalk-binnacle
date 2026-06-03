@@ -18,6 +18,8 @@ const CLUSTER_LAYER = 'binnacle-notes-cluster';
 const CLUSTER_COUNT_LAYER = 'binnacle-notes-cluster-count';
 const SELECT_SOURCE = 'binnacle-notes-selected';
 const SELECT_LAYER = 'binnacle-notes-selected';
+// The note layers, bottom to top, in one place for layerIds, setVisible, and remove.
+const LAYERS = [SELECT_LAYER, CLUSTER_LAYER, CLUSTER_COUNT_LAYER, LAYER_ID];
 // Below this zoom the viewport spans too much to usefully fetch or show every POI.
 const MIN_ZOOM = 9;
 // Past this zoom each point unclusters and shows its own icon.
@@ -105,7 +107,7 @@ export function createNotesOverlay(
     title: 'Points of interest',
     band: 'routes',
     supportsOpacity: true,
-    layerIds: [SELECT_LAYER, CLUSTER_LAYER, CLUSTER_COUNT_LAYER, LAYER_ID],
+    layerIds: LAYERS,
     async add(ctx) {
       const paint = mapThemePaint('day');
       const before = ctx.beforeIdFor('routes');
@@ -284,7 +286,7 @@ export function createNotesOverlay(
     },
     setVisible(ctx, visible) {
       const value = visible ? 'visible' : 'none';
-      for (const id of [LAYER_ID, CLUSTER_LAYER, CLUSTER_COUNT_LAYER, SELECT_LAYER]) {
+      for (const id of LAYERS) {
         ctx.map.setLayoutProperty(id, 'visibility', value);
       }
     },
@@ -307,7 +309,7 @@ export function createNotesOverlay(
         ctx.map.off('mouseleave', LAYER_ID, onLeave);
         ctx.map.off('mouseleave', CLUSTER_LAYER, onLeave);
       }
-      for (const id of [LAYER_ID, CLUSTER_COUNT_LAYER, CLUSTER_LAYER, SELECT_LAYER]) {
+      for (const id of LAYERS) {
         if (ctx.map.getLayer(id)) ctx.map.removeLayer(id);
       }
       for (const id of [SOURCE_ID, SELECT_SOURCE]) {

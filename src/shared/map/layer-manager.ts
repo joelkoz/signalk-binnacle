@@ -106,11 +106,10 @@ export class LayerManager {
       .filter((other) => !this.#pinned.includes(other))
       .reverse();
     const from = topDown.indexOf(id);
-    if (from < 0) return;
     topDown.splice(from, 1);
     const clamped = Math.max(0, Math.min(toIndex, topDown.length));
     topDown.splice(clamped, 0, id);
-    this.#explicitOrder = [...topDown].reverse();
+    this.#explicitOrder = topDown.reverse();
     this.#applyOrder();
     this.#onOrderChange?.([...this.#explicitOrder]);
   }

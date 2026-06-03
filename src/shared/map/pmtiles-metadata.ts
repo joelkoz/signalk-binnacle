@@ -17,8 +17,10 @@ export interface PmtilesMeta {
 function boundsFromHeader(header: Header): [number, number, number, number] | undefined {
   const { minLon, minLat, maxLon, maxLat } = header;
   if (![minLon, minLat, maxLon, maxLat].every(Number.isFinite)) return undefined;
-  // A zero-area or inverted box is what the header reports when bounds were never set; omit
-  // it rather than emit a degenerate rectangle a caller would treat as a real extent.
+  // A zero-area or inverted box is what the header reports when bounds were never set; omit it
+  // rather than emit a degenerate rectangle a caller would treat as a real extent. This also drops
+  // a legitimate antimeridian-crossing extent (minLon > maxLon), a rare case where the chart still
+  // renders, just without bounds.
   if (minLon >= maxLon || minLat >= maxLat) return undefined;
   return [minLon, minLat, maxLon, maxLat];
 }
@@ -46,7 +48,9 @@ function nameFrom(metadata: unknown): string | undefined {
 export function mapPmtilesMeta(header: Header, metadata: unknown): PmtilesMeta {
   return {
     name: nameFrom(metadata),
-    kind: header.tileType === TileType.Mvt ? 'vector' : 'raster',
+    // Mvt and Mlt are vector tile formats; Png, Jpeg, Webp, and Avif are raster.
+    kind:
+      header.tileType === TileType.Mvt || header.tileType === TileType.Mlt ? 'vector' : 'raster',
     bounds: boundsFromHeader(header),
     minzoom: header.minZoom,
     maxzoom: header.maxZoom,

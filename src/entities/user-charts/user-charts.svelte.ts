@@ -2,7 +2,7 @@ import { readPmtilesMeta, type SignalKChart } from '$shared/map';
 import type { PmtilesStore } from '$shared/storage';
 
 // A chart the user imported, persisted as a descriptor: a file lives in the PMTiles store by
-// storeId, a URL points at a remote archive. Vector only for now; raster support is a later step.
+// storeId, a URL points at a remote archive. Both vector and raster archives are supported.
 export interface UserChartSource {
   id: string;
   name: string;
@@ -85,13 +85,14 @@ export class UserCharts {
 
   async addFile(file: File): Promise<void> {
     const meta = await readPmtilesMeta(file);
-    const storeId = newId();
-    await this.#store.put(storeId, file);
+    // One id for both the descriptor and the stored blob, so a chart and its file share an identity.
+    const id = newId();
+    await this.#store.put(id, file);
     this.#add({
-      id: newId(),
+      id,
       name: meta.name ?? file.name.replace(/\.pmtiles$/i, ''),
       kind: meta.kind,
-      origin: { type: 'file', storeId },
+      origin: { type: 'file', storeId: id },
       bounds: meta.bounds,
       minzoom: meta.minzoom,
       maxzoom: meta.maxzoom,

@@ -1,11 +1,9 @@
 import type { Map as MapLibreMap, MapSourceDataEvent } from 'maplibre-gl';
-import { chartSourceId, chartToSpecs, THEME_PAINT_KEY } from './chart-adapter';
+import { chartSourceId, chartToSpecs, PMTILES_SCHEME, THEME_PAINT_KEY } from './chart-adapter';
 import type { SignalKChart } from './chart-types';
 import type { MapColorKey } from './map-theme';
 import { registerPmtilesArchive } from './pmtiles';
 import type { OverlayModule, ZBand } from './types';
-
-const PMTILES_SCHEME = 'pmtiles://';
 
 // How far past a chart's native max zoom its layers keep drawing before they hand off
 // to the base map. Zooming past a chart's scale overzooms the top tiles into a blocky,
@@ -124,9 +122,15 @@ export function createChartOverlay(
       }
     },
     applyTheme(ctx, paint) {
-      // Recolor this chart's own themed draw layers, so the widget no longer reaches
-      // into chart layers by id. Raster layers carry no theme key and are skipped.
+      // Recolor this chart's own themed vector draw layers; a raster layer cannot be recolored,
+      // so adjust it the way the streaming bathymetry does: night-red desaturates and dims it so
+      // it carries no blue and keeps the brightest pixel low.
       for (const layer of layers) {
+        if (layer.type === 'raster') {
+          ctx.map.setPaintProperty(layer.id, 'raster-saturation', paint.rasterSaturation);
+          ctx.map.setPaintProperty(layer.id, 'raster-brightness-max', paint.rasterBrightnessMax);
+          continue;
+        }
         if (!layer.themePaint) continue;
         const property = layer.type === 'line' ? 'line-color' : 'fill-color';
         ctx.map.setPaintProperty(layer.id, property, paint[layer.themePaint]);

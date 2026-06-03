@@ -1,6 +1,7 @@
 <script lang="ts">
 import { ArrowLeft, Trash2 } from '@lucide/svelte';
 import type { UserChartSource, UserCharts } from '$entities/user-charts';
+import { formatBytes } from '$shared/lib';
 
 interface Props {
   source: UserChartSource;
@@ -22,12 +23,6 @@ $effect(() => {
 function saveName(): void {
   const trimmed = name.trim();
   if (trimmed && trimmed !== source.name) userCharts.rename(source.id, trimmed);
-}
-
-function formatSize(bytes: number | undefined): string {
-  if (!bytes) return '';
-  const mb = bytes / (1024 * 1024);
-  return mb >= 1 ? `${Math.round(mb)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 function fmtBounds(b: [number, number, number, number] | undefined): string {
@@ -75,14 +70,14 @@ async function doDelete(): Promise<void> {
     {#if source.byteSize}
       <div>
         <dt>Size</dt>
-        <dd>{formatSize(source.byteSize)}</dd>
+        <dd>{formatBytes(source.byteSize)}</dd>
       </div>
     {/if}
   </dl>
 
   {#if confirming}
     <div class="confirm">
-      <p>Delete this chart?{source.byteSize ? ` Frees ${formatSize(source.byteSize)}.` : ''}</p>
+      <p>Delete this chart?{source.byteSize ? ` Frees ${formatBytes(source.byteSize)}.` : ''}</p>
       <div class="actions">
         <button type="button" onclick={() => (confirming = false)}>Cancel</button>
         <button type="button" class="danger" onclick={doDelete}>Delete</button>
