@@ -26,6 +26,10 @@ const grid: WeatherGrid = {
     [7, 7, 7, 7],
     [7, 7, 7, 7],
   ],
+  precipitation: [
+    [2, 2, 2, 2],
+    [2, 2, 2, 2],
+  ],
 };
 
 describe('readoutAt', () => {
@@ -36,6 +40,7 @@ describe('readoutAt', () => {
     expect(r?.pressurePa).toBeCloseTo(101300, 0);
     expect(r?.waveHeightM).toBeCloseTo(1.8, 4);
     expect(r?.wavePeriodS).toBeCloseTo(7, 4);
+    expect(r?.precipitationMm).toBeCloseTo(2, 4);
   });
   it('returns undefined outside the grid', () => {
     expect(readoutAt(grid, 9, 9, 0)).toBeUndefined();
