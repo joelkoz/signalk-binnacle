@@ -1,15 +1,18 @@
 <script lang="ts">
 import { CloudSun, Pause, Play, X } from '@lucide/svelte';
 import type { WeatherStore } from '$entities/weather';
+import type { WeatherLegend } from './legend';
 import { advancePlay, clampTime, stepTime, type TimeRange } from './time-scrub';
 
 interface Props {
   store: WeatherStore;
   // Whether any weather layer is on; the button only shows when weather is active.
   active: boolean;
+  // Legends for the active weather layers, shown in the expanded window.
+  legends: WeatherLegend[];
 }
 
-const { store, active }: Props = $props();
+const { store, active, legends }: Props = $props();
 
 let expanded = $state(false);
 let playing = $state(false);
@@ -113,6 +116,24 @@ $effect(() => () => stop());
   </div>
 {/if}
 
+{#if active && expanded && legends.length > 0}
+  <div class="legend" role="group" aria-label="Weather legend">
+    {#each legends as legend (legend.id)}
+      <div class="legend-row">
+        <span class="legend-title">{legend.title}</span>
+        <span class="legend-swatches">
+          {#each legend.swatches as swatch (swatch.label)}
+            <span class="legend-swatch">
+              <span class="legend-chip" style="background:{swatch.color}"></span>
+              {swatch.label}
+            </span>
+          {/each}
+        </span>
+      </div>
+    {/each}
+  </div>
+{/if}
+
 <style>
 .forecast-btn {
   display: inline-flex;
@@ -168,5 +189,54 @@ $effect(() => () => stop());
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   white-space: nowrap;
+}
+.legend {
+  position: fixed;
+  inset-inline: 0.5rem;
+  inset-block-end: 5.4rem;
+  margin-inline: auto;
+  max-inline-size: 32rem;
+  z-index: var(--z-menu);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text);
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.legend-title {
+  flex: 0 0 6.5rem;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+.legend-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.legend-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.legend-chip {
+  inline-size: 0.85rem;
+  block-size: 0.85rem;
+  border-radius: 2px;
+  border: 1px solid var(--border);
 }
 </style>
