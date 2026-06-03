@@ -8,15 +8,16 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
-- Weather overlay (first cut). Toggle Wind or Pressure in the Layers panel to see the weather over
-  the chart: wind as speed-colored arrows, and mean-sea-level pressure as labeled isobar contours
-  drawn by marching squares at a 4 hPa interval. Both come from a browser-only Open-Meteo forecast
-  (no key, no server) sampled for the viewport and refetched as you pan. A Forecast button centered in
-  the status strip opens a draggable time slider to scrub the coming days, and a tap on the chart
-  reads the wind speed, direction, and pressure at that point. They are off by default, themed for
-  day, dusk, and night-red (red isobars on black at night), and the forecast is cached for offline
-  use. Waves, precipitation, and cloud layers, plus animated wind particles, follow in later
-  iterations.
+- Weather overlay (first cut). Toggle Wind, Pressure, or Waves in the Layers panel to see the weather
+  over the chart: wind as speed-colored arrows, mean-sea-level pressure as labeled isobar contours
+  drawn by marching squares at a 4 hPa interval, and significant wave height as a smooth color field
+  with sparse direction arrows. Wind and pressure come from a browser-only Open-Meteo forecast and
+  waves from the Open-Meteo marine API (no key, no server), sampled for the viewport and refetched as
+  you pan. A Forecast button centered in the status strip opens a draggable time slider to scrub the
+  coming days, and a tap on the chart reads the wind speed and direction, pressure, and sea state
+  (wave height and period) at that point. They are off by default, themed for day, dusk, and
+  night-red (red on black at night), and the forecast is cached for offline use. Precipitation and
+  cloud layers, plus animated wind particles, follow in later iterations.
 
 - Approving Binnacle's Signal K access is now self-explanatory and recognizable. The request uses a
   named client id (`binnacle-<short>`) instead of a bare UUID, so it is easy to spot in the Signal K

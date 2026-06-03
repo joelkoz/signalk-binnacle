@@ -45,11 +45,12 @@ What is in place now:
   and ENC sources (GEBCO, EMODnet, NOAA ENC, and NOAA BlueTopo), and your own PMTiles archives
   imported by URL or file and stored in the browser for offline use. Every layer is managed from a
   Layers panel that toggles, fades, and drag-reorders the z-order.
-- Weather: wind and pressure overlays from a browser-only Open-Meteo forecast. Wind draws as
-  speed-colored arrows and mean-sea-level pressure as labeled isobar contours (marching squares), with
-  a Forecast time slider in the status strip to scrub the coming days and a tap-to-read wind and
-  pressure value. Off by default, themed for day, dusk, and night-red, and cached for offline. Waves,
-  precipitation, cloud, and animated wind particles follow.
+- Weather: wind, pressure, and wave overlays from browser-only Open-Meteo data. Wind draws as
+  speed-colored arrows, mean-sea-level pressure as labeled isobar contours (marching squares), and
+  significant wave height as a smooth color field with direction arrows, with a Forecast time slider
+  in the status strip to scrub the coming days and a tap-to-read value (wind, pressure, and sea state).
+  Off by default, themed for day, dusk, and night-red, and cached for offline. Precipitation, cloud,
+  and animated wind particles follow.
 - AIS targets: other vessels render as GPU symbols in the traffic band, rotate with course, age
   out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
 - The active-safety Lookout feature: a collision danger strip with chart-highlight rings, an audible
