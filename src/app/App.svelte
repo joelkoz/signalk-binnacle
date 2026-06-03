@@ -164,6 +164,9 @@ let following = $state(false);
 // Every weather-band layer, for the menu's Weather section toggles (regardless of visibility); the
 // active state, the marine gate, and the legends all derive from this one scan of the layer list.
 const weatherLayers = $derived((layersView?.items ?? []).filter((i) => i.band === 'weather'));
+// Whether a specific weather layer is on, so the tap readout only shows values for layers the user
+// has enabled (the forecast grid carries every field regardless of which layers are visible).
+const layerVisible = (id: string): boolean => weatherLayers.some((i) => i.id === id && i.visible);
 // True when any weather layer is on, which gates the forecast fetch and the Forecast control.
 const weatherActive = $derived(weatherLayers.some((i) => i.visible));
 // True when the waves layer specifically is on, which gates the extra marine fetch so wind-only or
@@ -569,20 +572,17 @@ onDestroy(() => {
       <div class="weather-readout" role="status" aria-live="polite">
         Wind <b>{fmt(metersPerSecondToKnots(weatherReadout.speedMs), 0)}</b> kn from
         <b>{fmt(radiansToBearing(weatherReadout.fromRad), 0)}</b>&deg;
-        {#if weatherReadout.pressurePa !== undefined}
+        {#if layerVisible('weather-pressure') && weatherReadout.pressurePa !== undefined}
           &middot; <b>{fmt(pascalsToHectopascals(weatherReadout.pressurePa), 0)}</b> hPa
         {/if}
-        {#if weatherReadout.waveHeightM !== undefined}
+        {#if layerVisible('weather-waves') && weatherReadout.waveHeightM !== undefined}
           &middot; sea <b>{fmt(weatherReadout.waveHeightM, 1)}</b> m
           {#if weatherReadout.wavePeriodS !== undefined}
             / <b>{fmt(weatherReadout.wavePeriodS, 0)}</b> s
           {/if}
         {/if}
-        {#if weatherReadout.precipitationMm !== undefined && weatherReadout.precipitationMm >= 0.1}
+        {#if (layerVisible('weather-precip') || layerVisible('weather-radar')) && weatherReadout.precipitationMm !== undefined && weatherReadout.precipitationMm >= 0.1}
           &middot; rain <b>{fmt(weatherReadout.precipitationMm, 1)}</b> mm/h
-        {/if}
-        {#if weatherReadout.cloudCoverFraction !== undefined}
-          &middot; cloud <b>{fmt(weatherReadout.cloudCoverFraction * 100, 0)}</b>%
         {/if}
       </div>
     {/if}

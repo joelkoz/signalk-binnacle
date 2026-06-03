@@ -33,6 +33,9 @@ export function createRadarOverlay(store: WeatherStore): RadarOverlay {
           type: 'raster',
           tiles: [],
           tileSize: TILE_SIZE,
+          // RainViewer serves radar tiles only to zoom 11; above that every tile is a "Zoom Level
+          // Not Supported" placeholder. Cap the source so MapLibre overzooms the real tiles instead.
+          maxzoom: 11,
           attribution: 'RainViewer',
         };
         ctx.map.addSource(SOURCE_ID, spec);
