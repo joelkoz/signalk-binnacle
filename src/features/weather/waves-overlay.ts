@@ -42,7 +42,9 @@ const PLACEHOLDER_COORDS: Quad = [
 // The waves overlay: a wave-height color field drawn to a canvas at grid resolution and smoothed by
 // the GPU (raster-resampling linear), plus a sparse direction-arrow line layer, both in the weather
 // band. Off by default. The canvas is redrawn only when the grid, the selected time, or the theme
-// changes; MapLibre re-reads the small canvas each frame (animate true), which is cheap.
+// changes. The source is animated so MapLibre re-reads the canvas after each redraw; the per-frame
+// re-upload of a grid-resolution texture (a few KB) is negligible next to the vector-tile redraw,
+// and it avoids the version-dependent canvas re-read behavior of a static source.
 export function createWavesOverlay(
   store: WeatherStore,
   makeCanvas: CanvasFactory = defaultCanvas,

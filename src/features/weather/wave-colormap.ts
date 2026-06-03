@@ -1,5 +1,5 @@
 import type { Theme } from '$shared/ui';
-import type { Rgba } from './wind-colormap';
+import { type Rgba, sampleRamp } from './color-ramp';
 
 // Wave-height stops in meters. Day and dusk: a translucent calm-to-heavy ramp (teal, green, yellow,
 // orange, red, magenta) so the base map reads through. Night-red: a red band on black, brightness
@@ -27,22 +27,7 @@ const ARROW: Record<Theme, string> = {
 };
 
 export function waveColor(heightM: number, theme: Theme): Rgba {
-  const stops = theme === 'night-red' ? NIGHT : DAY;
-  if (Number.isNaN(heightM) || heightM <= stops[0][0]) return stops[0][1];
-  for (let i = 0; i < stops.length - 1; i += 1) {
-    const [h0, c0] = stops[i];
-    const [h1, c1] = stops[i + 1];
-    if (heightM <= h1) {
-      const f = (heightM - h0) / (h1 - h0 || 1);
-      return [
-        c0[0] + (c1[0] - c0[0]) * f,
-        c0[1] + (c1[1] - c0[1]) * f,
-        c0[2] + (c1[2] - c0[2]) * f,
-        c0[3] + (c1[3] - c0[3]) * f,
-      ];
-    }
-  }
-  return stops[stops.length - 1][1];
+  return sampleRamp(theme === 'night-red' ? NIGHT : DAY, heightM);
 }
 
 export function waveArrowColor(theme: Theme): string {

@@ -23,10 +23,18 @@ export function readoutAt(
   const speedMs = Math.hypot(u, v);
   const fromRad = (Math.atan2(-u, -v) + 2 * Math.PI) % (2 * Math.PI);
   const pressureField = grid.pressureMsl?.[timeIndex];
-  const pressurePa = pressureField ? bilinearAt(grid, pressureField, lon, lat) : undefined;
+  const pressurePa = pressureField
+    ? nanToUndef(bilinearAt(grid, pressureField, lon, lat))
+    : undefined;
   const waveField = grid.waveHeight?.[timeIndex];
-  const waveHeightM = waveField ? bilinearAt(grid, waveField, lon, lat) : undefined;
+  const waveHeightM = waveField ? nanToUndef(bilinearAt(grid, waveField, lon, lat)) : undefined;
   const periodField = grid.wavePeriod?.[timeIndex];
-  const wavePeriodS = periodField ? bilinearAt(grid, periodField, lon, lat) : undefined;
+  const wavePeriodS = periodField ? nanToUndef(bilinearAt(grid, periodField, lon, lat)) : undefined;
   return { speedMs, fromRad, pressurePa, waveHeightM, wavePeriodS };
+}
+
+// Marine fields are NaN over land; collapse those to undefined so the display shows nothing rather
+// than "NaN" and the chip can guard with a plain presence check.
+function nanToUndef(v: number | undefined): number | undefined {
+  return v === undefined || Number.isNaN(v) ? undefined : v;
 }

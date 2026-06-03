@@ -161,6 +161,11 @@ let following = $state(false);
 const weatherActive = $derived(
   layersView?.items.some((i) => i.band === 'weather' && i.visible) ?? false,
 );
+// True when the waves layer specifically is on, which gates the extra marine fetch so wind-only or
+// pressure-only viewing does not pull wave data it will not draw.
+const wavesActive = $derived(
+  layersView?.items.some((i) => i.id === 'weather-waves' && i.visible) ?? false,
+);
 // The wind value at the last map tap, shown as a transient chip.
 let weatherReadout = $state<WeatherReadout | undefined>();
 
@@ -229,11 +234,11 @@ function scheduleWeather(): void {
     if (!weatherActive || !bounds) return;
     weather.setStatus('loading');
     const opts = { maxCells: 600, forecastDays: 5 };
-    // Atmospheric and marine come from two Open-Meteo endpoints on the same grid; marine is
-    // best-effort so waves degrade without blocking wind and pressure.
+    // Atmospheric always; marine only when the waves layer is on. Both come from Open-Meteo on the
+    // same grid; marine is best-effort so waves degrade without blocking wind and pressure.
     const [grid, marine] = await Promise.all([
       fetchForecast(bounds, opts),
-      fetchMarine(bounds, opts),
+      wavesActive ? fetchMarine(bounds, opts) : Promise.resolve(undefined),
     ]);
     if (grid) weather.setGrid(marine ? mergeMarine(grid, marine) : grid);
     else weather.setStatus(weather.grid ? 'stale' : 'error');
@@ -242,6 +247,18 @@ function scheduleWeather(): void {
 
 $effect(() => {
   if (weatherActive && !weather.grid) scheduleWeather();
+});
+
+// Refetch once when the waves layer is turned on so its field appears without waiting for a pan.
+// Keyed on the edge (a plain flag, not the grid) so a failed marine fetch cannot loop.
+let wavesRequested = false;
+$effect(() => {
+  if (wavesActive && !wavesRequested) {
+    wavesRequested = true;
+    scheduleWeather();
+  } else if (!wavesActive) {
+    wavesRequested = false;
+  }
 });
 
 // Show the wind and pressure at the tapped point for the selected forecast time; clears after a
@@ -520,9 +537,9 @@ onDestroy(() => {
         {#if weatherReadout.pressurePa !== undefined}
           &middot; <b>{fmt(pascalsToHectopascals(weatherReadout.pressurePa), 0)}</b> hPa
         {/if}
-        {#if weatherReadout.waveHeightM !== undefined && !Number.isNaN(weatherReadout.waveHeightM)}
+        {#if weatherReadout.waveHeightM !== undefined}
           &middot; sea <b>{fmt(weatherReadout.waveHeightM, 1)}</b> m
-          {#if weatherReadout.wavePeriodS !== undefined && !Number.isNaN(weatherReadout.wavePeriodS)}
+          {#if weatherReadout.wavePeriodS !== undefined}
             / <b>{fmt(weatherReadout.wavePeriodS, 0)}</b> s
           {/if}
         {/if}

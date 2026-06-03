@@ -1,6 +1,5 @@
 import type { Theme } from '$shared/ui';
-
-export type Rgba = [number, number, number, number];
+import { type Rgba, sampleRamp } from './color-ramp';
 
 // Speed stops in m/s. Day and dusk use a marine wind ramp: teal, green, yellow, orange, red.
 const DAY: Array<[number, Rgba]> = [
@@ -34,20 +33,5 @@ export function windColorExpression(theme: Theme): unknown[] {
 }
 
 export function windColor(speedMs: number, theme: Theme): Rgba {
-  const stops = theme === 'night-red' ? NIGHT : DAY;
-  if (speedMs <= stops[0][0]) return stops[0][1];
-  for (let i = 0; i < stops.length - 1; i += 1) {
-    const [s0, c0] = stops[i];
-    const [s1, c1] = stops[i + 1];
-    if (speedMs <= s1) {
-      const f = (speedMs - s0) / (s1 - s0 || 1);
-      return [
-        c0[0] + (c1[0] - c0[0]) * f,
-        c0[1] + (c1[1] - c0[1]) * f,
-        c0[2] + (c1[2] - c0[2]) * f,
-        c0[3] + (c1[3] - c0[3]) * f,
-      ];
-    }
-  }
-  return stops[stops.length - 1][1];
+  return sampleRamp(theme === 'night-red' ? NIGHT : DAY, speedMs);
 }
