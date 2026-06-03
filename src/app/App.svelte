@@ -17,7 +17,7 @@ import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/
 import { OwnVessel } from '$entities/vessel';
 import { WeatherStore } from '$entities/weather';
 import { AuthBanner } from '$features/auth-banner';
-import { LayersPanel, type LayersView } from '$features/layers-panel';
+import { LayersPanel, type LayersView, LayerToggle } from '$features/layers-panel';
 import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
 import { AppMenu, type MenuItem, MenuSubmenu } from '$features/menu';
 import {
@@ -160,21 +160,18 @@ let mapCommands = $state<MapCommands | undefined>();
 // (dragging the chart) releases it; it does not persist across reloads.
 let following = $state(false);
 
-// True when any weather-band layer is on, which gates the forecast fetch and the Forecast control.
-const weatherActive = $derived(
-  layersView?.items.some((i) => i.band === 'weather' && i.visible) ?? false,
-);
+// Every weather-band layer, for the menu's Weather section toggles (regardless of visibility); the
+// active state, the marine gate, and the legends all derive from this one scan of the layer list.
+const weatherLayers = $derived((layersView?.items ?? []).filter((i) => i.band === 'weather'));
+// True when any weather layer is on, which gates the forecast fetch and the Forecast control.
+const weatherActive = $derived(weatherLayers.some((i) => i.visible));
 // True when the waves layer specifically is on, which gates the extra marine fetch so wind-only or
 // pressure-only viewing does not pull wave data it will not draw.
-const wavesActive = $derived(
-  layersView?.items.some((i) => i.id === 'weather-waves' && i.visible) ?? false,
-);
-// Every weather-band layer, for the menu's Weather section toggles (regardless of visibility).
-const weatherLayers = $derived((layersView?.items ?? []).filter((i) => i.band === 'weather'));
+const wavesActive = $derived(weatherLayers.some((i) => i.id === 'weather-waves' && i.visible));
 // Legends for the active weather layers in the current theme, shown in the Forecast window.
 const weatherLegends = $derived<WeatherLegend[]>(
-  (layersView?.items ?? [])
-    .filter((i) => i.band === 'weather' && i.visible)
+  weatherLayers
+    .filter((i) => i.visible)
     .map((i) => weatherLegend(i.id, theme.theme))
     .filter((l): l is WeatherLegend => l !== undefined),
 );
@@ -477,14 +474,11 @@ onDestroy(() => {
           <ul class="weather-toggles">
             {#each weatherLayers as layer (layer.id)}
               <li>
-                <label class="weather-toggle">
-                  <input
-                    type="checkbox"
-                    checked={layer.visible}
-                    onchange={(e) => layersView?.toggle(layer.id, e.currentTarget.checked)}
-                  >
-                  <span>{layer.title}</span>
-                </label>
+                <LayerToggle
+                  title={layer.title}
+                  visible={layer.visible}
+                  onToggle={(visible) => layersView?.toggle(layer.id, visible)}
+                />
               </li>
             {/each}
             {#if weatherLayers.length === 0}
@@ -605,7 +599,9 @@ onDestroy(() => {
 .binnacle-shell {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  block-size: 100vh;
+  /* dvh tracks the visible viewport so the locked (overflow-hidden) shell does not hide the bottom
+     strip under a mobile browser's dynamic toolbar. */
+  block-size: 100dvh;
   margin-block: 0;
   margin-inline: 0;
   font-family: var(--font-ui);
@@ -745,18 +741,6 @@ onDestroy(() => {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
-}
-.weather-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-block-size: var(--control-size);
-  padding-inline: 0.2rem;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-.weather-toggle input {
-  accent-color: var(--accent);
 }
 .weather-empty {
   padding: 0.2rem;

@@ -1,7 +1,7 @@
 import type { TimeBracket, WeatherGrid } from '$entities/weather';
 import { lerp, PA_PER_HPA } from '$shared/lib';
 
-const DEFAULT_INTERVAL_HPA = 4;
+export const DEFAULT_INTERVAL_HPA = 4;
 const LABEL_STRIDE = 6; // place a label every Nth segment of each level so labels stay sparse
 
 type Pt = [number, number];

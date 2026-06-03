@@ -84,7 +84,7 @@ body {
 }
 
 #app {
-  block-size: 100vh;
+  block-size: 100dvh;
 }
 
 /* One keyboard-focus indicator for every interactive control, visible on every theme. */

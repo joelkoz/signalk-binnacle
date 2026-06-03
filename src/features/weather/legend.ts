@@ -4,6 +4,7 @@ import { cloudColor } from './cloud-colormap';
 import { type Rgba, rgbaCss } from './color-ramp';
 import { precipColor } from './precip-colormap';
 import { isobarColors } from './pressure-colors';
+import { DEFAULT_INTERVAL_HPA } from './pressure-isobars';
 import { waveColor } from './wave-colormap';
 import { windColor } from './wind-colormap';
 
@@ -56,7 +57,9 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
       return {
         id: layerId,
         title: 'Pressure',
-        swatches: [{ color: isobarColors(theme).line, label: 'isobars, 4 hPa' }],
+        swatches: [
+          { color: isobarColors(theme).line, label: `isobars, ${DEFAULT_INTERVAL_HPA} hPa` },
+        ],
       };
     case 'weather-waves':
       return {

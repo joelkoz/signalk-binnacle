@@ -1,6 +1,7 @@
 <script lang="ts">
 import { GripVertical, Settings2 } from '@lucide/svelte';
 import type { LayerListItem } from '$shared/map';
+import LayerToggle from './LayerToggle.svelte';
 import type { LayersView } from './layers-view.svelte';
 
 interface Props {
@@ -50,14 +51,11 @@ const percent = $derived(Math.round(item.opacity * 100));
     >
       <GripVertical size={18} aria-hidden="true" />
     </button>
-    <label class="toggle">
-      <input
-        type="checkbox"
-        checked={item.visible}
-        onchange={(e) => view.toggle(item.id, e.currentTarget.checked)}
-      >
-      <span class="title" title={item.title}>{item.title}</span>
-    </label>
+    <LayerToggle
+      title={item.title}
+      visible={item.visible}
+      onToggle={(visible) => view.toggle(item.id, visible)}
+    />
     {#if onManage}
       <button type="button" class="manage" aria-label={`Manage ${item.title}`} onclick={onManage}>
         <Settings2 size={16} aria-hidden="true" />
@@ -148,26 +146,6 @@ const percent = $derived(Math.round(item.opacity * 100));
 }
 .manage:hover {
   color: var(--accent);
-}
-.toggle {
-  display: flex;
-  flex: 1;
-  min-inline-size: 0;
-  align-items: center;
-  gap: 0.5rem;
-  min-block-size: var(--control-size);
-  font-size: var(--text-md);
-  cursor: pointer;
-}
-.toggle input[type="checkbox"] {
-  inline-size: 1.25rem;
-  block-size: 1.25rem;
-  accent-color: var(--accent);
-}
-.title {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 .opacity-line {
   display: flex;

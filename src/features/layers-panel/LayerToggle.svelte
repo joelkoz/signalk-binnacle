@@ -1,0 +1,37 @@
+<script lang="ts">
+interface Props {
+  title: string;
+  visible: boolean;
+  onToggle: (visible: boolean) => void;
+}
+
+const { title, visible, onToggle }: Props = $props();
+</script>
+
+<label class="layer-toggle">
+  <input type="checkbox" checked={visible} onchange={(e) => onToggle(e.currentTarget.checked)}>
+  <span class="title" {title}>{title}</span>
+</label>
+
+<style>
+.layer-toggle {
+  display: flex;
+  flex: 1;
+  min-inline-size: 0;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: var(--control-size);
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+.layer-toggle input[type="checkbox"] {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  accent-color: var(--accent);
+}
+.layer-toggle .title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+</style>
