@@ -4,6 +4,7 @@ import type { UserCharts } from '$entities/user-charts';
 import { chartSourceId, type LayerListItem } from '$shared/map';
 import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
+import { layerGroup } from './layer-group';
 import type { LayersView } from './layers-view.svelte';
 import SourceDetail from './SourceDetail.svelte';
 
@@ -29,10 +30,10 @@ const manageSource = $derived(
   manageId ? userCharts?.sources.find((source) => source.id === manageId) : undefined,
 );
 
-// Group the movable rows into charts-and-depth versus the live overlays so the list reads as
+// Group the movable rows by z-band (charts and depth, weather, and the rest) so the list reads as
 // organized. Reorder still operates on the live order; a header marks each category change.
 function categoryOf(item: LayerListItem): string {
-  return item.band === 'basemap' || item.band === 'bathymetry' ? 'Charts and Depth' : 'Overlays';
+  return layerGroup(item.band);
 }
 
 let listEl = $state<HTMLUListElement>();
