@@ -2,6 +2,8 @@ export { createCloudOverlay } from './cloud-overlay';
 export { type WeatherLegend, weatherLegend } from './legend';
 export { createPrecipOverlay } from './precip-overlay';
 export { createPressureOverlay } from './pressure-overlay';
+export { createRadarOverlay } from './radar-overlay';
+export { fetchRadar } from './rainviewer-client';
 export { default as WeatherTimeControl } from './WeatherTimeControl.svelte';
 export { createWavesOverlay } from './waves-overlay';
 export { type ForecastOptions, fetchForecast, fetchMarine, mergeMarine } from './weather-client';

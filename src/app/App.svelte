@@ -40,6 +40,7 @@ import {
 import {
   fetchForecast,
   fetchMarine,
+  fetchRadar,
   mergeMarine,
   readoutAt,
   type WeatherLegend,
@@ -168,6 +169,8 @@ const weatherActive = $derived(weatherLayers.some((i) => i.visible));
 // True when the waves layer specifically is on, which gates the extra marine fetch so wind-only or
 // pressure-only viewing does not pull wave data it will not draw.
 const wavesActive = $derived(weatherLayers.some((i) => i.id === 'weather-waves' && i.visible));
+// True when the radar layer is on, which gates the RainViewer frame fetch.
+const radarActive = $derived(weatherLayers.some((i) => i.id === 'weather-radar' && i.visible));
 // Legends for the active weather layers in the current theme, shown in the Forecast window.
 const weatherLegends = $derived<WeatherLegend[]>(
   weatherLayers
@@ -245,12 +248,14 @@ function scheduleWeather(): void {
     const opts = { maxCells: 600, forecastDays: 5 };
     // Atmospheric always; marine only when the waves layer is on. Both come from Open-Meteo on the
     // same grid; marine is best-effort so waves degrade without blocking wind and pressure.
-    const [grid, marine] = await Promise.all([
+    const [grid, marine, radar] = await Promise.all([
       fetchForecast(bounds, opts),
       wavesActive ? fetchMarine(bounds, opts) : Promise.resolve(undefined),
+      radarActive ? fetchRadar() : Promise.resolve(undefined),
     ]);
     if (grid) weather.setGrid(marine ? mergeMarine(grid, marine) : grid);
     else weather.setStatus(weather.grid ? 'stale' : 'error');
+    if (radar) weather.setRadar(radar);
   }, 500);
 }
 
@@ -267,6 +272,17 @@ $effect(() => {
     scheduleWeather();
   } else if (!wavesActive) {
     wavesRequested = false;
+  }
+});
+
+// Same one-shot pattern for the radar layer, so enabling it fetches the frames right away.
+let radarRequested = false;
+$effect(() => {
+  if (radarActive && !radarRequested) {
+    radarRequested = true;
+    scheduleWeather();
+  } else if (!radarActive) {
+    radarRequested = false;
   }
 });
 

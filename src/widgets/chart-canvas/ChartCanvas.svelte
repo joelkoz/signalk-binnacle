@@ -18,6 +18,7 @@ import {
   createCloudOverlay,
   createPrecipOverlay,
   createPressureOverlay,
+  createRadarOverlay,
   createWavesOverlay,
   createWindOverlay,
 } from '$features/weather';
@@ -184,6 +185,10 @@ onMount(() => {
     await manager.register(cloudOverlay);
     if (destroyed) return;
 
+    const radarOverlay = createRadarOverlay(weather);
+    await manager.register(radarOverlay);
+    if (destroyed) return;
+
     const windOverlay = createWindOverlay(weather);
     await manager.register(windOverlay);
     if (destroyed) return;
@@ -269,6 +274,7 @@ onMount(() => {
       wavesOverlay.sync(ctx);
       precipOverlay.sync(ctx);
       cloudOverlay.sync(ctx);
+      radarOverlay.sync(ctx);
       windOverlay.sync(ctx);
       pressureOverlay.sync(ctx);
       notesOverlay.sync(ctx);
