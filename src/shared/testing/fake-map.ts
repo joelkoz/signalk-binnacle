@@ -8,6 +8,7 @@ export function createFakeMap() {
     {
       setData: (data: unknown) => void;
       setCoordinates: (coordinates: unknown) => void;
+      setTiles: (tiles: unknown) => void;
       data: unknown;
       maxzoom?: number;
     }
@@ -34,6 +35,7 @@ export function createFakeMap() {
           this.data = data;
         },
         setCoordinates: vi.fn(),
+        setTiles: vi.fn(),
       });
     },
     getSource: (id: string) => sources.get(id),
