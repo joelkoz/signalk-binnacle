@@ -11,8 +11,8 @@ function storage(seed: Record<string, string> = {}): Pick<Storage, 'getItem' | '
   };
 }
 
-function res(ok: boolean, body: unknown = {}): Response {
-  return { ok, json: async () => body } as unknown as Response;
+function res(ok: boolean, body: unknown = {}, status = ok ? 200 : 500): Response {
+  return { ok, status, json: async () => body } as unknown as Response;
 }
 
 const BASE = 'http://sk.test';
@@ -123,6 +123,103 @@ describe('AuthController', () => {
     await auth.requestAccess();
     await auth.checkRequest();
     expect(auth.status).toBe('denied');
+  });
+
+  it('uses a recognizable binnacle- client id', () => {
+    const auth = new AuthController(BASE, {
+      fetch: (async () => res(true)) as unknown as typeof fetch,
+      storage: storage(),
+      schedule: noSchedule,
+    });
+    expect(auth.clientId).toMatch(/^binnacle-/);
+  });
+
+  it('upgrades a legacy bare-uuid client id, keeping the token', () => {
+    const store = storage({
+      'binnacle:signalk-auth': JSON.stringify({ clientId: 'abcd-1234', token: 'keepme' }),
+    });
+    const auth = new AuthController(BASE, {
+      fetch: (async () => res(true)) as unknown as typeof fetch,
+      storage: store,
+      schedule: noSchedule,
+    });
+    expect(auth.clientId).toMatch(/^binnacle-/);
+    expect(JSON.parse(store.getItem('binnacle:signalk-auth') as string).token).toBe('keepme');
+  });
+
+  it('rechecks a pending request and authenticates on approval', async () => {
+    const fetchFn = vi.fn(async (url: string) => {
+      if (url.endsWith('/access/requests')) return res(true, { href: '/signalk/v1/requests/r1' });
+      if (url.endsWith('/requests/r1'))
+        return res(true, {
+          state: 'COMPLETED',
+          accessRequest: { permission: 'APPROVED', token: 'tok2' },
+        });
+      return res(false, {});
+    });
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: storage(),
+      schedule: noSchedule,
+    });
+    await auth.requestAccess();
+    expect(auth.status).toBe('requesting');
+    auth.recheck();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(auth.status).toBe('authenticated');
+    expect(auth.token).toBe('tok2');
+  });
+
+  it('does not recheck when not currently requesting', async () => {
+    const fetchFn = vi.fn(async () => res(true, {}));
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: storage(),
+      schedule: noSchedule,
+    });
+    auth.recheck();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('adopts a token approved in another tab', async () => {
+    const store = storage();
+    const fetchFn = vi.fn(async (url: string) => {
+      if (url.endsWith('/access/requests')) return res(true, { href: '/signalk/v1/requests/r1' });
+      return res(false, {});
+    });
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: store,
+      schedule: noSchedule,
+    });
+    await auth.requestAccess();
+    expect(auth.status).toBe('requesting');
+    auth.adoptToken('crosstab');
+    expect(auth.status).toBe('authenticated');
+    expect(auth.token).toBe('crosstab');
+    expect(store.getItem('binnacle:signalk-auth')).toContain('crosstab');
+  });
+
+  it('re-requests a fresh access request when the pending one is gone (404)', async () => {
+    let n = 0;
+    const fetchFn = vi.fn(async (url: string) => {
+      if (url.endsWith('/access/requests')) {
+        n += 1;
+        return res(true, { href: `/signalk/v1/requests/r${n}` });
+      }
+      if (url.endsWith('/requests/r1')) return res(false, {}, 404);
+      return res(false, {});
+    });
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: storage(),
+      schedule: noSchedule,
+    });
+    await auth.requestAccess();
+    await auth.checkRequest();
+    expect(n).toBe(2);
+    expect(auth.status).toBe('requesting');
   });
 
   it('keeps a stable clientId across instances', () => {

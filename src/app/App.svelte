@@ -54,6 +54,7 @@ import {
 } from '$shared/settings';
 import type { ConnectionPhase, Context } from '$shared/signalk';
 import {
+  AUTH_STORAGE_KEY,
   AuthController,
   createSignalKClient,
   SELF_CONTEXT,
@@ -329,26 +330,21 @@ const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase]);
 const fmt = (value: number | undefined, digits: number) =>
   value === undefined ? PLACEHOLDER : value.toFixed(digits);
 
-let accessTimer: ReturnType<typeof setTimeout> | undefined;
+// The Signal K admin page where the user approves the access request, for the banner deep link.
+const accessRequestsUrl = `${serverOrigin()}/admin/#/security/access/requests`;
 
-// Resolve once the server is open to us: either unsecured or an approved token. A
-// denied or still-pending request never resolves, so the stream stays disconnected
-// until the user re-requests; the pending timer is cleared on destroy.
-function waitForAccess(): Promise<void> {
-  return new Promise((resolve) => {
-    const tick = () => {
-      if (auth.status === 'authenticated' || auth.status === 'unsecured') resolve();
-      else accessTimer = setTimeout(tick, 500);
-    };
-    tick();
-  });
-}
+// Connect the stream the moment access resolves (an approved token, or an unsecured server),
+// not as a one-shot blocking step. A token that arrives after a tab refocus, or from another
+// tab, then connects without a reload.
+let streamConnected = false;
+$effect(() => {
+  if (streamConnected) return;
+  if (auth.status !== 'authenticated' && auth.status !== 'unsecured') return;
+  streamConnected = true;
+  void connectStream(auth.token ?? undefined);
+});
 
-onMount(async () => {
-  window.addEventListener('pointerdown', primeAudio, { once: true });
-  await auth.probe();
-  await waitForAccess();
-  const token = auth.token ?? undefined;
+async function connectStream(token: string | undefined): Promise<void> {
   chartsToken = token;
   noteLoader = createNoteDetailLoader(serverOrigin(), token);
   await client.connect(streamUrl(token), (frame) => store.applyFrame(frame));
@@ -368,12 +364,39 @@ onMount(async () => {
     { path: SK_PATHS.closestApproach, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
   ]);
   await refreshSavedTracks();
+}
+
+// Pick up an approval the instant the user returns to the tab, bypassing the background-throttled
+// poll timer that would otherwise miss it.
+function onTabVisible(): void {
+  if (document.visibilityState === 'visible') auth.recheck();
+}
+
+// Adopt a token approved in another tab so this tab connects without a reload.
+function onAuthStorage(event: StorageEvent): void {
+  if (event.key !== AUTH_STORAGE_KEY || !event.newValue) return;
+  try {
+    const token = (JSON.parse(event.newValue) as { token?: unknown }).token;
+    if (typeof token === 'string' && token) auth.adoptToken(token);
+  } catch {
+    // Ignore a malformed storage payload.
+  }
+}
+
+onMount(() => {
+  window.addEventListener('pointerdown', primeAudio, { once: true });
+  document.addEventListener('visibilitychange', onTabVisible);
+  window.addEventListener('focus', onTabVisible);
+  window.addEventListener('storage', onAuthStorage);
+  void auth.probe();
 });
 
 onDestroy(() => {
-  if (accessTimer) clearTimeout(accessTimer);
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   window.removeEventListener('pointerdown', primeAudio);
+  document.removeEventListener('visibilitychange', onTabVisible);
+  window.removeEventListener('focus', onTabVisible);
+  window.removeEventListener('storage', onAuthStorage);
   lookoutAlarm.stop();
   auth.stop();
   net.dispose();
@@ -437,7 +460,7 @@ onDestroy(() => {
       onUserPan={() => (following = false)}
     />
     <div class="banner-slot">
-      <AuthBanner {auth} />
+      <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
     <div class="danger-slot">
       <DangerStrip {collision} />

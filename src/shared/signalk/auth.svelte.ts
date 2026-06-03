@@ -14,17 +14,24 @@ interface AuthOptions {
   pollMs?: number;
 }
 
-const STORAGE_KEY = 'binnacle:signalk-auth';
+export const STORAGE_KEY = 'binnacle:signalk-auth';
 const PROBE_PATH = '/signalk/v1/api/vessels/self';
 const REQUEST_PATH = '/signalk/v1/access/requests';
 // Stop polling an unanswered access request after this many attempts (about 10 min at
 // the default 3 s interval) so a never-approved request is not an unbounded loop.
 const MAX_POLL_ATTEMPTS = 200;
 
+// A short, recognizable client id (binnacle-<8 hex>) so the Signal K access-requests list shows a
+// name the user recognizes, not a bare UUID. crypto.randomUUID needs a secure context, so fall
+// back to a random hex string where it is absent.
 function newClientId(): string {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `binnacle-${Date.now().toString(36)}`;
+  const short =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.floor(Math.random() * 0xffffffff)
+          .toString(16)
+          .padStart(8, '0');
+  return `binnacle-${short}`;
 }
 
 export class AuthController {
@@ -39,6 +46,7 @@ export class AuthController {
   #href?: string;
   #stopped = false;
   #pollAttempts = 0;
+  #pollScheduled = false;
 
   constructor(base: string, opts: AuthOptions = {}) {
     this.#base = base;
@@ -50,8 +58,13 @@ export class AuthController {
       { clientId: newClientId(), token: null },
       opts.storage,
     );
-    // Persist the generated clientId only on first run, not on every reload.
-    if (!this.#identity.fromStorage) this.#identity.set(this.#identity.value);
+    // Persist a first-run identity, and upgrade a legacy bare-UUID clientId to the recognizable
+    // binnacle- form (keeping any token), so the access-requests list shows a known name.
+    const stored = this.#identity.value;
+    const clientId = stored.clientId.startsWith('binnacle-') ? stored.clientId : newClientId();
+    if (!this.#identity.fromStorage || clientId !== stored.clientId) {
+      this.#identity.set({ clientId, token: stored.token });
+    }
     this.token = this.#identity.value.token;
   }
 
@@ -108,8 +121,14 @@ export class AuthController {
   }
 
   async checkRequest(): Promise<void> {
-    if (!this.#href) return;
+    if (!this.#href || this.status === 'authenticated') return;
     const res = await this.#safeFetch(`${this.#base}${this.#href}`);
+    if (res && (res.status === 404 || res.status === 410)) {
+      // The request expired or was cleared server-side; start a fresh one rather than poll a dead
+      // href forever (which left the first tab stuck until the user opened a new one).
+      await this.requestAccess();
+      return;
+    }
     if (!res?.ok) {
       this.#schedulePoll();
       return;
@@ -129,18 +148,38 @@ export class AuthController {
     }
   }
 
+  // Re-check a pending request right now, e.g. when the tab regains focus after the user approved
+  // Binnacle in the Signal K UI. Background tabs throttle the poll timer, so without this an
+  // approval is not noticed until the next (delayed) poll; this picks it up immediately on return.
+  recheck(): void {
+    if (this.status === 'requesting') void this.checkRequest();
+  }
+
+  // Adopt a token approved in another tab (delivered via the storage event), so every open tab
+  // connects once any one of them is approved, with no reload.
+  adoptToken(token: string): void {
+    if (!token || this.status === 'authenticated') return;
+    this.#store(token);
+    this.token = token;
+    this.status = 'authenticated';
+  }
+
   stop(): void {
     this.#stopped = true;
   }
 
   #schedulePoll(): void {
-    if (this.#stopped) return;
+    if (this.#stopped || this.#pollScheduled || this.status === 'authenticated') return;
     if (this.#pollAttempts >= MAX_POLL_ATTEMPTS) {
       this.status = 'denied';
       return;
     }
     this.#pollAttempts += 1;
-    this.#schedule(() => void this.checkRequest(), this.#pollMs);
+    this.#pollScheduled = true;
+    this.#schedule(() => {
+      this.#pollScheduled = false;
+      void this.checkRequest();
+    }, this.#pollMs);
   }
 
   #store(token: string | null): void {

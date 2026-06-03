@@ -8,6 +8,12 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Approving Binnacle's Signal K access is now self-explanatory and recognizable. The request uses a
+  named client id (`binnacle-<short>`) instead of a bare UUID, so it is easy to spot in the Signal K
+  access-requests list, and the "Requesting access" banner shows that id plus a one-click "Approve in
+  Signal K" shortcut that opens the admin access-requests page. A legacy bare-UUID client id is
+  upgraded to the named form on load, keeping any existing token.
+
 - Follow boat: a "Follow boat" item in the menu locks the chart to the vessel, recentering on each
   new position fix at your current zoom. It centers immediately when turned on, and a manual pan of
   the chart releases the lock (a scroll-zoom keeps it). It is off by default and does not persist
@@ -288,6 +294,14 @@ All notable changes to Binnacle are documented here. The format follows
   `.github/FUNDING.yml`, and the `package.json` funding field).
 
 ### Fixed
+
+- Signal K access approval now connects on its own. Previously, after you approved Binnacle in the
+  Signal K UI and returned to the tab, it kept polling a stale request and only a second tab would
+  connect. Binnacle now rechecks the pending request the moment the tab regains focus (background
+  tabs throttle the poll timer), re-requests a fresh one if the old request expired, connects the
+  stream reactively the instant access is granted (no reload), and adopts a token approved in another
+  tab via the storage event. The old one-shot blocking connect that required a reload or a second tab
+  is gone.
 
 - A raster chart layer now follows the night-red theme (desaturated and dimmed) instead of staying
   full-saturation and full-brightness, matching the streaming depth layers.

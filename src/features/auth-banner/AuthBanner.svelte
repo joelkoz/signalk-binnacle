@@ -3,15 +3,20 @@ import type { AuthController } from '$shared/signalk';
 
 interface Props {
   auth: AuthController;
+  // The Signal K admin access-requests page, opened by the approve shortcut.
+  requestsUrl: string;
 }
 
-const { auth }: Props = $props();
+const { auth, requestsUrl }: Props = $props();
 </script>
 
 {#if auth.status === 'requesting'}
   <div class="auth-banner" role="status" aria-live="polite">
-    Requesting access. Approve <strong>Binnacle</strong> in Signal K under Security, then Access
-    Requests.
+    Requesting access as <strong>{auth.clientId}</strong>. Approve it in Signal K under Security,
+    then Access Requests, and this connects on its own.
+    <a class="action" href={requestsUrl} target="_blank" rel="noopener noreferrer">
+      Approve in Signal K
+    </a>
   </div>
 {:else if auth.status === 'denied'}
   <div class="auth-banner denied" role="alert">
@@ -31,7 +36,10 @@ const { auth }: Props = $props();
 .auth-banner.denied {
   color: var(--alarm);
 }
-.auth-banner button {
+.auth-banner button,
+.auth-banner .action {
+  display: inline-flex;
+  align-items: center;
   font: inherit;
   margin-inline-start: 0.5rem;
   padding: 0.5rem 0.9rem;
@@ -40,6 +48,7 @@ const { auth }: Props = $props();
   border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--accent);
+  text-decoration: none;
   cursor: pointer;
 }
 </style>
