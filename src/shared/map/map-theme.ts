@@ -2,6 +2,8 @@ import type { Theme } from '$shared/ui';
 import type { Rgba } from './icon-raster';
 
 export interface MapThemePaint {
+  // The active theme, so an overlay can pick a theme-specific colormap from its applyTheme paint.
+  theme: Theme;
   background: string;
   water: string;
   // Vector chart fills and lines, themed so a vector chart recolors with the app.
@@ -51,7 +53,7 @@ export interface MapThemePaint {
 // chart-paintable, so they are intentionally excluded.
 export type MapColorKey = 'background' | 'water' | 'land' | 'landcover' | 'road' | 'boundary';
 
-const PAINT: Record<Theme, MapThemePaint> = {
+const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
   day: {
     // The base map renders land and empty areas as the background layer, so this is the land
     // tone, not a water tone. A warm light neutral (close to the source style's cream) keeps the
@@ -133,5 +135,5 @@ const PAINT: Record<Theme, MapThemePaint> = {
 };
 
 export function mapThemePaint(theme: Theme): MapThemePaint {
-  return PAINT[theme];
+  return { ...PAINT[theme], theme };
 }
