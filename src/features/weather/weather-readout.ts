@@ -4,6 +4,8 @@ export interface WeatherReadout {
   speedMs: number;
   fromRad: number; // meteorological direction the wind comes from, radians, 0..2pi
   pressurePa?: number; // present only when the grid carries pressure
+  waveHeightM?: number; // present only when the grid carries waves
+  wavePeriodS?: number;
 }
 
 // Wind speed, from-direction, and (when present) pressure at a lon/lat for a forecast step, sampled
@@ -22,5 +24,9 @@ export function readoutAt(
   const fromRad = (Math.atan2(-u, -v) + 2 * Math.PI) % (2 * Math.PI);
   const pressureField = grid.pressureMsl?.[timeIndex];
   const pressurePa = pressureField ? bilinearAt(grid, pressureField, lon, lat) : undefined;
-  return { speedMs, fromRad, pressurePa };
+  const waveField = grid.waveHeight?.[timeIndex];
+  const waveHeightM = waveField ? bilinearAt(grid, waveField, lon, lat) : undefined;
+  const periodField = grid.wavePeriod?.[timeIndex];
+  const wavePeriodS = periodField ? bilinearAt(grid, periodField, lon, lat) : undefined;
+  return { speedMs, fromRad, pressurePa, waveHeightM, wavePeriodS };
 }
