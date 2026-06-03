@@ -78,6 +78,9 @@ body {
   margin: 0;
   padding: 0;
   font-family: var(--font-ui);
+  /* The app is a fixed-viewport shell (a 100vh grid; panels scroll internally), so the document
+     itself never scrolls. Locking it prevents a stray scrollbar from sub-pixel content overflow. */
+  overflow: hidden;
 }
 
 #app {
