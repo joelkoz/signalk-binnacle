@@ -14,6 +14,7 @@ import { CollisionAssessment } from '$entities/collision';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
 import { OwnVessel } from '$entities/vessel';
+import { WeatherStore } from '$entities/weather';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
@@ -35,6 +36,7 @@ import {
   saveTrack,
   TracksPanel,
 } from '$features/tracks';
+import { fetchForecast, readoutAt, WeatherTimeControl, type WindReadout } from '$features/weather';
 import {
   formatLatitude,
   formatLongitude,
@@ -88,6 +90,9 @@ const collisionNotifier = new CollisionNotifier(
 const trackSettings = createTrackSettings();
 const recorder = new TrackRecorder(trackSettings, createTrackStore<TrackPoint>());
 
+// Weather forecast, fetched browser-side from Open-Meteo for the viewport when a weather layer is on.
+const weather = new WeatherStore();
+
 // Saved tracks fetched from /resources/tracks, and the subset the user has chosen to show on
 // the chart. The overlay polls savedSource each frame, so a version counter signals changes.
 let savedTracks = $state<SavedTrack[]>([]);
@@ -135,6 +140,7 @@ function onViewChange(view: MapView): void {
   mapView = view;
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   viewSaveTimer = setTimeout(() => mapViewStore.set(view), 400);
+  if (weatherActive) scheduleWeather();
 }
 
 let mapCommands = $state<MapCommands | undefined>();
@@ -142,6 +148,13 @@ let mapCommands = $state<MapCommands | undefined>();
 // Follow lock: while on, the map recenters on the boat as each fix arrives. A manual pan
 // (dragging the chart) releases it; it does not persist across reloads.
 let following = $state(false);
+
+// True when any weather-band layer is on, which gates the forecast fetch and the Forecast control.
+const weatherActive = $derived(
+  layersView?.items.some((i) => i.band === 'weather' && i.visible) ?? false,
+);
+// The wind value at the last map tap, shown as a transient chip.
+let windReadout = $state<WindReadout | undefined>();
 
 // The app menu's action options. Adding one is a single entry here. "Layers and charts" opens
 // the layers slide-over; Tracks and the collision thresholds stay as inline submenus below.
@@ -197,6 +210,37 @@ $effect(() => {
   const position = vessel.position;
   if (following && position) commands?.recenterOnVessel(position.latitude, position.longitude);
 });
+
+// Fetch a forecast for the viewport, debounced, when weather is on. Off by default, so nothing
+// fetches at startup. Called when weather is enabled and on every settled view change while on.
+let weatherFetchTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleWeather(): void {
+  if (weatherFetchTimer) clearTimeout(weatherFetchTimer);
+  weatherFetchTimer = setTimeout(async () => {
+    const bounds = mapCommands?.getBounds();
+    if (!weatherActive || !bounds) return;
+    weather.setStatus('loading');
+    const grid = await fetchForecast(bounds, { maxCells: 600, forecastDays: 5 });
+    if (grid) weather.setGrid(grid);
+    else weather.setStatus(weather.grid ? 'stale' : 'error');
+  }, 500);
+}
+
+$effect(() => {
+  if (weatherActive && !weather.grid) scheduleWeather();
+});
+
+// Show the wind at the tapped point for the selected forecast time; clears after a few seconds.
+let readoutTimer: ReturnType<typeof setTimeout> | undefined;
+function onMapTap(lngLat: { lng: number; lat: number }): void {
+  if (!weatherActive || !weather.grid) {
+    windReadout = undefined;
+    return;
+  }
+  windReadout = readoutAt(weather.grid, lngLat.lng, lngLat.lat, weather.bracket.lo);
+  if (readoutTimer) clearTimeout(readoutTimer);
+  if (windReadout) readoutTimer = setTimeout(() => (windReadout = undefined), 6000);
+}
 
 // Reconcile the registered user-chart overlays with the entity's source list: register an added
 // chart (resolving a stored file to a blob url first), unregister a removed one, and free its blob.
@@ -371,6 +415,8 @@ onMount(() => {
 
 onDestroy(() => {
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
+  if (weatherFetchTimer) clearTimeout(weatherFetchTimer);
+  if (readoutTimer) clearTimeout(readoutTimer);
   window.removeEventListener('pointerdown', primeAudio);
   lookoutAlarm.stop();
   auth.stop();
@@ -415,6 +461,7 @@ onDestroy(() => {
       {aisTargets}
       {collision}
       {recorder}
+      {weather}
       {trackSettings}
       savedTracks={savedSource}
       {chartsToken}
@@ -433,6 +480,7 @@ onDestroy(() => {
       {onViewChange}
       onNoteSelect={(selection) => (selectedNote = selection)}
       onUserPan={() => (following = false)}
+      {onMapTap}
     />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
@@ -450,8 +498,17 @@ onDestroy(() => {
         <LayersPanel view={layersView} {userCharts} onClose={() => (layersPanelOpen = false)} />
       </div>
     {/if}
+    {#if windReadout}
+      <div class="wind-readout" role="status" aria-live="polite">
+        Wind <b>{fmt(metersPerSecondToKnots(windReadout.speedMs), 0)}</b> kn from
+        <b>{fmt(radiansToBearing(windReadout.fromRad), 0)}</b>&deg;
+      </div>
+    {/if}
   </section>
   <footer class="status-strip">
+    <div class="forecast-center">
+      <WeatherTimeControl store={weather} active={weatherActive} />
+    </div>
     <span class="status" role="status" aria-live="polite">{connectionLabel}</span>
     {#if !net.online}
       <span class="readout offline" role="status" aria-live="polite">Offline</span>
@@ -556,6 +613,7 @@ onDestroy(() => {
   pointer-events: auto;
 }
 .status-strip {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 1.5rem;
@@ -564,8 +622,35 @@ onDestroy(() => {
   color: var(--text-muted);
   font-size: var(--text-md);
 }
+/* The Forecast control sits centered in the status strip, between the left and right readouts. */
+.forecast-center {
+  position: absolute;
+  inset-block: 0;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.forecast-center :global(.forecast-btn) {
+  pointer-events: auto;
+}
 .spacer {
   margin-inline-start: auto;
+}
+/* Transient wind value from a map tap, bottom-leading so it clears the centered scrubber. */
+.wind-readout {
+  position: absolute;
+  inset-block-end: 0.75rem;
+  inset-inline-start: 0.75rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text);
+  font-size: var(--text-sm);
+  z-index: var(--z-overlay);
 }
 .offline {
   color: var(--alarm);

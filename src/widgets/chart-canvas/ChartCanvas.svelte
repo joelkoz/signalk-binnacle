@@ -5,6 +5,7 @@ import type { AisTargets } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
 import type { TrackRecorder } from '$entities/track';
 import type { OwnVessel } from '$entities/vessel';
+import type { WeatherStore } from '$entities/weather';
 import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
 import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
@@ -13,6 +14,7 @@ import { createCollisionOverlay } from '$features/lookout';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay } from '$features/vessel-layer';
+import { createWindOverlay } from '$features/weather';
 import {
   applyBaseTheme,
   baseStyleUrl,
@@ -39,6 +41,7 @@ interface Props {
   aisTargets: AisTargets;
   collision: CollisionAssessment;
   recorder: TrackRecorder;
+  weather: WeatherStore;
   trackSettings: PersistedValue<TrackSettings>;
   // Saved tracks to draw, pulled each frame so show/hide and edits reflect without a remount.
   savedTracks?: SavedTracksSource;
@@ -59,6 +62,8 @@ interface Props {
   onNoteSelect?: (selection: NoteSelection | undefined) => void;
   // Fired when the user pans the map by hand (a drag), so a follow lock can release.
   onUserPan?: () => void;
+  // Fired on a map tap with the tapped position, for the weather readout.
+  onMapTap?: (lngLat: { lng: number; lat: number }) => void;
 }
 
 const {
@@ -67,6 +72,7 @@ const {
   aisTargets,
   collision,
   recorder,
+  weather,
   trackSettings,
   savedTracks,
   chartsToken,
@@ -82,6 +88,7 @@ const {
   onViewChange,
   onNoteSelect,
   onUserPan,
+  onMapTap,
 }: Props = $props();
 
 const DEFAULT_CENTER: [number, number] = [0, 30];
@@ -128,6 +135,7 @@ onMount(() => {
   // hand panning (not for programmatic setCenter or for scroll-zoom), so following survives a
   // zoom but ends the moment the user drags the chart away from the boat.
   mapInstance.on('dragstart', () => onUserPan?.());
+  mapInstance.on('click', (e) => onMapTap?.({ lng: e.lngLat.lng, lat: e.lngLat.lat }));
   mapInstance.on('load', async () => {
     emitView();
     const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
@@ -155,6 +163,10 @@ onMount(() => {
       await manager.register(createStreamingChartOverlay(source));
       if (destroyed) return;
     }
+
+    const windOverlay = createWindOverlay(weather);
+    await manager.register(windOverlay);
+    if (destroyed) return;
 
     const notesOverlay = createNotesOverlay(serverOrigin(), chartsToken, onNoteSelect);
     await manager.register(notesOverlay);
@@ -222,10 +234,15 @@ onMount(() => {
       recenterOnVessel: (latitude, longitude) => {
         mapInstance.setCenter([longitude, latitude]);
       },
+      getBounds: () => {
+        const b = mapInstance.getBounds();
+        return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
+      },
       clearNoteSelection: () => notesOverlay.deselect(ctx),
     });
 
     const tick = () => {
+      windOverlay.sync(ctx);
       notesOverlay.sync(ctx);
       aisOverlay.sync(ctx);
       collisionOverlay.sync(ctx);

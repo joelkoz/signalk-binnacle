@@ -133,11 +133,12 @@ $effect(() => () => stop());
   border-color: var(--accent);
 }
 .scrubber {
-  position: absolute;
+  position: fixed;
   inset-inline: 0.5rem;
-  inset-block-end: calc(var(--control-size) + 0.5rem);
+  inset-block-end: 2.6rem;
   margin-inline: auto;
   max-inline-size: 32rem;
+  z-index: var(--z-menu);
   display: flex;
   align-items: center;
   gap: 0.4rem;
