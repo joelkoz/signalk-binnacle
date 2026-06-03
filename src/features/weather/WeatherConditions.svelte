@@ -41,41 +41,52 @@ let seq = 0;
 
 const sourceLabel = $derived(providerName ?? 'Open-Meteo');
 
+// Provider data: fetch only when the position or the provider changes, not on every scrub. The
+// observations, point forecast, and warnings do not depend on the selected time, so reading it here
+// would refire three network calls per slider tick.
 $effect(() => {
   const pos = position;
   const provider = providerName;
-  // Reading selectedTime here re-runs the free fallback when the scrubber moves.
-  void store.selectedTime;
   if (!pos) {
-    current = undefined;
-    forecast = [];
-    warnings = [];
+    clear();
     return;
   }
-  void load(pos.latitude, pos.longitude, provider);
+  if (!provider) return; // the free-fallback effect owns the no-provider case
+  void loadProvider(pos.latitude, pos.longitude);
 });
 
-async function load(lat: number, lon: number, provider: string | undefined): Promise<void> {
+// Free fallback: recompute from the grid on position or selected-time change, but only when no
+// provider is configured. With a provider, the effect above owns the conditions.
+$effect(() => {
+  const pos = position;
+  const provider = providerName;
+  void store.selectedTime;
+  if (!pos || provider) return;
+  current = freeCurrent(pos.latitude, pos.longitude);
+  forecast = freeForecast(pos.latitude, pos.longitude);
+  warnings = [];
+});
+
+function clear(): void {
+  current = undefined;
+  forecast = [];
+  warnings = [];
+}
+
+async function loadProvider(lat: number, lon: number): Promise<void> {
   const mine = ++seq;
   loading = true;
-  if (provider) {
-    const [obs, series, warns] = await Promise.all([
-      fetchObservations(origin, lat, lon, token),
-      fetchPointForecasts(origin, lat, lon, 12, token),
-      fetchWeatherWarnings(origin, lat, lon, token),
-    ]);
-    if (mine !== seq) return;
-    current = obs ? conditionsFromSignalK(obs) : freeCurrent(lat, lon);
-    forecast = series
-      ? series.map(conditionsFromSignalK).slice(0, FORECAST_STEPS)
-      : freeForecast(lat, lon);
-    warnings = warns ?? [];
-  } else {
-    if (mine !== seq) return;
-    current = freeCurrent(lat, lon);
-    forecast = freeForecast(lat, lon);
-    warnings = [];
-  }
+  const [obs, series, warns] = await Promise.all([
+    fetchObservations(origin, lat, lon, token),
+    fetchPointForecasts(origin, lat, lon, 12, token),
+    fetchWeatherWarnings(origin, lat, lon, token),
+  ]);
+  if (mine !== seq) return;
+  current = obs ? conditionsFromSignalK(obs) : freeCurrent(lat, lon);
+  forecast = series
+    ? series.map(conditionsFromSignalK).slice(0, FORECAST_STEPS)
+    : freeForecast(lat, lon);
+  warnings = warns ?? [];
   loading = false;
 }
 
@@ -210,7 +221,7 @@ function stepLabel(timeMs: number): string {
             <span class="f-time">{stepLabel(step.timeMs)}</span>
             <span class="f-wind"><b>{knots(step.windMs)}</b> kn {bearing(step.fromRad)}&deg;</span>
             {#if step.precipitationMm !== undefined && step.precipitationMm >= 0.1}
-              <span class="f-rain"><b>{formatFixed(step.precipitationMm, 1)}</b> mm</span>
+              <span class="f-rain"><b>{formatFixed(step.precipitationMm, 1)}</b> mm/h</span>
             {/if}
           </li>
         {/each}

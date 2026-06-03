@@ -2,6 +2,7 @@ import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibr
 import type { WeatherStore } from '$entities/weather';
 import { emptyFeatureCollection } from './feature-collection';
 import { type CanvasFactory, createFieldOverlay, type FieldOverlay } from './field-overlay';
+import { WEATHER_LAYER_IDS } from './fills';
 import { waveArrowFeatures } from './wave-arrows';
 import { waveArrowColor } from './wave-colormap';
 import { waveFieldRgba } from './wave-field';
@@ -20,7 +21,7 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
   const field = createFieldOverlay(
     store,
     {
-      id: 'weather-waves',
+      id: WEATHER_LAYER_IDS.waves,
       title: 'Waves',
       sourceId: FIELD_SOURCE,
       layerId: FIELD_LAYER,

@@ -1,5 +1,6 @@
 import type { WeatherStore } from '$entities/weather';
 import { type CanvasFactory, createFieldOverlay, type FieldOverlay } from './field-overlay';
+import { WEATHER_LAYER_IDS } from './fills';
 import { precipFieldRgba } from './precip-field';
 
 // The precipitation overlay: the shared canvas field overlay bound to the rain-rate field. Off by
@@ -8,7 +9,7 @@ export function createPrecipOverlay(store: WeatherStore, makeCanvas?: CanvasFact
   return createFieldOverlay(
     store,
     {
-      id: 'weather-precip',
+      id: WEATHER_LAYER_IDS.precip,
       title: 'Precipitation',
       sourceId: 'binnacle-weather-precip-field',
       layerId: 'binnacle-weather-precip-field-layer',

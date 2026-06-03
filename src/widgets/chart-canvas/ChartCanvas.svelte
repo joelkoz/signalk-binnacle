@@ -9,10 +9,10 @@ import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
 import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
 import { LayersView } from '$features/layers-panel';
-import { createCollisionOverlay } from '$features/lookout';
+import { COLLISION_OVERLAY_ID, createCollisionOverlay } from '$features/lookout';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
-import { createVesselOverlay } from '$features/vessel-layer';
+import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
 import {
   applyBaseTheme,
   baseStyleUrl,
@@ -90,6 +90,7 @@ const DEFAULT_ZOOM = 2;
 let container: HTMLDivElement;
 let map: maplibregl.Map | undefined;
 let manager: LayerManager | undefined;
+let resizeObserver: ResizeObserver | undefined;
 let frame = 0;
 let destroyed = false;
 
@@ -110,6 +111,10 @@ onMount(() => {
   }
 
   const mapInstance = map;
+  // The chart host resizes when side panels open or the viewport changes without firing a window
+  // resize, so observe the container and let MapLibre re-fit rather than sit at a stale size.
+  resizeObserver = new ResizeObserver(() => mapInstance.resize());
+  resizeObserver.observe(container);
   // The 'move' event fires many times per drag frame; coalesce to one emit per
   // animation frame so the status strip updates at display rate, not per pixel.
   let viewPending = false;
@@ -139,7 +144,7 @@ onMount(() => {
       onOrderChange,
       // The own vessel and active collision alarms stay pinned on top so a chart or traffic
       // can never hide them; bottom to top, collision sits just beneath the vessel.
-      pinned: ['collision', 'own-vessel'],
+      pinned: [COLLISION_OVERLAY_ID, OWN_VESSEL_OVERLAY_ID],
     });
 
     const charts = await fetchCharts(serverOrigin(), chartsToken);
@@ -239,7 +244,8 @@ onMount(() => {
 
 onDestroy(() => {
   destroyed = true;
-  if (frame) cancelAnimationFrame(frame);
+  cancelAnimationFrame(frame);
+  resizeObserver?.disconnect();
   map?.remove();
 });
 </script>

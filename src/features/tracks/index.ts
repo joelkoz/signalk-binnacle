@@ -1,5 +1,5 @@
 export { default as TracksPanel } from './TracksPanel.svelte';
-export { downloadGeoJson, toGeoJsonString } from './track-export';
+export { downloadGeoJson } from './track-export';
 export type { SavedTrack } from './tracks-client';
 export {
   deleteTrack,

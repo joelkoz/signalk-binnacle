@@ -5,7 +5,9 @@ import type {
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import type { OverlayContext, OverlayModule } from '$shared/map';
+import type { Theme } from '$shared/ui';
 import { emptyFeatureCollection } from './feature-collection';
+import { WEATHER_LAYER_IDS } from './fills';
 import { windArrowFeatures } from './wind-arrows';
 import { windColorExpression } from './wind-colormap';
 
@@ -25,12 +27,12 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
   let lastGrid: unknown;
   let lastTime = Number.NaN;
 
-  function colorExpr(theme: Parameters<typeof windColorExpression>[0]): ExpressionSpecification {
+  function colorExpr(theme: Theme): ExpressionSpecification {
     return windColorExpression(theme) as unknown as ExpressionSpecification;
   }
 
   return {
-    id: 'weather-wind',
+    id: WEATHER_LAYER_IDS.wind,
     title: 'Wind',
     band: 'weather',
     supportsOpacity: true,

@@ -15,6 +15,10 @@ import {
 const SOURCE_ID = 'binnacle-collision';
 const LAYER_ID = 'binnacle-collision-ring';
 
+// The overlay id. The chart pins this just beneath the vessel so an active alarm can never be hidden;
+// exported so the pinned list references the same constant instead of a literal that could drift.
+export const COLLISION_OVERLAY_ID = 'collision';
+
 interface CollisionOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
 }
@@ -53,7 +57,7 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
   let lastContacts: readonly DangerContact[] | undefined;
 
   return {
-    id: 'collision',
+    id: COLLISION_OVERLAY_ID,
     title: 'Collision risk',
     band: 'safety',
     supportsOpacity: true,

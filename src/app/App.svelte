@@ -37,13 +37,17 @@ import {
   saveTrack,
   TracksPanel,
 } from '$features/tracks';
-import { createWeatherLoader, defaultProviderName, fetchWeatherProviders } from '$features/weather';
+import {
+  createWeatherLoader,
+  defaultProviderName,
+  fetchWeatherProviders,
+  WEATHER_LAYER_IDS,
+} from '$features/weather';
 import {
   formatFixed,
   formatLatitude,
   formatLongitude,
   metersPerSecondToKnots,
-  PLACEHOLDER,
   radiansToBearing,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
@@ -108,8 +112,8 @@ let weatherProviderName = $state<string | undefined>();
 // The panel's own weather-layer visibility and view, separate from the nav chart. Default wind and
 // waves on so the first open shows something without hunting through toggles.
 const weatherLayerSettings = new PersistedValue<LayerSettings>('binnacle:weather-layers', {
-  'weather-wind': { visible: true, opacity: 1 },
-  'weather-waves': { visible: true, opacity: 0.7 },
+  [WEATHER_LAYER_IDS.wind]: { visible: true, opacity: 1 },
+  [WEATHER_LAYER_IDS.waves]: { visible: true, opacity: 0.7 },
 });
 const weatherViewStore = createMapView('binnacle:weather-view');
 const savedWeatherView = isMapView(weatherViewStore.value) ? weatherViewStore.value : undefined;
@@ -352,8 +356,6 @@ const CONNECTION_LABELS: Record<ConnectionPhase, string> = {
 
 const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase]);
 
-const fmt = formatFixed;
-
 const accessRequestsUrl = `${serverOrigin()}/admin/#/security/access/requests`;
 
 // Connect the stream the moment access resolves (an approved token, or an unsecured server),
@@ -508,17 +510,19 @@ onDestroy(() => {
         Forecast
       </button>
     </div>
-    <span class="status" role="status" aria-live="polite">{connectionLabel}</span>
+    <span role="status" aria-live="polite">{connectionLabel}</span>
     {#if !net.online}
       <span class="readout offline" role="status" aria-live="polite">Offline</span>
     {/if}
-    <span class="readout">SOG <b>{fmt(metersPerSecondToKnots(vessel.sogMps), 1)}</b> kn</span>
-    <span class="readout">COG <b>{fmt(radiansToBearing(vessel.cogRad), 0)}</b>&deg;</span>
+    <span class="readout"
+      >SOG <b>{formatFixed(metersPerSecondToKnots(vessel.sogMps), 1)}</b> kn</span
+    >
+    <span class="readout">COG <b>{formatFixed(radiansToBearing(vessel.cogRad), 0)}</b>&deg;</span>
     <span class="spacer"></span>
     <span class="readout">Center</span>
     <span class="readout"><b>{formatLatitude(mapView?.lat)}</b></span>
     <span class="readout"><b>{formatLongitude(mapView?.lon)}</b></span>
-    <span class="readout">z<b>{mapView ? mapView.zoom.toFixed(1) : PLACEHOLDER}</b></span>
+    <span class="readout">z<b>{formatFixed(mapView?.zoom, 1)}</b></span>
   </footer>
 </main>
 

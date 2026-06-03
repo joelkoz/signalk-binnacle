@@ -7,6 +7,10 @@ const SOURCE_ID = 'binnacle-own-vessel';
 const LAYER_ID = 'binnacle-own-vessel-symbol';
 const DEFAULT_COLOR: Rgba = { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff };
 
+// The overlay id. The chart pins this on top so a chart or traffic can never hide the boat; exported
+// so the pinned list references the same constant instead of a literal that could drift on a rename.
+export const OWN_VESSEL_OVERLAY_ID = 'own-vessel';
+
 function emptyCollection(): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
@@ -48,7 +52,7 @@ export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
   }
 
   return createSymbolOverlay({
-    id: 'own-vessel',
+    id: OWN_VESSEL_OVERLAY_ID,
     title: 'Own vessel',
     band: 'vessel',
     sourceId: SOURCE_ID,

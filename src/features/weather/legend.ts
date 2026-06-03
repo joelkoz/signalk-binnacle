@@ -2,6 +2,7 @@ import { metersPerSecondToKnots } from '$shared/lib';
 import type { Theme } from '$shared/ui';
 import { cloudColor } from './cloud-colormap';
 import { type Rgba, rgbaCss } from './color-ramp';
+import { WEATHER_LAYER_IDS } from './fills';
 import { precipColor } from './precip-colormap';
 import { isobarColors } from './pressure-colors';
 import { DEFAULT_INTERVAL_HPA } from './pressure-isobars';
@@ -63,7 +64,7 @@ function rampLegend(
 // swatches for the isobars and the radar. Returns undefined for an unknown layer id.
 export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | undefined {
   switch (layerId) {
-    case 'weather-wind':
+    case WEATHER_LAYER_IDS.wind:
       return rampLegend(
         layerId,
         'Wind (kn)',
@@ -71,7 +72,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         (s) => windColor(s, theme),
         (s) => String(Math.round(metersPerSecondToKnots(s) ?? 0)),
       );
-    case 'weather-pressure':
+    case WEATHER_LAYER_IDS.pressure:
       return {
         id: layerId,
         title: 'Pressure',
@@ -79,7 +80,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
           { color: isobarColors(theme).line, label: `isobars, ${DEFAULT_INTERVAL_HPA} hPa` },
         ],
       };
-    case 'weather-waves':
+    case WEATHER_LAYER_IDS.waves:
       return rampLegend(
         layerId,
         'Waves (m)',
@@ -87,7 +88,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         (h) => waveColor(h, theme),
         (h) => String(h),
       );
-    case 'weather-precip':
+    case WEATHER_LAYER_IDS.precip:
       return rampLegend(
         layerId,
         'Rain (mm/h)',
@@ -95,7 +96,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         (p) => precipColor(p, theme),
         (p) => String(p),
       );
-    case 'weather-cloud':
+    case WEATHER_LAYER_IDS.cloud:
       return rampLegend(
         layerId,
         'Cloud (%)',
@@ -103,7 +104,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         (c) => cloudColor(c, theme),
         (c) => String(Math.round(c * 100)),
       );
-    case 'weather-radar':
+    case WEATHER_LAYER_IDS.radar:
       // RainViewer's palette is fixed (not theme-dependent), so these are approximate fixed swatches
       // for its universal-blue intensity scale.
       return {

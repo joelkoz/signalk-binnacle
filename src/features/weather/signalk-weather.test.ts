@@ -5,6 +5,7 @@ import {
   fetchObservations,
   fetchPointForecasts,
   fetchWeatherProviders,
+  fetchWeatherWarnings,
   nearestInTime,
   readoutFromSignalK,
   type SignalKWeatherData,
@@ -22,9 +23,9 @@ function mockFetch(body: unknown, ok = true) {
 
 describe('fetchWeatherProviders', () => {
   it('returns the providers object', async () => {
-    const fetchFn = mockFetch({ 'open-meteo': { provider: 'OpenMeteo', isDefault: true } });
+    const fetchFn = mockFetch({ 'open-meteo': { name: 'OpenMeteo', isDefault: true } });
     const providers = await fetchWeatherProviders(ORIGIN, undefined, fetchFn);
-    expect(providers).toEqual({ 'open-meteo': { provider: 'OpenMeteo', isDefault: true } });
+    expect(providers).toEqual({ 'open-meteo': { name: 'OpenMeteo', isDefault: true } });
     expect(fetchFn).toHaveBeenCalledWith(
       'https://boat.local/signalk/v2/api/weather/_providers',
       undefined,
@@ -49,21 +50,55 @@ describe('defaultProviderName', () => {
   it('picks the default provider name', () => {
     expect(
       defaultProviderName({
-        a: { provider: 'AccuWeather', isDefault: true },
-        b: { provider: 'OpenMeteo', isDefault: false },
+        a: { name: 'AccuWeather', isDefault: true },
+        b: { name: 'OpenMeteo', isDefault: false },
       }),
     ).toBe('AccuWeather');
   });
 
   it('falls back to the first when none is flagged default', () => {
-    expect(defaultProviderName({ b: { provider: 'OpenMeteo', isDefault: false } })).toBe(
-      'OpenMeteo',
+    expect(defaultProviderName({ b: { name: 'OpenMeteo', isDefault: false } })).toBe('OpenMeteo');
+  });
+
+  it('accepts a legacy provider field', () => {
+    expect(defaultProviderName({ a: { provider: 'AccuWeather', isDefault: true } })).toBe(
+      'AccuWeather',
     );
+  });
+
+  it('falls back to the provider id when no name is present', () => {
+    expect(defaultProviderName({ 'open-meteo': { isDefault: true } })).toBe('open-meteo');
   });
 
   it('is undefined when there are no providers', () => {
     expect(defaultProviderName({})).toBeUndefined();
     expect(defaultProviderName(undefined)).toBeUndefined();
+  });
+});
+
+describe('fetchWeatherWarnings', () => {
+  it('returns the warnings array', async () => {
+    const warnings = [{ startTime: 'a', endTime: 'b', details: 'Gale', source: 's', type: 'gale' }];
+    const fetchFn = mockFetch(warnings);
+    expect(await fetchWeatherWarnings(ORIGIN, 1, 2, undefined, fetchFn)).toEqual(warnings);
+    expect(fetchFn.mock.calls[0][0]).toBe(
+      'https://boat.local/signalk/v2/api/weather/warnings?lat=1&lon=2',
+    );
+  });
+
+  it('returns undefined when the body is not an array', async () => {
+    expect(await fetchWeatherWarnings(ORIGIN, 0, 0, undefined, mockFetch({}))).toBeUndefined();
+  });
+
+  it('returns undefined on a non-ok response', async () => {
+    expect(
+      await fetchWeatherWarnings(ORIGIN, 0, 0, undefined, mockFetch([], false)),
+    ).toBeUndefined();
+  });
+
+  it('returns undefined on a thrown transport error', async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockRejectedValue(new Error('offline'));
+    expect(await fetchWeatherWarnings(ORIGIN, 0, 0, undefined, fetchFn)).toBeUndefined();
   });
 });
 
@@ -155,6 +190,14 @@ describe('nearestInTime', () => {
   it('finds the entry closest to the target time', () => {
     const target = Date.parse('2026-06-03T15:40:00Z');
     expect(nearestInTime(series, target)?.date).toBe('2026-06-03T15:00:00Z');
+  });
+
+  it('skips entries with an unparseable date', () => {
+    const mixed: SignalKWeatherData[] = [{ date: 'not-a-date' }, { date: '2026-06-03T15:00:00Z' }];
+    expect(nearestInTime(mixed, Date.parse('2026-06-03T15:10:00Z'))?.date).toBe(
+      '2026-06-03T15:00:00Z',
+    );
+    expect(nearestInTime([{ date: 'nope' }], 0)).toBeUndefined();
   });
 
   it('is undefined for an empty series', () => {

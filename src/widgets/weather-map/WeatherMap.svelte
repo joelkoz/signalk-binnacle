@@ -21,6 +21,7 @@ import {
   stepTime,
   type TimeRange,
   WEATHER_FILL_IDS,
+  WEATHER_LAYER_IDS,
   WeatherConditions,
   type WeatherLegend,
   type WeatherLoader,
@@ -120,8 +121,8 @@ const items = $derived(layersView?.items ?? []);
 const fills = $derived(items.filter((i) => WEATHER_FILL_IDS.includes(i.id)));
 const overlayItems = $derived(items.filter((i) => !WEATHER_FILL_IDS.includes(i.id)));
 const anyActive = $derived(items.some((i) => i.visible));
-const wavesActive = $derived(items.some((i) => i.id === 'weather-waves' && i.visible));
-const radarActive = $derived(items.some((i) => i.id === 'weather-radar' && i.visible));
+const wavesActive = $derived(items.some((i) => i.id === WEATHER_LAYER_IDS.waves && i.visible));
+const radarActive = $derived(items.some((i) => i.id === WEATHER_LAYER_IDS.radar && i.visible));
 const layerOn = (id: string): boolean => items.some((i) => i.id === id && i.visible);
 const legends = $derived<WeatherLegend[]>(
   items
@@ -349,7 +350,7 @@ onMount(() => {
 
 onDestroy(() => {
   destroyed = true;
-  if (frame) cancelAnimationFrame(frame);
+  cancelAnimationFrame(frame);
   if (fetchTimer) clearTimeout(fetchTimer);
   if (readoutTimer) clearTimeout(readoutTimer);
   stopPlay();
@@ -414,16 +415,16 @@ onDestroy(() => {
         <span class="readout-line">
           Wind <b>{fmt(metersPerSecondToKnots(readout.speedMs), 0)}</b> kn from
           <b>{fmt(radiansToBearing(readout.fromRad), 0)}</b>&deg;
-          {#if showField('weather-pressure') && readout.pressurePa !== undefined}
+          {#if showField(WEATHER_LAYER_IDS.pressure) && readout.pressurePa !== undefined}
             &middot; <b>{fmt(pascalsToHectopascals(readout.pressurePa), 0)}</b> hPa
           {/if}
-          {#if showField('weather-waves') && readout.waveHeightM !== undefined}
+          {#if showField(WEATHER_LAYER_IDS.waves) && readout.waveHeightM !== undefined}
             &middot; sea <b>{fmt(readout.waveHeightM, 1)}</b> m
             {#if readout.wavePeriodS !== undefined}
               / <b>{fmt(readout.wavePeriodS, 0)}</b> s
             {/if}
           {/if}
-          {#if (showField('weather-precip') || showField('weather-radar')) && readout.precipitationMm !== undefined && readout.precipitationMm >= 0.1}
+          {#if (showField(WEATHER_LAYER_IDS.precip) || showField(WEATHER_LAYER_IDS.radar)) && readout.precipitationMm !== undefined && readout.precipitationMm >= 0.1}
             &middot; rain <b>{fmt(readout.precipitationMm, 1)}</b> mm/h
           {/if}
         </span>

@@ -6,6 +6,8 @@ import type {
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import type { OverlayContext, OverlayModule } from '$shared/map';
+import { emptyFeatureCollection } from './feature-collection';
+import { WEATHER_LAYER_IDS } from './fills';
 import { isobarColors } from './pressure-colors';
 import { isobarFeatures } from './pressure-isobars';
 
@@ -18,10 +20,6 @@ export interface PressureOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
 }
 
-function emptyCollection(): GeoJSON.FeatureCollection {
-  return { type: 'FeatureCollection', features: [] };
-}
-
 // Mean-sea-level pressure isobars in the weather band: a line layer of marching-squares contours
 // and a sparse label layer of hPa values. Off by default. Rebuilds only when the grid or the
 // selected time changes, like the wind overlay.
@@ -30,7 +28,7 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
   let lastTime = Number.NaN;
 
   return {
-    id: 'weather-pressure',
+    id: WEATHER_LAYER_IDS.pressure,
     title: 'Pressure',
     band: 'weather',
     supportsOpacity: true,
@@ -39,11 +37,17 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
     add(ctx) {
       const colors = isobarColors('day');
       if (!ctx.map.getSource(LINE_SOURCE)) {
-        const source: GeoJSONSourceSpecification = { type: 'geojson', data: emptyCollection() };
+        const source: GeoJSONSourceSpecification = {
+          type: 'geojson',
+          data: emptyFeatureCollection(),
+        };
         ctx.map.addSource(LINE_SOURCE, source);
       }
       if (!ctx.map.getSource(LABEL_SOURCE)) {
-        const source: GeoJSONSourceSpecification = { type: 'geojson', data: emptyCollection() };
+        const source: GeoJSONSourceSpecification = {
+          type: 'geojson',
+          data: emptyFeatureCollection(),
+        };
         ctx.map.addSource(LABEL_SOURCE, source);
       }
       if (!ctx.map.getLayer(LINE_LAYER)) {
@@ -90,8 +94,8 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
         | { setData(d: unknown): void }
         | undefined;
       if (!grid) {
-        lineSource?.setData(emptyCollection());
-        labelSource?.setData(emptyCollection());
+        lineSource?.setData(emptyFeatureCollection());
+        labelSource?.setData(emptyFeatureCollection());
         return;
       }
       const { lines, labels } = isobarFeatures(grid, store.bracket);

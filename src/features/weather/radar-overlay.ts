@@ -1,6 +1,7 @@
 import type { RasterLayerSpecification, RasterSourceSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import type { OverlayContext, OverlayModule } from '$shared/map';
+import { WEATHER_LAYER_IDS } from './fills';
 import { frameTiles, TILE_SIZE } from './radar-frames';
 
 const SOURCE_ID = 'binnacle-weather-radar';
@@ -32,7 +33,7 @@ export function createRadarOverlay(
   }
 
   return {
-    id: 'weather-radar',
+    id: WEATHER_LAYER_IDS.radar,
     title: 'Rain radar',
     band: 'weather',
     supportsOpacity: true,

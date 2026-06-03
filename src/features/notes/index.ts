@@ -1,6 +1,5 @@
 export { default as NoteDetailPanel } from './NoteDetailPanel.svelte';
 export type { Bbox, NotePoint, NoteSelection } from './notes-client';
-export { fetchNotes } from './notes-client';
 export {
   createNoteDetailLoader,
   type NormalizedItem,
