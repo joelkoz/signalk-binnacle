@@ -1,116 +1,51 @@
-import type {
-  CanvasSourceSpecification,
-  GeoJSONSourceSpecification,
-  LineLayerSpecification,
-  RasterLayerSpecification,
-} from 'maplibre-gl';
+import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
-import type { OverlayContext, OverlayModule } from '$shared/map';
-import type { Theme } from '$shared/ui';
+import { type CanvasFactory, createFieldOverlay, type FieldOverlay } from './field-overlay';
 import { waveArrowFeatures } from './wave-arrows';
 import { waveArrowColor } from './wave-colormap';
 import { waveFieldRgba } from './wave-field';
 
 const FIELD_SOURCE = 'binnacle-weather-waves-field';
-const ARROW_SOURCE = 'binnacle-weather-waves-arrows';
 const FIELD_LAYER = 'binnacle-weather-waves-field-layer';
+const ARROW_SOURCE = 'binnacle-weather-waves-arrows';
 const ARROW_LAYER = 'binnacle-weather-waves-arrow-layer';
 
-type Quad = [[number, number], [number, number], [number, number], [number, number]];
-type CanvasFactory = () => HTMLCanvasElement;
-
-export interface WavesOverlay extends OverlayModule {
-  sync(ctx: OverlayContext): void;
-}
+export type WavesOverlay = FieldOverlay;
 
 function emptyCollection(): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
 
-function defaultCanvas(): HTMLCanvasElement {
-  return document.createElement('canvas');
-}
-
-// A degenerate default extent; replaced with the grid bbox on the first sync that has data.
-const PLACEHOLDER_COORDS: Quad = [
-  [0, 0.0001],
-  [0.0001, 0.0001],
-  [0.0001, 0],
-  [0, 0],
-];
-
-// The waves overlay: a wave-height color field drawn to a canvas at grid resolution and smoothed by
-// the GPU (raster-resampling linear), plus a sparse direction-arrow line layer, both in the weather
-// band. Off by default. The canvas is redrawn only when the grid, the selected time, or the theme
-// changes. The source is animated so MapLibre re-reads the canvas after each redraw; the per-frame
-// re-upload of a grid-resolution texture (a few KB) is negligible next to the vector-tile redraw,
-// and it avoids the version-dependent canvas re-read behavior of a static source.
-export function createWavesOverlay(
-  store: WeatherStore,
-  makeCanvas: CanvasFactory = defaultCanvas,
-): WavesOverlay {
-  const canvas = makeCanvas();
-  let theme: Theme = 'day';
+// The waves overlay: the shared canvas height field plus a sparse direction-arrow line layer. It
+// composes createFieldOverlay for the smooth height field and manages the arrow source and layer
+// itself, rebuilding the arrows only when the grid or the selected time changes.
+export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFactory): WavesOverlay {
+  const field = createFieldOverlay(
+    store,
+    {
+      id: 'weather-waves',
+      title: 'Waves',
+      sourceId: FIELD_SOURCE,
+      layerId: FIELD_LAYER,
+      fieldRgba: waveFieldRgba,
+    },
+    makeCanvas,
+  );
   let lastGrid: unknown;
   let lastTime = Number.NaN;
-  let lastTheme: Theme | undefined;
-
-  function redraw(): void {
-    const grid = store.grid;
-    const field = grid ? waveFieldRgba(grid, store.bracket, theme) : undefined;
-    const context = canvas.getContext('2d');
-    if (!field || !context) return;
-    canvas.width = field.width;
-    canvas.height = field.height;
-    const image = context.createImageData(field.width, field.height);
-    image.data.set(field.data);
-    context.putImageData(image, 0, 0);
-  }
-
-  function fieldCoords(): Quad | undefined {
-    const grid = store.grid;
-    if (!grid || grid.lons.length === 0 || grid.lats.length === 0) return undefined;
-    const w = grid.lons[0];
-    const e = grid.lons[grid.lons.length - 1];
-    const s = grid.lats[0];
-    const n = grid.lats[grid.lats.length - 1];
-    return [
-      [w, n],
-      [e, n],
-      [e, s],
-      [w, s],
-    ];
-  }
 
   return {
-    id: 'weather-waves',
-    title: 'Waves',
+    id: field.id,
+    title: field.title,
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,
     layerIds: [FIELD_LAYER, ARROW_LAYER],
     add(ctx) {
-      if (!ctx.map.getSource(FIELD_SOURCE)) {
-        const source: CanvasSourceSpecification = {
-          type: 'canvas',
-          canvas,
-          coordinates: PLACEHOLDER_COORDS,
-          animate: true,
-        };
-        ctx.map.addSource(FIELD_SOURCE, source);
-      }
+      field.add(ctx);
       if (!ctx.map.getSource(ARROW_SOURCE)) {
         const source: GeoJSONSourceSpecification = { type: 'geojson', data: emptyCollection() };
         ctx.map.addSource(ARROW_SOURCE, source);
-      }
-      if (!ctx.map.getLayer(FIELD_LAYER)) {
-        const layer: RasterLayerSpecification = {
-          id: FIELD_LAYER,
-          type: 'raster',
-          source: FIELD_SOURCE,
-          paint: { 'raster-opacity': 1, 'raster-resampling': 'linear', 'raster-fade-duration': 0 },
-        };
-        ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
       }
       if (!ctx.map.getLayer(ARROW_LAYER)) {
         const layer: LineLayerSpecification = {
@@ -124,40 +59,29 @@ export function createWavesOverlay(
       }
     },
     sync(ctx) {
+      field.sync(ctx);
       const grid = store.grid;
-      if (grid === lastGrid && store.selectedTime === lastTime && theme === lastTheme) return;
+      if (grid === lastGrid && store.selectedTime === lastTime) return;
       lastGrid = grid;
       lastTime = store.selectedTime;
-      lastTheme = theme;
-      redraw();
-      const coords = fieldCoords();
-      const fieldSource = ctx.map.getSource(FIELD_SOURCE) as
-        | { setCoordinates?(c: Quad): void }
-        | undefined;
-      if (coords) fieldSource?.setCoordinates?.(coords);
-      const arrowSource = ctx.map.getSource(ARROW_SOURCE) as
-        | { setData(d: unknown): void }
-        | undefined;
-      arrowSource?.setData(grid ? waveArrowFeatures(grid, store.bracket) : emptyCollection());
+      const source = ctx.map.getSource(ARROW_SOURCE) as { setData(d: unknown): void } | undefined;
+      source?.setData(grid ? waveArrowFeatures(grid, store.bracket) : emptyCollection());
     },
     remove(ctx) {
       if (ctx.map.getLayer(ARROW_LAYER)) ctx.map.removeLayer(ARROW_LAYER);
-      if (ctx.map.getLayer(FIELD_LAYER)) ctx.map.removeLayer(FIELD_LAYER);
       if (ctx.map.getSource(ARROW_SOURCE)) ctx.map.removeSource(ARROW_SOURCE);
-      if (ctx.map.getSource(FIELD_SOURCE)) ctx.map.removeSource(FIELD_SOURCE);
+      field.remove(ctx);
     },
     setVisible(ctx, visible) {
-      const v = visible ? 'visible' : 'none';
-      ctx.map.setLayoutProperty(FIELD_LAYER, 'visibility', v);
-      ctx.map.setLayoutProperty(ARROW_LAYER, 'visibility', v);
+      field.setVisible(ctx, visible);
+      ctx.map.setLayoutProperty(ARROW_LAYER, 'visibility', visible ? 'visible' : 'none');
     },
     setOpacity(ctx, opacity) {
-      ctx.map.setPaintProperty(FIELD_LAYER, 'raster-opacity', opacity);
+      field.setOpacity?.(ctx, opacity);
       ctx.map.setPaintProperty(ARROW_LAYER, 'line-opacity', opacity);
     },
     applyTheme(ctx, paint) {
-      theme = paint.theme;
-      lastTheme = undefined; // force a field redraw in the theme's colors on the next sync
+      field.applyTheme?.(ctx, paint);
       ctx.map.setPaintProperty(ARROW_LAYER, 'line-color', waveArrowColor(paint.theme));
     },
   };
