@@ -14,6 +14,10 @@ const grid: WeatherGrid = {
     [0, 0, 0, 0],
     [0, 0, 0, 0],
   ],
+  pressureMsl: [
+    [101300, 101300, 101300, 101300],
+    [101300, 101300, 101300, 101300],
+  ],
 };
 
 describe('readoutAt', () => {
@@ -21,6 +25,7 @@ describe('readoutAt', () => {
     const r = readoutAt(grid, 0.5, 0.5, 0);
     expect(r?.speedMs).toBeCloseTo(10, 4);
     expect(r?.fromRad).toBeCloseTo(Math.PI / 2, 4); // wind toward the west comes from the east
+    expect(r?.pressurePa).toBeCloseTo(101300, 0);
   });
   it('returns undefined outside the grid', () => {
     expect(readoutAt(grid, 9, 9, 0)).toBeUndefined();
