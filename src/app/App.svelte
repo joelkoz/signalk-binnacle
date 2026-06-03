@@ -167,6 +167,11 @@ const weatherLayers = $derived((layersView?.items ?? []).filter((i) => i.band ==
 // Whether a specific weather layer is on, so the tap readout only shows values for layers the user
 // has enabled (the forecast grid carries every field regardless of which layers are visible).
 const layerVisible = (id: string): boolean => weatherLayers.some((i) => i.id === id && i.visible);
+// The area fills are mutually exclusive (one at a time); wind and pressure are combinable overlays.
+// The menu groups them so the one-fill rule reads clearly.
+const FILL_IDS = ['weather-waves', 'weather-precip', 'weather-cloud', 'weather-radar'];
+const weatherFills = $derived(weatherLayers.filter((i) => FILL_IDS.includes(i.id)));
+const weatherOverlayLayers = $derived(weatherLayers.filter((i) => !FILL_IDS.includes(i.id)));
 // True when any weather layer is on, which gates the forecast fetch and the Forecast control.
 const weatherActive = $derived(weatherLayers.some((i) => i.visible));
 // True when the waves layer specifically is on, which gates the extra marine fetch so wind-only or
@@ -484,20 +489,34 @@ onDestroy(() => {
     <span class="topbar-start">
       <AppMenu items={menuItems}>
         <MenuSubmenu label="Weather" icon={CloudSun}>
-          <ul class="weather-toggles">
-            {#each weatherLayers as layer (layer.id)}
-              <li>
-                <LayerToggle
-                  title={layer.title}
-                  visible={layer.visible}
-                  onToggle={(visible) => layersView?.toggle(layer.id, visible)}
-                />
-              </li>
-            {/each}
-            {#if weatherLayers.length === 0}
-              <li class="weather-empty">Weather loads with the chart</li>
-            {/if}
-          </ul>
+          {#if weatherLayers.length === 0}
+            <p class="weather-empty">Weather loads with the chart</p>
+          {:else}
+            <p class="weather-group-label">Map fill (one at a time)</p>
+            <ul class="weather-toggles">
+              {#each weatherFills as layer (layer.id)}
+                <li>
+                  <LayerToggle
+                    title={layer.title}
+                    visible={layer.visible}
+                    onToggle={(visible) => layersView?.toggle(layer.id, visible)}
+                  />
+                </li>
+              {/each}
+            </ul>
+            <p class="weather-group-label">Overlays</p>
+            <ul class="weather-toggles">
+              {#each weatherOverlayLayers as layer (layer.id)}
+                <li>
+                  <LayerToggle
+                    title={layer.title}
+                    visible={layer.visible}
+                    onToggle={(visible) => layersView?.toggle(layer.id, visible)}
+                  />
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </MenuSubmenu>
         <MenuSubmenu label="Tracks" icon={Spline}>
           <TracksPanel
@@ -756,5 +775,17 @@ onDestroy(() => {
   padding: 0.2rem;
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+.weather-group-label {
+  margin: 0.35rem 0 0.15rem;
+  padding-inline: 0.2rem;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+.weather-group-label:first-child {
+  margin-block-start: 0;
 }
 </style>
