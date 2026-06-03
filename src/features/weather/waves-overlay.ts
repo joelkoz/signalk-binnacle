@@ -24,6 +24,7 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
       title: 'Waves',
       sourceId: FIELD_SOURCE,
       layerId: FIELD_LAYER,
+      defaultOpacity: 0.7,
       fieldRgba: waveFieldRgba,
     },
     makeCanvas,

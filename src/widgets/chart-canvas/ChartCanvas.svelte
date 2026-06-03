@@ -155,6 +155,9 @@ onMount(() => {
       // The own vessel and active collision alarms stay pinned on top so a chart or traffic
       // can never hide them; bottom to top, collision sits just beneath the vessel.
       pinned: ['collision', 'own-vessel'],
+      // The weather area fills are mutually exclusive: only one fill at a time so they do not stack
+      // into mud. Wind arrows and pressure isobars stay freely combinable on top.
+      exclusive: [['weather-waves', 'weather-precip', 'weather-cloud', 'weather-radar']],
     });
 
     const charts = await fetchCharts(serverOrigin(), chartsToken);

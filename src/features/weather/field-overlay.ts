@@ -16,6 +16,7 @@ export interface FieldOverlayOptions {
   title: string;
   sourceId: string;
   layerId: string;
+  defaultOpacity?: number;
   fieldRgba: (grid: WeatherGrid, bracket: TimeBracket, theme: Theme) => FieldBitmap | undefined;
 }
 
@@ -43,7 +44,7 @@ export function createFieldOverlay(
   options: FieldOverlayOptions,
   makeCanvas: CanvasFactory = defaultCanvas,
 ): FieldOverlay {
-  const { id, title, sourceId, layerId, fieldRgba } = options;
+  const { id, title, sourceId, layerId, defaultOpacity, fieldRgba } = options;
   const canvas = makeCanvas();
   let theme: Theme = 'day';
   let lastGrid: unknown;
@@ -83,6 +84,7 @@ export function createFieldOverlay(
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,
+    defaultOpacity,
     layerIds: [layerId],
     add(ctx) {
       if (!ctx.map.getSource(sourceId)) {

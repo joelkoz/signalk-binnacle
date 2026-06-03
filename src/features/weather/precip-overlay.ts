@@ -12,6 +12,7 @@ export function createPrecipOverlay(store: WeatherStore, makeCanvas?: CanvasFact
       title: 'Precipitation',
       sourceId: 'binnacle-weather-precip-field',
       layerId: 'binnacle-weather-precip-field-layer',
+      defaultOpacity: 0.7,
       fieldRgba: precipFieldRgba,
     },
     makeCanvas,

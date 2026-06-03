@@ -23,6 +23,7 @@ export function createRadarOverlay(store: WeatherStore): RadarOverlay {
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,
+    defaultOpacity: 0.85,
     layerIds: [LAYER_ID],
     add(ctx) {
       // Reset the dirty-check so a reattach (after a base-style swap recreates the source with empty
