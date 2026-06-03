@@ -20,6 +20,12 @@ describe('weatherLegend', () => {
     }
   });
 
+  it('builds an intensity legend for the radar', () => {
+    const legend = weatherLegend('weather-radar', 'day');
+    expect(legend?.title).toMatch(/radar/i);
+    expect(legend?.swatches.length).toBeGreaterThan(1);
+  });
+
   it('returns undefined for an unknown layer', () => {
     expect(weatherLegend('weather-unknown', 'day')).toBeUndefined();
   });

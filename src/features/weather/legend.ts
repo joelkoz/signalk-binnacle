@@ -91,6 +91,19 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
           (c) => String(Math.round(c * 100)),
         ),
       };
+    case 'weather-radar':
+      // RainViewer's palette is fixed (not theme-dependent), so these are approximate fixed swatches
+      // for its universal-blue intensity scale.
+      return {
+        id: layerId,
+        title: 'Rain radar',
+        swatches: [
+          { color: 'rgb(120, 160, 230)', label: 'light' },
+          { color: 'rgb(60, 170, 90)', label: 'moderate' },
+          { color: 'rgb(230, 200, 60)', label: 'heavy' },
+          { color: 'rgb(220, 70, 60)', label: 'intense' },
+        ],
+      };
     default:
       return undefined;
   }
