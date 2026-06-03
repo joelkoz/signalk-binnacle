@@ -13,6 +13,9 @@ export interface WeatherGrid {
   times: number[]; // epoch ms, ascending
   windU: number[][]; // m/s, eastward
   windV: number[][]; // m/s, northward
+  // Supplementary fields, present only when fetched; absent (undefined) for a wind-only grid or
+  // over cells the provider omits. All SI: pressure in Pa.
+  pressureMsl?: number[][]; // Pa
 }
 
 // Sample a bbox into a grid no larger than maxCells, keeping the axes roughly proportional to the

@@ -15,7 +15,7 @@ function loc(lat: number, lon: number, speed: number[], dir: number[]): unknown 
       time: [1748908800, 1748912400],
       wind_speed_10m: speed,
       wind_direction_10m: dir,
-      pressure_msl: [101300, 101200],
+      pressure_msl: [1013, 1012],
       precipitation: [0, 0.2],
       cloud_cover: [10, 50],
     },
@@ -42,6 +42,9 @@ describe('fetchForecast', () => {
     expect(grid?.windU[0][0]).toBeCloseTo(-10, 4);
     expect(grid?.windV[0][0]).toBeCloseTo(0, 4);
     expect(grid?.times[0]).toBe(1748908800000);
+    // pressure_msl is hPa on the wire; the grid stores Pa.
+    expect(grid?.pressureMsl?.[0]?.[0]).toBe(101300);
+    expect(grid?.pressureMsl?.[1]?.[0]).toBe(101200);
   });
 
   it('returns undefined on a fetch failure', async () => {

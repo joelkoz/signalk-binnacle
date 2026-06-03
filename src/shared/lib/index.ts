@@ -9,5 +9,6 @@ export {
   knotsToMetersPerSecond,
   metersPerSecondToKnots,
   nauticalMilesToMeters,
+  pascalsToHectopascals,
   radiansToBearing,
 } from './units';

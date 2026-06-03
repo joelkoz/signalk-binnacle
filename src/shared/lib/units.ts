@@ -25,6 +25,10 @@ export function degreesToRadians(value: number): number {
   return value / DEG_PER_RAD;
 }
 
+export function pascalsToHectopascals(value: number | null | undefined): number | undefined {
+  return value == null ? undefined : value / 100;
+}
+
 export function metersToNauticalMiles(value: number | null | undefined): number | undefined {
   return value == null ? undefined : value / METERS_PER_NAUTICAL_MILE;
 }

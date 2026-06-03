@@ -4,6 +4,7 @@ const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 // Open-Meteo accepts many locations per request; keep batches well under its cap.
 const MAX_LOCS_PER_REQUEST = 200;
 const DEG_TO_RAD = Math.PI / 180;
+const PA_PER_HPA = 100;
 
 export interface ForecastOptions {
   maxCells: number;
@@ -15,6 +16,7 @@ interface OmLoc {
     time?: number[];
     wind_speed_10m?: number[];
     wind_direction_10m?: number[];
+    pressure_msl?: number[];
   };
 }
 
@@ -80,7 +82,17 @@ function parse(locs: OmLoc[], lats: number[], lons: number[]): WeatherGrid | und
       windV[t][c] = -s * Math.cos(d);
     }
   }
-  return { lats, lons, times, windU, windV };
+  const pressureMsl: number[][] = Array.from({ length: steps }, () =>
+    new Array(cells).fill(Number.NaN),
+  );
+  for (let c = 0; c < cells; c += 1) {
+    const p = locs[c]?.hourly?.pressure_msl ?? [];
+    for (let t = 0; t < steps; t += 1) {
+      const hpa = p[t];
+      if (hpa !== undefined) pressureMsl[t][c] = hpa * PA_PER_HPA;
+    }
+  }
+  return { lats, lons, times, windU, windV, pressureMsl };
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {
