@@ -17,6 +17,7 @@ export interface WeatherGrid {
   // over cells the provider omits. All SI: pressure in Pa, wave height in m, direction in radians,
   // period in s. Marine fields are NaN over land cells.
   pressureMsl?: number[][]; // Pa
+  precipitation?: number[][]; // mm (hourly total)
   waveHeight?: number[][]; // m
   waveDirection?: number[][]; // radians, direction the waves come from
   wavePeriod?: number[][]; // s

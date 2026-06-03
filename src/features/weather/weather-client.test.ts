@@ -45,6 +45,8 @@ describe('fetchForecast', () => {
     // pressure_msl is hPa on the wire; the grid stores Pa.
     expect(grid?.pressureMsl?.[0]?.[0]).toBe(101300);
     expect(grid?.pressureMsl?.[1]?.[0]).toBe(101200);
+    expect(grid?.precipitation?.[0]?.[0]).toBe(0);
+    expect(grid?.precipitation?.[1]?.[0]).toBeCloseTo(0.2, 4);
   });
 
   it('returns undefined on a fetch failure', async () => {

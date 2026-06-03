@@ -18,6 +18,7 @@ interface OmLoc {
     wind_speed_10m?: number[];
     wind_direction_10m?: number[];
     pressure_msl?: number[];
+    precipitation?: number[];
   };
 }
 
@@ -134,11 +135,13 @@ function parse(locs: OmLoc[], lats: number[], lons: number[]): WeatherGrid | und
   const windU = grid2d(steps, cells, 0);
   const windV = grid2d(steps, cells, 0);
   const pressureMsl = grid2d(steps, cells);
+  const precipitation = grid2d(steps, cells);
   for (let c = 0; c < cells; c += 1) {
     const h = locs[c]?.hourly;
     const spd = h?.wind_speed_10m ?? [];
     const dir = h?.wind_direction_10m ?? [];
     const pres = h?.pressure_msl ?? [];
+    const precip = h?.precipitation ?? [];
     for (let t = 0; t < steps; t += 1) {
       const s = spd[t] ?? 0;
       const d = (dir[t] ?? 0) * DEG_TO_RAD;
@@ -146,9 +149,11 @@ function parse(locs: OmLoc[], lats: number[], lons: number[]): WeatherGrid | und
       windV[t][c] = -s * Math.cos(d);
       const hpa = pres[t];
       if (hpa !== undefined) pressureMsl[t][c] = hpa * PA_PER_HPA;
+      const mm = precip[t];
+      if (mm !== undefined) precipitation[t][c] = mm;
     }
   }
-  return { lats, lons, times, windU, windV, pressureMsl };
+  return { lats, lons, times, windU, windV, pressureMsl, precipitation };
 }
 
 // Fetch Open-Meteo marine wave data for the same sampled grid as the forecast. Best-effort: returns
