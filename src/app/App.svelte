@@ -143,16 +143,9 @@ let mapCommands = $state<MapCommands | undefined>();
 // (dragging the chart) releases it; it does not persist across reloads.
 let following = $state(false);
 
-// The app menu's action options. Adding one is a single entry here. "Layers & charts" opens
+// The app menu's action options. Adding one is a single entry here. "Layers and charts" opens
 // the layers slide-over; Tracks and the collision thresholds stay as inline submenus below.
 const menuItems = $derived<MenuItem[]>([
-  {
-    id: 'layers',
-    label: 'Layers & charts',
-    icon: Layers,
-    disabled: !layersView,
-    onSelect: () => (layersPanelOpen = true),
-  },
   {
     id: 'center-on-boat',
     label: 'Center on boat',
@@ -170,6 +163,13 @@ const menuItems = $derived<MenuItem[]>([
     label: alarmMuted.value ? 'Unmute alarm' : 'Mute alarm',
     icon: alarmMuted.value ? VolumeX : Volume2,
     onSelect: () => alarmMuted.set(!alarmMuted.value),
+  },
+  {
+    id: 'layers',
+    label: 'Layers and charts',
+    icon: Layers,
+    disabled: !layersView,
+    onSelect: () => (layersPanelOpen = true),
   },
 ]);
 

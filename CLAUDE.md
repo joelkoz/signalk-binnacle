@@ -191,6 +191,9 @@ invocations with `NODE_OPTIONS="--max-old-space-size=2048"` as a backstop.
   commits, comments, and any text passed to subagents.
 - No em dashes anywhere. Use a colon, a comma, or two sentences.
 - Always use the Oxford (serial) comma in lists of three or more.
+- No "&" in human-readable text (UI labels, headings, prose, comments); always write "and". The
+  "&" is fine only where syntax requires it: URL query separators, HTML entities, code operators,
+  and TypeScript intersection types.
 - Default to no comments. Keep only non-obvious why comments. Delete what comments.
 - These apply to text I write and to instructions passed to subagents; brief them on the same
   rules so their output does not reintroduce violations.

@@ -32,7 +32,7 @@ const manageSource = $derived(
 // Group the movable rows into charts-and-depth versus the live overlays so the list reads as
 // organized. Reorder still operates on the live order; a header marks each category change.
 function categoryOf(item: LayerListItem): string {
-  return item.band === 'basemap' || item.band === 'bathymetry' ? 'Charts & Depth' : 'Overlays';
+  return item.band === 'basemap' || item.band === 'bathymetry' ? 'Charts and Depth' : 'Overlays';
 }
 
 let listEl = $state<HTMLUListElement>();

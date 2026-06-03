@@ -21,8 +21,8 @@ All notable changes to Binnacle are documented here. The format follows
   you are zoomed far out.
 
 - A Layers panel and drag-to-reorder for every layer. The old inline "Layers" submenu is now a
-  "Layers & charts" launcher that opens a left-docked slide-over listing every layer top of the map
-  first, grouped into "Charts & Depth" and "Overlays" with the own vessel and active alarms pinned on
+  "Layers and charts" launcher that opens a left-docked slide-over listing every layer top of the map
+  first, grouped into "Charts and Depth" and "Overlays" with the own vessel and active alarms pinned on
   top. Each row toggles, sets opacity, and drags (by pointer or keyboard) to restack the z-order, and
   the order persists across visits. The panel docks opposite the note detail so both can be open at
   once, and it themes for day, dusk, and night-red.
