@@ -7,6 +7,7 @@ export interface WeatherReadout {
   waveHeightM?: number; // present only when the grid carries waves
   wavePeriodS?: number;
   precipitationMm?: number; // mm/h, present only when the grid carries precipitation
+  cloudCoverFraction?: number; // 0..1, present only when the grid carries cloud cover
 }
 
 // Wind speed, from-direction, and (when present) pressure at a lon/lat for a forecast step, sampled
@@ -35,7 +36,19 @@ export function readoutAt(
   const precipitationMm = precipField
     ? nanToUndef(bilinearAt(grid, precipField, lon, lat))
     : undefined;
-  return { speedMs, fromRad, pressurePa, waveHeightM, wavePeriodS, precipitationMm };
+  const cloudField = grid.cloudCover?.[timeIndex];
+  const cloudCoverFraction = cloudField
+    ? nanToUndef(bilinearAt(grid, cloudField, lon, lat))
+    : undefined;
+  return {
+    speedMs,
+    fromRad,
+    pressurePa,
+    waveHeightM,
+    wavePeriodS,
+    precipitationMm,
+    cloudCoverFraction,
+  };
 }
 
 // Marine fields are NaN over land; collapse those to undefined so the display shows nothing rather
