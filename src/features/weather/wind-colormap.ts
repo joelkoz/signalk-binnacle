@@ -19,6 +19,20 @@ const NIGHT: Array<[number, Rgba]> = [
   [26, [1.0, 0.3, 0.2, 1.0]],
 ];
 
+const EXPR_SPEEDS = [0, 3, 7, 12, 18, 26];
+
+function rgbaString([r, g, b, a]: Rgba): string {
+  return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a.toFixed(2)})`;
+}
+
+// A MapLibre interpolate expression that colors a feature by its numeric `speed` property (m/s) for
+// the theme. Returned as a plain nested array so this module stays free of MapLibre types; the
+// overlay casts it to ExpressionSpecification.
+export function windColorExpression(theme: Theme): unknown[] {
+  const stops = EXPR_SPEEDS.flatMap((s) => [s, rgbaString(windColor(s, theme))]);
+  return ['interpolate', ['linear'], ['get', 'speed'], ...stops];
+}
+
 export function windColor(speedMs: number, theme: Theme): Rgba {
   const stops = theme === 'night-red' ? NIGHT : DAY;
   if (speedMs <= stops[0][0]) return stops[0][1];
