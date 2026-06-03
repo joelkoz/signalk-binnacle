@@ -8,6 +8,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Weather overlay (first cut). Toggle Wind in the Layers panel to see the wind over the chart as
+  speed-colored arrows, drawn from a browser-only Open-Meteo forecast (no key, no server) sampled for
+  the viewport and refetched as you pan. A Forecast button centered in the status strip opens a
+  draggable time slider to scrub the coming days, and a tap on the chart reads the wind speed and
+  direction at that point. It is off by default, themed for day, dusk, and night-red, and the forecast
+  is cached for offline use. Pressure isobars, waves, precipitation, and cloud layers, plus animated
+  wind particles, follow in later iterations.
+
 - Approving Binnacle's Signal K access is now self-explanatory and recognizable. The request uses a
   named client id (`binnacle-<short>`) instead of a bare UUID, so it is easy to spot in the Signal K
   access-requests list, and the "Requesting access" banner shows that id plus a one-click "Approve in
