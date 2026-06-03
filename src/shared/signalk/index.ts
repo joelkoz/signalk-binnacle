@@ -1,5 +1,5 @@
 export type { AuthStatus } from './auth.svelte';
-export { AuthController, STORAGE_KEY as AUTH_STORAGE_KEY } from './auth.svelte';
+export { AuthController } from './auth.svelte';
 export type { SignalKClient } from './client';
 export { createSignalKClient } from './client';
 export type { LatLon } from './geo-guards';

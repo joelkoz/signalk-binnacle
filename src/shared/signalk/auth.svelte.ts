@@ -14,7 +14,7 @@ interface AuthOptions {
   pollMs?: number;
 }
 
-export const STORAGE_KEY = 'binnacle:signalk-auth';
+const STORAGE_KEY = 'binnacle:signalk-auth';
 const PROBE_PATH = '/signalk/v1/api/vessels/self';
 const REQUEST_PATH = '/signalk/v1/access/requests';
 // Stop polling an unanswered access request after this many attempts (about 10 min at
@@ -47,6 +47,8 @@ export class AuthController {
   #stopped = false;
   #pollAttempts = 0;
   #pollScheduled = false;
+  #checking = false;
+  #watching = false;
 
   constructor(base: string, opts: AuthOptions = {}) {
     this.#base = base;
@@ -121,42 +123,58 @@ export class AuthController {
   }
 
   async checkRequest(): Promise<void> {
-    if (!this.#href || this.status === 'authenticated') return;
-    const res = await this.#safeFetch(`${this.#base}${this.#href}`);
-    if (res && (res.status === 404 || res.status === 410)) {
-      // The request expired or was cleared server-side; start a fresh one rather than poll a dead
-      // href forever (which left the first tab stuck until the user opened a new one).
-      await this.requestAccess();
-      return;
-    }
-    if (!res?.ok) {
-      this.#schedulePoll();
-      return;
-    }
-    const body = await this.#json(res);
-    if (body.state !== 'COMPLETED') {
-      this.#schedulePoll();
-      return;
-    }
-    const request = (body.accessRequest ?? {}) as { permission?: string; token?: string };
-    if (request.permission === 'APPROVED' && typeof request.token === 'string') {
-      this.#store(request.token);
-      this.token = request.token;
-      this.status = 'authenticated';
-    } else {
-      this.status = 'denied';
+    // Skip if a check is already in flight: a tab return fires focus and visibilitychange together,
+    // and a manual recheck can overlap the scheduled poll, so one guard avoids duplicate fetches.
+    if (this.#checking || !this.#href || this.status === 'authenticated') return;
+    this.#checking = true;
+    try {
+      const res = await this.#safeFetch(`${this.#base}${this.#href}`);
+      if (res && (res.status === 404 || res.status === 410)) {
+        // The request expired or was cleared server-side; start a fresh one rather than poll a dead
+        // href forever (which left the first tab stuck until the user opened a new one).
+        await this.requestAccess();
+        return;
+      }
+      if (!res?.ok) {
+        this.#schedulePoll();
+        return;
+      }
+      const body = await this.#json(res);
+      if (body.state !== 'COMPLETED') {
+        this.#schedulePoll();
+        return;
+      }
+      const request = (body.accessRequest ?? {}) as { permission?: string; token?: string };
+      if (request.permission === 'APPROVED' && typeof request.token === 'string') {
+        this.#store(request.token);
+        this.token = request.token;
+        this.status = 'authenticated';
+      } else {
+        this.status = 'denied';
+      }
+    } finally {
+      this.#checking = false;
     }
   }
 
-  // Re-check a pending request right now, e.g. when the tab regains focus after the user approved
-  // Binnacle in the Signal K UI. Background tabs throttle the poll timer, so without this an
-  // approval is not noticed until the next (delayed) poll; this picks it up immediately on return.
+  // Watch the environment so an approval is noticed without a reload: re-check the pending request
+  // when the tab regains focus (background tabs throttle the poll timer, so an approval made while
+  // away is otherwise missed until the next delayed poll), and adopt a token approved in another tab
+  // via the storage event. Owned here so the storage format and request lifecycle stay encapsulated;
+  // call once after construction, and stop() tears it down.
+  watch(): void {
+    if (this.#watching || typeof window === 'undefined') return;
+    this.#watching = true;
+    window.addEventListener('focus', this.#onFocus);
+    window.addEventListener('storage', this.#onStorage);
+    if (typeof document !== 'undefined')
+      document.addEventListener('visibilitychange', this.#onFocus);
+  }
+
   recheck(): void {
     if (this.status === 'requesting') void this.checkRequest();
   }
 
-  // Adopt a token approved in another tab (delivered via the storage event), so every open tab
-  // connects once any one of them is approved, with no reload.
   adoptToken(token: string): void {
     if (!token || this.status === 'authenticated') return;
     this.#store(token);
@@ -166,7 +184,28 @@ export class AuthController {
 
   stop(): void {
     this.#stopped = true;
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('focus', this.#onFocus);
+      window.removeEventListener('storage', this.#onStorage);
+    }
+    if (typeof document !== 'undefined')
+      document.removeEventListener('visibilitychange', this.#onFocus);
   }
+
+  #onFocus = (): void => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    this.recheck();
+  };
+
+  #onStorage = (event: StorageEvent): void => {
+    if (event.key !== STORAGE_KEY || !event.newValue) return;
+    try {
+      const token = (JSON.parse(event.newValue) as AuthIdentity).token;
+      if (token) this.adoptToken(token);
+    } catch {
+      // Ignore a malformed storage payload.
+    }
+  };
 
   #schedulePoll(): void {
     if (this.#stopped || this.#pollScheduled || this.status === 'authenticated') return;

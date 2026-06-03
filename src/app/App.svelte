@@ -54,7 +54,6 @@ import {
 } from '$shared/settings';
 import type { ConnectionPhase, Context } from '$shared/signalk';
 import {
-  AUTH_STORAGE_KEY,
   AuthController,
   createSignalKClient,
   SELF_CONTEXT,
@@ -330,7 +329,6 @@ const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase]);
 const fmt = (value: number | undefined, digits: number) =>
   value === undefined ? PLACEHOLDER : value.toFixed(digits);
 
-// The Signal K admin page where the user approves the access request, for the banner deep link.
 const accessRequestsUrl = `${serverOrigin()}/admin/#/security/access/requests`;
 
 // Connect the stream the moment access resolves (an approved token, or an unsecured server),
@@ -353,8 +351,6 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.position, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.courseOverGroundTrue, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.speedOverGround, policy: 'instant', minPeriod: 1000 },
-  ]);
-  await client.raw.subscribe([
     { path: SK_PATHS.position, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.courseOverGroundTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.speedOverGround, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
@@ -366,37 +362,16 @@ async function connectStream(token: string | undefined): Promise<void> {
   await refreshSavedTracks();
 }
 
-// Pick up an approval the instant the user returns to the tab, bypassing the background-throttled
-// poll timer that would otherwise miss it.
-function onTabVisible(): void {
-  if (document.visibilityState === 'visible') auth.recheck();
-}
-
-// Adopt a token approved in another tab so this tab connects without a reload.
-function onAuthStorage(event: StorageEvent): void {
-  if (event.key !== AUTH_STORAGE_KEY || !event.newValue) return;
-  try {
-    const token = (JSON.parse(event.newValue) as { token?: unknown }).token;
-    if (typeof token === 'string' && token) auth.adoptToken(token);
-  } catch {
-    // Ignore a malformed storage payload.
-  }
-}
-
 onMount(() => {
   window.addEventListener('pointerdown', primeAudio, { once: true });
-  document.addEventListener('visibilitychange', onTabVisible);
-  window.addEventListener('focus', onTabVisible);
-  window.addEventListener('storage', onAuthStorage);
+  // The auth controller owns the focus and cross-tab listeners that pick up an approval.
+  auth.watch();
   void auth.probe();
 });
 
 onDestroy(() => {
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   window.removeEventListener('pointerdown', primeAudio);
-  document.removeEventListener('visibilitychange', onTabVisible);
-  window.removeEventListener('focus', onTabVisible);
-  window.removeEventListener('storage', onAuthStorage);
   lookoutAlarm.stop();
   auth.stop();
   net.dispose();

@@ -3,7 +3,6 @@ import type { AuthController } from '$shared/signalk';
 
 interface Props {
   auth: AuthController;
-  // The Signal K admin access-requests page, opened by the approve shortcut.
   requestsUrl: string;
 }
 

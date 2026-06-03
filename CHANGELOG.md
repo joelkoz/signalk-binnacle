@@ -186,6 +186,12 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- Tidied the Signal K auth flow internals, with no behavior change. The focus and cross-tab
+  storage listeners now live inside `AuthController` (like `OnlineStatus` owns its own listeners)
+  instead of the app shell parsing the stored auth JSON itself, a single in-flight guard stops a
+  duplicate access-request poll when a tab return fires focus and visibilitychange together, and
+  the own-vessel and AIS subscriptions are issued in one call.
+
 - Cleanup pass over the depth-charts work (audit, cross-verify, fix). The two IndexedDB stores now
   share one open-and-transaction helper; the unused PMTiles store list and total-size methods were
   dropped; byte-size formatting moved to a shared `formatBytes`; and a few small dead guards, a
