@@ -57,6 +57,8 @@ interface Props {
   onUserChartsReady?: (registrar: UserChartRegistrar) => void;
   onViewChange?: (view: MapView) => void;
   onNoteSelect?: (selection: NoteSelection | undefined) => void;
+  // Fired when the user pans the map by hand (a drag), so a follow lock can release.
+  onUserPan?: () => void;
 }
 
 const {
@@ -79,6 +81,7 @@ const {
   onUserChartsReady,
   onViewChange,
   onNoteSelect,
+  onUserPan,
 }: Props = $props();
 
 const DEFAULT_CENTER: [number, number] = [0, 30];
@@ -121,6 +124,10 @@ onMount(() => {
     });
   };
   mapInstance.on('move', emitView);
+  // A drag is the only user gesture that should release a follow lock. dragstart fires only for
+  // hand panning (not for programmatic setCenter or for scroll-zoom), so following survives a
+  // zoom but ends the moment the user drags the chart away from the boat.
+  mapInstance.on('dragstart', () => onUserPan?.());
   mapInstance.on('load', async () => {
     emitView();
     const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
@@ -211,6 +218,9 @@ onMount(() => {
           center: [position.longitude, position.latitude],
           zoom: zoom < 12 ? 14 : zoom,
         });
+      },
+      recenterOnVessel: (latitude, longitude) => {
+        mapInstance.setCenter([longitude, latitude]);
       },
       clearNoteSelection: () => notesOverlay.deselect(ctx),
     });

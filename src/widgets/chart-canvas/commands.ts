@@ -4,6 +4,9 @@ import type { SignalKChart } from '$shared/map';
 // handed up once the map is ready.
 export interface MapCommands {
   centerOnVessel: () => void;
+  // Pan to a position at the current zoom, with no animation, for the follow lock that keeps
+  // the boat centered as it moves. Unlike centerOnVessel it never changes the zoom.
+  recenterOnVessel: (latitude: number, longitude: number) => void;
   // Clear any selected note (drop the selection ring); used when the detail panel closes.
   clearNoteSelection: () => void;
 }

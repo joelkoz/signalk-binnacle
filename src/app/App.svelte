@@ -1,5 +1,13 @@
 <script lang="ts">
-import { Layers, LocateFixed, SlidersHorizontal, Spline, Volume2, VolumeX } from '@lucide/svelte';
+import {
+  Layers,
+  LocateFixed,
+  Navigation,
+  SlidersHorizontal,
+  Spline,
+  Volume2,
+  VolumeX,
+} from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
@@ -131,6 +139,10 @@ function onViewChange(view: MapView): void {
 
 let mapCommands = $state<MapCommands | undefined>();
 
+// Follow lock: while on, the map recenters on the boat as each fix arrives. A manual pan
+// (dragging the chart) releases it; it does not persist across reloads.
+let following = $state(false);
+
 // The app menu's action options. Adding one is a single entry here. "Layers & charts" opens
 // the layers slide-over; Tracks and the collision thresholds stay as inline submenus below.
 const menuItems = $derived<MenuItem[]>([
@@ -146,6 +158,12 @@ const menuItems = $derived<MenuItem[]>([
     label: 'Center on boat',
     icon: LocateFixed,
     onSelect: () => mapCommands?.centerOnVessel(),
+  },
+  {
+    id: 'follow-boat',
+    label: following ? 'Stop following' : 'Follow boat',
+    icon: Navigation,
+    onSelect: () => (following = !following),
   },
   {
     id: 'mute-alarm',
@@ -172,6 +190,14 @@ $effect(() => {
   if (position) recorder.consider(position.latitude, position.longitude, vessel.sogMps ?? 0);
 });
 
+// While following, keep the map centered on the boat. Enabling it recenters immediately, and
+// each new fix recenters again; a manual pan clears `following` (via onUserPan) and stops it.
+$effect(() => {
+  const commands = mapCommands;
+  const position = vessel.position;
+  if (following && position) commands?.recenterOnVessel(position.latitude, position.longitude);
+});
+
 // Reconcile the registered user-chart overlays with the entity's source list: register an added
 // chart (resolving a stored file to a blob url first), unregister a removed one, and free its blob.
 $effect(() => {
@@ -187,6 +213,8 @@ $effect(() => {
   }
   for (const source of sources) {
     if (registeredUserCharts.has(source.id)) continue;
+    // Reserve the slot before the async register so a re-fire cannot double-register; the value
+    // is the blob url to revoke later, or undefined while registering or for a url-backed chart.
     registeredUserCharts.set(source.id, undefined);
     void addUserChartOverlay(source, registrar);
   }
@@ -196,20 +224,30 @@ async function addUserChartOverlay(
   source: UserChartSource,
   registrar: UserChartRegistrar,
 ): Promise<void> {
+  let blobUrl: string | undefined;
   let url: string;
   if (source.origin.type === 'url') {
     url = source.origin.url;
   } else {
     const blob = await userCharts.resolveBlob(source.origin.storeId);
-    if (!blob) {
+    // The chart can be removed while its blob resolves; the reconcile cleanup then drops the
+    // reservation. Bail before creating an object URL or registering a ghost overlay for it.
+    if (!blob || !registeredUserCharts.has(source.id)) {
       registeredUserCharts.delete(source.id);
       return;
     }
-    const blobUrl = URL.createObjectURL(blob);
+    blobUrl = URL.createObjectURL(blob);
     registeredUserCharts.set(source.id, blobUrl);
     url = `pmtiles://${blobUrl}`;
   }
   await registrar.register(userChartToSignalK(source, url));
+  // If it was removed during registration, undo the overlay and free its blob rather than leave
+  // a ghost layer for a deleted chart.
+  if (!registeredUserCharts.has(source.id)) {
+    registrar.unregister(source.id);
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    return;
+  }
   recolorMap?.(theme.theme);
 }
 
@@ -396,6 +434,7 @@ onDestroy(() => {
       onUserChartsReady={(registrar) => (userChartRegistrar = registrar)}
       {onViewChange}
       onNoteSelect={(selection) => (selectedNote = selection)}
+      onUserPan={() => (following = false)}
     />
     <div class="banner-slot">
       <AuthBanner {auth} />
