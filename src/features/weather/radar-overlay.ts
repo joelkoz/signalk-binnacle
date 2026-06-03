@@ -1,21 +1,35 @@
 import type { RasterLayerSpecification, RasterSourceSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import type { OverlayContext, OverlayModule } from '$shared/map';
-import { frameTiles, latestFrame, TILE_SIZE } from './radar-frames';
+import { frameTiles, TILE_SIZE } from './radar-frames';
 
 const SOURCE_ID = 'binnacle-weather-radar';
 const LAYER_ID = 'binnacle-weather-radar-layer';
+const FRAME_MS = 600; // dwell on each past frame while looping
+const PAUSE_MS = 1600; // hold on the latest frame before wrapping, so "now" reads clearly
 
 export interface RadarOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
 }
 
 // RainViewer real-time precipitation radar as a themed raster overlay in the weather band. Off by
-// default. Shows the latest frame; it re-points the source at the newest frame whenever the store's
-// radar data changes. Night-red desaturates and dims the raster (it cannot be recolored), the same
-// treatment the depth-charts rasters use.
-export function createRadarOverlay(store: WeatherStore): RadarOverlay {
+// default. It loops the past frames (oldest to newest, then a longer hold on the latest) so the rain
+// is seen moving. The loop is driven from the per-frame tick rather than its own timer, so it stops
+// when the chart unmounts; `now` is injectable for tests. Night-red desaturates and dims the raster
+// (it cannot be recolored), the same treatment the depth-charts rasters use.
+export function createRadarOverlay(
+  store: WeatherStore,
+  now: () => number = () => performance.now(),
+): RadarOverlay {
   let lastRadar: unknown;
+  let frameIndex = 0;
+  let lastAdvance = 0;
+  let visible = false;
+
+  function showFrame(ctx: OverlayContext, host: string, path: string): void {
+    const source = ctx.map.getSource(SOURCE_ID) as { setTiles(t: string[]): void } | undefined;
+    source?.setTiles([frameTiles(host, { time: 0, path })]);
+  }
 
   return {
     id: 'weather-radar',
@@ -34,9 +48,10 @@ export function createRadarOverlay(store: WeatherStore): RadarOverlay {
           type: 'raster',
           tiles: [],
           tileSize: TILE_SIZE,
-          // RainViewer serves radar tiles only to zoom 11; above that every tile is a "Zoom Level
-          // Not Supported" placeholder. Cap the source so MapLibre overzooms the real tiles instead.
-          maxzoom: 11,
+          // RainViewer serves real radar tiles only to zoom 7 (confirmed across regions); from zoom 8
+          // up every tile is a "Zoom Level Not Supported" placeholder. Cap the source at 7 so MapLibre
+          // overzooms the real tiles instead of fetching placeholders.
+          maxzoom: 7,
           attribution: 'RainViewer',
         };
         ctx.map.addSource(SOURCE_ID, spec);
@@ -46,26 +61,38 @@ export function createRadarOverlay(store: WeatherStore): RadarOverlay {
           id: LAYER_ID,
           type: 'raster',
           source: SOURCE_ID,
-          paint: { 'raster-opacity': 0.8 },
+          paint: { 'raster-opacity': 0.85 },
         };
         ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
       }
     },
     sync(ctx) {
-      if (store.radar === lastRadar) return;
-      lastRadar = store.radar;
       const radar = store.radar;
-      const frame = radar ? latestFrame(radar.frames) : undefined;
-      if (!radar || !frame) return;
-      const source = ctx.map.getSource(SOURCE_ID) as { setTiles(t: string[]): void } | undefined;
-      source?.setTiles([frameTiles(radar.host, frame)]);
+      const frames = radar?.frames ?? [];
+      // On new radar data, jump to the latest frame and re-point the source immediately.
+      if (radar !== lastRadar) {
+        lastRadar = radar;
+        frameIndex = Math.max(0, frames.length - 1);
+        if (radar && frames.length > 0) showFrame(ctx, radar.host, frames[frameIndex].path);
+        lastAdvance = now();
+        return;
+      }
+      if (!visible || !radar || frames.length < 2) return;
+      // Advance one frame per FRAME_MS, holding PAUSE_MS on the latest before wrapping to the oldest.
+      const interval = frameIndex === frames.length - 1 ? PAUSE_MS : FRAME_MS;
+      const t = now();
+      if (t - lastAdvance < interval) return;
+      lastAdvance = t;
+      frameIndex = (frameIndex + 1) % frames.length;
+      showFrame(ctx, radar.host, frames[frameIndex].path);
     },
     remove(ctx) {
       if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
       if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
     },
-    setVisible(ctx, visible) {
-      ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');
+    setVisible(ctx, isVisible) {
+      visible = isVisible;
+      ctx.map.setLayoutProperty(LAYER_ID, 'visibility', isVisible ? 'visible' : 'none');
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(LAYER_ID, 'raster-opacity', opacity);

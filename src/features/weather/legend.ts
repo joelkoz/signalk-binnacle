@@ -115,7 +115,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
           { color: 'rgb(230, 200, 60)', label: 'heavy' },
           { color: 'rgb(220, 70, 60)', label: 'intense' },
         ],
-        note: 'live radar, detail to ~zoom 11',
+        note: 'live radar, regional resolution',
       };
     default:
       return undefined;
