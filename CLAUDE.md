@@ -16,8 +16,8 @@ Read it before doing architectural work.
 
 - Framework: Svelte 5 (runes), Vite, TypeScript. This was a deliberate clean break from the
   Angular lineage of the prior fork; do not reintroduce Angular.
-- Map: MapLibre GL JS 5.x via svelte-maplibre-gl, plus a thin imperative LayerManager for
-  dynamic overlays. deck.gl MapboxOverlay is an optional pluggable overlay, not the base.
+- Map: MapLibre GL JS 5.x used directly, plus a thin imperative LayerManager for dynamic
+  overlays. deck.gl MapboxOverlay is an optional pluggable overlay, not the base.
 - Charts: a generic ChartSourceAdapter over the Signal K `/resources/charts` API, plus a
   vector base map. S-57 to vector-tile pipeline and full S-52 styling are a later spec.
 - Real-time: a dedicated Web Worker hosts the Signal K WebSocket client, bridged with Comlink,
@@ -66,6 +66,9 @@ per the SignalK pack-banner caveat above):
   rediscovered later with unknown provenance. When it fires, commit, discard, or stash the
   changes and delete merged branches before moving on; do not let the tree drift.
 
+Always commit and push to `main` once the gate is green after any significant change or cleanup:
+do not leave significant work uncommitted in the tree. The work is not done until it is on `main`.
+
 ## Working-tree hygiene and the scratch directory
 
 The project works directly on `main`, so the working tree should stay clean between commits.
@@ -100,16 +103,17 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   imports. Cross-feature data flows through an `entities` store, never feature to feature.
 - Every slice exposes a public API via `index.ts`. Named re-exports only, never `export *`.
   Nothing outside a slice imports its internal files.
-- Features self-register through a `FeatureManifest` collected by a registry in `app/`. Adding
-  a feature is a new folder plus one line in `app/features.ts`. Feature UI is behind dynamic
-  `import()` so Vite emits a per-feature chunk.
-- Services (Signal K client, map instance, registry, stores) are injected via typed
-  `createContext` helpers, not global singletons, so they are swappable in tests.
-- Boundaries are machine-enforced and fail the build: path aliases plus a dependency-cruiser
-  gate (`no-circular`, `layers-go-down-only`, `shared-imports-nothing-above`, and the
-  per-feature public-API `no-cross-feature-internals` rule). dependency-cruiser is the single
-  boundary enforcer, because Biome has no import-boundary rule equivalent to
-  `eslint-plugin-boundaries`.
+- Features are self-contained slices under `features/<name>`, each exposing a public API via its
+  `index.ts`. They are composed in `app/App.svelte` by static import, so adding a feature is a new
+  slice plus its wiring in `App.svelte`. A `FeatureManifest`/registry that auto-collects features
+  is a future option, not yet built.
+- Services (the Signal K client, the map instance, the stores) are constructed in `app/App.svelte`
+  and passed down as props, not global singletons, so they are swappable in tests.
+- Boundaries are machine-enforced and fail the build: path aliases plus a dependency-cruiser gate
+  (`no-circular`, the per-layer `entities-go-down-only`, `features-go-down-only`,
+  `widgets-go-down-only`, and `views-go-down-only` rules, `shared-imports-nothing-above`, and the
+  cross-feature `no-cross-feature` rule). dependency-cruiser is the single boundary enforcer,
+  because Biome has no import-boundary rule equivalent to `eslint-plugin-boundaries`.
 
 This is a hard rule. Architectural feedback that came at the cost of redoing significant work
 must not be repeatable.

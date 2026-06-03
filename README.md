@@ -39,9 +39,12 @@ What is in place now:
   runes store with fine-grained reactivity, per-frame batching, a subscription registry, and
   reconnection. The shell shows live connection state and own-vessel readouts.
 - A MapLibre GL map with a vector base and an extensible layer manager, with the own vessel
-  drawn as a GPU symbol layer that rotates with heading.
-- Chart layers discovered from the Signal K server's `/resources/charts` API, rendered through
-  a generic adapter and controlled from the app menu (per-layer toggle and opacity).
+  drawn as a GPU symbol layer that rotates with heading. "Center on boat" recenters once, and a
+  "Follow boat" lock keeps the chart centered on the vessel as it moves until you pan away.
+- Chart and depth layers: server charts from `/resources/charts`, four free streaming bathymetry
+  and ENC sources (GEBCO, EMODnet, NOAA ENC, and NOAA BlueTopo), and your own PMTiles archives
+  imported by URL or file and stored in the browser for offline use. Every layer is managed from a
+  Layers panel that toggles, fades, and drag-reorders the z-order.
 - AIS targets: other vessels render as GPU symbols in the traffic band, rotate with course, age
   out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
 - The active-safety Lookout feature: a collision danger strip with chart-highlight rings, an audible
