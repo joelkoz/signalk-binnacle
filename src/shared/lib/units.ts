@@ -1,6 +1,7 @@
 const MS_TO_KNOTS = 1.943844492;
 const METERS_PER_NAUTICAL_MILE = 1852;
 const DEG_PER_RAD = 180 / Math.PI;
+export const PA_PER_HPA = 100;
 
 // The store-to-display converters accept null and undefined because a Signal K value
 // can be absent (the guards use `== null` to catch both). The inverse converters
@@ -26,7 +27,7 @@ export function degreesToRadians(value: number): number {
 }
 
 export function pascalsToHectopascals(value: number | null | undefined): number | undefined {
-  return value == null ? undefined : value / 100;
+  return value == null ? undefined : value / PA_PER_HPA;
 }
 
 export function metersToNauticalMiles(value: number | null | undefined): number | undefined {

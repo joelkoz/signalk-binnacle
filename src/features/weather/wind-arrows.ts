@@ -1,4 +1,5 @@
 import type { TimeBracket, WeatherGrid } from '$entities/weather';
+import { lerp } from '$shared/lib';
 
 const MIN_SPEED = 0.5; // m/s; skip near-calm cells so the field is not littered with stubs
 const ARROW_FRACTION = 0.4; // arrow length as a fraction of the grid spacing
@@ -37,8 +38,4 @@ export function windArrowFeatures(
     }
   }
   return { type: 'FeatureCollection', features };
-}
-
-function lerp(a: number, b: number, f: number): number {
-  return a + (b - a) * f;
 }

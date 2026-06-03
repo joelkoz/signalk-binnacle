@@ -1,10 +1,10 @@
 import { type Bbox, sampleGrid, type WeatherGrid } from '$entities/weather';
+import { PA_PER_HPA } from '$shared/lib';
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 // Open-Meteo accepts many locations per request; keep batches well under its cap.
 const MAX_LOCS_PER_REQUEST = 200;
 const DEG_TO_RAD = Math.PI / 180;
-const PA_PER_HPA = 100;
 
 export interface ForecastOptions {
   maxCells: number;

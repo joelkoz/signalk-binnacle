@@ -506,7 +506,7 @@ onDestroy(() => {
       </div>
     {/if}
     {#if weatherReadout}
-      <div class="wind-readout" role="status" aria-live="polite">
+      <div class="weather-readout" role="status" aria-live="polite">
         Wind <b>{fmt(metersPerSecondToKnots(weatherReadout.speedMs), 0)}</b> kn from
         <b>{fmt(radiansToBearing(weatherReadout.fromRad), 0)}</b>&deg;
         {#if weatherReadout.pressurePa !== undefined}
@@ -649,7 +649,7 @@ onDestroy(() => {
   margin-inline-start: auto;
 }
 /* Transient wind value from a map tap, bottom-leading so it clears the centered scrubber. */
-.wind-readout {
+.weather-readout {
   position: absolute;
   inset-block-end: 0.75rem;
   inset-inline-start: 0.75rem;

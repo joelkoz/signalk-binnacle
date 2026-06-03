@@ -1,6 +1,6 @@
 import type { TimeBracket, WeatherGrid } from '$entities/weather';
+import { lerp, PA_PER_HPA } from '$shared/lib';
 
-const PA_PER_HPA = 100;
 const DEFAULT_INTERVAL_HPA = 4;
 const LABEL_STRIDE = 6; // place a label every Nth segment of each level so labels stay sparse
 
@@ -55,12 +55,15 @@ export function isobarFeatures(
   const rows = grid.lats.length;
   const lo = p[bracket.lo] ?? [];
   const hi = p[bracket.hi] ?? lo;
-  const field = (i: number): number => (lo[i] + (hi[i] - lo[i]) * bracket.frac) / PA_PER_HPA;
 
+  // Blend the two bracketing forecast steps once into a flat hPa field, then contour it: the data
+  // is constant across all levels, only the threshold changes.
+  const field = new Float64Array(cols * rows);
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
-  for (let i = 0; i < cols * rows; i += 1) {
-    const v = field(i);
+  for (let i = 0; i < field.length; i += 1) {
+    const v = lerp(lo[i], hi[i], bracket.frac) / PA_PER_HPA;
+    field[i] = v;
     if (Number.isNaN(v)) continue;
     if (v < min) min = v;
     if (v > max) max = v;
@@ -71,10 +74,10 @@ export function isobarFeatures(
   for (let level = Math.ceil(min / intervalHpa) * intervalHpa; level <= max; level += intervalHpa) {
     for (let r = 0; r < rows - 1; r += 1) {
       for (let c = 0; c < cols - 1; c += 1) {
-        const vbl = field(r * cols + c);
-        const vbr = field(r * cols + c + 1);
-        const vtr = field((r + 1) * cols + c + 1);
-        const vtl = field((r + 1) * cols + c);
+        const vbl = field[r * cols + c];
+        const vbr = field[r * cols + c + 1];
+        const vtr = field[(r + 1) * cols + c + 1];
+        const vtl = field[(r + 1) * cols + c];
         if (Number.isNaN(vbl) || Number.isNaN(vbr) || Number.isNaN(vtr) || Number.isNaN(vtl)) {
           continue;
         }
@@ -91,13 +94,13 @@ export function isobarFeatures(
         const edge = (side: string): Pt => {
           switch (side) {
             case 'a':
-              return [lerp(lon0, lon1, frac(vbl, vbr, level)), lat0];
+              return [lerp(lon0, lon1, edgeCrossing(vbl, vbr, level)), lat0];
             case 'b':
-              return [lon1, lerp(lat0, lat1, frac(vbr, vtr, level))];
+              return [lon1, lerp(lat0, lat1, edgeCrossing(vbr, vtr, level))];
             case 'c':
-              return [lerp(lon1, lon0, frac(vtr, vtl, level)), lat1];
+              return [lerp(lon1, lon0, edgeCrossing(vtr, vtl, level)), lat1];
             default:
-              return [lon0, lerp(lat1, lat0, frac(vtl, vbl, level))];
+              return [lon0, lerp(lat1, lat0, edgeCrossing(vtl, vbl, level))];
           }
         };
         for (const [e1, e2] of CASES[idx]) {
@@ -116,13 +119,11 @@ export function isobarFeatures(
   return collections(lines, labels);
 }
 
-function frac(va: number, vb: number, level: number): number {
+// The 0..1 position along a cell edge where the contour level crosses, between the edge's two
+// corner values. Distinct from weather-grid's axis-fraction lookup.
+function edgeCrossing(va: number, vb: number, level: number): number {
   const d = vb - va;
   return d === 0 ? 0.5 : (level - va) / d;
-}
-
-function lerp(a: number, b: number, f: number): number {
-  return a + (b - a) * f;
 }
 
 function lineFeature(a: Pt, b: Pt, pressureHpa: number): GeoJSON.Feature {
