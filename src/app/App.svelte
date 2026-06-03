@@ -543,6 +543,9 @@ onDestroy(() => {
             / <b>{fmt(weatherReadout.wavePeriodS, 0)}</b> s
           {/if}
         {/if}
+        {#if weatherReadout.precipitationMm !== undefined && weatherReadout.precipitationMm > 0}
+          &middot; rain <b>{fmt(weatherReadout.precipitationMm, 1)}</b> mm/h
+        {/if}
       </div>
     {/if}
   </section>

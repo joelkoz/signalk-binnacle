@@ -1,3 +1,4 @@
+export { createPrecipOverlay } from './precip-overlay';
 export { createPressureOverlay } from './pressure-overlay';
 export { default as WeatherTimeControl } from './WeatherTimeControl.svelte';
 export { createWavesOverlay } from './waves-overlay';

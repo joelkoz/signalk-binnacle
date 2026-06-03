@@ -14,7 +14,12 @@ import { createCollisionOverlay } from '$features/lookout';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay } from '$features/vessel-layer';
-import { createPressureOverlay, createWavesOverlay, createWindOverlay } from '$features/weather';
+import {
+  createPrecipOverlay,
+  createPressureOverlay,
+  createWavesOverlay,
+  createWindOverlay,
+} from '$features/weather';
 import {
   applyBaseTheme,
   baseStyleUrl,
@@ -170,6 +175,10 @@ onMount(() => {
     await manager.register(wavesOverlay);
     if (destroyed) return;
 
+    const precipOverlay = createPrecipOverlay(weather);
+    await manager.register(precipOverlay);
+    if (destroyed) return;
+
     const windOverlay = createWindOverlay(weather);
     await manager.register(windOverlay);
     if (destroyed) return;
@@ -253,6 +262,7 @@ onMount(() => {
 
     const tick = () => {
       wavesOverlay.sync(ctx);
+      precipOverlay.sync(ctx);
       windOverlay.sync(ctx);
       pressureOverlay.sync(ctx);
       notesOverlay.sync(ctx);
