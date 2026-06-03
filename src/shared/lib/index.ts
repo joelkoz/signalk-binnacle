@@ -1,3 +1,4 @@
+export { formatBytes } from './bytes';
 export { formatLatitude, formatLongitude, PLACEHOLDER } from './coords';
 export {
   degreesToRadians,

@@ -1,3 +1,5 @@
+import { openIdbStore } from './idb';
+
 // A small append log generic over the record type so this stays domain-free (the track point
 // shape lives in entities/track). It degrades to an in-memory log, and never throws, when
 // IndexedDB is missing (Node, private mode) or fails to open or write (blocked upgrade, quota,
@@ -32,31 +34,9 @@ export function createTrackStore<T>(
 
   const memory = memoryStore<T>();
   let degraded = false;
-
-  let dbPromise: Promise<IDBDatabase> | undefined;
-  const db = (): Promise<IDBDatabase> => {
-    if (!dbPromise) {
-      dbPromise = new Promise((resolve, reject) => {
-        const req = factory.open(DB_NAME, 1);
-        req.onupgradeneeded = () => req.result.createObjectStore(STORE, { autoIncrement: true });
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-        // A second tab holding the prior version blocks the upgrade; reject instead of hanging.
-        req.onblocked = () => reject(new Error('indexedDB open blocked'));
-      });
-    }
-    return dbPromise;
-  };
-
-  const run = <R>(mode: IDBTransactionMode, op: (s: IDBObjectStore) => IDBRequest): Promise<R> =>
-    db().then(
-      (conn) =>
-        new Promise<R>((resolve, reject) => {
-          const req = op(conn.transaction(STORE, mode).objectStore(STORE));
-          req.onsuccess = () => resolve(req.result as R);
-          req.onerror = () => reject(req.error);
-        }),
-    );
+  const { run } = openIdbStore(factory, DB_NAME, STORE, (db) =>
+    db.createObjectStore(STORE, { autoIncrement: true }),
+  );
 
   return {
     all: async () => {
@@ -68,22 +48,24 @@ export function createTrackStore<T>(
         return memory.all();
       }
     },
+    // Mirror to memory on every write, so if IndexedDB degrades mid-session the in-memory log
+    // still holds the records appended before the failure, not only the ones after it.
     append: async (item) => {
       if (degraded) return memory.append(item);
+      await memory.append(item);
       try {
         await run('readwrite', (s) => s.add(item));
       } catch {
         degraded = true;
-        await memory.append(item);
       }
     },
     clear: async () => {
       if (degraded) return memory.clear();
+      await memory.clear();
       try {
         await run('readwrite', (s) => s.clear());
       } catch {
         degraded = true;
-        await memory.clear();
       }
     },
   };
