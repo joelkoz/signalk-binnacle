@@ -39,6 +39,29 @@ describe('CourseGuidance', () => {
     expect(g.distanceToNextMeters).toBe(1852);
   });
 
+  it('seeds the leg from a hydration snapshot and clear wipes every course cell', () => {
+    const store = storeWith({ 'navigation.position': { latitude: 0, longitude: 0 } });
+    const g = new CourseGuidance(store, new OwnVessel(store));
+    expect(g.active).toBe(false);
+    g.seed(
+      {
+        nextPoint: { position: { latitude: 0, longitude: 1 }, name: 'B' },
+        previousPoint: { position: { latitude: 0, longitude: 0 } },
+        activeRoute: { href: '/resources/routes/r', pointIndex: 0, pointTotal: 2 },
+        arrivalCircle: 50,
+      },
+      { crossTrackError: 7, distance: 1852 },
+    );
+    expect(g.active).toBe(true);
+    expect(g.source).toBe('server');
+    expect(g.nextPointName).toBe('B');
+    expect(g.distanceToNextMeters).toBe(1852);
+    g.clear();
+    expect(g.active).toBe(false);
+    expect(g.source).toBe('computed');
+    expect(g.isLastPoint).toBe(false);
+  });
+
   it('computes the derived values when calcValues is absent and flags the source computed', () => {
     const store = storeWith({
       'navigation.position': { latitude: 0, longitude: 0 },

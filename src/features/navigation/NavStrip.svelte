@@ -8,6 +8,7 @@ import {
   PLACEHOLDER,
   radiansToBearing,
 } from '$shared/lib';
+import { steerSide } from '$shared/nav';
 
 interface Props {
   guidance: CourseGuidance;
@@ -16,13 +17,12 @@ interface Props {
 
 const { guidance, onStop }: Props = $props();
 
-// The side to steer toward to return to the track. A positive cross-track error means the
-// boat is to starboard of the track, so steer to port ('L'); a negative error means steer to
-// starboard ('R'). Zero or absent yields no marker.
+// The side to steer toward to return to the track, as a port (L) or starboard (R) marker. The
+// cross-track sign convention lives in steerSide; absent or zero error yields no marker.
 const steer = $derived.by<'L' | 'R' | null>(() => {
-  const xte = guidance.crossTrackErrorMeters;
-  if (xte == null || xte === 0) return null;
-  return xte > 0 ? 'L' : 'R';
+  const side = steerSide(guidance.crossTrackErrorMeters ?? Number.NaN);
+  if (side === null) return null;
+  return side === 'port' ? 'L' : 'R';
 });
 
 // Each readout shows the placeholder when its value is absent, never a misleading zero.

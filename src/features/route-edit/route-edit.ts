@@ -49,9 +49,7 @@ export function routeToStoreFeature(route: Route): GeoJSONStoreFeatures<GeoJSON.
 
 export interface RouteEditor {
   start(route?: Route): void;
-  setMode(mode: 'point' | 'linestring' | 'select'): void;
   setTheme(theme: Theme): void;
-  read(): Waypoint[];
   stop(): void;
 }
 
@@ -106,9 +104,6 @@ export function createRouteEditor(opts: {
         draw.setMode(LINESTRING_MODE);
       }
     },
-    setMode(mode) {
-      draw.setMode(mode);
-    },
     setTheme(theme) {
       const color = DRAW_COLOR[theme];
       draw.updateModeOptions('point', { styles: { pointColor: color, pointWidth: 5 } });
@@ -119,7 +114,6 @@ export function createRouteEditor(opts: {
         styles: { selectionPointColor: color, midPointColor: color },
       });
     },
-    read,
     stop() {
       draw.stop();
     },

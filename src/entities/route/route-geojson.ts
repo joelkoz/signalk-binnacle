@@ -1,5 +1,5 @@
 import { rhumbBearingRad, rhumbDistanceMeters } from '$shared/nav';
-import { latLonToLonLat, lonLatToLatLon } from '$shared/signalk';
+import { type LonLat, latLonToLonLat, lonLatToLatLon, str } from '$shared/signalk';
 import type { Route, RouteLeg, Waypoint } from './route-types';
 
 // The Signal K v2 route resource body: a GeoJSON Feature with a LineString, plus name and the
@@ -9,7 +9,7 @@ export interface RouteResourceBody {
   distance: number;
   feature: {
     type: 'Feature';
-    geometry: { type: 'LineString'; coordinates: [number, number][] };
+    geometry: { type: 'LineString'; coordinates: LonLat[] };
     properties: { coordinatesMeta: Array<{ name?: string }> };
   };
 }
@@ -46,12 +46,12 @@ export function featureToRoute(id: string, raw: unknown): Route | undefined {
   const waypoints: Waypoint[] = [];
   geom.coordinates.forEach((coord, i) => {
     if (Array.isArray(coord) && typeof coord[0] === 'number' && typeof coord[1] === 'number') {
-      const name = typeof meta[i]?.name === 'string' ? (meta[i].name as string) : undefined;
+      const name = str(meta[i]?.name);
       waypoints.push({ position: lonLatToLatLon([coord[0], coord[1]]), ...(name ? { name } : {}) });
     }
   });
   if (waypoints.length < 2) return undefined;
-  const name = typeof r.name === 'string' && r.name ? r.name : id;
+  const name = str(r.name) ?? id;
   return { id, name, waypoints };
 }
 
@@ -71,5 +71,9 @@ export function routeLegs(waypoints: readonly Waypoint[]): RouteLeg[] {
 }
 
 export function routeDistanceMeters(waypoints: readonly Waypoint[]): number {
-  return routeLegs(waypoints).reduce((sum, leg) => sum + leg.distanceMeters, 0);
+  let total = 0;
+  for (let i = 1; i < waypoints.length; i += 1) {
+    total += rhumbDistanceMeters(waypoints[i - 1].position, waypoints[i].position);
+  }
+  return total;
 }

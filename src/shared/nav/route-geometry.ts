@@ -1,15 +1,6 @@
 import { DEG_TO_RAD } from '$shared/lib';
 import type { LatLon } from '$shared/signalk';
-import { haversineMeters } from './distance';
-
-const EARTH_RADIUS_M = 6_371_000;
-
-function normalizeLonDeltaDeg(delta: number): number {
-  let d = delta;
-  if (d > 180) d -= 360;
-  else if (d < -180) d += 360;
-  return d;
-}
+import { EARTH_RADIUS_M, haversineMeters, normalizeLonDeltaDeg } from './distance';
 
 // Rhumb-line (constant-bearing) distance: the line you actually steer over a short to medium leg.
 export function rhumbDistanceMeters(from: LatLon, to: LatLon): number {
@@ -48,9 +39,8 @@ export function crossTrackErrorMeters(from: LatLon, to: LatLon, position: LatLon
   const theta13 = greatCircleBearingRad(from, position);
   const theta12 = greatCircleBearingRad(from, to);
   const ratio = Math.max(-1, Math.min(1, (d13 / EARTH_RADIUS_M) * Math.sin(theta13 - theta12)));
-  // The standard cross-track formula is already starboard-positive for a point right of the track
-  // (theta13 > theta12 gives a positive arc), so it is not negated. The sign is reconciled against
-  // the server's calcValues.crossTrackError convention during the live verification step.
+  // Starboard-positive, matching the server's calcValues.crossTrackError convention (reconciled
+  // during live verification), so the computed fallback agrees with a provider value.
   return Math.asin(ratio) * EARTH_RADIUS_M;
 }
 
@@ -65,4 +55,12 @@ export function vmgMps(position: LatLon, mark: LatLon, sogMps: number, cogRad: n
 export function etaSeconds(distanceMeters: number, speedMps: number): number | undefined {
   if (speedMps <= 0) return undefined;
   return distanceMeters / speedMps;
+}
+
+// The side to steer toward to close a cross-track error back onto the leg. The cross-track sign is
+// starboard-positive (see crossTrackErrorMeters), so a positive error puts the boat to starboard of
+// the track and the correction is to port, and vice versa. Zero or non-finite yields no side.
+export function steerSide(crossTrackMeters: number): 'port' | 'starboard' | null {
+  if (!Number.isFinite(crossTrackMeters) || crossTrackMeters === 0) return null;
+  return crossTrackMeters > 0 ? 'port' : 'starboard';
 }

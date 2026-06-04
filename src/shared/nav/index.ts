@@ -7,5 +7,6 @@ export {
   greatCircleBearingRad,
   rhumbBearingRad,
   rhumbDistanceMeters,
+  steerSide,
   vmgMps,
 } from './route-geometry';

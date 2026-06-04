@@ -45,7 +45,6 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
     title: 'Routes',
     band: BAND,
     supportsOpacity: true,
-    defaultVisible: true,
     layerIds: LAYERS,
     add(ctx) {
       // Reset the dirty-check so a reattach (after a base-style swap emptied the sources)

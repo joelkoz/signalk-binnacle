@@ -10,6 +10,7 @@ import type {
   ActiveRoute,
   CourseCalculations,
   CourseInfo,
+  CoursePoint,
   LatLon,
   SignalKStore,
 } from '$shared/signalk';
@@ -38,10 +39,32 @@ export class CourseGuidance {
     store.cell(SK_PATHS.courseArrivalCircle);
   }
 
+  // Seed every course cell from a one-time REST hydration, so the nav strip shows values immediately
+  // before the stream sends the first change. The guidance owns these cells, so the seeded set and
+  // the cleared set provably match.
+  seed(info: CourseInfo | undefined, calc: CourseCalculations | undefined): void {
+    if (info) {
+      this.#store.cell(SK_PATHS.courseNextPoint).value = info.nextPoint;
+      this.#store.cell(SK_PATHS.coursePreviousPoint).value = info.previousPoint;
+      this.#store.cell(SK_PATHS.courseActiveRoute).value = info.activeRoute;
+      this.#store.cell(SK_PATHS.courseArrivalCircle).value = info.arrivalCircle;
+    }
+    if (calc) this.#store.cell(SK_PATHS.courseCalcValues).value = calc;
+  }
+
+  // Clear every course cell on stop, so no previousPoint, activeRoute, arrivalCircle, or calcValues
+  // lingers to leak into the next activation.
+  clear(): void {
+    this.#store.cell(SK_PATHS.courseNextPoint).value = undefined;
+    this.#store.cell(SK_PATHS.coursePreviousPoint).value = undefined;
+    this.#store.cell(SK_PATHS.courseActiveRoute).value = undefined;
+    this.#store.cell(SK_PATHS.courseArrivalCircle).value = undefined;
+    this.#store.cell(SK_PATHS.courseCalcValues).value = undefined;
+  }
+
   #info = $derived.by<CourseInfo>(() => ({
-    nextPoint: this.#store.cell(SK_PATHS.courseNextPoint).value as CourseInfo['nextPoint'],
-    previousPoint: this.#store.cell(SK_PATHS.coursePreviousPoint)
-      .value as CourseInfo['previousPoint'],
+    nextPoint: this.#store.cell(SK_PATHS.courseNextPoint).value as CoursePoint | undefined,
+    previousPoint: this.#store.cell(SK_PATHS.coursePreviousPoint).value as CoursePoint | undefined,
     activeRoute: this.#store.cell(SK_PATHS.courseActiveRoute).value as ActiveRoute | undefined,
     arrivalCircle: this.#store.cell(SK_PATHS.courseArrivalCircle).value as number | undefined,
   }));

@@ -236,6 +236,17 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- Routing cleanup pass (four expert audit lanes: geodesy and the route domain, course guidance and
+  the resource clients, the overlay, editor, and chart wiring, and the routing UI and app wiring), no
+  feature change. The Earth-radius constant and the antimeridian longitude-delta normalize are now
+  shared by the rhumb-line geometry and the collision CPA projection instead of duplicated, a
+  `steerSide` helper centralizes the port-versus-starboard cross-track convention, a `clientId` helper
+  folds the two copies of the secure-context id fallback, and the route distance no longer allocates a
+  leg array just to sum it. Stopping an active course now clears every course cell, where before it
+  left the previous point, the active route, and the arrival circle stale, and the seeding and
+  clearing of those cells moved onto the course entity that owns them. Dead route-editor methods and a
+  redundant overlay visibility flag were removed. Tests went from 412 to 415.
+
 - The weather mini-map opens centered on the navigation chart's current view, so the forecast is for
   the area you are looking at, rather than reopening at its own last position. The zoom is still capped
   to the mini-map's maximum so weather never zooms past its data resolution.

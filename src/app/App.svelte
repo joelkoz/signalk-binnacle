@@ -60,6 +60,7 @@ import {
   WEATHER_LAYER_IDS,
 } from '$features/weather';
 import {
+  clientId,
   formatFixed,
   formatLatitude,
   formatLongitude,
@@ -334,18 +335,9 @@ async function refreshSavedTracks(): Promise<void> {
   bumpSaved();
 }
 
-// crypto.randomUUID needs a secure context; the Signal K server serves over plain http on the
-// LAN, so fall back to a timestamp-plus-random id there.
-function newTrackId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `track-${Date.now()}-${Math.floor(Math.random() * 1e9).toString(36)}`;
-}
-
 async function onSaveTrack(name: string): Promise<void> {
   if (recorder.points.length < 2) return;
-  const id = newTrackId();
+  const id = clientId('track');
   if (!(await saveTrack(serverOrigin(), chartsToken, id, name, recorder.points))) return;
   recorder.clear();
   // Show the new track, then refresh: refreshSavedTracks bumps the version once with both the
@@ -406,19 +398,9 @@ function clearRouteError(): void {
 async function stopActiveCourse(): Promise<boolean> {
   if (!(await clearCourse(serverOrigin(), chartsToken))) return false;
   routeStore.setActive(undefined);
-  store.cell(SK_PATHS.courseNextPoint).value = undefined;
-  store.cell(SK_PATHS.courseCalcValues).value = undefined;
+  courseGuidance.clear();
   arrivalAlarm.stop();
   return true;
-}
-
-// A client-chosen route id (a UUID in a secure context, a timestamp fallback over plain http), so
-// the id is known before the PUT and activation does not need to parse a create response.
-function newRouteId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `route-${Date.now()}-${Math.floor(Math.random() * 1e9).toString(36)}`;
 }
 
 // Fly the chart to a saved route's first waypoint, so showing, editing, activating, or tapping a
@@ -435,7 +417,8 @@ function onToggleRouteShown(id: string, shown: boolean): void {
 
 function onNewRoute(): void {
   clearRouteError();
-  routeStore.setWorking({ id: newRouteId(), name: '', waypoints: [] });
+  // A client-chosen route id, known before the PUT, so activation needs no create-response parse.
+  routeStore.setWorking({ id: clientId('route'), name: '', waypoints: [] });
   mapCommands?.startRouteEdit();
 }
 
@@ -499,13 +482,7 @@ async function onActivateRoute(id: string): Promise<void> {
   // the next change. Seed the cells once from a REST GET so the nav strip shows values immediately,
   // then the stream keeps them live.
   const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
-  if (info) {
-    store.cell(SK_PATHS.courseNextPoint).value = info.nextPoint;
-    store.cell(SK_PATHS.coursePreviousPoint).value = info.previousPoint;
-    store.cell(SK_PATHS.courseActiveRoute).value = info.activeRoute;
-    store.cell(SK_PATHS.courseArrivalCircle).value = info.arrivalCircle;
-  }
-  if (calc) store.cell(SK_PATHS.courseCalcValues).value = calc;
+  courseGuidance.seed(info, calc);
 }
 
 async function onStopCourse(): Promise<void> {

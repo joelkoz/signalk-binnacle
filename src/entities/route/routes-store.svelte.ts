@@ -1,8 +1,7 @@
 import type { Route } from './route-types';
 
-// The reactive home for routes: the loaded list, which are shown on the chart, the working route
-// under edit, and which route is active. A version counter lets the overlay poll for changes the
-// way the saved-tracks overlay does, without deep reactivity on the arrays.
+// The reactive home for routes. A version counter lets the overlay poll for changes the way the
+// saved-tracks overlay does, without deep reactivity on the arrays.
 export class RouteStore {
   routes = $state<Route[]>([]);
   shownIds = $state<Set<string>>(new Set());

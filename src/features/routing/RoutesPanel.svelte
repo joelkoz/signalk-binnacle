@@ -49,9 +49,10 @@ function defaultName(): string {
 }
 
 function promptSave(): void {
-  const name = window.prompt('Save route as', defaultName());
+  const fallback = defaultName();
+  const name = window.prompt('Save route as', fallback);
   if (name === null) return;
-  onSave(name.trim() || defaultName());
+  onSave(name.trim() || fallback);
 }
 </script>
 

@@ -5,6 +5,7 @@ import {
   etaSeconds,
   rhumbBearingRad,
   rhumbDistanceMeters,
+  steerSide,
   vmgMps,
 } from './route-geometry';
 
@@ -71,6 +72,18 @@ describe('vmgMps', () => {
       degreesToRadians(180),
     );
     expect(v).toBeLessThan(0);
+  });
+});
+
+describe('steerSide', () => {
+  it('steers to port for a starboard (positive) error and to starboard for a port (negative) one', () => {
+    expect(steerSide(50)).toBe('port');
+    expect(steerSide(-50)).toBe('starboard');
+  });
+
+  it('has no side for a zero or non-finite error', () => {
+    expect(steerSide(0)).toBeNull();
+    expect(steerSide(Number.NaN)).toBeNull();
   });
 });
 
