@@ -48,9 +48,11 @@ What is in place now:
 - Weather: a dedicated weather mini-map opened by the Forecast button, so the navigation chart stays
   clean and the weather stays within its data resolution (the mini-map caps at zoom 7, RainViewer's
   real radar resolution, so it can never be zoomed past the data). Toggle wind, pressure, waves,
-  precipitation, cloud, or radar in the panel; wind draws as speed-colored arrows, mean-sea-level
-  pressure as labeled isobar contours (marching squares), significant wave height, precipitation, and
-  cloud as smooth color fields, and RainViewer precipitation radar as an animated loop. The four area
+  precipitation, cloud, or radar in the panel; wind draws as an animated WebGL particle field (thousands
+  of speed-colored particles streaming with fading trails, a custom MapLibre GPU layer with a
+  speed-colored arrow fallback when WebGL is unavailable), mean-sea-level pressure as labeled isobar
+  contours (marching squares), significant wave height, precipitation, and cloud as smooth color
+  fields, and RainViewer precipitation radar as an animated loop. The four area
   fills are mutually exclusive (one at a time) while wind and pressure stay combinable; a time slider
   scrubs the coming days, a legend shows a color ramp per active layer, a tap reads the value at any
   point, and a "Here" panel shows the conditions, forecast, and any gale or storm warnings for the
@@ -59,7 +61,6 @@ What is in place now:
   set; the area fields and radar are always free (Open-Meteo and RainViewer, no key, no server).
   Results are cached by viewport in memory, and the responses, radar index, and radar tiles are cached
   for offline use. Themed for day, dusk, and night-red (a deep low-brightness red at night, no blue).
-  Animated wind particles follow.
 - AIS targets: other vessels render as GPU symbols in the traffic band, rotate with course, age
   out when they go silent, and carry CPA and TCPA when a Signal K provider supplies them.
 - The active-safety Lookout feature: a collision danger strip with chart-highlight rings, an audible

@@ -30,7 +30,13 @@ All notable changes to Binnacle are documented here. The format follows
   Open-Meteo responses, the RainViewer frame index, and the radar tiles are cached by the service
   worker for offline use. Layers beyond wind and waves are off on first open, themed for day, dusk,
   and night-red (a deep, low-brightness red on black at night, no blue; the radar raster is
-  desaturated and dimmed). Animated wind particles follow in a later iteration.
+  desaturated and dimmed).
+- Wind draws as an animated WebGL particle field, the glanceable signature layer: thousands of
+  particles stream through the forecast wind with fading trails, colored by speed (the day ramp, and
+  a pure red-on-black ramp at night). It is a custom MapLibre layer running a GPU particle simulation
+  over the forecast u/v, projected so pan and zoom only reproject the particles and the trails reset
+  cleanly on a move. It falls back to the speed-colored arrow layer when WebGL is unavailable, and
+  the animation runs only while the Wind layer is on.
 
 - Approving Binnacle's Signal K access is now self-explanatory and recognizable. The request uses a
   named client id (`binnacle-<short>`) instead of a bare UUID, so it is easy to spot in the Signal K
