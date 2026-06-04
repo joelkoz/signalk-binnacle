@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { WeatherStore } from '$entities/weather';
 import { mapThemePaint, type OverlayContext } from '$shared/map';
 import { createFakeMap } from '$shared/testing/fake-map';
@@ -21,71 +21,73 @@ function storeWithRadar(): WeatherStore {
 }
 
 describe('radar overlay', () => {
-  it('adds a raster source and layer in the weather band', () => {
+  it('creates the source and layer in the weather band once a frame is available', () => {
     const overlay = createRadarOverlay(storeWithRadar());
     const map = createFakeMap();
     overlay.add(ctxFor(map));
+    // Nothing is created until a frame lands: a raster source has no usable empty placeholder.
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+
+    overlay.sync(ctxFor(map));
     expect(overlay.band).toBe('weather');
     expect(map.sources.size).toBe(1);
     expect(map.layers.size).toBe(1);
   });
 
-  it('points the source at the latest frame on sync', () => {
+  it('creates the source pointed at the latest frame, never empty', () => {
     const overlay = createRadarOverlay(storeWithRadar());
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     overlay.sync(ctxFor(map));
     const source = [...map.sources.values()][0];
-    expect(vi.mocked(source.setTiles)).toHaveBeenCalledWith([
+    expect(source.tiles).toEqual([
       'https://tilecache.rainviewer.com/v2/radar/b/256/{z}/{x}/{y}/2/1_1.png',
     ]);
+  });
+
+  it('creates nothing while there is no radar data, even when shown', () => {
+    const overlay = createRadarOverlay(new WeatherStore());
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    overlay.setVisible(ctxFor(map), true);
+    overlay.sync(ctxFor(map));
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+
+  it('creates the layer once radar data arrives after being toggled on', () => {
+    const store = new WeatherStore();
+    const overlay = createRadarOverlay(store);
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    overlay.setVisible(ctxFor(map), true);
+    expect(map.layers.size).toBe(0);
+
+    store.setRadar({
+      host: 'https://tilecache.rainviewer.com',
+      frames: [{ time: 1000, path: '/v2/radar/a' }],
+    });
+    overlay.sync(ctxFor(map));
+    expect(map.layers.size).toBe(1);
   });
 
   it('removes its layer and source', () => {
     const overlay = createRadarOverlay(storeWithRadar());
     const map = createFakeMap();
     overlay.add(ctxFor(map));
+    overlay.sync(ctxFor(map));
     overlay.remove(ctxFor(map));
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
   });
 
-  it('never creates the source with an empty tiles array', () => {
-    // MapLibre loads tiles for a raster source whose layer is in the style regardless of visibility,
-    // and an empty tiles array crashes its URL builder (tiles[NaN].replace). The source must start
-    // with a non-empty (placeholder) tiles array so toggling radar on before a frame cannot crash.
+  it('recolors for the theme without throwing, before and after the layer exists', () => {
     const overlay = createRadarOverlay(storeWithRadar());
     const map = createFakeMap();
     overlay.add(ctxFor(map));
-    const source = [...map.sources.values()][0];
-    expect(Array.isArray(source.tiles)).toBe(true);
-    expect((source.tiles as unknown[]).length).toBeGreaterThan(0);
-  });
-
-  it('stays hidden when shown before a frame, then reveals once a frame lands', () => {
-    // Rendering the placeholder-only layer throws in the raster program, so toggling radar on before
-    // a real frame must not reveal it; it reveals only after a frame has been applied on sync.
-    const overlay = createRadarOverlay(storeWithRadar());
-    const map = createFakeMap();
-    overlay.add(ctxFor(map));
-    overlay.setVisible(ctxFor(map), true);
-    const visibilityCalls = vi
-      .mocked(map.setLayoutProperty)
-      .mock.calls.filter(([, prop]) => prop === 'visibility');
-    expect(visibilityCalls.every(([, , value]) => value === 'none')).toBe(true);
-
+    expect(() => overlay.applyTheme?.(ctxFor(map), mapThemePaint('night-red'))).not.toThrow();
     overlay.sync(ctxFor(map));
-    expect(vi.mocked(map.setLayoutProperty)).toHaveBeenCalledWith(
-      'binnacle-weather-radar-layer',
-      'visibility',
-      'visible',
-    );
-  });
-
-  it('recolors for the theme without throwing', () => {
-    const overlay = createRadarOverlay(storeWithRadar());
-    const map = createFakeMap();
-    overlay.add(ctxFor(map));
     expect(() => overlay.applyTheme?.(ctxFor(map), mapThemePaint('night-red'))).not.toThrow();
   });
 });

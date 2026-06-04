@@ -1,6 +1,6 @@
 import type { RasterLayerSpecification, RasterSourceSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
-import type { OverlayContext, OverlayModule } from '$shared/map';
+import type { MapThemePaint, OverlayContext, OverlayModule } from '$shared/map';
 import { WEATHER_LAYER_IDS } from './fills';
 import { frameTiles, TILE_SIZE } from './radar-frames';
 
@@ -9,14 +9,6 @@ const LAYER_ID = 'binnacle-weather-radar-layer';
 const FRAME_MS = 600; // dwell on each past frame while looping
 const PAUSE_MS = 1600; // hold on the latest frame before wrapping, so "now" reads clearly
 const DEFAULT_OPACITY = 0.85; // one source for both the OverlayModule default and the initial paint
-// A 1x1 transparent PNG used as the source's initial tile. MapLibre loads tiles for a raster source
-// whose layer is in the style regardless of the layer's visibility, and it builds a tile URL by
-// indexing into the tiles array; an EMPTY tiles array yields tiles[NaN] = undefined and crashes the
-// loader (and then the raster render program) before any frame has loaded. Seeding a constant
-// transparent tile keeps the array non-empty, so the source is valid and shows nothing until a real
-// frame is set. setTiles swaps in the live frame.
-const BLANK_TILE =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 export interface RadarOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -27,6 +19,12 @@ export interface RadarOverlay extends OverlayModule {
 // is seen moving. The loop is driven from the per-frame tick rather than its own timer, so it stops
 // when the chart unmounts; `now` is injectable for tests. Night-red desaturates and dims the raster
 // (it cannot be recolored), the same treatment the depth-charts rasters use.
+//
+// The source and layer are created lazily, only once a real frame exists, and removed nowhere except
+// in remove(). A raster source's tiles cannot be a usable placeholder: an empty array crashes the
+// tile-URL builder, and a data-URL tile fails to decode. So instead of a placeholder, the layer
+// simply does not exist until there is a real frame to point it at. The desired visibility, opacity,
+// and theme are tracked and applied when the layer is created or changed.
 export function createRadarOverlay(
   store: WeatherStore,
   now: () => number = () => performance.now(),
@@ -34,24 +32,52 @@ export function createRadarOverlay(
   let lastRadar: unknown;
   let frameIndex = 0;
   let lastAdvance = 0;
-  // Two independent guards work together. Tile LOADING ignores layer visibility, so the source must
-  // always have a valid tile (BLANK_TILE) or its URL builder crashes. Tile RENDERING does respect
-  // visibility, and drawing the layer while it holds only the blank placeholder throws in the raster
-  // program, so the layer is revealed only once a real frame has been applied.
   let desiredVisible = false;
-  let frameApplied = false;
-  let visible = false; // actual on-screen state; also gates the animation
+  let opacity = DEFAULT_OPACITY;
+  let lastPaint: MapThemePaint | undefined;
 
-  function applyVisibility(ctx: OverlayContext): void {
-    visible = desiredVisible && frameApplied;
-    ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');
+  // Point the source at the current frame, creating the source and layer the first time a frame is
+  // available. A no-op when there is no radar data yet, so the layer never exists empty.
+  function applyFrame(ctx: OverlayContext): void {
+    const radar = store.radar;
+    const frames = radar?.frames ?? [];
+    if (!radar || frames.length === 0) return;
+    const path = frames[Math.min(frameIndex, frames.length - 1)].path;
+    const url = frameTiles(radar.host, { time: 0, path });
+
+    const source = ctx.map.getSource(SOURCE_ID) as { setTiles(t: string[]): void } | undefined;
+    if (source) {
+      source.setTiles([url]);
+    } else {
+      const spec: RasterSourceSpecification = {
+        type: 'raster',
+        tiles: [url],
+        tileSize: TILE_SIZE,
+        // RainViewer serves real radar tiles only to zoom 7 (confirmed across regions); from zoom 8
+        // up every tile is a "Zoom Level Not Supported" placeholder. Cap the source at 7 so MapLibre
+        // overzooms the real tiles instead of fetching placeholders.
+        maxzoom: 7,
+        attribution: 'RainViewer',
+      };
+      ctx.map.addSource(SOURCE_ID, spec);
+    }
+
+    if (!ctx.map.getLayer(LAYER_ID)) {
+      const layer: RasterLayerSpecification = {
+        id: LAYER_ID,
+        type: 'raster',
+        source: SOURCE_ID,
+        layout: { visibility: desiredVisible ? 'visible' : 'none' },
+        paint: { 'raster-opacity': opacity },
+      };
+      ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
+      if (lastPaint) recolor(ctx, lastPaint);
+    }
   }
 
-  function showFrame(ctx: OverlayContext, host: string, path: string): void {
-    const source = ctx.map.getSource(SOURCE_ID) as { setTiles(t: string[]): void } | undefined;
-    if (!source) return;
-    source.setTiles([frameTiles(host, { time: 0, path })]);
-    frameApplied = true;
+  function recolor(ctx: OverlayContext, paint: MapThemePaint): void {
+    ctx.map.setPaintProperty(LAYER_ID, 'raster-saturation', paint.rasterSaturation);
+    ctx.map.setPaintProperty(LAYER_ID, 'raster-brightness-max', paint.rasterBrightnessMax);
   }
 
   return {
@@ -62,63 +88,30 @@ export function createRadarOverlay(
     defaultVisible: false,
     defaultOpacity: DEFAULT_OPACITY,
     layerIds: [LAYER_ID],
-    add(ctx) {
-      // Reset the dirty-check so a reattach (after a base-style swap recreates the source) re-points
-      // it at the latest frame on the next sync instead of staying blank. The recreated source has no
-      // real frame yet, so the layer must re-hide until one lands.
+    add() {
+      // Nothing is created until a frame lands. Reset the dirty-check so the next sync re-points the
+      // source (after a base-style swap recreated nothing) instead of assuming it is current.
       lastRadar = undefined;
-      frameApplied = false;
-      if (!ctx.map.getSource(SOURCE_ID)) {
-        const spec: RasterSourceSpecification = {
-          type: 'raster',
-          // Never empty: see BLANK_TILE. Real frames replace this via setTiles.
-          tiles: [BLANK_TILE],
-          tileSize: TILE_SIZE,
-          // RainViewer serves real radar tiles only to zoom 7 (confirmed across regions); from zoom 8
-          // up every tile is a "Zoom Level Not Supported" placeholder. Cap the source at 7 so MapLibre
-          // overzooms the real tiles instead of fetching placeholders.
-          maxzoom: 7,
-          attribution: 'RainViewer',
-        };
-        ctx.map.addSource(SOURCE_ID, spec);
-      }
-      if (!ctx.map.getLayer(LAYER_ID)) {
-        const layer: RasterLayerSpecification = {
-          id: LAYER_ID,
-          type: 'raster',
-          source: SOURCE_ID,
-          // Start hidden: drawing the blank placeholder throws in the raster program. applyVisibility
-          // reveals it once a real frame is set.
-          layout: { visibility: 'none' },
-          paint: { 'raster-opacity': DEFAULT_OPACITY },
-        };
-        ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
-      } else {
-        ctx.map.setLayoutProperty(LAYER_ID, 'visibility', 'none');
-      }
-      visible = false;
     },
     sync(ctx) {
       const radar = store.radar;
       const frames = radar?.frames ?? [];
-      // On new radar data, jump to the latest frame and re-point the source immediately.
+      // On new radar data, jump to the latest frame and point the source at it (creating it).
       if (radar !== lastRadar) {
         lastRadar = radar;
         frameIndex = Math.max(0, frames.length - 1);
-        if (radar && frames.length > 0) showFrame(ctx, radar.host, frames[frameIndex].path);
-        else frameApplied = false;
-        applyVisibility(ctx);
+        if (radar && frames.length > 0) applyFrame(ctx);
         lastAdvance = now();
         return;
       }
-      if (!visible || !radar || frames.length < 2) return;
+      if (!desiredVisible || !ctx.map.getLayer(LAYER_ID) || !radar || frames.length < 2) return;
       // Advance one frame per FRAME_MS, holding PAUSE_MS on the latest before wrapping to the oldest.
       const interval = frameIndex === frames.length - 1 ? PAUSE_MS : FRAME_MS;
       const t = now();
       if (t - lastAdvance < interval) return;
       lastAdvance = t;
       frameIndex = (frameIndex + 1) % frames.length;
-      showFrame(ctx, radar.host, frames[frameIndex].path);
+      applyFrame(ctx);
     },
     remove(ctx) {
       if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
@@ -126,14 +119,20 @@ export function createRadarOverlay(
     },
     setVisible(ctx, isVisible) {
       desiredVisible = isVisible;
-      applyVisibility(ctx);
+      if (ctx.map.getLayer(LAYER_ID)) {
+        ctx.map.setLayoutProperty(LAYER_ID, 'visibility', isVisible ? 'visible' : 'none');
+      } else if (isVisible) {
+        // Toggled on while a frame is already loaded: create and show it now.
+        applyFrame(ctx);
+      }
     },
-    setOpacity(ctx, opacity) {
-      ctx.map.setPaintProperty(LAYER_ID, 'raster-opacity', opacity);
+    setOpacity(ctx, value) {
+      opacity = value;
+      if (ctx.map.getLayer(LAYER_ID)) ctx.map.setPaintProperty(LAYER_ID, 'raster-opacity', value);
     },
     applyTheme(ctx, paint) {
-      ctx.map.setPaintProperty(LAYER_ID, 'raster-saturation', paint.rasterSaturation);
-      ctx.map.setPaintProperty(LAYER_ID, 'raster-brightness-max', paint.rasterBrightnessMax);
+      lastPaint = paint;
+      if (ctx.map.getLayer(LAYER_ID)) recolor(ctx, paint);
     },
   };
 }
