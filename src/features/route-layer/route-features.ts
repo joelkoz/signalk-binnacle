@@ -1,0 +1,43 @@
+import type { Route } from '$entities/route';
+import { latLonToLonLat as toLonLat } from '$shared/signalk';
+
+// One LineString per shown route, flagged active so the overlay can style the active route apart.
+export function routeLineFeatures(
+  routes: readonly Route[],
+  shownIds: ReadonlySet<string>,
+  activeId: string | undefined,
+): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  for (const route of routes) {
+    if (!shownIds.has(route.id)) continue;
+    if (route.waypoints.length < 2) continue;
+    features.push({
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates: route.waypoints.map((w) => toLonLat(w.position)),
+      },
+      properties: { id: route.id, active: route.id === activeId },
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+// One Point per waypoint of each shown route, carrying its name and zero-based index for labels.
+export function waypointFeatures(
+  routes: readonly Route[],
+  shownIds: ReadonlySet<string>,
+): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  for (const route of routes) {
+    if (!shownIds.has(route.id)) continue;
+    route.waypoints.forEach((w, index) => {
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: toLonLat(w.position) },
+        properties: { id: route.id, index, name: w.name ?? `${index + 1}` },
+      });
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
