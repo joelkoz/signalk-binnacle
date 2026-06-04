@@ -18,6 +18,8 @@ interface Props {
   onSave: (name: string) => void;
   onCancelEdit: () => void;
   onToggleShown: (id: string, shown: boolean) => void;
+  // Pan the chart to a route's start without changing its shown state.
+  onLocate: (id: string) => void;
   onActivate: (id: string) => void;
   onStop: () => void;
   onDelete: (id: string) => void;
@@ -35,6 +37,7 @@ const {
   onSave,
   onCancelEdit,
   onToggleShown,
+  onLocate,
   onActivate,
   onStop,
   onDelete,
@@ -112,7 +115,14 @@ function promptSave(): void {
       <ul>
         {#each routes as route (route.id)}
           <li>
-            <span class="name" title={route.name}>{route.name}</span>
+            <button
+              type="button"
+              class="name"
+              title="Go to this route on the chart"
+              onclick={() => onLocate(route.id)}
+            >
+              {route.name}
+            </button>
             <button
               type="button"
               class="icon"
@@ -318,9 +328,22 @@ function promptSave(): void {
 }
 .saved .name {
   flex: 1;
+  display: flex;
+  align-items: center;
+  min-block-size: var(--control-size);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.saved .name:hover {
+  color: var(--accent);
 }
 .icon {
   display: inline-flex;

@@ -10,6 +10,8 @@ export interface MapCommands {
   recenterOnVessel: (latitude: number, longitude: number) => void;
   // Clear any selected note (drop the selection ring); used when the detail panel closes.
   clearNoteSelection: () => void;
+  // Fly the map to a position (for example a route's start) at a usable zoom, animated.
+  flyTo: (latitude: number, longitude: number) => void;
   // Start on-chart route editing (Terra Draw): with a route, edit it; without one, draw a fresh
   // route. stopRouteEdit tears the editor down.
   startRouteEdit: (route?: Route) => void;

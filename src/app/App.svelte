@@ -422,6 +422,18 @@ function newRouteId(): string {
   return `route-${Date.now()}-${Math.floor(Math.random() * 1e9).toString(36)}`;
 }
 
+// Fly the chart to a saved route's first waypoint, so showing, editing, activating, or tapping a
+// route brings it into view rather than leaving the navigator hunting for it across the chart.
+function flyToRouteStart(id: string): void {
+  const start = routeStore.routes.find((r) => r.id === id)?.waypoints[0]?.position;
+  if (start) mapCommands?.flyTo(start.latitude, start.longitude);
+}
+
+function onToggleRouteShown(id: string, shown: boolean): void {
+  routeStore.toggleShown(id, shown);
+  if (shown) flyToRouteStart(id);
+}
+
 function onNewRoute(): void {
   routeStore.setWorking({ id: newRouteId(), name: '', waypoints: [] });
   mapCommands?.startRouteEdit();
@@ -432,6 +444,7 @@ function onEditRoute(id: string): void {
   if (!route) return;
   routeStore.setWorking(route);
   mapCommands?.startRouteEdit(route);
+  flyToRouteStart(id);
 }
 
 async function onSaveRoute(name: string): Promise<void> {
@@ -478,6 +491,7 @@ async function onActivateRoute(id: string): Promise<void> {
   }
   routeStore.setActive(id);
   routeStore.toggleShown(id, true);
+  flyToRouteStart(id);
   // The v2 navigation.course paths are not in the v1 full model, so the stream sends nothing until
   // the next change. Seed the cells once from a REST GET so the nav strip shows values immediately,
   // then the stream keeps them live.
@@ -685,7 +699,8 @@ onDestroy(() => {
           {onEditRoute}
           onSave={onSaveRoute}
           onCancelEdit={onCancelRouteEdit}
-          onToggleShown={(id, shown) => routeStore.toggleShown(id, shown)}
+          onToggleShown={onToggleRouteShown}
+          onLocate={flyToRouteStart}
           onActivate={onActivateRoute}
           onStop={onStopCourse}
           onDelete={onDeleteRoute}

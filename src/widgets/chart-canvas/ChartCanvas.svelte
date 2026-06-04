@@ -183,6 +183,10 @@ onMount(() => {
         recenterOnVessel: (latitude, longitude) => {
           map.setCenter([longitude, latitude]);
         },
+        flyTo: (latitude, longitude) => {
+          const zoom = map.getZoom();
+          map.flyTo({ center: [longitude, latitude], zoom: zoom < 11 ? 12 : zoom });
+        },
         clearNoteSelection: () => notesOverlay.deselect(ctx),
         startRouteEdit: (route) => routeEditor?.start(route),
         stopRouteEdit: () => routeEditor?.stop(),
