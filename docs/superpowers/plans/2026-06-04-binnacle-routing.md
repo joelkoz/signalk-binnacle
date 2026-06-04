@@ -278,8 +278,9 @@ export function crossTrackErrorMeters(from: LatLon, to: LatLon, position: LatLon
   const theta12 = greatCircleBearingRad(from, to);
   // asin clamps via Math.max/min to stay in domain at the leg endpoints.
   const ratio = Math.max(-1, Math.min(1, (d13 / EARTH_RADIUS_M) * Math.sin(theta13 - theta12)));
-  // Sign: sin(theta13 - theta12) is positive when the position is to port; negate for starboard-positive.
-  return -Math.asin(ratio) * EARTH_RADIUS_M;
+  // The standard formula is already starboard-positive (theta13 > theta12 gives a positive arc), so
+  // it is not negated. Reconcile the sign against the server's calcValues.crossTrackError live.
+  return Math.asin(ratio) * EARTH_RADIUS_M;
 }
 
 // Velocity made good toward the mark: the boat's velocity vector projected onto the bearing to the
