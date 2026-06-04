@@ -1,7 +1,9 @@
 import type {
+  CustomLayerInterface,
   ExpressionSpecification,
   GeoJSONSourceSpecification,
   LineLayerSpecification,
+  Map as MapLibreMap,
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import type { OverlayContext, OverlayModule } from '$shared/map';
@@ -9,26 +11,118 @@ import type { Theme } from '$shared/ui';
 import { emptyFeatureCollection } from './feature-collection';
 import { WEATHER_LAYER_IDS } from './fills';
 import { windArrowFeatures } from './wind-arrows';
+import { windColorTexture } from './wind-color-texture';
 import { windColorExpression } from './wind-colormap';
+import { windFieldTexture } from './wind-field-texture';
+import { supportsWindGl, WindParticles } from './wind-gl/wind-particles';
+
+type GL = WebGLRenderingContext | WebGL2RenderingContext;
 
 const SOURCE_ID = 'binnacle-weather-wind';
 const LAYER_ID = 'binnacle-weather-wind-line';
+const GL_LAYER_ID = 'binnacle-weather-wind-particles';
 
-// The wind overlay extends the layer-manager contract with a per-frame sync, called from the map
-// widget's animation loop like the other live overlays.
 export interface WindOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
 }
 
-// The wind layer: a line per grid cell pointing toward the wind, colored by speed, in the weather
-// band. Off by default. This is the pipeline-first render; the animated particle layer replaces it
-// later. It reads the forecast store and rebuilds only when the grid or the selected time changes.
+// MapLibre 5 passes a render-args object carrying the projection matrix; older builds pass the
+// matrix directly. Accept both.
+function matrixOf(args: unknown): number[] {
+  if (Array.isArray(args)) return args;
+  const data = (args as { defaultProjectionData?: { mainMatrix?: number[] } })
+    .defaultProjectionData;
+  return data?.mainMatrix ?? [];
+}
+
+// The wind layer: an animated WebGL particle field advected through the forecast u/v, colored by
+// speed with fading trails, in the weather band. Off by default. Falls back to a per-cell arrow line
+// layer when WebGL is unavailable. Rebuilds the wind texture only when the grid or selected time
+// changes; the animation runs in the custom layer's own render loop via triggerRepaint.
 export function createWindOverlay(store: WeatherStore): WindOverlay {
+  const useParticles = supportsWindGl();
+  let theme: Theme = 'day';
+  let opacity = 1;
+  let visible = false;
   let lastGrid: unknown;
   let lastTime = Number.NaN;
 
-  function colorExpr(theme: Theme): ExpressionSpecification {
-    return windColorExpression(theme) as unknown as ExpressionSpecification;
+  // Particle path.
+  let particles: WindParticles | undefined;
+  let lastMatrix = '';
+
+  // Arrow fallback path.
+  function colorExpr(t: Theme): ExpressionSpecification {
+    return windColorExpression(t) as unknown as ExpressionSpecification;
+  }
+
+  function addArrowLayer(ctx: OverlayContext): void {
+    if (!ctx.map.getSource(SOURCE_ID)) {
+      const source: GeoJSONSourceSpecification = {
+        type: 'geojson',
+        data: emptyFeatureCollection(),
+      };
+      ctx.map.addSource(SOURCE_ID, source);
+    }
+    if (!ctx.map.getLayer(LAYER_ID)) {
+      const layer: LineLayerSpecification = {
+        id: LAYER_ID,
+        type: 'line',
+        source: SOURCE_ID,
+        layout: { 'line-cap': 'round', visibility: visible ? 'visible' : 'none' },
+        paint: { 'line-color': colorExpr(theme), 'line-width': 2, 'line-opacity': opacity },
+      };
+      ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
+    }
+  }
+
+  function syncArrows(ctx: OverlayContext): void {
+    const grid = store.grid;
+    const source = ctx.map.getSource(SOURCE_ID) as { setData(d: unknown): void } | undefined;
+    source?.setData(grid ? windArrowFeatures(grid, store.bracket) : emptyFeatureCollection());
+  }
+
+  function pushWind(): void {
+    if (!particles) return;
+    const grid = store.grid;
+    const field = grid ? windFieldTexture(grid, store.bracket) : undefined;
+    if (field) particles.setWind(field);
+  }
+
+  function addParticleLayer(ctx: OverlayContext): void {
+    const layer: CustomLayerInterface = {
+      id: GL_LAYER_ID,
+      type: 'custom',
+      onAdd(_map: MapLibreMap, gl: GL) {
+        try {
+          particles = new WindParticles(gl);
+          particles.setTheme(windColorTexture(theme));
+          particles.setOpacity(opacity);
+          pushWind();
+        } catch (error) {
+          // A rare secondary failure after the probe passed: degrade to arrows. The empty custom
+          // layer stays but renders nothing because `particles` is undefined.
+          console.warn('[wind] particle init failed, using arrows', error);
+          particles = undefined;
+          addArrowLayer(ctx);
+          syncArrows(ctx);
+        }
+      },
+      render(gl: GL, args: unknown) {
+        if (!particles || !visible) return;
+        const matrix = matrixOf(args);
+        const key = matrix.join(',');
+        const moved = key !== lastMatrix;
+        lastMatrix = key;
+        particles.render(matrix, gl.drawingBufferWidth, gl.drawingBufferHeight, moved);
+        ctx.map.triggerRepaint();
+      },
+      onRemove() {
+        particles?.dispose();
+        particles = undefined;
+      },
+    };
+    ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
   }
 
   return {
@@ -37,46 +131,43 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,
-    layerIds: [LAYER_ID],
+    layerIds: [useParticles ? GL_LAYER_ID : LAYER_ID],
     add(ctx) {
-      if (!ctx.map.getSource(SOURCE_ID)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(SOURCE_ID, source);
-      }
-      if (!ctx.map.getLayer(LAYER_ID)) {
-        const layer: LineLayerSpecification = {
-          id: LAYER_ID,
-          type: 'line',
-          source: SOURCE_ID,
-          layout: { 'line-cap': 'round' },
-          paint: { 'line-color': colorExpr('day'), 'line-width': 2, 'line-opacity': 1 },
-        };
-        ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
-      }
+      if (useParticles) addParticleLayer(ctx);
+      else addArrowLayer(ctx);
     },
     sync(ctx) {
       const grid = store.grid;
       if (grid === lastGrid && store.selectedTime === lastTime) return;
       lastGrid = grid;
       lastTime = store.selectedTime;
-      const source = ctx.map.getSource(SOURCE_ID) as { setData(d: unknown): void } | undefined;
-      source?.setData(grid ? windArrowFeatures(grid, store.bracket) : emptyFeatureCollection());
+      if (particles) pushWind();
+      else if (ctx.map.getLayer(LAYER_ID)) syncArrows(ctx);
     },
     remove(ctx) {
+      if (ctx.map.getLayer(GL_LAYER_ID)) ctx.map.removeLayer(GL_LAYER_ID);
       if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
       if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
     },
-    setVisible(ctx, visible) {
-      ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');
+    setVisible(ctx, value) {
+      visible = value;
+      if (ctx.map.getLayer(LAYER_ID)) {
+        ctx.map.setLayoutProperty(LAYER_ID, 'visibility', value ? 'visible' : 'none');
+      }
+      // Restart the particle render loop when turned on; render() stops requesting frames when off.
+      if (value) ctx.map.triggerRepaint();
     },
-    setOpacity(ctx, opacity) {
-      ctx.map.setPaintProperty(LAYER_ID, 'line-opacity', opacity);
+    setOpacity(ctx, value) {
+      opacity = value;
+      particles?.setOpacity(value);
+      if (ctx.map.getLayer(LAYER_ID)) ctx.map.setPaintProperty(LAYER_ID, 'line-opacity', value);
     },
     applyTheme(ctx, paint) {
-      ctx.map.setPaintProperty(LAYER_ID, 'line-color', colorExpr(paint.theme));
+      theme = paint.theme;
+      particles?.setTheme(windColorTexture(theme));
+      if (ctx.map.getLayer(LAYER_ID)) {
+        ctx.map.setPaintProperty(LAYER_ID, 'line-color', colorExpr(theme));
+      }
     },
   };
 }
