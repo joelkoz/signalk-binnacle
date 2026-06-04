@@ -7,7 +7,12 @@ import type {
   MapLayerMouseEvent,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
-import { mapThemePaint, type OverlayContext, type OverlayModule } from '$shared/map';
+import {
+  emptyFeatureCollection,
+  mapThemePaint,
+  type OverlayContext,
+  type OverlayModule,
+} from '$shared/map';
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
@@ -40,11 +45,14 @@ const CLUSTER_RADIUS = 44;
 
 // The cluster icon: the colored disc of the cluster's highest-ranked member, matched on the
 // aggregated maxRank, so a cluster holding a hazard shows the red hazard disc, a navaid the amber
-// disc, otherwise the POI disc. Distinct ranks make the match labels unique.
+// disc, otherwise the POI disc. Distinct ranks make the match labels unique; generic is the default.
 const CLUSTER_ICON_IMAGE = [
   'match',
   ['get', 'maxRank'],
-  ...POI_CATEGORIES.flatMap((category) => [categoryRank(category), poiIconId(category)]),
+  ...POI_CATEGORIES.filter((category) => category !== 'generic').flatMap((category) => [
+    categoryRank(category),
+    poiIconId(category),
+  ]),
   poiIconId('generic'),
 ] as unknown as ExpressionSpecification;
 
@@ -83,7 +91,7 @@ function featureCollection(notes: readonly NotePoint[]): GeoJSON.FeatureCollecti
   };
 }
 
-const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+const EMPTY: GeoJSON.FeatureCollection = emptyFeatureCollection();
 
 export function createNotesOverlay(
   serverBase: string,
@@ -178,7 +186,6 @@ export function createNotesOverlay(
       };
       ctx.map.addLayer(clusterRing, before);
 
-      // The most important member's colored disc.
       const clusterIcon: SymbolLayerSpecification = {
         id: CLUSTER_ICON_LAYER,
         type: 'symbol',
@@ -279,8 +286,10 @@ export function createNotesOverlay(
       ctx.map.on('click', LAYER_ID, onClick);
       ctx.map.on('mouseenter', LAYER_ID, onEnter);
       ctx.map.on('mouseleave', LAYER_ID, onLeave);
+      // Click only the ring (it covers the cluster and then some), so a click does not fire once per
+      // stacked cluster layer; hover the ring and the icon so either shows the pointer cursor.
+      ctx.map.on('click', CLUSTER_RING_LAYER, onClusterClick);
       for (const id of CLUSTER_HIT_LAYERS) {
-        ctx.map.on('click', id, onClusterClick);
         ctx.map.on('mouseenter', id, onEnter);
         ctx.map.on('mouseleave', id, onLeave);
       }
@@ -348,8 +357,8 @@ export function createNotesOverlay(
       if (onClick) ctx.map.off('click', LAYER_ID, onClick);
       if (onEnter) ctx.map.off('mouseenter', LAYER_ID, onEnter);
       if (onLeave) ctx.map.off('mouseleave', LAYER_ID, onLeave);
+      if (onClusterClick) ctx.map.off('click', CLUSTER_RING_LAYER, onClusterClick);
       for (const id of CLUSTER_HIT_LAYERS) {
-        if (onClusterClick) ctx.map.off('click', id, onClusterClick);
         if (onEnter) ctx.map.off('mouseenter', id, onEnter);
         if (onLeave) ctx.map.off('mouseleave', id, onLeave);
       }

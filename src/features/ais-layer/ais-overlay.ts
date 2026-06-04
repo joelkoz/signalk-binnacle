@@ -1,5 +1,5 @@
 import type { AisTargets } from '$entities/ais';
-import { radiansToBearing } from '$shared/lib';
+import { headingDegrees } from '$shared/lib';
 import { createSymbolOverlay, type Rgba, type SymbolOverlay } from '$shared/map';
 import type { SignalKStore } from '$shared/signalk';
 import { AIS_ICON_ID, aisIconImage } from './ais-icon';
@@ -28,7 +28,7 @@ export function createAisOverlay(targets: AisTargets, store: SignalKStore): Symb
         properties: {
           id: target.id,
           name: target.name ?? '',
-          heading: radiansToBearing(target.headingRad) ?? radiansToBearing(target.cogRad) ?? 0,
+          heading: headingDegrees(target.headingRad, target.cogRad),
         },
       })),
     };

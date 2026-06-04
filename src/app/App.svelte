@@ -401,6 +401,10 @@ onMount(() => {
 
 onDestroy(() => {
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
+  // Revoke any object URLs still held for file-backed user charts so they do not leak on teardown.
+  for (const blobUrl of registeredUserCharts.values()) {
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+  }
   window.removeEventListener('pointerdown', primeAudio);
   lookoutAlarm.stop();
   auth.stop();

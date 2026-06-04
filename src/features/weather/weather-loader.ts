@@ -26,6 +26,8 @@ export interface WeatherLoader {
 const GRID_TTL_MS = 30 * 60 * 1000;
 const RADAR_TTL_MS = 5 * 60 * 1000;
 const QUANTIZE_DEG = 0.25;
+// Cap the viewport cache so a long session of panning does not grow it without bound.
+const MAX_GRID_ENTRIES = 16;
 
 const quantize = (v: number): number => Math.round(v / QUANTIZE_DEG) * QUANTIZE_DEG;
 
@@ -92,7 +94,13 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
       const [grid, radar] = await Promise.all([gridPromise, radarPromise]);
 
       if (grid) {
+        for (const [k, entry] of gridCache) if (entry.expires <= t) gridCache.delete(k);
         gridCache.set(key, { grid, expires: t + GRID_TTL_MS });
+        while (gridCache.size > MAX_GRID_ENTRIES) {
+          const oldest = gridCache.keys().next().value;
+          if (oldest === undefined) break;
+          gridCache.delete(oldest);
+        }
         store.setGrid(grid);
       } else {
         store.setStatus(store.grid ? 'stale' : 'error');

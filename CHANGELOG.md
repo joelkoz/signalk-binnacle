@@ -216,6 +216,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- Whole-repo cleanup pass (six expert audit lanes, weather-weighted), no behavior change. One shared
+  `emptyFeatureCollection` in `$shared/map` replaces the per-overlay copies (vessel, track, ais,
+  notes, and weather), a shared `headingDegrees` helper folds the vessel and AIS heading fallback,
+  the weather mini-map's viewport cache is now bounded, the wind overlay reports both its candidate
+  layer ids so a rare WebGL fallback still restacks, the notes cluster click no longer double-fires,
+  the radar opacity is one constant, and dead surface was removed (the unused `cellIndex` export, the
+  unused weather `type` field and `weatherCacheKey` export, and a pass-through wrapper).
+
 - Points of interest cluster later and say what they hold. Markers now uncluster from zoom 12 (up
   from 14), so the zoom you usually navigate at shows individual POIs instead of group circles, while
   the wider view (zoom 9 to 11) still clusters so it does not turn into a mash of overlapping pins. A

@@ -1,5 +1,3 @@
-// An empty GeoJSON FeatureCollection, the idle state for the weather overlays' GeoJSON sources and
-// the empty return for the arrow builders. One copy so the literal does not drift.
-export function emptyFeatureCollection(): GeoJSON.FeatureCollection {
-  return { type: 'FeatureCollection', features: [] };
-}
+// The shared empty FeatureCollection, re-exported so the weather files keep a local import path while
+// there is one implementation across the app.
+export { emptyFeatureCollection } from '$shared/map';

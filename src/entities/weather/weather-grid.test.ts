@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bilinearAt, cellIndex, sampleGrid, timeBracket, type WeatherGrid } from './weather-grid';
+import { bilinearAt, sampleGrid, timeBracket, type WeatherGrid } from './weather-grid';
 
 const tiny: WeatherGrid = {
   lats: [0, 1],
@@ -23,12 +23,6 @@ describe('sampleGrid', () => {
     expect(g.lons[g.lons.length - 1]).toBeCloseTo(10, 6);
     expect(g.lats[0]).toBeCloseTo(40, 6);
     expect(g.lats[g.lats.length - 1]).toBeCloseTo(50, 6);
-  });
-
-  it('numbers cells row-major from the lat and lon axes', () => {
-    const g = sampleGrid({ west: 0, south: 0, east: 3, north: 3 }, 16);
-    expect(cellIndex(g, 0, 0)).toBe(0);
-    expect(cellIndex(g, 1, 0)).toBe(g.lons.length);
   });
 });
 

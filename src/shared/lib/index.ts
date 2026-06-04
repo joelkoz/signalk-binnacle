@@ -8,6 +8,7 @@ export {
   formatKnots,
   formatNm,
   formatTcpaMin,
+  headingDegrees,
   kelvinToCelsius,
   knotsToMetersPerSecond,
   metersPerSecondToKnots,

@@ -64,14 +64,6 @@ function axis(min: number, max: number, n: number): number[] {
   return Array.from({ length: n }, (_, i) => min + i * step);
 }
 
-export function cellIndex(
-  grid: { lats: number[]; lons: number[] },
-  row: number,
-  col: number,
-): number {
-  return row * grid.lons.length + col;
-}
-
 // Bilinearly sample one variable array at a lon/lat. Returns undefined when the point is outside the
 // grid so the readout can show a blank instead of a wrong value.
 export function bilinearAt(

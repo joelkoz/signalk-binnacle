@@ -81,7 +81,6 @@ const {
 // pretending a 0.25-degree field has street-level detail.
 const MAX_ZOOM = 7;
 const MIN_ZOOM = 1;
-const DEFAULT_CENTER: [number, number] = [0, 30];
 const DEFAULT_ZOOM = 3;
 const STEP_MS = 3 * 3_600_000;
 // The free fallback source's label, also used to decide readout field gating.
@@ -254,7 +253,6 @@ onMount(() => {
     container,
     // The panel opens at its own remembered view, or the nav chart's current view the first time.
     view: savedView ?? initialView,
-    defaultCenter: DEFAULT_CENTER,
     defaultZoom: DEFAULT_ZOOM,
     minZoom: MIN_ZOOM,
     maxZoom: MAX_ZOOM,

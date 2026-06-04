@@ -8,6 +8,7 @@ const SOURCE_ID = 'binnacle-weather-radar';
 const LAYER_ID = 'binnacle-weather-radar-layer';
 const FRAME_MS = 600; // dwell on each past frame while looping
 const PAUSE_MS = 1600; // hold on the latest frame before wrapping, so "now" reads clearly
+const DEFAULT_OPACITY = 0.85; // one source for both the OverlayModule default and the initial paint
 
 export interface RadarOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -38,7 +39,7 @@ export function createRadarOverlay(
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,
-    defaultOpacity: 0.85,
+    defaultOpacity: DEFAULT_OPACITY,
     layerIds: [LAYER_ID],
     add(ctx) {
       // Reset the dirty-check so a reattach (after a base-style swap recreates the source with empty
@@ -62,7 +63,7 @@ export function createRadarOverlay(
           id: LAYER_ID,
           type: 'raster',
           source: SOURCE_ID,
-          paint: { 'raster-opacity': 0.85 },
+          paint: { 'raster-opacity': DEFAULT_OPACITY },
         };
         ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
       }

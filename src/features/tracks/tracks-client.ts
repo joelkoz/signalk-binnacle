@@ -1,6 +1,6 @@
 import { computeStats, type TrackPoint } from '$entities/track';
 import { authInit } from '$shared/signalk';
-import { coordinateSegments } from './track-export';
+import { toGeoJsonFeature } from './track-export';
 
 // A track read back from the Signal K resources API. Points are grouped one array per segment
 // (the breaks between them are gaps). The fetched GeoJSON carries only position, so t and sog
@@ -127,12 +127,12 @@ export async function saveTrack(
   points: readonly TrackPoint[],
 ): Promise<boolean> {
   const stats = computeStats(points);
-  const feature = {
-    type: 'Feature',
-    geometry: { type: 'MultiLineString', coordinates: coordinateSegments(points) },
+  // Reuse the export's Feature (geometry plus the name and source tag); add the SI stats.
+  const baseFeature = toGeoJsonFeature(name, points);
+  const feature: GeoJSON.Feature = {
+    ...baseFeature,
     properties: {
-      name,
-      source: 'binnacle',
+      ...baseFeature.properties,
       distance: stats.distanceMeters,
       timespan: stats.durationSeconds,
     },

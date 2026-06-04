@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Pin, X } from '@lucide/svelte';
 import type { UserCharts } from '$entities/user-charts';
-import { chartSourceId, type LayerListItem } from '$shared/map';
+import { chartSourceId } from '$shared/map';
 import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
 import { layerGroup } from './layer-group';
@@ -29,12 +29,6 @@ let manageId = $state<string | undefined>();
 const manageSource = $derived(
   manageId ? userCharts?.sources.find((source) => source.id === manageId) : undefined,
 );
-
-// Group the movable rows by z-band (charts and depth, weather, and the rest) so the list reads as
-// organized. Reorder still operates on the live order; a header marks each category change.
-function categoryOf(item: LayerListItem): string {
-  return layerGroup(item.band);
-}
 
 let listEl = $state<HTMLUListElement>();
 
@@ -162,8 +156,10 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
           {#each movable as item, i (item.id)}
             {@const indicator = indicatorFor(item.id)}
             {@const removeId = userChartIds.get(item.id)}
-            {#if i === 0 || categoryOf(movable[i - 1]) !== categoryOf(item)}
-              <li class="group-label" aria-hidden="true">{categoryOf(item)}</li>
+            <!-- Group the movable rows by z-band; a header marks each category change. Reorder still
+                 operates on the live order. -->
+            {#if i === 0 || layerGroup(movable[i - 1].band) !== layerGroup(item.band)}
+              <li class="group-label" aria-hidden="true">{layerGroup(item.band)}</li>
             {/if}
             <LayerRow
               {item}

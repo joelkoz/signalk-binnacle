@@ -6,6 +6,7 @@ import type {
 } from 'maplibre-gl';
 import type { TrackRecorder } from '$entities/track';
 import {
+  emptyFeatureCollection,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
@@ -34,7 +35,7 @@ export interface SavedTracksSource {
   version: () => number;
 }
 
-const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+const EMPTY: GeoJSON.FeatureCollection = emptyFeatureCollection();
 const NO_SAVED: SavedTracksSource = { features: () => EMPTY, version: () => 0 };
 
 interface TrackOverlay extends OverlayModule {

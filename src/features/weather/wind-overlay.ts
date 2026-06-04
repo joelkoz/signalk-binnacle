@@ -139,7 +139,10 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,
-    layerIds: [useParticles ? GL_LAYER_ID : LAYER_ID],
+    // Both candidate ids: the particle layer normally, the arrow layer when WebGL is unavailable or
+    // a secondary init failure degraded to it. The LayerManager guards each id with getLayer, so the
+    // absent one is skipped and a restack never drops the one that is present.
+    layerIds: [GL_LAYER_ID, LAYER_ID],
     add(ctx) {
       // Reset the dirty-check so a re-add after a base-style swap repopulates the source. Without
       // this the arrow fallback stays blank when the grid object is unchanged, the same hazard

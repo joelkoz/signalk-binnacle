@@ -29,6 +29,15 @@ export function degreesToRadians(value: number): number {
   return value / DEG_PER_RAD;
 }
 
+// A 0..360 heading in degrees: the heading if present, otherwise the course over ground, otherwise
+// north. Shared by the vessel and AIS symbol overlays, which both rotate by this.
+export function headingDegrees(
+  headingRad: number | null | undefined,
+  cogRad: number | null | undefined,
+): number {
+  return radiansToBearing(headingRad) ?? radiansToBearing(cogRad) ?? 0;
+}
+
 export function pascalsToHectopascals(value: number | null | undefined): number | undefined {
   return value == null ? undefined : value / PA_PER_HPA;
 }

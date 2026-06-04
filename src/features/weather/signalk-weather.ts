@@ -13,11 +13,8 @@ import type { WeatherReadout } from './weather-readout';
 
 const WEATHER_BASE = '/signalk/v2/api/weather';
 
-export type SignalKWeatherKind = 'observation' | 'point' | 'daily';
-
 export interface SignalKWeatherData {
   date: string;
-  type?: SignalKWeatherKind;
   description?: string;
   outside?: {
     temperature?: number; // K

@@ -27,7 +27,6 @@ export {
   createWeatherLoader,
   type WeatherLayersWanted,
   type WeatherLoader,
-  weatherCacheKey,
 } from './weather-loader';
 export { readoutAt, type WeatherReadout } from './weather-readout';
 export { createWindOverlay } from './wind-overlay';

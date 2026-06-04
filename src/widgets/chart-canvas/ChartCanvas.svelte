@@ -76,20 +76,16 @@ const {
   onUserPan,
 }: Props = $props();
 
-const DEFAULT_CENTER: [number, number] = [0, 30];
-const DEFAULT_ZOOM = 2;
-
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
 
 registerPmtilesProtocol();
 
 onMount(() => {
+  // createThemedMap defaults to the world view ([0, 30], zoom 2) when no saved view is passed.
   mapHandle = createThemedMap({
     container,
     view: initialView,
-    defaultCenter: DEFAULT_CENTER,
-    defaultZoom: DEFAULT_ZOOM,
     managerOptions: {
       saved: savedLayers,
       onChange: onLayersChange,
