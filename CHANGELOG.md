@@ -347,6 +347,25 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- The weather mini-map no longer freezes blank when Rain radar is on. The RainViewer raster source
+  starts with no frame URL (real frames arrive later), and MapLibre loads tiles for a layer in the
+  style regardless of its visibility, so an empty tiles array crashed its tile-URL builder and then
+  the raster render program, freezing the panel. The source now seeds a transparent placeholder tile
+  so tile loading always succeeds, and the layer stays hidden until a real frame is applied so it is
+  never drawn empty. Real frames replace the placeholder as before.
+
+- Weather is gentler on the free data sources and correct over fresh water. The atmospheric forecast
+  no longer forces Open-Meteo's sea cell selection, which picked wrong or missing cells over inland
+  and freshwater areas such as the Great Lakes; sea selection now applies only to the marine wave
+  request. A failed grid fetch backs off for a minute instead of retrying on every pan, the per-load
+  grid is sampled to fewer points so a load fits a single request, and the viewport cache is capped.
+  The "Here" conditions panel keys its lookups on a position rounded to about 110 meters, so GPS
+  jitter no longer refetches (and no longer spams a Signal K weather provider with point requests) on
+  every fix.
+
+- The Forecast button is no longer clipped at the bottom of the status strip, and wind readouts show
+  one decimal place (matching waves), even at zero.
+
 - Signal K access approval now connects on its own. Previously, after you approved Binnacle in the
   Signal K UI and returned to the tab, it kept polling a stale request and only a second tab would
   connect. Binnacle now rechecks the pending request the moment the tab regains focus (background

@@ -83,9 +83,9 @@ What is in place now:
   glows blue on a night watch, and the build version shown in the top bar.
 - Offline and PWA support: an installable progressive web app that precaches its shell and
   runtime-caches the base map and Signal K charts as you view them, so previously seen areas render
-  with no internet, while the live Signal K stream is never cached. Service workers require a secure
-  context, so offline caching activates when the Signal K server is served over HTTPS; over plain
-  HTTP the app runs online-only.
+  with no internet, while the live Signal K stream is never cached. Offline caching is optional and
+  requires HTTPS (browsers expose service workers only in a secure context); over plain HTTP the app
+  runs online-only with no loss of live function. See [Offline operation and SSL](#offline-operation-and-ssl-optional).
 - An SI unit-conversion module in `shared`, built test-first.
 - Lint and format with Biome, type-checking with svelte-check, unit tests with Vitest, an
   end-to-end smoke test with Playwright, and architectural boundary checks with
@@ -115,6 +115,25 @@ Then link it into your Signal K server (see Development below).
 - Signal K server 2.x.
 - Node.js >= 22.
 - A browser on the helm display, tablet, or phone you want to view the plotter on.
+
+## Offline operation and SSL (optional)
+
+SSL is not required. Binnacle runs fully over plain HTTP, which is how the Signal K server
+serves it by default: the chart, AIS, weather, points of interest, tracks, and the Lookout
+alarms all work without it.
+
+SSL enables one thing: offline caching. Browsers expose the service worker and cache-storage
+APIs only in a secure context (HTTPS or `http://localhost`), so the progressive web app that
+caches the base map, charts, and weather for use without internet activates only when the
+server is reached over HTTPS. Over plain HTTP the app degrades cleanly to online-only with no
+errors and no loss of live function.
+
+If you want offline operation, the simplest way to add HTTPS to Signal K is the
+[signalk-ssl](https://www.npmjs.com/package/signalk-ssl) plugin
+([source](https://github.com/dirkwa/signalk-ssl)), which generates a local certificate
+authority, issues the server certificate, and distributes the root to your phones and tablets
+by QR code so they trust it. The Signal K server's built-in SSL settings (Server, then
+Settings, then SSL) are an alternative.
 
 ## Development
 
