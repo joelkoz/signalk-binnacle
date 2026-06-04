@@ -236,6 +236,16 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- A five-lens UI review (design tokens, layout, typography, accessibility, and SignalK marine HMI)
+  brought the whole interface to one standard. New tokens defined for all three themes (a large
+  radius, a shared hover and press timing, a caution-tier warning color, and an alarm tint) replace
+  the values components used to hand-code. Panel titles are consistent headings, the numeric readouts
+  share the mono instrument font, the bottom-strip titles match the panel title scale, and the
+  night-red border is deepened so panels stay separated where the shadow is dropped. The on-chart
+  route editing color now reads the one map-theme source instead of a duplicated table. The four
+  slide-over and overlay panels share one dismiss behavior (Escape closes the topmost, and focus
+  returns to the control that opened it).
+
 - Routing cleanup pass (four expert audit lanes: geodesy and the route domain, course guidance and
   the resource clients, the overlay, editor, and chart wiring, and the routing UI and app wiring), no
   feature change. The Earth-radius constant and the antimeridian longitude-delta normalize are now
@@ -396,6 +406,19 @@ All notable changes to Binnacle are documented here. The format follows
   `.github/FUNDING.yml`, and the `package.json` funding field).
 
 ### Fixed
+
+- Night-red contract violations the UI review found are corrected: the AIS target was orange (it is
+  now in the red band, with a test guarding it), and the rain-radar legend showed literal blue and
+  green chips at night (now a red intensity ramp). The collision warning severity and an empty track's
+  stats are no longer misleading (a distinct warning color in the danger strip and the thresholds, and
+  a placeholder instead of a zero), and the weather panel no longer renders with square corners
+  because a referenced radius token was undefined.
+
+- Accessibility fixes from the UI review: the slide-over panels close on Escape and restore focus, the
+  layer visibility checkboxes and the threshold inputs have explicit names, the note-detail and
+  weather conditions async states announce as status or alert, the add-chart URL field is labeled, the
+  chart rename commits on Enter, the layer-reorder handle advertises its arrow-key shortcut, and the
+  menu popout uses dvh so a long menu stays reachable on a phone.
 
 - Saving a route now works. The Signal K server validates the standard route resource, and two
   things failed that validation silently: an unnamed waypoint wrote an empty metadata entry the

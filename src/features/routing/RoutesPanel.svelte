@@ -238,8 +238,8 @@ function promptSave(): void {
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    background-color 0.12s ease,
-    color 0.12s ease;
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 .close:hover {
   background: var(--surface);
@@ -264,9 +264,9 @@ function promptSave(): void {
   font-size: var(--text-sm);
   cursor: pointer;
   transition:
-    border-color 0.12s ease,
-    background-color 0.12s ease,
-    filter 0.12s ease;
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    filter var(--transition-fast);
 }
 .controls button:hover:not(:disabled) {
   border-color: var(--accent);
@@ -384,8 +384,8 @@ function promptSave(): void {
   background: var(--surface-raised);
   box-shadow: var(--shadow-overlay);
   transition:
-    border-color 0.12s ease,
-    background-color 0.12s ease;
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 /* The active route is unmistakable: an accent left bar, an accent border, and a faint
    accent-tinted fill, so the navigator sees the live route at a glance in any theme. */
@@ -425,7 +425,7 @@ function promptSave(): void {
   font-weight: 600;
   text-align: start;
   cursor: pointer;
-  transition: color 0.12s ease;
+  transition: color var(--transition-fast);
 }
 .saved .name:hover {
   color: var(--accent);
@@ -489,8 +489,8 @@ function promptSave(): void {
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    background-color 0.12s ease,
-    color 0.12s ease;
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 .icon:hover {
   background: var(--surface);

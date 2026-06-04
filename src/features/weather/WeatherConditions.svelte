@@ -296,7 +296,7 @@ function stepLabel(timeMs: number): string {
   padding: 0.35rem 0.45rem;
   border: 1px solid var(--alarm);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--alarm) 14%, transparent);
+  background: var(--alarm-tint);
   color: var(--text);
   font-size: var(--text-xs);
 }

@@ -60,6 +60,7 @@ export function createRouteEditor(opts: {
   theme: Theme;
   onChange: (waypoints: Waypoint[]) => void;
 }): RouteEditor {
+  const color = drawColor(opts.theme);
   const draw = new TerraDraw({
     adapter: new TerraDrawMapLibreGLAdapter({
       map: opts.map,
@@ -67,14 +68,14 @@ export function createRouteEditor(opts: {
       renderBelowLayerId: opts.beforeId,
     }),
     modes: [
-      new TerraDrawPointMode({ styles: { pointColor: drawColor(opts.theme), pointWidth: 6 } }),
+      new TerraDrawPointMode({ styles: { pointColor: color, pointWidth: 6 } }),
       new TerraDrawLineStringMode({
-        styles: { lineStringColor: drawColor(opts.theme), lineStringWidth: 4 },
+        styles: { lineStringColor: color, lineStringWidth: 4 },
       }),
       new TerraDrawSelectMode({
         styles: {
-          selectionPointColor: drawColor(opts.theme),
-          midPointColor: drawColor(opts.theme),
+          selectionPointColor: color,
+          midPointColor: color,
         },
         flags: {
           linestring: {
