@@ -1536,7 +1536,9 @@ export class CourseGuidance {
     arrivalCircle: this.#store.cell(SK_PATHS.courseArrivalCircle).value as number | undefined,
   }));
 
-  #calc = $derived(this.#store.cell(SK_PATHS.courseCalcValues).value as CourseCalculations | undefined);
+  // $derived.by (an arrow), not $derived(expr): the arrow defers the this.#store access so the
+  // field initializer does not read #store before the constructor assigns it.
+  #calc = $derived.by(() => this.#store.cell(SK_PATHS.courseCalcValues).value as CourseCalculations | undefined);
 
   get active(): boolean {
     return !!this.#info.nextPoint?.position;
