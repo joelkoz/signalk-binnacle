@@ -46,6 +46,7 @@ const percent = $derived(Math.round(item.opacity * 100));
       type="button"
       class="handle"
       aria-label={`Move ${item.title}, position ${index + 1} of ${count}`}
+      aria-keyshortcuts="ArrowUp ArrowDown"
       onpointerdown={onHandlePointerDown}
       onkeydown={onHandleKeydown}
     >

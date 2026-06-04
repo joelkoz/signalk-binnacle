@@ -102,7 +102,7 @@ function onWindowKeydown(event: KeyboardEvent): void {
   flex-direction: column;
   gap: 0.1rem;
   inline-size: 18rem;
-  max-block-size: calc(100vh - 4rem);
+  max-block-size: calc(100dvh - 4rem);
   overflow-y: auto;
   padding: 0.4rem;
   background: var(--surface-overlay);

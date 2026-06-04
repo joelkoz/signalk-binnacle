@@ -38,7 +38,7 @@ import {
 import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shared/map';
 import type { MapView } from '$shared/settings';
 import { serverOrigin } from '$shared/signalk';
-import type { Theme } from '$shared/ui';
+import { dialog, type Theme } from '$shared/ui';
 
 interface Props {
   store: WeatherStore;
@@ -310,9 +310,9 @@ onDestroy(() => {
 });
 </script>
 
-<section class="weather-panel" aria-label="Weather">
+<section class="weather-panel" aria-label="Weather" use:dialog={onClose}>
   <header class="panel-head">
-    <span class="panel-title">Weather</span>
+    <h2 class="panel-title">Weather</h2>
     <div class="layer-bar" role="group" aria-label="Weather layers">
       {#each fills as item (item.id)}
         <button
@@ -398,7 +398,7 @@ onDestroy(() => {
           aria-label="Earlier"
           onclick={() => setTime(stepTime(store.selectedTime, -1, range))}
         >
-          &#9664;
+          <span aria-hidden="true">&#9664;</span>
         </button>
         <button
           type="button"
@@ -418,7 +418,7 @@ onDestroy(() => {
           aria-label="Later"
           onclick={() => setTime(stepTime(store.selectedTime, 1, range))}
         >
-          &#9654;
+          <span aria-hidden="true">&#9654;</span>
         </button>
         <input
           class="track"
@@ -493,11 +493,10 @@ onDestroy(() => {
   border-block-end: 1px solid var(--border);
 }
 .panel-title {
-  font-size: var(--text-xs);
+  margin: 0;
+  font-size: var(--text-lg);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
+  color: var(--text);
 }
 .layer-bar {
   display: flex;
@@ -653,7 +652,7 @@ onDestroy(() => {
 .legend-chip {
   inline-size: 0.85rem;
   block-size: 0.85rem;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
 .legend-scale {

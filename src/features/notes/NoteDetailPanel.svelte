@@ -1,5 +1,6 @@
 <script lang="ts">
 import { ExternalLink, Star, X } from '@lucide/svelte';
+import { dialog } from '$shared/ui';
 import type { NoteSelection } from './notes-client';
 import type { NormalizedItem, NoteDetail } from './notes-detail';
 import { safeHttpUrl } from './notes-detail';
@@ -59,7 +60,7 @@ function measure(item: NormalizedItem): string {
 }
 </script>
 
-<aside class="note-panel" aria-label="Point of interest detail">
+<aside class="note-panel" aria-label="Point of interest detail" use:dialog={onClose}>
   <header>
     <div class="heading">
       <h2>{selection.name}</h2>
@@ -140,7 +141,7 @@ function measure(item: NormalizedItem): string {
     {:else if detail?.fallbackText}
       <p class="prose">{detail.fallbackText}</p>
     {:else}
-      <p class="status" role="status">No additional detail.</p>
+      <p class="status" role="status">No additional detail</p>
     {/if}
   </div>
 

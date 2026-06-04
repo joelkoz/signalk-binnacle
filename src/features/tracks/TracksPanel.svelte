@@ -126,7 +126,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   <div class="saved">
     <span class="saved-title">Saved tracks</span>
     {#if saved.length === 0}
-      <p class="empty">None saved yet.</p>
+      <p class="empty">None saved yet</p>
     {:else}
       <ul>
         {#each saved as track (track.id)}

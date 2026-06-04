@@ -2,6 +2,7 @@
 import { Pin, X } from '@lucide/svelte';
 import type { UserCharts } from '$entities/user-charts';
 import { chartSourceId } from '$shared/map';
+import { dialog } from '$shared/ui';
 import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
 import { layerGroup } from './layer-group';
@@ -123,7 +124,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 }
 </script>
 
-<aside class="layers-panel" aria-label="Layers">
+<aside class="layers-panel" aria-label="Layers" use:dialog={onClose}>
   <header>
     <h2>Layers</h2>
     <button type="button" class="close" aria-label="Close" onclick={onClose}>

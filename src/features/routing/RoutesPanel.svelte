@@ -2,6 +2,7 @@
 import { Eye, EyeOff, Navigation, Plus, Save, Square, SquarePen, Trash2, X } from '@lucide/svelte';
 import { type Route, routeDistanceMeters } from '$entities/route';
 import { formatNm } from '$shared/lib';
+import { dialog } from '$shared/ui';
 
 interface Props {
   routes: Route[];
@@ -56,7 +57,7 @@ function promptSave(): void {
 }
 </script>
 
-<section class="routes" aria-label="Routes">
+<section class="routes" aria-label="Routes" use:dialog={onClose}>
   <div class="panel-head">
     <h2 class="panel-title">Routes</h2>
     <button
@@ -116,7 +117,7 @@ function promptSave(): void {
   <div class="saved">
     <span class="saved-title">Saved routes</span>
     {#if routes.length === 0}
-      <p class="empty">No routes yet.</p>
+      <p class="empty">No routes yet</p>
     {:else}
       <ul>
         {#each routes as route (route.id)}

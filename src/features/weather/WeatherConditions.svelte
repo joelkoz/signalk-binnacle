@@ -225,7 +225,7 @@ function stepLabel(timeMs: number): string {
     {:else if loading}
       <p class="cond-empty" role="status">Loading conditions.</p>
     {:else}
-      <p class="cond-empty" role="status">No conditions for this point.</p>
+      <p class="cond-empty" role="status">No conditions for this point</p>
     {/if}
 
     {#if forecast.length > 0}
