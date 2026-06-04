@@ -216,6 +216,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- Points of interest cluster later and say what they hold. Markers now uncluster from zoom 12 (up
+  from 14), so the zoom you usually navigate at shows individual POIs instead of group circles, while
+  the wider view (zoom 9 to 11) still clusters so it does not turn into a mash of overlapping pins. A
+  cluster no longer reads as a generic purple circle: it shows the colored icon of its most important
+  member (a red hazard disc if it holds any hazard, the amber navaid disc otherwise the point-of-
+  interest disc), inside a ring that marks it as a group, with a count badge. Clicking a cluster still
+  zooms it apart.
+
 - Tidied the Signal K auth flow internals, with no behavior change. The focus and cross-tab
   storage listeners now live inside `AuthController` (like `OnlineStatus` owns its own listeners)
   instead of the app shell parsing the stored auth JSON itself, a single in-flight guard stops a

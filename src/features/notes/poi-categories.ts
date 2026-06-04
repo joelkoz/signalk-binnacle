@@ -152,6 +152,27 @@ export function poiIconId(category: PoiCategory): string {
   return `binnacle-poi-${category}`;
 }
 
+// Cluster priority, highest first: a cluster shows its most important member's icon. Safety
+// (hazard) and navigation (navaid) lead, then passages and destinations, then services. The values
+// are distinct so the cluster icon can match on the aggregated maximum rank.
+const CATEGORY_RANK: Record<PoiCategory, number> = {
+  hazard: 100,
+  navaid: 90,
+  inlet: 70,
+  anchorage: 60,
+  marina: 55,
+  fuel: 50,
+  services: 40,
+  ramp: 30,
+  bridge: 25,
+  structure: 20,
+  generic: 0,
+};
+
+export function categoryRank(category: PoiCategory): number {
+  return CATEGORY_RANK[category];
+}
+
 // Crow's Nest's explicit POI type, mapped to a marker category. Types with no dedicated
 // Binnacle marker return undefined so the caller falls back to skIcon inference.
 const TYPE_CATEGORY: Partial<Record<PoiType, PoiCategory>> = {

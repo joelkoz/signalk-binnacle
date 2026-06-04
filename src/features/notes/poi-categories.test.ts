@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { categoryForSkIcon, categoryLabel, poiCategoryForType, poiIconId } from './poi-categories';
+import {
+  categoryForSkIcon,
+  categoryLabel,
+  categoryRank,
+  POI_CATEGORIES,
+  poiCategoryForType,
+  poiIconId,
+} from './poi-categories';
 
 describe('poi categories', () => {
   it('maps representative skIcons to their category', () => {
@@ -51,6 +58,19 @@ describe('poi categories', () => {
     expect(categoryLabel('ramp')).toBe('Boat ramp');
     expect(categoryLabel('bridge')).toBe('Bridge');
     expect(poiIconId('hazard')).toBe('binnacle-poi-hazard');
+  });
+});
+
+describe('categoryRank', () => {
+  it('ranks safety and navigation above destinations and generic', () => {
+    expect(categoryRank('hazard')).toBeGreaterThan(categoryRank('navaid'));
+    expect(categoryRank('navaid')).toBeGreaterThan(categoryRank('anchorage'));
+    expect(categoryRank('anchorage')).toBeGreaterThan(categoryRank('generic'));
+  });
+
+  it('gives every category a distinct rank, so the cluster icon match has unique labels', () => {
+    const ranks = POI_CATEGORIES.map(categoryRank);
+    expect(new Set(ranks).size).toBe(ranks.length);
   });
 });
 

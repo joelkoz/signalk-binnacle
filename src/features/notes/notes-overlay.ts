@@ -1,5 +1,6 @@
 import type {
   CircleLayerSpecification,
+  ExpressionSpecification,
   GeoJSONSource,
   GeoJSONSourceSpecification,
   MapGeoJSONFeature,
@@ -10,23 +11,42 @@ import { mapThemePaint, type OverlayContext, type OverlayModule } from '$shared/
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
-import { type PoiCategory, poiIconId } from './poi-categories';
+import { categoryRank, POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
 
 const SOURCE_ID = 'binnacle-notes';
 const LAYER_ID = 'binnacle-notes-symbol';
-const CLUSTER_LAYER = 'binnacle-notes-cluster';
+// A cluster is a group ring, the most important member's colored icon, and a count badge.
+const CLUSTER_RING_LAYER = 'binnacle-notes-cluster-ring';
+const CLUSTER_ICON_LAYER = 'binnacle-notes-cluster-icon';
 const CLUSTER_COUNT_LAYER = 'binnacle-notes-cluster-count';
 const SELECT_SOURCE = 'binnacle-notes-selected';
 const SELECT_LAYER = 'binnacle-notes-selected';
 // The note layers, bottom to top, in one place for layerIds, setVisible, and remove.
-const LAYERS = [SELECT_LAYER, CLUSTER_LAYER, CLUSTER_COUNT_LAYER, LAYER_ID];
+const LAYERS = [
+  SELECT_LAYER,
+  CLUSTER_RING_LAYER,
+  CLUSTER_ICON_LAYER,
+  CLUSTER_COUNT_LAYER,
+  LAYER_ID,
+];
+// The cluster layers that respond to a click (expand) and a hover (pointer cursor).
+const CLUSTER_HIT_LAYERS = [CLUSTER_ICON_LAYER, CLUSTER_RING_LAYER];
 // Below this zoom the viewport spans too much to usefully fetch or show every POI.
 const MIN_ZOOM = 9;
-// Past this zoom each point unclusters and shows its own icon.
-const CLUSTER_MAX_ZOOM = 13;
-const CLUSTER_RADIUS = 48;
-// Cluster disc translucency, shared by the base paint and the opacity slider math.
-const CLUSTER_OPACITY = 0.85;
+// Past this zoom each point unclusters and shows its own icon. Clusters live at z9 to z11 so the
+// wide view does not mash, and individual POIs appear from z12.
+const CLUSTER_MAX_ZOOM = 11;
+const CLUSTER_RADIUS = 44;
+
+// The cluster icon: the colored disc of the cluster's highest-ranked member, matched on the
+// aggregated maxRank, so a cluster holding a hazard shows the red hazard disc, a navaid the amber
+// disc, otherwise the POI disc. Distinct ranks make the match labels unique.
+const CLUSTER_ICON_IMAGE = [
+  'match',
+  ['get', 'maxRank'],
+  ...POI_CATEGORIES.flatMap((category) => [categoryRank(category), poiIconId(category)]),
+  poiIconId('generic'),
+] as unknown as ExpressionSpecification;
 
 interface NotesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -53,6 +73,7 @@ function featureCollection(notes: readonly NotePoint[]): GeoJSON.FeatureCollecti
         id: note.id,
         name: note.name,
         category: note.category,
+        rank: categoryRank(note.category),
         icon: iconFor(note),
         url: note.url ?? '',
         source: note.source ?? '',
@@ -118,6 +139,8 @@ export function createNotesOverlay(
         cluster: true,
         clusterMaxZoom: CLUSTER_MAX_ZOOM,
         clusterRadius: CLUSTER_RADIUS,
+        // Carry the highest member rank up to the cluster so it can show that member's icon.
+        clusterProperties: { maxRank: ['max', ['get', 'rank']] },
       };
       ctx.map.addSource(SOURCE_ID, source);
       ctx.map.addSource(SELECT_SOURCE, { type: 'geojson', data: EMPTY });
@@ -137,23 +160,40 @@ export function createNotesOverlay(
       };
       ctx.map.addLayer(selectLayer, before);
 
-      // Clustered points: a themed disc whose radius steps up with the contained count.
-      const clusterLayer: CircleLayerSpecification = {
-        id: CLUSTER_LAYER,
+      // The group ring behind the cluster icon, so a cluster never reads as a single POI; its
+      // radius steps up with the contained count.
+      const clusterRing: CircleLayerSpecification = {
+        id: CLUSTER_RING_LAYER,
         type: 'circle',
         source: SOURCE_ID,
         filter: ['has', 'point_count'],
         minzoom: MIN_ZOOM,
         paint: {
-          'circle-color': paint.note,
-          'circle-opacity': CLUSTER_OPACITY,
-          'circle-stroke-color': paint.background,
-          'circle-stroke-width': 1.5,
-          'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 50, 24],
+          'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 50, 28],
+          'circle-color': 'rgba(0,0,0,0)',
+          'circle-stroke-color': paint.markerGlyph,
+          'circle-stroke-width': 2.5,
+          'circle-stroke-opacity': 0.9,
         },
       };
-      ctx.map.addLayer(clusterLayer, before);
+      ctx.map.addLayer(clusterRing, before);
 
+      // The most important member's colored disc.
+      const clusterIcon: SymbolLayerSpecification = {
+        id: CLUSTER_ICON_LAYER,
+        type: 'symbol',
+        source: SOURCE_ID,
+        filter: ['has', 'point_count'],
+        minzoom: MIN_ZOOM,
+        layout: {
+          'icon-image': CLUSTER_ICON_IMAGE,
+          'icon-size': 0.85,
+          'icon-allow-overlap': true,
+        },
+      };
+      ctx.map.addLayer(clusterIcon, before);
+
+      // The count badge at the upper-right corner, haloed so it reads over the icon and the ring.
       const clusterCount: SymbolLayerSpecification = {
         id: CLUSTER_COUNT_LAYER,
         type: 'symbol',
@@ -163,10 +203,14 @@ export function createNotesOverlay(
         layout: {
           'text-field': ['get', 'point_count_abbreviated'],
           'text-font': ['Noto Sans Regular'],
-          'text-size': 12,
+          'text-size': 11,
+          'text-offset': [1.2, -1.2],
+          'text-allow-overlap': true,
         },
         paint: {
           'text-color': paint.markerGlyph,
+          'text-halo-color': paint.note,
+          'text-halo-width': 2.4,
         },
       };
       ctx.map.addLayer(clusterCount, before);
@@ -233,11 +277,13 @@ export function createNotesOverlay(
         ctx.map.getCanvas().style.cursor = '';
       };
       ctx.map.on('click', LAYER_ID, onClick);
-      ctx.map.on('click', CLUSTER_LAYER, onClusterClick);
       ctx.map.on('mouseenter', LAYER_ID, onEnter);
-      ctx.map.on('mouseenter', CLUSTER_LAYER, onEnter);
       ctx.map.on('mouseleave', LAYER_ID, onLeave);
-      ctx.map.on('mouseleave', CLUSTER_LAYER, onLeave);
+      for (const id of CLUSTER_HIT_LAYERS) {
+        ctx.map.on('click', id, onClusterClick);
+        ctx.map.on('mouseenter', id, onEnter);
+        ctx.map.on('mouseleave', id, onLeave);
+      }
       // Load the category and navaid icons after the layers exist; resilient, so a failure
       // here leaves the markers as text labels rather than breaking overlay setup.
       await registerPoiIcons(ctx.map, paint);
@@ -279,9 +325,9 @@ export function createNotesOverlay(
       void registerNavaidIcons(ctx.map, paint);
       ctx.map.setPaintProperty(LAYER_ID, 'text-color', paint.note);
       ctx.map.setPaintProperty(LAYER_ID, 'text-halo-color', paint.background);
-      ctx.map.setPaintProperty(CLUSTER_LAYER, 'circle-color', paint.note);
-      ctx.map.setPaintProperty(CLUSTER_LAYER, 'circle-stroke-color', paint.background);
+      ctx.map.setPaintProperty(CLUSTER_RING_LAYER, 'circle-stroke-color', paint.markerGlyph);
       ctx.map.setPaintProperty(CLUSTER_COUNT_LAYER, 'text-color', paint.markerGlyph);
+      ctx.map.setPaintProperty(CLUSTER_COUNT_LAYER, 'text-halo-color', paint.note);
       ctx.map.setPaintProperty(SELECT_LAYER, 'circle-stroke-color', paint.select);
     },
     setVisible(ctx, visible) {
@@ -293,21 +339,19 @@ export function createNotesOverlay(
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(LAYER_ID, 'icon-opacity', opacity);
       ctx.map.setPaintProperty(LAYER_ID, 'text-opacity', opacity);
-      ctx.map.setPaintProperty(CLUSTER_LAYER, 'circle-opacity', opacity * CLUSTER_OPACITY);
-      ctx.map.setPaintProperty(CLUSTER_LAYER, 'circle-stroke-opacity', opacity);
+      ctx.map.setPaintProperty(CLUSTER_ICON_LAYER, 'icon-opacity', opacity);
+      ctx.map.setPaintProperty(CLUSTER_RING_LAYER, 'circle-stroke-opacity', opacity * 0.9);
       ctx.map.setPaintProperty(CLUSTER_COUNT_LAYER, 'text-opacity', opacity);
       ctx.map.setPaintProperty(SELECT_LAYER, 'circle-stroke-opacity', opacity);
     },
     remove(ctx) {
       if (onClick) ctx.map.off('click', LAYER_ID, onClick);
-      if (onClusterClick) ctx.map.off('click', CLUSTER_LAYER, onClusterClick);
-      if (onEnter) {
-        ctx.map.off('mouseenter', LAYER_ID, onEnter);
-        ctx.map.off('mouseenter', CLUSTER_LAYER, onEnter);
-      }
-      if (onLeave) {
-        ctx.map.off('mouseleave', LAYER_ID, onLeave);
-        ctx.map.off('mouseleave', CLUSTER_LAYER, onLeave);
+      if (onEnter) ctx.map.off('mouseenter', LAYER_ID, onEnter);
+      if (onLeave) ctx.map.off('mouseleave', LAYER_ID, onLeave);
+      for (const id of CLUSTER_HIT_LAYERS) {
+        if (onClusterClick) ctx.map.off('click', id, onClusterClick);
+        if (onEnter) ctx.map.off('mouseenter', id, onEnter);
+        if (onLeave) ctx.map.off('mouseleave', id, onLeave);
       }
       for (const id of LAYERS) {
         if (ctx.map.getLayer(id)) ctx.map.removeLayer(id);
