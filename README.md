@@ -95,6 +95,12 @@ What is in place now:
 - Tracks: the voyage is recorded behind the boat, colored by speed or solid, with breaks marking
   GPS dropouts. The whole track persists across a refresh, and a Tracks menu shows live stats and
   saves, lists, shows or hides, deletes, and exports tracks via the Signal K `/resources/tracks` API.
+- Routes: plan a passage by drawing waypoints on the chart, with the leg count and total distance
+  updating live, then save it as a Signal K route resource that syncs across devices. Activate a
+  route to follow it: a nav strip shows the active waypoint, cross-track error with a steer side,
+  distance and bearing to the waypoint, velocity made good, and time to go, with an arrival alarm.
+  Following uses the Signal K v2 Course API, falling back to client-side course calculations when the
+  server's course-provider plugin is absent.
 - Points of interest: notes from Crow's Nest, ActiveCaptain, the USCG Light List, and other Signal K
   notes providers render as themed, clustered markers, and tapping one opens a slide-in detail panel.
   Binnacle renders Crow's Nest's structured `properties.crowsNest` sections natively (measures,

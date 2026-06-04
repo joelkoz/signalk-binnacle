@@ -8,6 +8,18 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Routes: plan a passage and follow it. Open Routes from the menu, draw a route on the chart (tap to
+  add waypoints, drag a point to move it, tap a midpoint to insert one), and watch the leg count and
+  total distance update live as you draw. Save it to the Signal K server (`/resources/routes` as a
+  GeoJSON LineString), and it syncs to every device and lists with show or hide, edit, activate, and
+  delete. Activating a route hands it to the Signal K v2 Course API, and a nav strip shows the active
+  waypoint, cross-track error with a steer-left or steer-right side, distance and bearing to the
+  waypoint, velocity made good, and time to go, with an arrival alarm at the arrival circle. The
+  guidance prefers the server's course calculations and computes them on the client when the
+  course-provider plugin is absent (a "computing locally" badge says when), the same graceful
+  degrade as the collision CPA. A failed save keeps the route under edit so nothing is lost, and the
+  on-chart editing line is themed for day, dusk, and night-red. Route editing uses Terra Draw.
+
 - The weather forecast is cached in IndexedDB, so it survives a reload and a return to a recent view
   reuses it instead of re-fetching. Unlike the service-worker cache, which browsers expose only in a
   secure context, IndexedDB works over plain HTTP, so this is the offline-leaning weather cache for

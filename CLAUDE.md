@@ -136,8 +136,17 @@ must not be repeatable.
 - Charts: discover at `GET /signalk/v2/api/resources/charts` (fall back to v1), branch on
   chart `type`, honor `bounds` and zoom limits. Layering order, visibility, and opacity are
   Binnacle's job.
-- The v1 stream does not carry v2 data (course, autopilot); read those over v2 REST in later
-  specs.
+- Course data (the v2 Course API) DOES stream over the v1 WebSocket as deltas: the server emits
+  `navigation.course.*` and `navigation.course.calcValues.*` to delta-stream subscribers. But because
+  those deltas carry the `SKVersion.v2` flag, they are NOT in the v1 full data model, so under
+  `subscribe=none` the server sends no cached value until the next change. The pattern is therefore
+  hydrate the initial snapshot once via a v2 REST GET (`GET /signalk/v2/api/vessels/self/navigation/
+  course` and `/calcValues`) when a course becomes active, then keep it live from the stream. Course
+  MUTATIONS (activate a route, advance, clear) are v2 REST PUT and DELETE; the stream is read-only for
+  course. The course state machine is built into the server core (present on any 2.x server); the
+  derived `calcValues` (XTE, VMG, DTW, BTW, ETA) come from a separate course-provider plugin that
+  ships by default but can be absent, so compute them client-side as a fallback (the
+  `navigation.closestApproach` degrade pattern). Autopilot (v2) is still a later spec.
 - Bundle the app's own assets locally (fonts, icons, worker): no CDN for code. The MAP base is
   the deliberate exception: it is an online vector tile source (OpenFreeMap), because shipping a
   world basemap inline is not feasible. Offline operation is achieved by CACHING that source (a
