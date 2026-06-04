@@ -26,8 +26,8 @@ on the Raspberry Pi at the helm.
 
 ## Modern and fast
 
-Binnacle is a clean-room, next-generation plotter, not a port of an older app. It is built on a
-current web stack and engineered to stay smooth on modest helm hardware:
+Binnacle is a clean-room, next-generation plotter built on a current web stack and engineered to
+stay smooth on modest helm hardware:
 
 - **A modern front end.** Svelte 5 with runes, Vite, and TypeScript, linted and formatted with
   Biome, with module boundaries enforced by the build (Feature-Sliced Design plus a
