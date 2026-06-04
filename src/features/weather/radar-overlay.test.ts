@@ -50,19 +50,30 @@ describe('radar overlay', () => {
     expect(map.sources.size).toBe(0);
   });
 
-  it('stays hidden when shown before a frame, then reveals once a frame lands', () => {
+  it('never creates the source with an empty tiles array', () => {
+    // MapLibre loads tiles for a raster source whose layer is in the style regardless of visibility,
+    // and an empty tiles array crashes its URL builder (tiles[NaN].replace). The source must start
+    // with a non-empty (placeholder) tiles array so toggling radar on before a frame cannot crash.
     const overlay = createRadarOverlay(storeWithRadar());
     const map = createFakeMap();
     overlay.add(ctxFor(map));
-    // Toggled on before any frame: the empty-tiles source must not be revealed (it would crash the
-    // raster tile loader), so the only visibility the layer ever takes here is 'none'.
+    const source = [...map.sources.values()][0];
+    expect(Array.isArray(source.tiles)).toBe(true);
+    expect((source.tiles as unknown[]).length).toBeGreaterThan(0);
+  });
+
+  it('stays hidden when shown before a frame, then reveals once a frame lands', () => {
+    // Rendering the placeholder-only layer throws in the raster program, so toggling radar on before
+    // a real frame must not reveal it; it reveals only after a frame has been applied on sync.
+    const overlay = createRadarOverlay(storeWithRadar());
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
     overlay.setVisible(ctxFor(map), true);
     const visibilityCalls = vi
       .mocked(map.setLayoutProperty)
       .mock.calls.filter(([, prop]) => prop === 'visibility');
     expect(visibilityCalls.every(([, , value]) => value === 'none')).toBe(true);
 
-    // A frame lands on sync: now the layer is revealed.
     overlay.sync(ctxFor(map));
     expect(vi.mocked(map.setLayoutProperty)).toHaveBeenCalledWith(
       'binnacle-weather-radar-layer',

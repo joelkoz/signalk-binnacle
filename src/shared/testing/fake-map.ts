@@ -11,6 +11,7 @@ export function createFakeMap() {
       setTiles: (tiles: unknown) => void;
       data: unknown;
       maxzoom?: number;
+      tiles?: unknown;
     }
   >();
   const layers = new Set<string>();
@@ -27,10 +28,11 @@ export function createFakeMap() {
       updatedImages.push(id);
       images.add(id);
     },
-    addSource: (id: string, spec: { data?: unknown; maxzoom?: number }) => {
+    addSource: (id: string, spec: { data?: unknown; maxzoom?: number; tiles?: unknown }) => {
       sources.set(id, {
         data: spec.data,
         maxzoom: spec.maxzoom,
+        tiles: spec.tiles,
         setData(data: unknown) {
           this.data = data;
         },

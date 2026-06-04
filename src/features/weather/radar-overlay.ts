@@ -9,6 +9,14 @@ const LAYER_ID = 'binnacle-weather-radar-layer';
 const FRAME_MS = 600; // dwell on each past frame while looping
 const PAUSE_MS = 1600; // hold on the latest frame before wrapping, so "now" reads clearly
 const DEFAULT_OPACITY = 0.85; // one source for both the OverlayModule default and the initial paint
+// A 1x1 transparent PNG used as the source's initial tile. MapLibre loads tiles for a raster source
+// whose layer is in the style regardless of the layer's visibility, and it builds a tile URL by
+// indexing into the tiles array; an EMPTY tiles array yields tiles[NaN] = undefined and crashes the
+// loader (and then the raster render program) before any frame has loaded. Seeding a constant
+// transparent tile keeps the array non-empty, so the source is valid and shows nothing until a real
+// frame is set. setTiles swaps in the live frame.
+const BLANK_TILE =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 export interface RadarOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -26,9 +34,10 @@ export function createRadarOverlay(
   let lastRadar: unknown;
   let frameIndex = 0;
   let lastAdvance = 0;
-  // The layer is shown only when the user wants it AND a real frame has been pointed at the source.
-  // A raster source whose tiles array is still empty crashes MapLibre's tile loader (it indexes into
-  // [] and calls .replace on undefined), so the layer must stay hidden until setTiles lands a frame.
+  // Two independent guards work together. Tile LOADING ignores layer visibility, so the source must
+  // always have a valid tile (BLANK_TILE) or its URL builder crashes. Tile RENDERING does respect
+  // visibility, and drawing the layer while it holds only the blank placeholder throws in the raster
+  // program, so the layer is revealed only once a real frame has been applied.
   let desiredVisible = false;
   let frameApplied = false;
   let visible = false; // actual on-screen state; also gates the animation
@@ -54,15 +63,16 @@ export function createRadarOverlay(
     defaultOpacity: DEFAULT_OPACITY,
     layerIds: [LAYER_ID],
     add(ctx) {
-      // Reset the dirty-check so a reattach (after a base-style swap recreates the source with empty
-      // tiles) re-points it at the latest frame on the next sync instead of staying blank. The new
-      // source has no frame yet, so the layer must re-hide until one lands.
+      // Reset the dirty-check so a reattach (after a base-style swap recreates the source) re-points
+      // it at the latest frame on the next sync instead of staying blank. The recreated source has no
+      // real frame yet, so the layer must re-hide until one lands.
       lastRadar = undefined;
       frameApplied = false;
       if (!ctx.map.getSource(SOURCE_ID)) {
         const spec: RasterSourceSpecification = {
           type: 'raster',
-          tiles: [],
+          // Never empty: see BLANK_TILE. Real frames replace this via setTiles.
+          tiles: [BLANK_TILE],
           tileSize: TILE_SIZE,
           // RainViewer serves real radar tiles only to zoom 7 (confirmed across regions); from zoom 8
           // up every tile is a "Zoom Level Not Supported" placeholder. Cap the source at 7 so MapLibre
@@ -77,8 +87,8 @@ export function createRadarOverlay(
           id: LAYER_ID,
           type: 'raster',
           source: SOURCE_ID,
-          // Start hidden: the source has no tiles yet, and a visible empty-tiles raster crashes the
-          // tile loader. applyVisibility reveals it once a frame is set.
+          // Start hidden: drawing the blank placeholder throws in the raster program. applyVisibility
+          // reveals it once a real frame is set.
           layout: { visibility: 'none' },
           paint: { 'raster-opacity': DEFAULT_OPACITY },
         };
