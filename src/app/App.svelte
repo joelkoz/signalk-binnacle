@@ -390,15 +390,14 @@ async function refreshRoutes(): Promise<void> {
   if (routes) routeStore.setRoutes(routes);
 }
 
-// A transient routing error shown in the panel, auto-cleared so it does not linger on screen.
+// A routing error shown in the panel until the next route action or the panel closes. A boat error
+// should not flash and vanish, so it persists rather than auto-clearing on a short timer.
 let routeError = $state<string | undefined>();
-let routeErrorTimer: ReturnType<typeof setTimeout> | undefined;
 function flagRouteError(message: string): void {
   routeError = message;
-  if (routeErrorTimer) clearTimeout(routeErrorTimer);
-  routeErrorTimer = setTimeout(() => {
-    routeError = undefined;
-  }, 6000);
+}
+function clearRouteError(): void {
+  routeError = undefined;
 }
 
 // Clear the active course on the server and locally. Returns whether the server clear succeeded; the
@@ -435,6 +434,7 @@ function onToggleRouteShown(id: string, shown: boolean): void {
 }
 
 function onNewRoute(): void {
+  clearRouteError();
   routeStore.setWorking({ id: newRouteId(), name: '', waypoints: [] });
   mapCommands?.startRouteEdit();
 }
@@ -448,6 +448,7 @@ function onEditRoute(id: string): void {
 }
 
 async function onSaveRoute(name: string): Promise<void> {
+  clearRouteError();
   const working = routeStore.working;
   if (!working || working.waypoints.length < 2) return;
   const route = { ...working, name };
@@ -470,6 +471,7 @@ function onCancelRouteEdit(): void {
 }
 
 async function onDeleteRoute(id: string): Promise<void> {
+  clearRouteError();
   // Stop navigating before deleting the active route, so the server is not left navigating a route
   // that no longer exists. Abort the delete if the stop did not take.
   if (id === routeStore.activeId && !(await stopActiveCourse())) {
@@ -485,6 +487,7 @@ async function onDeleteRoute(id: string): Promise<void> {
 }
 
 async function onActivateRoute(id: string): Promise<void> {
+  clearRouteError();
   if (!(await activateRoute(serverOrigin(), chartsToken, `/resources/routes/${id}`))) {
     flagRouteError('Could not activate the route. Check the connection.');
     return;
@@ -506,6 +509,7 @@ async function onActivateRoute(id: string): Promise<void> {
 }
 
 async function onStopCourse(): Promise<void> {
+  clearRouteError();
   if (!(await stopActiveCourse())) {
     flagRouteError('Could not stop the active route. Check the connection.');
   }
@@ -706,6 +710,7 @@ onDestroy(() => {
           onDelete={onDeleteRoute}
           onClose={() => {
             onCancelRouteEdit();
+            clearRouteError();
             routesPanelOpen = false;
           }}
         />
