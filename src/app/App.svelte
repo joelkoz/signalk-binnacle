@@ -227,16 +227,6 @@ const menuItems = $derived<MenuItem[]>([
     onSelect: () => arrivalMuted.set(!arrivalMuted.value),
   },
   {
-    id: 'layers',
-    label: 'Layers and charts',
-    icon: Layers,
-    disabled: !layersView,
-    onSelect: () => {
-      routesPanelOpen = false;
-      layersPanelOpen = true;
-    },
-  },
-  {
     id: 'routes',
     label: 'Routes',
     icon: Route,
@@ -244,6 +234,16 @@ const menuItems = $derived<MenuItem[]>([
     onSelect: () => {
       layersPanelOpen = false;
       routesPanelOpen = true;
+    },
+  },
+  {
+    id: 'layers',
+    label: 'Layers and charts',
+    icon: Layers,
+    disabled: !layersView,
+    onSelect: () => {
+      routesPanelOpen = false;
+      layersPanelOpen = true;
     },
   },
 ]);

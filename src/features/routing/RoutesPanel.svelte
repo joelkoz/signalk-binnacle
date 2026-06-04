@@ -121,14 +121,25 @@ function promptSave(): void {
       <ul>
         {#each routes as route (route.id)}
           <li class:active={route.id === activeId}>
-            <button
-              type="button"
-              class="name"
-              title="Go to this route on the chart"
-              onclick={() => onLocate(route.id)}
-            >
-              {route.name}
-            </button>
+            <div class="card-head">
+              <button
+                type="button"
+                class="name"
+                title="Go to this route on the chart"
+                onclick={() => onLocate(route.id)}
+              >
+                {route.name}
+              </button>
+              {#if route.id === activeId}
+                <span class="pill">Active</span>
+              {/if}
+            </div>
+            <dl class="card-stats">
+              <dt>Distance</dt>
+              <dd><span class="num">{formatNm(routeDistanceMeters(route.waypoints))}</span> nm</dd>
+              <dt>Waypoints</dt>
+              <dd><span class="num">{route.waypoints.length}</span></dd>
+            </dl>
             <div class="actions">
               <button
                 type="button"
@@ -204,6 +215,8 @@ function promptSave(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-block-end: 0.5rem;
+  border-block-end: 1px solid var(--border);
 }
 .panel-title {
   font-size: var(--text-xs);
@@ -224,6 +237,9 @@ function promptSave(): void {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
 }
 .close:hover {
   background: var(--surface);
@@ -247,31 +263,47 @@ function promptSave(): void {
   font: inherit;
   font-size: var(--text-sm);
   cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background-color 0.12s ease,
+    filter 0.12s ease;
 }
 .controls button:hover:not(:disabled) {
   border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.controls button:active:not(:disabled) {
+  filter: brightness(0.94);
 }
 .controls button:disabled {
   opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }
 .controls button.primary {
+  flex: 1;
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
   font-weight: 600;
+  box-shadow: var(--shadow-overlay);
 }
 .controls button.primary:hover:not(:disabled) {
+  background: var(--accent);
   filter: brightness(1.08);
+}
+.controls button.primary:active:not(:disabled) {
+  filter: brightness(0.96);
 }
 .editing {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  padding: 0.5rem;
-  border: 1px solid var(--border);
+  padding: 0.6rem;
+  border: 1px solid var(--accent);
+  border-inline-start-width: 3px;
   border-radius: var(--radius-sm);
-  background: var(--surface-raised);
+  background: var(--accent-tint);
+  box-shadow: var(--shadow-overlay);
 }
 .hint {
   margin: 0;
@@ -306,7 +338,10 @@ function promptSave(): void {
 }
 .stats .num {
   text-align: end;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
 }
 .stats .unit {
   min-inline-size: 1.25rem;
@@ -339,39 +374,107 @@ function promptSave(): void {
   gap: 0.35rem;
 }
 .saved li {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.4rem 0.5rem;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
+  box-shadow: var(--shadow-overlay);
+  transition:
+    border-color 0.12s ease,
+    background-color 0.12s ease;
 }
+/* The active route is unmistakable: an accent left bar, an accent border, and a faint
+   accent-tinted fill, so the navigator sees the live route at a glance in any theme. */
 .saved li.active {
   border-color: var(--accent);
+  background: var(--accent-tint);
 }
-.saved .name {
+.saved li.active::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 3px;
+  border-start-start-radius: var(--radius-sm);
+  border-end-start-radius: var(--radius-sm);
+  background: var(--accent);
+}
+.card-head {
   display: flex;
   align-items: center;
-  min-block-size: var(--control-size);
+  gap: 0.4rem;
+}
+.saved .name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-block-size: 1.6rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: 0;
   border: 0;
   background: transparent;
-  color: inherit;
+  color: var(--text);
   font: inherit;
+  font-size: var(--text-md);
   font-weight: 600;
   text-align: start;
   cursor: pointer;
+  transition: color 0.12s ease;
 }
 .saved .name:hover {
   color: var(--accent);
 }
+.pill {
+  flex-shrink: 0;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-tint-strong);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+}
+/* The at-a-glance stats line. Mono, tabular numerals echo the NavStrip readouts so a saved
+   card and the active-route strip read as one instrument family. */
+.card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.8rem;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.card-stats dt {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+}
+.card-stats dd {
+  margin: 0 0.4rem 0 0;
+}
+.card-stats .num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+}
 .saved .actions {
   display: flex;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.2rem;
+}
+/* Push the destructive delete to the trailing edge so it is not flush against the safe
+   actions and an accidental tap is less likely. */
+.saved .actions .danger {
+  margin-inline-start: auto;
 }
 .icon {
   display: inline-flex;
@@ -385,10 +488,16 @@ function promptSave(): void {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
 }
 .icon:hover {
   background: var(--surface);
   color: var(--text);
+}
+.icon:active:not(:disabled) {
+  filter: brightness(0.92);
 }
 .icon:disabled {
   opacity: var(--disabled-opacity);

@@ -409,9 +409,13 @@ All notable changes to Binnacle are documented here. The format follows
 - The on-chart route editing line is easier to see and the Routes controls read as actions. The
   editing line was a blue that blended into the water; it now uses the bright selection accent (amber
   by day, a light red at night) and a heavier stroke, and the New route and Save buttons are filled
-  with the accent instead of flat gray. Each saved route now sits in its own card with the name on its
-  own line, so a long name is no longer truncated by the row of action buttons, and the active route's
-  card is outlined in the accent.
+  with the accent instead of flat gray. Each saved route now sits in its own elevated card: the name
+  is a title on its own line, a mono distance and waypoint-count readout sits beneath it in the same
+  instrument style as the navigation strip, the actions form a clean cluster with the delete pushed to
+  the trailing edge, and the active route is marked with an accent edge bar, an accent tint, and an
+  "Active" pill so the live route is obvious at a glance in every theme.
+
+- In the menu, Routes now sits above Layers and charts.
 
 - A vector chart that declares a coverage extent now honors it. The raster chart paths already passed
   the declared `bounds` to MapLibre, but the vector path dropped it, so a regional vector chart

@@ -38,6 +38,10 @@
   /* Floating-card lift; dropped on night-red, where a black shadow on true black is invisible
      and the surface border is the only separation. */
   --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.25);
+  /* Accent-tinted card fills for an active/highlighted state. Defined per theme (not a global
+     color-mix) so night-red stays red on near-black and never drifts toward blue or green. */
+  --accent-tint: color-mix(in srgb, var(--accent) 10%, var(--surface-raised));
+  --accent-tint-strong: color-mix(in srgb, var(--accent) 18%, var(--surface-raised));
 }
 
 :root[data-theme="dusk"] {
@@ -54,6 +58,8 @@
   --select: #ffc24d;
   --alarm: #e0703a;
   --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.45);
+  --accent-tint: color-mix(in srgb, var(--accent) 16%, var(--surface-raised));
+  --accent-tint-strong: color-mix(in srgb, var(--accent) 26%, var(--surface-raised));
 }
 
 :root[data-theme="night-red"] {
@@ -70,6 +76,10 @@
   --select: #ffb39a;
   --alarm: #ff6a5a;
   --shadow-overlay: none;
+  /* Red mixed into near-black: a faint warm fill that reads as "active" without lifting the
+     brightest pixel and without introducing any non-red hue. */
+  --accent-tint: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+  --accent-tint-strong: color-mix(in srgb, var(--accent) 24%, var(--surface-raised));
 }
 
 * {
