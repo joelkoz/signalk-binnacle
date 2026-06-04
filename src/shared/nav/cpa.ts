@@ -1,3 +1,5 @@
+import { DEG_TO_RAD } from '$shared/lib';
+
 export interface Kinematics {
   latitude: number;
   longitude: number;
@@ -11,7 +13,9 @@ export interface CpaResult {
   closing: boolean;
 }
 
-const METERS_PER_DEG_LAT = 111_320;
+// Meters per degree at the equator: exact for latitude, and the base for longitude once
+// scaled by cos(latitude). One constant serves both axes; the cos factor is what differs.
+const METERS_PER_DEG = 111_320;
 
 // Local east-north projection around the own vessel. Accurate within the few
 // nautical miles that matter for collision; large separations are not the use case.
@@ -21,8 +25,9 @@ function toLocalMeters(origin: Kinematics, point: Kinematics): [number, number] 
   let dLon = point.longitude - origin.longitude;
   if (dLon > 180) dLon -= 360;
   else if (dLon < -180) dLon += 360;
-  const east = dLon * METERS_PER_DEG_LAT * Math.cos((origin.latitude * Math.PI) / 180);
-  const north = (point.latitude - origin.latitude) * METERS_PER_DEG_LAT;
+  // East meters per degree shrink with latitude: METERS_PER_DEG times cos(latitude).
+  const east = dLon * METERS_PER_DEG * Math.cos(origin.latitude * DEG_TO_RAD);
+  const north = (point.latitude - origin.latitude) * METERS_PER_DEG;
   return [east, north];
 }
 

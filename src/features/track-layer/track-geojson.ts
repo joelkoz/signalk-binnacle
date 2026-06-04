@@ -1,4 +1,4 @@
-import type { TrackPoint } from '$entities/track';
+import { type TrackPoint, toLonLat } from '$entities/track';
 
 // One two-point LineString per consecutive non-gap pair, carrying the segment's speed so the
 // line can be data-driven colored. A point flagged gap emits no segment, which is how a break
@@ -11,13 +11,7 @@ export function trackSegments(points: readonly TrackPoint[]): GeoJSON.FeatureCol
     const prev = points[i - 1];
     features.push({
       type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates: [
-          [prev.lon, prev.lat],
-          [point.lon, point.lat],
-        ],
-      },
+      geometry: { type: 'LineString', coordinates: [toLonLat(prev), toLonLat(point)] },
       properties: { sog: point.sog },
     });
   }

@@ -78,11 +78,47 @@ export function supportsWindGl(): boolean {
   }
 }
 
+type Uniform = WebGLUniformLocation | null;
+
+// Attribute and uniform locations are constant for the life of a linked program, and
+// getAttribLocation/getUniformLocation are slow GL calls. They are resolved once at construction
+// and read from these caches every frame instead of being re-queried in the render loop.
+interface ScreenLoc {
+  aPos: number;
+  uScreen: Uniform;
+  uOpacity: Uniform;
+}
+interface UpdateLoc {
+  aPos: number;
+  uParticles: Uniform;
+  uWind: Uniform;
+  uWindMin: Uniform;
+  uWindMax: Uniform;
+  uRandSeed: Uniform;
+  uSpeedFactor: Uniform;
+  uDropRate: Uniform;
+  uDropRateBump: Uniform;
+}
+interface DrawLoc {
+  aIndex: number;
+  uParticles: Uniform;
+  uWind: Uniform;
+  uColorRamp: Uniform;
+  uParticlesRes: Uniform;
+  uMatrix: Uniform;
+  uWindMin: Uniform;
+  uWindMax: Uniform;
+  uBounds: Uniform;
+}
+
 export class WindParticles {
   #gl: GL;
   #updateProgram: WebGLProgram;
   #drawProgram: WebGLProgram;
   #screenProgram: WebGLProgram;
+  #screenLoc: ScreenLoc;
+  #updateLoc: UpdateLoc;
+  #drawLoc: DrawLoc;
   #quadBuffer: WebGLBuffer;
   #indexBuffer: WebGLBuffer;
   #framebuffer: WebGLFramebuffer;
@@ -114,6 +150,33 @@ export class WindParticles {
     this.#updateProgram = createProgram(gl, QUAD_VERT, UPDATE_FRAG);
     this.#drawProgram = createProgram(gl, DRAW_VERT, DRAW_FRAG);
     this.#screenProgram = createProgram(gl, QUAD_VERT, SCREEN_FRAG);
+    this.#screenLoc = {
+      aPos: gl.getAttribLocation(this.#screenProgram, 'a_pos'),
+      uScreen: gl.getUniformLocation(this.#screenProgram, 'u_screen'),
+      uOpacity: gl.getUniformLocation(this.#screenProgram, 'u_opacity'),
+    };
+    this.#updateLoc = {
+      aPos: gl.getAttribLocation(this.#updateProgram, 'a_pos'),
+      uParticles: gl.getUniformLocation(this.#updateProgram, 'u_particles'),
+      uWind: gl.getUniformLocation(this.#updateProgram, 'u_wind'),
+      uWindMin: gl.getUniformLocation(this.#updateProgram, 'u_wind_min'),
+      uWindMax: gl.getUniformLocation(this.#updateProgram, 'u_wind_max'),
+      uRandSeed: gl.getUniformLocation(this.#updateProgram, 'u_rand_seed'),
+      uSpeedFactor: gl.getUniformLocation(this.#updateProgram, 'u_speed_factor'),
+      uDropRate: gl.getUniformLocation(this.#updateProgram, 'u_drop_rate'),
+      uDropRateBump: gl.getUniformLocation(this.#updateProgram, 'u_drop_rate_bump'),
+    };
+    this.#drawLoc = {
+      aIndex: gl.getAttribLocation(this.#drawProgram, 'a_index'),
+      uParticles: gl.getUniformLocation(this.#drawProgram, 'u_particles'),
+      uWind: gl.getUniformLocation(this.#drawProgram, 'u_wind'),
+      uColorRamp: gl.getUniformLocation(this.#drawProgram, 'u_color_ramp'),
+      uParticlesRes: gl.getUniformLocation(this.#drawProgram, 'u_particles_res'),
+      uMatrix: gl.getUniformLocation(this.#drawProgram, 'u_matrix'),
+      uWindMin: gl.getUniformLocation(this.#drawProgram, 'u_wind_min'),
+      uWindMax: gl.getUniformLocation(this.#drawProgram, 'u_wind_max'),
+      uBounds: gl.getUniformLocation(this.#drawProgram, 'u_bounds'),
+    };
     this.#quadBuffer = createBuffer(gl, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
     const indices = new Float32Array(this.#count);
     for (let i = 0; i < this.#count; i += 1) indices[i] = i;
@@ -184,46 +247,37 @@ export class WindParticles {
 
   #drawTexture(texture: WebGLTexture, opacity: number): void {
     const gl = this.#gl;
+    const loc = this.#screenLoc;
     gl.useProgram(this.#screenProgram);
-    this.#bindAttribute(this.#quadBuffer, gl.getAttribLocation(this.#screenProgram, 'a_pos'), 2);
+    this.#bindAttribute(this.#quadBuffer, loc.aPos, 2);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(gl.getUniformLocation(this.#screenProgram, 'u_screen'), 0);
-    gl.uniform1f(gl.getUniformLocation(this.#screenProgram, 'u_opacity'), opacity);
+    gl.uniform1i(loc.uScreen, 0);
+    gl.uniform1f(loc.uOpacity, opacity);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
   #updateParticles(): void {
     const gl = this.#gl;
     if (!this.#wind || !this.#field) return;
+    const loc = this.#updateLoc;
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.#framebuffer);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.#state1, 0);
     gl.viewport(0, 0, this.#res, this.#res);
     gl.useProgram(this.#updateProgram);
-    this.#bindAttribute(this.#quadBuffer, gl.getAttribLocation(this.#updateProgram, 'a_pos'), 2);
+    this.#bindAttribute(this.#quadBuffer, loc.aPos, 2);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.#state0);
-    gl.uniform1i(gl.getUniformLocation(this.#updateProgram, 'u_particles'), 0);
+    gl.uniform1i(loc.uParticles, 0);
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this.#wind);
-    gl.uniform1i(gl.getUniformLocation(this.#updateProgram, 'u_wind'), 1);
-    gl.uniform2f(
-      gl.getUniformLocation(this.#updateProgram, 'u_wind_min'),
-      this.#field.uMin,
-      this.#field.vMin,
-    );
-    gl.uniform2f(
-      gl.getUniformLocation(this.#updateProgram, 'u_wind_max'),
-      this.#field.uMax,
-      this.#field.vMax,
-    );
-    gl.uniform1f(gl.getUniformLocation(this.#updateProgram, 'u_rand_seed'), Math.random());
-    gl.uniform1f(gl.getUniformLocation(this.#updateProgram, 'u_speed_factor'), this.#speedFactor);
-    gl.uniform1f(gl.getUniformLocation(this.#updateProgram, 'u_drop_rate'), this.#dropRate);
-    gl.uniform1f(
-      gl.getUniformLocation(this.#updateProgram, 'u_drop_rate_bump'),
-      this.#dropRateBump,
-    );
+    gl.uniform1i(loc.uWind, 1);
+    gl.uniform2f(loc.uWindMin, this.#field.uMin, this.#field.vMin);
+    gl.uniform2f(loc.uWindMax, this.#field.uMax, this.#field.vMax);
+    gl.uniform1f(loc.uRandSeed, Math.random());
+    gl.uniform1f(loc.uSpeedFactor, this.#speedFactor);
+    gl.uniform1f(loc.uDropRate, this.#dropRate);
+    gl.uniform1f(loc.uDropRateBump, this.#dropRateBump);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     const tmp = this.#state0;
     this.#state0 = this.#state1;
@@ -233,31 +287,24 @@ export class WindParticles {
   #drawParticles(matrix: Float32Array | number[]): void {
     const gl = this.#gl;
     if (!this.#wind || !this.#field) return;
+    const loc = this.#drawLoc;
     gl.useProgram(this.#drawProgram);
-    this.#bindAttribute(this.#indexBuffer, gl.getAttribLocation(this.#drawProgram, 'a_index'), 1);
+    this.#bindAttribute(this.#indexBuffer, loc.aIndex, 1);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.#state0);
-    gl.uniform1i(gl.getUniformLocation(this.#drawProgram, 'u_particles'), 0);
+    gl.uniform1i(loc.uParticles, 0);
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this.#wind);
-    gl.uniform1i(gl.getUniformLocation(this.#drawProgram, 'u_wind'), 1);
+    gl.uniform1i(loc.uWind, 1);
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, this.#colorRamp);
-    gl.uniform1i(gl.getUniformLocation(this.#drawProgram, 'u_color_ramp'), 2);
-    gl.uniform1f(gl.getUniformLocation(this.#drawProgram, 'u_particles_res'), this.#res);
-    gl.uniformMatrix4fv(gl.getUniformLocation(this.#drawProgram, 'u_matrix'), false, matrix);
-    gl.uniform2f(
-      gl.getUniformLocation(this.#drawProgram, 'u_wind_min'),
-      this.#field.uMin,
-      this.#field.vMin,
-    );
-    gl.uniform2f(
-      gl.getUniformLocation(this.#drawProgram, 'u_wind_max'),
-      this.#field.uMax,
-      this.#field.vMax,
-    );
+    gl.uniform1i(loc.uColorRamp, 2);
+    gl.uniform1f(loc.uParticlesRes, this.#res);
+    gl.uniformMatrix4fv(loc.uMatrix, false, matrix);
+    gl.uniform2f(loc.uWindMin, this.#field.uMin, this.#field.vMin);
+    gl.uniform2f(loc.uWindMax, this.#field.uMax, this.#field.vMax);
     gl.uniform4f(
-      gl.getUniformLocation(this.#drawProgram, 'u_bounds'),
+      loc.uBounds,
       this.#field.west,
       this.#field.south,
       this.#field.east,

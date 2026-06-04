@@ -62,6 +62,8 @@ export function windFieldTexture(grid: WeatherGrid, bracket: TimeBracket): WindF
   for (let i = 0; i < cols * rows; i += 1) {
     const o = i * 4;
     const land = Number.isNaN(u[i]) || Number.isNaN(v[i]);
+    // Red carries the u (east) component, green the v (north); the shader reads only rg and alpha.
+    // Blue (o + 2) is intentionally left 0: it is unused, not missing data.
     data[o] = land ? 0 : Math.round(((u[i] - uMin) / uSpan) * 255);
     data[o + 1] = land ? 0 : Math.round(((v[i] - vMin) / vSpan) * 255);
     data[o + 3] = land ? 0 : 255;

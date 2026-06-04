@@ -52,8 +52,16 @@ export class Alarm implements AlarmControl {
   }
 
   start(tone: AlarmTone): void {
-    // Already sounding this tone: leave the running burst loop alone.
-    if (this.#timer !== undefined && this.#tone === tone) return;
+    // Already sounding this tone: leave the running burst loop alone. Compare by the fields that
+    // define the audible loop (pitch and period) rather than object identity, so a caller passing
+    // a fresh tone object with the same values does not tear down and rebuild the loop each call.
+    if (
+      this.#timer !== undefined &&
+      this.#tone?.frequency === tone.frequency &&
+      this.#tone?.periodMs === tone.periodMs
+    ) {
+      return;
+    }
     this.stop();
     const ctx = this.#context();
     if (!ctx) return;

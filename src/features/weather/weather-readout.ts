@@ -1,5 +1,9 @@
 import { bilinearAt, type WeatherGrid } from '$entities/weather';
 
+// Below this rate (mm/h) precipitation is not worth showing in a readout: a trace that rounds to
+// nothing. Shared by the readouts that gate a rain line on it so the threshold is defined once.
+export const RAIN_VISIBLE_MM_H = 0.1;
+
 export interface WeatherReadout {
   speedMs: number;
   fromRad: number; // meteorological direction the wind comes from, radians, 0..2pi

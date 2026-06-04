@@ -3,6 +3,7 @@ import { TriangleAlert } from '@lucide/svelte';
 import type { WeatherStore } from '$entities/weather';
 import {
   formatFixed,
+  HOUR_MS,
   kelvinToCelsius,
   metersPerSecondToKnots,
   pascalsToHectopascals,
@@ -16,7 +17,7 @@ import {
   type PointConditions,
   type WeatherWarning,
 } from './signalk-weather';
-import { readoutAt } from './weather-readout';
+import { RAIN_VISIBLE_MM_H, readoutAt } from './weather-readout';
 
 interface Props {
   origin: string;
@@ -30,7 +31,7 @@ interface Props {
 const { origin, token, providerName, position, store }: Props = $props();
 
 const FORECAST_STEPS = 6;
-const FREE_STEP_MS = 6 * 3_600_000;
+const FREE_STEP_MS = 6 * HOUR_MS;
 
 let loading = $state(false);
 let current = $state<PointConditions | undefined>();
@@ -214,7 +215,7 @@ function stepLabel(timeMs: number): string {
             </dd>
           </div>
         {/if}
-        {#if current.precipitationMm !== undefined && current.precipitationMm >= 0.1}
+        {#if current.precipitationMm !== undefined && current.precipitationMm >= RAIN_VISIBLE_MM_H}
           <div>
             <dt>Rain</dt>
             <dd><b>{formatFixed(current.precipitationMm, 1)}</b> mm/h</dd>
@@ -233,7 +234,7 @@ function stepLabel(timeMs: number): string {
           <li>
             <span class="f-time">{stepLabel(step.timeMs)}</span>
             <span class="f-wind"><b>{knots(step.windMs)}</b> kn {bearing(step.fromRad)}&deg;</span>
-            {#if step.precipitationMm !== undefined && step.precipitationMm >= 0.1}
+            {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}
               <span class="f-rain"><b>{formatFixed(step.precipitationMm, 1)}</b> mm/h</span>
             {/if}
           </li>

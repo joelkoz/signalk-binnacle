@@ -1,3 +1,4 @@
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { Theme } from '$shared/ui';
 import type { Rgba } from './icon-raster';
 
@@ -136,4 +137,12 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
 
 export function mapThemePaint(theme: Theme): MapThemePaint {
   return { ...PAINT[theme], theme };
+}
+
+// Apply the theme to a raster overlay layer. A raster layer cannot be recolored, so night-red
+// desaturates and dims it instead. Shared by the chart, depth-bathymetry, and rain-radar rasters
+// so the one treatment is defined once.
+export function applyRasterTheme(map: MapLibreMap, layerId: string, paint: MapThemePaint): void {
+  map.setPaintProperty(layerId, 'raster-saturation', paint.rasterSaturation);
+  map.setPaintProperty(layerId, 'raster-brightness-max', paint.rasterBrightnessMax);
 }

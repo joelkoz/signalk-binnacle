@@ -1,11 +1,10 @@
 import { type Bbox, sampleGrid, type WeatherGrid } from '$entities/weather';
-import { PA_PER_HPA } from '$shared/lib';
+import { DEG_TO_RAD, PA_PER_HPA } from '$shared/lib';
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 // Open-Meteo accepts many locations per request; keep batches well under its cap.
 const MAX_LOCS_PER_REQUEST = 200;
-const DEG_TO_RAD = Math.PI / 180;
 
 export interface ForecastOptions {
   maxCells: number;
@@ -207,7 +206,10 @@ function parseMarine(locs: MarineLoc[], cells: number): MarineFields | undefined
 }
 
 // Attach marine fields to a forecast grid. The marine fetch uses the same sampled grid and forecast
-// horizon, so the cell and step indices align positionally with the wind and pressure arrays.
+// horizon, so the cell and step indices align positionally with the wind and pressure arrays. The
+// builders guard the cell count (a length mismatch returns undefined and no merge happens); the one
+// residual assumption is that the marine endpoint's cell_selection=sea snapping does not reorder
+// cells relative to the atmospheric request, which holds because both pass the same ordered points.
 export function mergeMarine(grid: WeatherGrid, marine: MarineFields): WeatherGrid {
   return {
     ...grid,

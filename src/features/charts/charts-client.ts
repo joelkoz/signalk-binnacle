@@ -1,5 +1,5 @@
 import type { SignalKChart } from '$shared/map';
-import { authInit } from '$shared/signalk';
+import { asKeyedObject, authInit } from '$shared/signalk';
 
 const V2 = '/signalk/v2/api/resources/charts';
 const V1 = '/signalk/v1/api/resources/charts';
@@ -13,11 +13,9 @@ async function tryFetch(url: string, token?: string): Promise<SignalKChart[] | u
       console.warn(`[charts] ${url} returned ${response.status}`);
       return undefined;
     }
-    const body = await response.json();
-    // The resources API returns a keyed object; guard against an error envelope or array
-    // arriving with a 200 so a malformed shape does not flow on as bogus charts.
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
-    return Object.values(body as Record<string, SignalKChart>);
+    const keyed = asKeyedObject(await response.json());
+    if (!keyed) return undefined;
+    return Object.values(keyed as Record<string, SignalKChart>);
   } catch {
     return undefined;
   }

@@ -15,6 +15,7 @@ import {
   fetchObservations,
   fetchPointForecasts,
   nearestInTime,
+  RAIN_VISIBLE_MM_H,
   readoutAt,
   readoutFromSignalK,
   stepTime,
@@ -29,6 +30,7 @@ import {
 } from '$features/weather';
 import {
   formatFixed,
+  HOUR_MS,
   metersPerSecondToKnots,
   pascalsToHectopascals,
   radiansToBearing,
@@ -82,7 +84,7 @@ const {
 const MAX_ZOOM = 7;
 const MIN_ZOOM = 1;
 const DEFAULT_ZOOM = 3;
-const STEP_MS = 3 * 3_600_000;
+const STEP_MS = 3 * HOUR_MS;
 // The free fallback source's label, also used to decide readout field gating.
 const GRID_SOURCE = 'Open-Meteo';
 
@@ -373,7 +375,7 @@ onDestroy(() => {
               / <b>{fmt(readout.wavePeriodS, 1)}</b> s
             {/if}
           {/if}
-          {#if (showField(WEATHER_LAYER_IDS.precip) || showField(WEATHER_LAYER_IDS.radar)) && readout.precipitationMm !== undefined && readout.precipitationMm >= 0.1}
+          {#if (showField(WEATHER_LAYER_IDS.precip) || showField(WEATHER_LAYER_IDS.radar)) && readout.precipitationMm !== undefined && readout.precipitationMm >= RAIN_VISIBLE_MM_H}
             &middot; rain <b>{fmt(readout.precipitationMm, 1)}</b> mm/h
           {/if}
         </span>

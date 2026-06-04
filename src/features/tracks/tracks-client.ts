@@ -1,5 +1,5 @@
-import { computeStats, type TrackPoint } from '$entities/track';
-import { authInit } from '$shared/signalk';
+import { computeStats, type TrackPoint, toLonLat } from '$entities/track';
+import { asKeyedObject, authInit } from '$shared/signalk';
 import { toGeoJsonFeature } from './track-export';
 
 // A track read back from the Signal K resources API. Points are grouped one array per segment
@@ -24,7 +24,7 @@ export function savedTracksToFeatures(
       if (segment.length < 2) continue;
       features.push({
         type: 'Feature',
-        geometry: { type: 'LineString', coordinates: segment.map((pt) => [pt.lon, pt.lat]) },
+        geometry: { type: 'LineString', coordinates: segment.map(toLonLat) },
         properties: { id: track.id },
       });
     }
@@ -92,12 +92,10 @@ async function tryFetch(url: string, token?: string): Promise<SavedTrack[] | und
   try {
     const response = await fetch(url, authInit(token));
     if (!response.ok) return undefined;
-    const body = await response.json();
-    // The resources API returns a keyed object; reject an error envelope or array arriving
-    // with a 200 so a malformed shape does not flow on as bogus tracks.
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
+    const keyed = asKeyedObject(await response.json());
+    if (!keyed) return undefined;
     const out: SavedTrack[] = [];
-    for (const [id, raw] of Object.entries(body as Record<string, unknown>)) {
+    for (const [id, raw] of Object.entries(keyed)) {
       const geom = extractGeometry(raw);
       if (!geom) continue;
       const segments = geometryToSegments(geom);

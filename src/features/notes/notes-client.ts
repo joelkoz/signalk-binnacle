@@ -1,4 +1,4 @@
-import { authInit, str } from '$shared/signalk';
+import { asKeyedObject, authInit, str } from '$shared/signalk';
 import type { PoiType } from './notes-detail';
 import { categoryForSkIcon, type PoiCategory, poiCategoryForType } from './poi-categories';
 
@@ -49,9 +49,10 @@ export async function fetchNotes(
   } catch {
     return [];
   }
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return [];
+  const keyed = asKeyedObject(body);
+  if (!keyed) return [];
   const out: NotePoint[] = [];
-  for (const [id, raw] of Object.entries(body as Record<string, unknown>)) {
+  for (const [id, raw] of Object.entries(keyed)) {
     // An error payload ({state, statusCode, message}) has non-object values, which fall
     // through here; only real notes with a position become markers.
     if (!raw || typeof raw !== 'object') continue;

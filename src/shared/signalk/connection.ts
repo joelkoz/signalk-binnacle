@@ -26,6 +26,11 @@ export class SkConnection {
 
   connect(): void {
     this.#stopped = false;
+    // Drop any pending reconnect and any prior socket before opening a new one, so a manual
+    // reconnect cannot leak the old socket or let a queued reconnect fire a duplicate connect.
+    // The old socket's onclose is gated on still being the current #ws, so it stays quiet.
+    if (this.#reconnectTimer) clearTimeout(this.#reconnectTimer);
+    this.#ws?.close();
     this.#emit('connecting');
     const ws = new WebSocket(withQuery(this.#url, 'subscribe=none'));
     this.#ws = ws;
@@ -59,8 +64,11 @@ export class SkConnection {
   disconnect(): void {
     this.#stopped = true;
     if (this.#reconnectTimer) clearTimeout(this.#reconnectTimer);
+    // Only emit 'closed' when a socket actually existed, so a disconnect before any connect does
+    // not report a close that never had an open.
+    const had = this.#ws !== undefined;
     this.#ws?.close();
-    this.#emit('closed');
+    if (had) this.#emit('closed');
   }
 
   #scheduleReconnect(): void {

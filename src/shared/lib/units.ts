@@ -6,6 +6,14 @@ const DEG_PER_RAD = 180 / Math.PI;
 const KELVIN_OFFSET = 273.15;
 export const PA_PER_HPA = 100;
 
+// Degrees-to-radians as a plain multiplier, for tight numeric loops (haversine, grid sampling)
+// that would otherwise each define their own `Math.PI / 180`. The display-edge converter
+// degreesToRadians is defined in terms of it.
+export const DEG_TO_RAD = Math.PI / 180;
+
+// Milliseconds in one hour, shared by the weather time-step constants so the factor is named once.
+export const HOUR_MS = 3_600_000;
+
 // The store-to-display converters accept null and undefined because a Signal K value
 // can be absent (the guards use `== null` to catch both). The inverse converters
 // (knotsToMetersPerSecond, degreesToRadians) take a definite number on purpose: they
@@ -26,7 +34,7 @@ export function radiansToBearing(value: number | null | undefined): number | und
 }
 
 export function degreesToRadians(value: number): number {
-  return value / DEG_PER_RAD;
+  return value * DEG_TO_RAD;
 }
 
 // A 0..360 heading in degrees: the heading if present, otherwise the course over ground, otherwise

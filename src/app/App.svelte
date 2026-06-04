@@ -87,7 +87,7 @@ const thresholds = createThresholds();
 const collision = new CollisionAssessment(vessel, aisTargets, thresholds);
 const lookoutAlarm = new LookoutAlarm();
 const alarmMuted = new PersistedValue<boolean>('binnacle:alarm-muted', false);
-// Publish the collision alert to Signal K so other clients and devices share it.
+// So other Signal K clients and devices see the same collision alert.
 const collisionNotifier = new CollisionNotifier(
   (path, value) =>
     void client.publish({ context: SELF_CONTEXT, updates: [{ values: [{ path, value }] }] }),

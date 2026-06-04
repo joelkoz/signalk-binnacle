@@ -100,37 +100,25 @@ onMount(() => {
     onLoad: async ({ map, ctx, manager, recolor, isDestroyed, runTick }) => {
       const charts = await fetchCharts(serverOrigin(), chartsToken);
       if (isDestroyed()) return;
-      for (const chart of charts) {
-        await manager.register(createChartOverlay(chart, serverOrigin()));
-        if (isDestroyed()) return;
-      }
 
-      // App-provided streaming bathymetry sources (off by default), registered after the server
-      // charts so they sit just above the base in the bathymetry band.
-      for (const source of STREAMING_CHART_SOURCES) {
-        await manager.register(createStreamingChartOverlay(source));
-        if (isDestroyed()) return;
-      }
-
+      // Build every overlay, then register the whole stack in one batch so the layer order is
+      // applied once instead of restacking after each. Registration order is the z-order intent:
+      // server charts, then streaming bathymetry just above the base, the notes, AIS, and collision
+      // live overlays, then the track beneath the vessel so the boat draws on top of its own trail.
       const notesOverlay = createNotesOverlay(serverOrigin(), chartsToken, onNoteSelect);
-      await manager.register(notesOverlay);
-      if (isDestroyed()) return;
-
       const aisOverlay = createAisOverlay(aisTargets, store);
-      await manager.register(aisOverlay);
-      if (isDestroyed()) return;
-
       const collisionOverlay = createCollisionOverlay(collision);
-      await manager.register(collisionOverlay);
-      if (isDestroyed()) return;
-
-      // Register the trail before the vessel so the boat draws on top of its own track.
       const trackOverlay = createTrackOverlay(recorder, trackSettings, savedTracks);
-      await manager.register(trackOverlay);
-      if (isDestroyed()) return;
-
       const overlay = createVesselOverlay(vessel);
-      await manager.register(overlay);
+      await manager.registerAll([
+        ...charts.map((chart) => createChartOverlay(chart, serverOrigin())),
+        ...STREAMING_CHART_SOURCES.map((source) => createStreamingChartOverlay(source)),
+        notesOverlay,
+        aisOverlay,
+        collisionOverlay,
+        trackOverlay,
+        overlay,
+      ]);
       if (isDestroyed()) return;
 
       const view = new LayersView(manager);

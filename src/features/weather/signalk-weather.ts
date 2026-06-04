@@ -1,4 +1,4 @@
-import { authInit } from '$shared/signalk';
+import { asKeyedObject, authInit } from '$shared/signalk';
 import type { WeatherReadout } from './weather-readout';
 
 // The Signal K Weather API v2 is point-only (a single lat/lon per request). A provider plugin (for
@@ -80,9 +80,7 @@ export async function fetchWeatherProviders(
   try {
     const res = await fetchFn(`${origin}${WEATHER_BASE}/_providers`, authInit(token));
     if (!res.ok) return undefined;
-    const body = await res.json();
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
-    return body as Record<string, WeatherProviderInfo>;
+    return asKeyedObject(await res.json()) as Record<string, WeatherProviderInfo> | undefined;
   } catch {
     return undefined;
   }
@@ -95,7 +93,11 @@ export function defaultProviderName(
   providers: Record<string, WeatherProviderInfo> | undefined,
 ): string | undefined {
   if (!providers) return undefined;
-  const entries = Object.entries(providers);
+  // Keep only object-valued entries: a malformed provider map (a value that is null or a string)
+  // would otherwise throw when isDefault or name is read off it.
+  const entries = Object.entries(providers).filter(
+    (entry): entry is [string, WeatherProviderInfo] => !!entry[1] && typeof entry[1] === 'object',
+  );
   if (entries.length === 0) return undefined;
   const [id, info] = entries.find(([, p]) => p.isDefault) ?? entries[0];
   return info.name ?? info.provider ?? id;

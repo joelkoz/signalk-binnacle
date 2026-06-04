@@ -28,5 +28,5 @@ export {
   type WeatherLayersWanted,
   type WeatherLoader,
 } from './weather-loader';
-export { readoutAt, type WeatherReadout } from './weather-readout';
+export { RAIN_VISIBLE_MM_H, readoutAt, type WeatherReadout } from './weather-readout';
 export { createWindOverlay } from './wind-overlay';

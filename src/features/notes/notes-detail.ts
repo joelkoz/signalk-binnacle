@@ -1,4 +1,4 @@
-import { authInit, str, strArray } from '$shared/signalk';
+import { asKeyedObject, authInit, str, strArray } from '$shared/signalk';
 
 const ITEM_KINDS = [
   'text',
@@ -56,7 +56,7 @@ export interface NoteDetail {
 const V2 = '/signalk/v2/api/resources/notes';
 const V1 = '/signalk/v1/api/resources/notes';
 
-// Reduce HTML to plain text; we never inject provider markup.
+// A provider description is untrusted, so it is shown as plain text; its markup is never injected.
 export function plainText(html: string): string {
   return html
     .replace(/<[^>]*>/g, ' ')
@@ -118,9 +118,9 @@ async function tryFetch(
   try {
     const response = await fetch(url, authInit(token));
     if (!response.ok) return undefined;
-    const body = await response.json();
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
-    const note = body as {
+    const keyed = asKeyedObject(await response.json());
+    if (!keyed) return undefined;
+    const note = keyed as {
       name?: unknown;
       title?: unknown;
       url?: unknown;

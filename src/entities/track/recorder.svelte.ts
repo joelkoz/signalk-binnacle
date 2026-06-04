@@ -81,13 +81,10 @@ export class TrackRecorder {
     const last = this.points[this.points.length - 1];
     const decision = decideRecord(last, lat, lon, now, this.#settings.value);
     if (!decision.append) return;
-    const point: TrackPoint = {
-      lat,
-      lon,
-      t: now,
-      sog,
-      gap: decision.gap || this.#resumeGap || undefined,
-    };
+    const point: TrackPoint = { lat, lon, t: now, sog };
+    // Flag a gap when this point follows a break (a pause-resume or a fix-rate dropout) so the
+    // renderer does not draw a line across it. Left absent otherwise rather than set false.
+    if (decision.gap || this.#resumeGap) point.gap = true;
     this.#resumeGap = false;
     this.points.push(point);
     void this.#store.append(point);

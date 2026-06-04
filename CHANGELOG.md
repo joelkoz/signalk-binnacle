@@ -228,6 +228,21 @@ All notable changes to Binnacle are documented here. The format follows
   the area you are looking at, rather than reopening at its own last position. The zoom is still capped
   to the mini-map's maximum so weather never zooms past its data resolution.
 
+- Second whole-repo cleanup pass (six expert audit lanes: weather, the Signal K data layer, map and
+  charts, notes and tracks, safety and chrome, and app and build infrastructure), no feature change.
+  The wind particle field caches its GPU uniform and attribute locations once at setup instead of
+  re-querying them every frame, the layer manager applies the stacking order once per batch when the
+  chart and overlays first load rather than restacking after each of a dozen-plus registrations, and
+  shared helpers fold repeated logic: a `DEG_TO_RAD` constant for hot numeric loops, an `HOUR_MS`
+  constant, an `applyRasterTheme` for the night-red raster treatment shared by the chart, depth, and
+  radar layers, an `asKeyedObject` guard shared by the chart, note, track, and weather resource
+  clients, a `toLonLat` mapper for the track coordinate builders, and one `RAIN_VISIBLE_MM_H`
+  threshold. Dead Signal K path constants were removed.
+
+- A new app build now surfaces an Update control instead of silently reloading. The progressive web
+  app uses prompt registration rather than auto-update, so a fresh build never reloads the chart out
+  from under you mid-passage; the Update control lets the navigator choose when to apply it.
+
 - Whole-repo cleanup pass (six expert audit lanes, weather-weighted), no behavior change. One shared
   `emptyFeatureCollection` in `$shared/map` replaces the per-overlay copies (vessel, track, ais,
   notes, and weather), a shared `headingDegrees` helper folds the vessel and AIS heading fallback,
@@ -358,6 +373,17 @@ All notable changes to Binnacle are documented here. The format follows
   `.github/FUNDING.yml`, and the `package.json` funding field).
 
 ### Fixed
+
+- A vector chart that declares a coverage extent now honors it. The raster chart paths already passed
+  the declared `bounds` to MapLibre, but the vector path dropped it, so a regional vector chart
+  requested and 404'd tiles across the whole world instead of only within its coverage. The vector
+  source now carries `bounds` the same way the raster sources do.
+
+- A provider-supplied collision contact is now gated the same as a locally computed one at the exact
+  instant of closest approach. The provider branch treated a TCPA of zero (closest approach right now)
+  as a live danger while the computed branch treated the same geometry as no longer closing; both now
+  require a positive TCPA, so the two CPA sources agree and a just-passed contact cannot flicker as a
+  danger from one source but not the other.
 
 - Weather values now read consistently to one decimal. The legend low and high labels and the wave
   period readout previously mixed bare integers ("0", "9") with decimals ("0.0", "0.5"); wind, waves,

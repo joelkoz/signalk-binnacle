@@ -62,6 +62,25 @@ export class LayerManager {
   }
 
   async register(module: OverlayModule): Promise<void> {
+    await this.#addModule(module);
+    this.#applyOrder();
+  }
+
+  // Register many overlays as one batch, applying the stacking order a single time at the end
+  // rather than after every module. The initial chart-plus-overlay load registers a dozen or more
+  // modules, and a per-register restack is a moveLayer chain over every layer each time, so the
+  // batch turns a quadratic load-time cost into one restack. The final order is identical to
+  // registering the same modules in the same sequence one at a time.
+  async registerAll(modules: OverlayModule[]): Promise<void> {
+    for (const module of modules) {
+      await this.#addModule(module);
+    }
+    this.#applyOrder();
+  }
+
+  // Add a single module (state restore, exclusion enforcement, add, visibility, and opacity)
+  // without restacking. register and registerAll share this and own when #applyOrder runs.
+  async #addModule(module: OverlayModule): Promise<void> {
     if (this.#modules.has(module.id)) {
       throw new Error(`duplicate overlay id: ${module.id}`);
     }
@@ -83,7 +102,6 @@ export class LayerManager {
     await module.add(this.#ctx);
     module.setVisible(this.#ctx, state.visible);
     module.setOpacity?.(this.#ctx, state.opacity);
-    this.#applyOrder();
   }
 
   unregister(id: string): void {
@@ -197,6 +215,9 @@ export class LayerManager {
     }
   }
 
+  // The entry point for a full base-style swap: it re-adds every overlay onto the fresh style.
+  // No in-app action swaps the base style yet (theme changes recolor in place), so this is forward
+  // scaffolding for that path, exercised by tests and ready for when a style swap lands.
   async reattachAll(): Promise<void> {
     // A base-style swap wipes the sentinel layers too, so restore them before
     // re-adding overlays or every beforeId would point at a missing layer.

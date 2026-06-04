@@ -74,6 +74,24 @@ describe('LayerManager', () => {
     await expect(manager.register(fakeOverlay('ais'))).rejects.toThrow();
   });
 
+  it('registerAll registers every module and yields the same band order as sequential register', async () => {
+    const manager = new LayerManager(fakeCtx());
+    const chart = fakeOverlay('chart', 'basemap');
+    const vessel = fakeOverlay('vessel', 'vessel');
+    const track = fakeOverlay('track', 'track');
+    await manager.registerAll([chart, vessel, track]);
+    expect(chart.events).toContain('add');
+    expect(vessel.events).toContain('add');
+    expect(track.events).toContain('add');
+    // Identical to registering chart, vessel, then track one at a time.
+    expect(manager.layers().map((l) => l.id)).toEqual(['vessel', 'track', 'chart']);
+  });
+
+  it('registerAll rejects a duplicate id', async () => {
+    const manager = new LayerManager(fakeCtx());
+    await expect(manager.registerAll([fakeOverlay('a'), fakeOverlay('a')])).rejects.toThrow();
+  });
+
   it('reattachAll re-adds and restores state', async () => {
     const overlay = fakeOverlay('ais');
     const manager = new LayerManager(fakeCtx());

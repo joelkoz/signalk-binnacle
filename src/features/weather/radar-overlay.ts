@@ -1,6 +1,11 @@
 import type { RasterLayerSpecification, RasterSourceSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
-import type { MapThemePaint, OverlayContext, OverlayModule } from '$shared/map';
+import {
+  applyRasterTheme,
+  type MapThemePaint,
+  type OverlayContext,
+  type OverlayModule,
+} from '$shared/map';
 import { WEATHER_LAYER_IDS } from './fills';
 import { frameTiles, TILE_SIZE } from './radar-frames';
 
@@ -76,8 +81,7 @@ export function createRadarOverlay(
   }
 
   function recolor(ctx: OverlayContext, paint: MapThemePaint): void {
-    ctx.map.setPaintProperty(LAYER_ID, 'raster-saturation', paint.rasterSaturation);
-    ctx.map.setPaintProperty(LAYER_ID, 'raster-brightness-max', paint.rasterBrightnessMax);
+    applyRasterTheme(ctx.map, LAYER_ID, paint);
   }
 
   return {

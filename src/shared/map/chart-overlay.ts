@@ -1,7 +1,7 @@
 import type { Map as MapLibreMap, MapSourceDataEvent } from 'maplibre-gl';
 import { chartSourceId, chartToSpecs, PMTILES_SCHEME, THEME_PAINT_KEY } from './chart-adapter';
 import type { SignalKChart } from './chart-types';
-import type { MapColorKey } from './map-theme';
+import { applyRasterTheme, type MapColorKey } from './map-theme';
 import { registerPmtilesArchive } from './pmtiles';
 import type { OverlayModule, ZBand } from './types';
 
@@ -127,8 +127,7 @@ export function createChartOverlay(
       // it carries no blue and keeps the brightest pixel low.
       for (const layer of layers) {
         if (layer.type === 'raster') {
-          ctx.map.setPaintProperty(layer.id, 'raster-saturation', paint.rasterSaturation);
-          ctx.map.setPaintProperty(layer.id, 'raster-brightness-max', paint.rasterBrightnessMax);
+          applyRasterTheme(ctx.map, layer.id, paint);
           continue;
         }
         if (!layer.themePaint) continue;

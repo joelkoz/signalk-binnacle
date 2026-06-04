@@ -1,14 +1,21 @@
 import type { RasterLayerSpecification, RasterSourceSpecification } from 'maplibre-gl';
-import type { OverlayModule } from '$shared/map';
+import { applyRasterTheme, type OverlayModule } from '$shared/map';
 import type { StreamingChartSource } from './streaming-sources';
+
+// The prefix on every streaming source and layer id. The base-theme recolor skips ids under this
+// prefix (it carries the same literal, since shared cannot import this feature), so the id scheme
+// lives in one place here.
+const STREAMING_PREFIX = 'streaming-';
+const streamingSourceId = (id: string): string => `${STREAMING_PREFIX}${id}`;
+const streamingLayerId = (id: string): string => `${STREAMING_PREFIX}${id}-layer`;
 
 // Wrap a free hosted bathymetry service as a raster overlay in the bathymetry band. It starts
 // hidden, streams and caches as the user pans, and follows the theme: day and dusk show it as
 // served, night-red desaturates and dims it because a raster cannot be recolored to true
 // night-red.
 export function createStreamingChartOverlay(source: StreamingChartSource): OverlayModule {
-  const sourceId = `streaming-${source.id}`;
-  const layerId = `streaming-${source.id}-layer`;
+  const sourceId = streamingSourceId(source.id);
+  const layerId = streamingLayerId(source.id);
 
   return {
     id: source.id,
@@ -31,11 +38,12 @@ export function createStreamingChartOverlay(source: StreamingChartSource): Overl
         ctx.map.addSource(sourceId, spec);
       }
       if (!ctx.map.getLayer(layerId)) {
+        // No initial raster-opacity: the layer manager sets it via setOpacity right after add,
+        // and MapLibre defaults raster-opacity to 1 anyway, so an inline value would be redundant.
         const layer: RasterLayerSpecification = {
           id: layerId,
           type: 'raster',
           source: sourceId,
-          paint: { 'raster-opacity': 1 },
         };
         ctx.map.addLayer(layer, ctx.beforeIdFor('bathymetry'));
       }
@@ -51,8 +59,7 @@ export function createStreamingChartOverlay(source: StreamingChartSource): Overl
       ctx.map.setPaintProperty(layerId, 'raster-opacity', opacity);
     },
     applyTheme(ctx, paint) {
-      ctx.map.setPaintProperty(layerId, 'raster-saturation', paint.rasterSaturation);
-      ctx.map.setPaintProperty(layerId, 'raster-brightness-max', paint.rasterBrightnessMax);
+      applyRasterTheme(ctx.map, layerId, paint);
     },
   };
 }

@@ -24,7 +24,10 @@ export default defineConfig({
   plugins: [
     svelte(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate': a chart plotter must not silently reload itself underway. A new
+      // build surfaces an Update control (registerPwa's onNeedRefresh) so the navigator chooses when
+      // to reload, rather than the chart vanishing mid-passage.
+      registerType: 'prompt',
       includeAssets: ['binnacle-icon.svg'],
       manifest: {
         name: 'Binnacle',

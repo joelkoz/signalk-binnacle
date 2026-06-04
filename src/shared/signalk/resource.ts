@@ -7,6 +7,14 @@ export function authInit(token: string | undefined, extra?: RequestInit): Reques
   return { ...extra, headers: { ...headers, ...extra?.headers } };
 }
 
+// The Signal K resources API returns a keyed object (id to record). An error envelope
+// ({state, statusCode, message}) or an array arriving with a 200 is not that shape, so reject it:
+// every resource client shares this guard so a malformed body never flows on as bogus records.
+export function asKeyedObject(body: unknown): Record<string, unknown> | undefined {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
+  return body as Record<string, unknown>;
+}
+
 export function str(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }

@@ -43,6 +43,16 @@ const MIN_ZOOM = 9;
 const CLUSTER_MAX_ZOOM = 11;
 const CLUSTER_RADIUS = 44;
 
+// The first of the given values that coerces to a non-empty string, or undefined if none do. Used
+// to pick a marker's attribution (credit, then source) and its url from the feature properties.
+function firstNonEmpty(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    const s = String(value ?? '');
+    if (s) return s;
+  }
+  return undefined;
+}
+
 // The cluster icon: the colored disc of the cluster's highest-ranked member, matched on the
 // aggregated maxRank, so a cluster holding a hazard shows the red hazard disc, a navaid the amber
 // disc, otherwise the POI disc. Distinct ranks make the match labels unique; generic is the default.
@@ -262,8 +272,8 @@ export function createNotesOverlay(
           id,
           name: String(props.name ?? 'Point of interest'),
           category: String(props.category) as PoiCategory,
-          attribution: String(props.attribution || props.source || '') || undefined,
-          url: String(props.url ?? '') || undefined,
+          attribution: firstNonEmpty(props.attribution, props.source),
+          url: firstNonEmpty(props.url),
         });
       };
       onClusterClick = (event) => {

@@ -16,20 +16,6 @@ export type PoiCategory =
   | 'structure'
   | 'generic';
 
-export const POI_CATEGORIES: readonly PoiCategory[] = [
-  'anchorage',
-  'marina',
-  'fuel',
-  'services',
-  'inlet',
-  'ramp',
-  'bridge',
-  'hazard',
-  'navaid',
-  'structure',
-  'generic',
-];
-
 // Exact skIcon to category for the canonical Freeboard / Crow's Nest vocabulary.
 const SKICON_CATEGORY: Record<string, PoiCategory> = {
   anchorage: 'anchorage',
@@ -130,6 +116,11 @@ const CATEGORY_LABEL: Record<PoiCategory, string> = {
   structure: 'Structure',
   generic: 'Point of interest',
 };
+
+// Every category, derived from the label record's keys rather than hand-listed, so the list cannot
+// drift from the union: a new PoiCategory must be added to CATEGORY_LABEL (a Record<PoiCategory,
+// string> the compiler checks for exhaustiveness), which then flows here automatically.
+export const POI_CATEGORIES: readonly PoiCategory[] = Object.keys(CATEGORY_LABEL) as PoiCategory[];
 
 export function categoryForSkIcon(skIcon: string | undefined): PoiCategory {
   if (!skIcon) return 'generic';
