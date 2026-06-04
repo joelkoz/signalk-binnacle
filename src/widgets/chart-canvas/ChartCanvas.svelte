@@ -1,5 +1,4 @@
 <script lang="ts">
-import maplibregl from 'maplibre-gl';
 import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
@@ -14,19 +13,12 @@ import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
 import {
-  applyBaseTheme,
-  baseStyleUrl,
-  beforeIdFor,
-  captureBaseTheme,
   chartSourceId,
   createChartOverlay,
-  installSentinels,
-  LayerManager,
+  createThemedMap,
   type LayerSettings,
-  mapThemePaint,
-  type OverlayContext,
   registerPmtilesProtocol,
-  restoreBaseTheme,
+  type ThemedMapHandle,
 } from '$shared/map';
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
 import { type SignalKStore, serverOrigin } from '$shared/signalk';
@@ -88,166 +80,104 @@ const DEFAULT_CENTER: [number, number] = [0, 30];
 const DEFAULT_ZOOM = 2;
 
 let container: HTMLDivElement;
-let map: maplibregl.Map | undefined;
-let manager: LayerManager | undefined;
-let resizeObserver: ResizeObserver | undefined;
-let frame = 0;
-let destroyed = false;
+let mapHandle: ThemedMapHandle | undefined;
 
 registerPmtilesProtocol();
 
 onMount(() => {
-  try {
-    map = new maplibregl.Map({
-      container,
-      style: baseStyleUrl(),
-      center: initialView ? [initialView.lon, initialView.lat] : DEFAULT_CENTER,
-      zoom: initialView ? initialView.zoom : DEFAULT_ZOOM,
-      attributionControl: { compact: true },
-    });
-  } catch (error) {
-    console.error('Map failed to initialize', error);
-    return;
-  }
-
-  const mapInstance = map;
-  // The chart host resizes when side panels open or the viewport changes without firing a window
-  // resize, so observe the container and let MapLibre re-fit rather than sit at a stale size.
-  resizeObserver = new ResizeObserver(() => mapInstance.resize());
-  resizeObserver.observe(container);
-  // The 'move' event fires many times per drag frame; coalesce to one emit per
-  // animation frame so the status strip updates at display rate, not per pixel.
-  let viewPending = false;
-  const emitView = () => {
-    if (viewPending) return;
-    viewPending = true;
-    requestAnimationFrame(() => {
-      viewPending = false;
-      if (destroyed) return;
-      const center = mapInstance.getCenter();
-      onViewChange?.({ lat: center.lat, lon: center.lng, zoom: mapInstance.getZoom() });
-    });
-  };
-  mapInstance.on('move', emitView);
-  // A drag is the only user gesture that should release a follow lock. dragstart fires only for
-  // hand panning (not for programmatic setCenter or for scroll-zoom), so following survives a
-  // zoom but ends the moment the user drags the chart away from the boat.
-  mapInstance.on('dragstart', () => onUserPan?.());
-  mapInstance.on('load', async () => {
-    emitView();
-    const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
-    installSentinels(mapInstance);
-    manager = new LayerManager(ctx, {
+  mapHandle = createThemedMap({
+    container,
+    view: initialView,
+    defaultCenter: DEFAULT_CENTER,
+    defaultZoom: DEFAULT_ZOOM,
+    managerOptions: {
       saved: savedLayers,
       onChange: onLayersChange,
       savedOrder,
       onOrderChange,
-      // The own vessel and active collision alarms stay pinned on top so a chart or traffic
-      // can never hide them; bottom to top, collision sits just beneath the vessel.
+      // The own vessel and active collision alarms stay pinned on top so a chart or traffic can
+      // never hide them; bottom to top, collision sits just beneath the vessel.
       pinned: [COLLISION_OVERLAY_ID, OWN_VESSEL_OVERLAY_ID],
-    });
+    },
+    onView: (view) => onViewChange?.(view),
+    onUserPan: () => onUserPan?.(),
+    onLoad: async ({ map, ctx, manager, recolor, isDestroyed, runTick }) => {
+      const charts = await fetchCharts(serverOrigin(), chartsToken);
+      if (isDestroyed()) return;
+      for (const chart of charts) {
+        await manager.register(createChartOverlay(chart, serverOrigin()));
+        if (isDestroyed()) return;
+      }
 
-    const charts = await fetchCharts(serverOrigin(), chartsToken);
-    if (destroyed) return;
-    for (const chart of charts) {
-      await manager.register(createChartOverlay(chart, serverOrigin()));
-      if (destroyed) return;
-    }
+      // App-provided streaming bathymetry sources (off by default), registered after the server
+      // charts so they sit just above the base in the bathymetry band.
+      for (const source of STREAMING_CHART_SOURCES) {
+        await manager.register(createStreamingChartOverlay(source));
+        if (isDestroyed()) return;
+      }
 
-    // App-provided streaming bathymetry sources (off by default), registered after the
-    // server charts so they sit just above the base in the bathymetry band.
-    for (const source of STREAMING_CHART_SOURCES) {
-      await manager.register(createStreamingChartOverlay(source));
-      if (destroyed) return;
-    }
+      const notesOverlay = createNotesOverlay(serverOrigin(), chartsToken, onNoteSelect);
+      await manager.register(notesOverlay);
+      if (isDestroyed()) return;
 
-    const notesOverlay = createNotesOverlay(serverOrigin(), chartsToken, onNoteSelect);
-    await manager.register(notesOverlay);
-    if (destroyed) return;
+      const aisOverlay = createAisOverlay(aisTargets, store);
+      await manager.register(aisOverlay);
+      if (isDestroyed()) return;
 
-    const aisOverlay = createAisOverlay(aisTargets, store);
-    await manager.register(aisOverlay);
-    if (destroyed) return;
+      const collisionOverlay = createCollisionOverlay(collision);
+      await manager.register(collisionOverlay);
+      if (isDestroyed()) return;
 
-    const collisionOverlay = createCollisionOverlay(collision);
-    await manager.register(collisionOverlay);
-    if (destroyed) return;
+      // Register the trail before the vessel so the boat draws on top of its own track.
+      const trackOverlay = createTrackOverlay(recorder, trackSettings, savedTracks);
+      await manager.register(trackOverlay);
+      if (isDestroyed()) return;
 
-    // Register the trail before the vessel so the boat draws on top of its own track.
-    const trackOverlay = createTrackOverlay(recorder, trackSettings, savedTracks);
-    await manager.register(trackOverlay);
-    if (destroyed) return;
+      const overlay = createVesselOverlay(vessel);
+      await manager.register(overlay);
+      if (isDestroyed()) return;
 
-    const overlay = createVesselOverlay(vessel);
-    await manager.register(overlay);
-    if (destroyed) return;
+      const view = new LayersView(manager);
+      view.refresh();
+      onReady?.(view);
 
-    const view = new LayersView(manager);
-    view.refresh();
-    onReady?.(view);
+      const userChartRegistrar: UserChartRegistrar = {
+        register: async (chart) => {
+          if (isDestroyed()) return;
+          await manager.register(createChartOverlay(chart, serverOrigin(), 'bathymetry'));
+          view.refresh();
+        },
+        unregister: (identifier) => {
+          manager.unregister(chartSourceId(identifier));
+          view.refresh();
+        },
+      };
+      onUserChartsReady?.(userChartRegistrar);
 
-    const userChartRegistrar: UserChartRegistrar = {
-      register: async (chart) => {
-        if (destroyed || !manager) return;
-        await manager.register(createChartOverlay(chart, serverOrigin(), 'bathymetry'));
-        view.refresh();
-      },
-      unregister: (identifier) => {
-        manager?.unregister(chartSourceId(identifier));
-        view.refresh();
-      },
-    };
-    onUserChartsReady?.(userChartRegistrar);
+      onMapReady?.(recolor);
 
-    // Snapshot the source style's own colors now, before any recolor, so the day theme can
-    // restore the real map rather than approximate it.
-    const baseColors = captureBaseTheme(mapInstance, mapThemePaint('day'));
+      onCommandsReady?.({
+        centerOnVessel: () => {
+          const position = vessel.position;
+          if (!position) return;
+          const zoom = map.getZoom();
+          map.flyTo({
+            center: [position.longitude, position.latitude],
+            zoom: zoom < 12 ? 14 : zoom,
+          });
+        },
+        recenterOnVessel: (latitude, longitude) => {
+          map.setCenter([longitude, latitude]);
+        },
+        clearNoteSelection: () => notesOverlay.deselect(ctx),
+      });
 
-    const recolor = (theme: Theme) => {
-      const paint = mapThemePaint(theme);
-      // Day shows the source style's real colors; dusk and night-red recolor the base map
-      // (background, water, landcover, roads, boundaries, labels). Each overlay, including the
-      // chart, recolors its own layers via applyTheme below.
-      if (theme === 'day') restoreBaseTheme(mapInstance, baseColors);
-      else applyBaseTheme(mapInstance, paint);
-      manager?.applyTheme(paint);
-    };
-    onMapReady?.(recolor);
-
-    onCommandsReady?.({
-      centerOnVessel: () => {
-        const position = vessel.position;
-        if (!position) return;
-        const zoom = mapInstance.getZoom();
-        mapInstance.flyTo({
-          center: [position.longitude, position.latitude],
-          zoom: zoom < 12 ? 14 : zoom,
-        });
-      },
-      recenterOnVessel: (latitude, longitude) => {
-        mapInstance.setCenter([longitude, latitude]);
-      },
-      clearNoteSelection: () => notesOverlay.deselect(ctx),
-    });
-
-    const tick = () => {
-      notesOverlay.sync(ctx);
-      aisOverlay.sync(ctx);
-      collisionOverlay.sync(ctx);
-      trackOverlay.sync(ctx);
-      overlay.sync(ctx);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
+      runTick([notesOverlay, aisOverlay, collisionOverlay, trackOverlay, overlay]);
+    },
   });
 });
 
-onDestroy(() => {
-  destroyed = true;
-  cancelAnimationFrame(frame);
-  resizeObserver?.disconnect();
-  map?.remove();
-});
+onDestroy(() => mapHandle?.destroy());
 </script>
 
 <div class="chart-canvas" bind:this={container}></div>

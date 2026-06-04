@@ -22,7 +22,7 @@ export interface LayerListItem {
   band: ZBand;
 }
 
-interface LayerManagerOptions {
+export interface LayerManagerOptions {
   // Settings to restore on register (a layer absent here takes the visible default).
   saved?: LayerSettings;
   // Called with the full settings snapshot whenever a layer's state changes.

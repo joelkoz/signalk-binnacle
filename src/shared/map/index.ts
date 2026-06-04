@@ -10,7 +10,12 @@ export { createChartOverlay } from './chart-overlay';
 export type { MapSourceType, SignalKChart } from './chart-types';
 export type { Rgba } from './icon-raster';
 export { rasterIcon } from './icon-raster';
-export type { LayerListItem, LayerSettings, OverlayState } from './layer-manager';
+export type {
+  LayerListItem,
+  LayerManagerOptions,
+  LayerSettings,
+  OverlayState,
+} from './layer-manager';
 export { LayerManager } from './layer-manager';
 export type { MapThemePaint } from './map-theme';
 export { mapThemePaint } from './map-theme';
@@ -19,5 +24,12 @@ export { type PmtilesMeta, readPmtilesMeta } from './pmtiles-metadata';
 export { beforeIdFor, installSentinels, sentinelId } from './sentinels';
 export type { SymbolOverlay, SymbolOverlayConfig } from './symbol-overlay';
 export { createSymbolOverlay } from './symbol-overlay';
+export {
+  createThemedMap,
+  type MapViewLike,
+  type ThemedMapApi,
+  type ThemedMapHandle,
+  type ThemedMapOptions,
+} from './themed-map';
 export type { OverlayContext, OverlayModule, ZBand } from './types';
 export { Z_ORDER } from './types';

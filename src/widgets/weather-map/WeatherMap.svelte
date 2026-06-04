@@ -1,8 +1,7 @@
 <script lang="ts">
 import { Pause, Play, X } from '@lucide/svelte';
-import maplibregl from 'maplibre-gl';
 import { onDestroy, onMount } from 'svelte';
-import { boundsToBbox, type WeatherStore } from '$entities/weather';
+import { type Bbox, boundsToBbox, type WeatherStore } from '$entities/weather';
 import { LayersView } from '$features/layers-panel';
 import {
   advancePlay,
@@ -34,18 +33,7 @@ import {
   pascalsToHectopascals,
   radiansToBearing,
 } from '$shared/lib';
-import {
-  applyBaseTheme,
-  baseStyleUrl,
-  beforeIdFor,
-  captureBaseTheme,
-  installSentinels,
-  LayerManager,
-  type LayerSettings,
-  mapThemePaint,
-  type OverlayContext,
-  restoreBaseTheme,
-} from '$shared/map';
+import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shared/map';
 import type { MapView } from '$shared/settings';
 import { serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
@@ -100,12 +88,10 @@ const STEP_MS = 3 * 3_600_000;
 const GRID_SOURCE = 'Open-Meteo';
 
 let container: HTMLDivElement;
-let map: maplibregl.Map | undefined;
+let mapHandle: ThemedMapHandle | undefined;
+let getBounds: (() => Bbox) | undefined;
 let recolor: ((next: Theme) => void) | undefined;
-let resizeObserver: ResizeObserver | undefined;
 let layersView = $state<LayersView | undefined>();
-let frame = 0;
-let destroyed = false;
 
 let conditionsOpen = $state(false);
 let playing = $state(false);
@@ -179,8 +165,8 @@ const FORECAST_OPTS = { maxCells: 600, forecastDays: 5 };
 function scheduleFetch(): void {
   if (fetchTimer) clearTimeout(fetchTimer);
   fetchTimer = setTimeout(() => {
-    if (!map || !anyActive) return;
-    void loader.load(store, boundsToBbox(map.getBounds()), FORECAST_OPTS, {
+    if (!getBounds || !anyActive) return;
+    void loader.load(store, getBounds(), FORECAST_OPTS, {
       waves: wavesActive,
       radar: radarActive,
     });
@@ -264,98 +250,58 @@ $effect(() => {
 });
 
 onMount(() => {
-  // The panel opens at its own remembered view, or the nav chart's current view the first time.
-  // A one-time snapshot, not reactive: panning the panel must not be overridden by chart moves.
-  const startView = savedView ?? initialView;
-  try {
-    map = new maplibregl.Map({
-      container,
-      style: baseStyleUrl(),
-      center: startView ? [startView.lon, startView.lat] : DEFAULT_CENTER,
-      zoom: Math.min(startView ? startView.zoom : DEFAULT_ZOOM, MAX_ZOOM),
-      minZoom: MIN_ZOOM,
-      maxZoom: MAX_ZOOM,
-      attributionControl: { compact: true },
-    });
-  } catch (error) {
-    console.error('Weather map failed to initialize', error);
-    return;
-  }
-
-  const mapInstance = map;
-  resizeObserver = new ResizeObserver(() => mapInstance.resize());
-  resizeObserver.observe(container);
-
-  let viewPending = false;
-  const emitView = () => {
-    if (viewPending) return;
-    viewPending = true;
-    requestAnimationFrame(() => {
-      viewPending = false;
-      if (destroyed) return;
-      const center = mapInstance.getCenter();
-      onViewChange?.({ lat: center.lat, lon: center.lng, zoom: mapInstance.getZoom() });
-    });
-  };
-  mapInstance.on('move', emitView);
-  mapInstance.on('moveend', scheduleFetch);
-  mapInstance.on('click', (e) => void onTap(e.lngLat.lng, e.lngLat.lat));
-
-  mapInstance.on('load', async () => {
-    const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
-    installSentinels(mapInstance);
-    const manager = new LayerManager(ctx, {
+  mapHandle = createThemedMap({
+    container,
+    // The panel opens at its own remembered view, or the nav chart's current view the first time.
+    view: savedView ?? initialView,
+    defaultCenter: DEFAULT_CENTER,
+    defaultZoom: DEFAULT_ZOOM,
+    minZoom: MIN_ZOOM,
+    maxZoom: MAX_ZOOM,
+    managerOptions: {
       saved: savedLayers,
       onChange: onLayersChange,
       // The area fills are mutually exclusive: one at a time so they do not stack into mud. Wind
       // arrows and pressure isobars stay freely combinable on top.
       exclusive: [WEATHER_FILL_IDS],
-    });
+    },
+    onView: (view) => onViewChange?.(view),
+    onClick: (lngLat) => void onTap(lngLat.lng, lngLat.lat),
+    onLoad: async ({ map, manager, recolor: recolorFn, isDestroyed, runTick }) => {
+      // Band order, bottom to top: the waves height field sits at the bottom, then the precip,
+      // cloud, and radar fills, with wind arrows and pressure isobars drawn over them.
+      const overlays = [
+        createWavesOverlay(store),
+        createPrecipOverlay(store),
+        createCloudOverlay(store),
+        createRadarOverlay(store),
+        createWindOverlay(store),
+        createPressureOverlay(store),
+      ];
+      for (const overlay of overlays) {
+        await manager.register(overlay);
+        if (isDestroyed()) return;
+      }
 
-    // Band order, bottom to top: the waves height field sits at the bottom, then the precip, cloud,
-    // and radar fills, with wind arrows and pressure isobars drawn over them.
-    const overlays = [
-      createWavesOverlay(store),
-      createPrecipOverlay(store),
-      createCloudOverlay(store),
-      createRadarOverlay(store),
-      createWindOverlay(store),
-      createPressureOverlay(store),
-    ];
-    for (const overlay of overlays) {
-      await manager.register(overlay);
-      if (destroyed) return;
-    }
+      const view = new LayersView(manager);
+      view.refresh();
+      layersView = view;
 
-    const view = new LayersView(manager);
-    view.refresh();
-    layersView = view;
+      recolor = recolorFn;
+      recolor(theme);
 
-    const baseColors = captureBaseTheme(mapInstance, mapThemePaint('day'));
-    recolor = (next: Theme) => {
-      const paint = mapThemePaint(next);
-      if (next === 'day') restoreBaseTheme(mapInstance, baseColors);
-      else applyBaseTheme(mapInstance, paint);
-      manager.applyTheme(paint);
-    };
-    recolor(theme);
-
-    const tick = () => {
-      for (const overlay of overlays) overlay.sync(ctx);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
+      getBounds = () => boundsToBbox(map.getBounds());
+      map.on('moveend', scheduleFetch);
+      runTick(overlays);
+    },
   });
 });
 
 onDestroy(() => {
-  destroyed = true;
-  cancelAnimationFrame(frame);
   if (fetchTimer) clearTimeout(fetchTimer);
   if (readoutTimer) clearTimeout(readoutTimer);
   stopPlay();
-  resizeObserver?.disconnect();
-  map?.remove();
+  mapHandle?.destroy();
 });
 </script>
 
