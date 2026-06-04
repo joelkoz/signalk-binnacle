@@ -1,0 +1,74 @@
+import { describe, expect, it } from 'vitest';
+import { featureToRoute, routeDistanceMeters, routeLegs, routeToFeature } from './route-geojson';
+import type { Route } from './route-types';
+
+const ROUTE: Route = {
+  id: 'r1',
+  name: 'Test',
+  waypoints: [
+    { position: { latitude: 0, longitude: 0 }, name: 'A' },
+    { position: { latitude: 0, longitude: 1 }, name: 'B' },
+    { position: { latitude: 0, longitude: 2 } },
+  ],
+};
+
+describe('routeToFeature', () => {
+  it('emits a LineString with [lon, lat] coordinates and the SI distance', () => {
+    const f = routeToFeature(ROUTE);
+    expect(f.feature.geometry.type).toBe('LineString');
+    expect(f.feature.geometry.coordinates[0]).toEqual([0, 0]);
+    expect(f.feature.geometry.coordinates[1]).toEqual([1, 0]);
+    expect(f.name).toBe('Test');
+    expect(f.distance).toBeGreaterThan(0);
+  });
+});
+
+describe('featureToRoute', () => {
+  it('parses a server route Feature back to waypoints, deriving name from coordinatesMeta', () => {
+    const body = {
+      name: 'Server route',
+      feature: {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [0, 0],
+            [1, 0],
+          ],
+        },
+        properties: { coordinatesMeta: [{ name: 'X' }, { name: 'Y' }] },
+      },
+    };
+    const route = featureToRoute('id-9', body);
+    expect(route?.id).toBe('id-9');
+    expect(route?.name).toBe('Server route');
+    expect(route?.waypoints[0]).toEqual({ position: { latitude: 0, longitude: 0 }, name: 'X' });
+    expect(route?.waypoints[1].position).toEqual({ latitude: 0, longitude: 1 });
+  });
+
+  it('returns undefined for a non-LineString or a too-short line', () => {
+    expect(
+      featureToRoute('id', { feature: { geometry: { type: 'Point', coordinates: [0, 0] } } }),
+    ).toBeUndefined();
+    expect(
+      featureToRoute('id', {
+        feature: { geometry: { type: 'LineString', coordinates: [[0, 0]] } },
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe('routeLegs and routeDistanceMeters', () => {
+  it('derives one leg per consecutive pair with SI distance and bearing', () => {
+    const legs = routeLegs(ROUTE.waypoints);
+    expect(legs).toHaveLength(2);
+    expect(legs[0].distanceMeters).toBeGreaterThan(0);
+    expect(legs[0].bearingRad).toBeCloseTo(Math.PI / 2, 1);
+  });
+
+  it('totals the leg distances', () => {
+    const total = routeDistanceMeters(ROUTE.waypoints);
+    const legs = routeLegs(ROUTE.waypoints);
+    expect(total).toBeCloseTo(legs[0].distanceMeters + legs[1].distanceMeters, 3);
+  });
+});
