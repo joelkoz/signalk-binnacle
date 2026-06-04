@@ -122,11 +122,13 @@ SSL is not required. Binnacle runs fully over plain HTTP, which is how the Signa
 serves it by default: the chart, AIS, weather, points of interest, tracks, and the Lookout
 alarms all work without it.
 
-SSL enables one thing: offline caching. Browsers expose the service worker and cache-storage
-APIs only in a secure context (HTTPS or `http://localhost`), so the progressive web app that
-caches the base map, charts, and weather for use without internet activates only when the
-server is reached over HTTPS. Over plain HTTP the app degrades cleanly to online-only with no
-errors and no loss of live function.
+What SSL enables is the service-worker layer of offline caching. Browsers expose the service
+worker and cache-storage APIs only in a secure context (HTTPS or `http://localhost`), so caching
+the base map and chart tiles for full offline map rendering activates only when the server is
+reached over HTTPS. Over plain HTTP the app degrades cleanly to online-only with no errors and no
+loss of live function. The weather forecast is cached separately in IndexedDB, which is not
+secure-context gated, so even over plain HTTP a reload or a return to a recent view reuses the last
+forecast rather than re-fetching.
 
 If you want offline operation, the simplest way to add HTTPS to Signal K is the
 [signalk-ssl](https://www.npmjs.com/package/signalk-ssl) plugin

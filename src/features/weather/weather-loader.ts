@@ -1,4 +1,5 @@
 import type { Bbox, RadarData, WeatherGrid, WeatherStore } from '$entities/weather';
+import { createExpiringStore, type ExpiringStore } from '$shared/storage';
 import { fetchRadar } from './rainviewer-client';
 import { type ForecastOptions, fetchForecast, fetchMarine, mergeMarine } from './weather-client';
 
@@ -12,6 +13,9 @@ interface LoaderDeps {
   marine: typeof fetchMarine;
   radar: typeof fetchRadar;
   now: () => number;
+  // Persists fetched grids across reloads (and over plain http, where the service worker is inert),
+  // so a reload or a return to a recent view reuses the forecast instead of re-fetching.
+  persist: ExpiringStore<WeatherGrid>;
 }
 
 export interface WeatherLoader {
@@ -56,6 +60,7 @@ const realDeps: LoaderDeps = {
   marine: fetchMarine,
   radar: fetchRadar,
   now: () => Date.now(),
+  persist: createExpiringStore<WeatherGrid>('binnacle-weather'),
 };
 
 // A weather loader with its own in-memory, viewport-keyed cache. Repeat or adjacent views reuse a
@@ -92,15 +97,37 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
       store.setStatus('loading');
       const t = deps.now();
       const key = weatherCacheKey(bbox, opts, want.waves);
-      const cachedGrid = gridCache.get(key);
-      const gridHit = Boolean(cachedGrid && cachedGrid.expires > t);
-      // Fetch unless a cached grid covers it, or a recent failure put us in the cooldown window.
-      const inCooldown = !gridHit && t < gridCooldownUntil;
-      let gridPromise: Promise<{ grid: WeatherGrid | undefined; partial: boolean }>;
-      if (gridHit && cachedGrid)
-        gridPromise = Promise.resolve({ grid: cachedGrid.grid, partial: false });
-      else if (inCooldown) gridPromise = Promise.resolve({ grid: undefined, partial: false });
-      else gridPromise = fetchMerged(bbox, opts, want.waves);
+
+      // Keep a grid in the bounded in-memory cache: drop expired entries, then cap the size.
+      const rememberInMemory = (grid: WeatherGrid, expires: number): void => {
+        for (const [k, entry] of gridCache) if (entry.expires <= t) gridCache.delete(k);
+        gridCache.set(key, { grid, expires });
+        while (gridCache.size > MAX_GRID_ENTRIES) {
+          const oldest = gridCache.keys().next().value;
+          if (oldest === undefined) break;
+          gridCache.delete(oldest);
+        }
+      };
+
+      // Resolve the grid from the in-memory cache, then the persistent (IndexedDB) cache, then the
+      // network. `fromNetwork` distinguishes a fresh fetch (which is cached and which arms the
+      // cooldown on failure) from a cache hit or a cooldown skip.
+      const resolveGrid = async (): Promise<{
+        grid: WeatherGrid | undefined;
+        partial: boolean;
+        fromNetwork: boolean;
+      }> => {
+        const mem = gridCache.get(key);
+        if (mem && mem.expires > t) return { grid: mem.grid, partial: false, fromNetwork: false };
+        const stored = await deps.persist.get(key);
+        if (stored && stored.expires > t) {
+          rememberInMemory(stored.value, stored.expires);
+          return { grid: stored.value, partial: false, fromNetwork: false };
+        }
+        if (t < gridCooldownUntil) return { grid: undefined, partial: false, fromNetwork: false };
+        const fetched = await fetchMerged(bbox, opts, want.waves);
+        return { ...fetched, fromNetwork: true };
+      };
 
       let radarPromise: Promise<RadarData | undefined>;
       if (!want.radar) radarPromise = Promise.resolve(undefined);
@@ -108,26 +135,27 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
         radarPromise = Promise.resolve(radarCache.data);
       else radarPromise = deps.radar();
 
-      const [{ grid, partial }, radar] = await Promise.all([gridPromise, radarPromise]);
+      const [{ grid, partial, fromNetwork }, radar] = await Promise.all([
+        resolveGrid(),
+        radarPromise,
+      ]);
 
       if (grid) {
         store.setGrid(grid);
         if (partial) {
           // Waves failed: show the wind and pressure we got, but do not cache (so a later view
           // retries marine) and back off so the rate-limited endpoint is not re-hit on the next pan.
-          if (!gridHit && !inCooldown) gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;
-        } else {
-          for (const [k, entry] of gridCache) if (entry.expires <= t) gridCache.delete(k);
-          gridCache.set(key, { grid, expires: t + GRID_TTL_MS });
-          while (gridCache.size > MAX_GRID_ENTRIES) {
-            const oldest = gridCache.keys().next().value;
-            if (oldest === undefined) break;
-            gridCache.delete(oldest);
-          }
+          gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;
+        } else if (fromNetwork) {
+          const expires = t + GRID_TTL_MS;
+          rememberInMemory(grid, expires);
+          // Persist for reloads and offline; the put never throws (it degrades to memory).
+          await deps.persist.put(key, grid, expires);
+          void deps.persist.prune(t);
         }
       } else {
-        // A real fetch attempt (not a cooldown skip) failed: back off before trying again.
-        if (!gridHit && !inCooldown) gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;
+        // A real network attempt (not a cache hit or a cooldown skip) failed: back off before retry.
+        if (fromNetwork) gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;
         store.setStatus(store.grid ? 'stale' : 'error');
       }
       if (radar) {

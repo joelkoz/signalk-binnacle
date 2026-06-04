@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Bbox, RadarData, WeatherGrid, WeatherStore } from '$entities/weather';
+import { createExpiringStore } from '$shared/storage';
 import { createWeatherLoader, weatherCacheKey } from './weather-loader';
 
 const BBOX: Bbox = { west: 1, south: 2, east: 3, north: 4 };
@@ -33,6 +34,8 @@ function makeDeps(nowRef: { ms: number }) {
     marine: vi.fn(async () => undefined),
     radar: vi.fn(async () => FAKE_RADAR),
     now: () => nowRef.ms,
+    // A fresh in-memory persistent store per test (factory: undefined forces the memory fallback).
+    persist: createExpiringStore<WeatherGrid>('test', { factory: undefined }),
   };
 }
 
@@ -147,5 +150,36 @@ describe('createWeatherLoader', () => {
     nowRef.ms += 61_000;
     await loader.load(store, BBOX, OPTS, { waves: false, radar: false });
     expect(deps.forecast).toHaveBeenCalledTimes(2);
+  });
+
+  it('persists a fetched grid so a fresh loader (a reload) reuses it without fetching', async () => {
+    const nowRef = { ms: 1000 };
+    const deps = makeDeps(nowRef);
+    // A persistent store shared between the two loaders stands in for IndexedDB surviving a reload.
+    const persist = createExpiringStore<WeatherGrid>('shared', { factory: undefined });
+
+    const first = createWeatherLoader({ ...deps, persist });
+    await first.load(makeStore().store, BBOX, OPTS, { waves: false, radar: false });
+    expect(deps.forecast).toHaveBeenCalledTimes(1);
+    expect(await persist.get(weatherCacheKey(BBOX, OPTS, false))).toBeDefined();
+
+    // A new loader (empty in-memory cache, like a page reload) reuses the persisted grid.
+    const reloadDeps = makeDeps(nowRef);
+    const second = createWeatherLoader({ ...reloadDeps, persist });
+    const reloaded = makeStore();
+    await second.load(reloaded.store, BBOX, OPTS, { waves: false, radar: false });
+    expect(reloadDeps.forecast).not.toHaveBeenCalled();
+    expect(reloaded.grids).toHaveLength(1);
+  });
+
+  it('ignores an expired persisted grid and fetches a fresh one', async () => {
+    const nowRef = { ms: 1000 };
+    const persist = createExpiringStore<WeatherGrid>('shared', { factory: undefined });
+    await persist.put(weatherCacheKey(BBOX, OPTS, false), FAKE_GRID, 500); // already expired at t=1000
+
+    const deps = makeDeps(nowRef);
+    const loader = createWeatherLoader({ ...deps, persist });
+    await loader.load(makeStore().store, BBOX, OPTS, { waves: false, radar: false });
+    expect(deps.forecast).toHaveBeenCalledTimes(1);
   });
 });

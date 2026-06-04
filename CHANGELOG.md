@@ -8,6 +8,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- The weather forecast is cached in IndexedDB, so it survives a reload and a return to a recent view
+  reuses it instead of re-fetching. Unlike the service-worker cache, which browsers expose only in a
+  secure context, IndexedDB works over plain HTTP, so this is the offline-leaning weather cache for
+  the many users without SSL. Each grid is stored with a one-hour expiry, expiries are kept apart from
+  the grids so pruning never loads them, and the store degrades to memory and never throws when
+  IndexedDB is unavailable. Verified over https: after a reload, opening the forecast served the grid
+  from IndexedDB with zero Open-Meteo requests.
+
 - Weather. A dedicated weather mini-map, opened by the Forecast button centered in the status strip,
   keeps the navigation chart clean and the weather within its data resolution. The mini-map is capped
   at zoom 7 (RainViewer's real radar resolution) and panned independently of the chart, so weather can
