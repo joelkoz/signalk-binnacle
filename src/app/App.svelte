@@ -1,5 +1,7 @@
 <script lang="ts">
 import {
+  Bell,
+  BellOff,
   CloudSun,
   Layers,
   LocateFixed,
@@ -13,6 +15,7 @@ import {
 import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
+import { CourseGuidance } from '$entities/course';
 import { RouteStore } from '$entities/route';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
@@ -22,13 +25,23 @@ import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
 import { AppMenu, type MenuItem, MenuSubmenu } from '$features/menu';
+import { ArrivalAlarm, NavStrip } from '$features/navigation';
 import {
   createNoteDetailLoader,
   type NoteDetailLoader,
   NoteDetailPanel,
   type NoteSelection,
 } from '$features/notes';
-import { deleteRoute, fetchRoutes, RoutesPanel, saveRoute } from '$features/routing';
+import {
+  activateRoute,
+  advancePoint,
+  clearCourse,
+  deleteRoute,
+  fetchRoutes,
+  hydrateCourse,
+  RoutesPanel,
+  saveRoute,
+} from '$features/routing';
 import { ThemeToggle } from '$features/theme-toggle';
 import type { SavedTracksSource } from '$features/track-layer';
 import {
@@ -102,6 +115,11 @@ const recorder = new TrackRecorder(trackSettings, createTrackStore<TrackPoint>()
 
 // Routes: planned and stored as Signal K resources, drawn by the route overlay, edited on the chart.
 const routeStore = new RouteStore();
+// Active-navigation guidance: prefers the server Course API and computes the derived values
+// client-side when the calcValues provider is absent. The arrival alarm sounds at the waypoint.
+const courseGuidance = new CourseGuidance(store, vessel);
+const arrivalAlarm = new ArrivalAlarm();
+const arrivalMuted = new PersistedValue<boolean>('binnacle:arrival-muted', false);
 
 // Weather forecast, fetched browser-side from Open-Meteo. It lives in a dedicated mini-map panel
 // (the Forecast button), not on the nav chart, so the chart stays clean and the weather can never
@@ -200,6 +218,12 @@ const menuItems = $derived<MenuItem[]>([
     label: alarmMuted.value ? 'Unmute alarm' : 'Mute alarm',
     icon: alarmMuted.value ? VolumeX : Volume2,
     onSelect: () => alarmMuted.set(!alarmMuted.value),
+  },
+  {
+    id: 'mute-arrival',
+    label: arrivalMuted.value ? 'Unmute arrival' : 'Mute arrival',
+    icon: arrivalMuted.value ? BellOff : Bell,
+    onSelect: () => arrivalMuted.set(!arrivalMuted.value),
   },
   {
     id: 'layers',
@@ -411,14 +435,59 @@ async function onDeleteRoute(id: string): Promise<void> {
   await refreshRoutes();
 }
 
+async function onActivateRoute(id: string): Promise<void> {
+  if (!(await activateRoute(serverOrigin(), chartsToken, `/resources/routes/${id}`))) {
+    console.warn('[routing] route activation failed');
+    return;
+  }
+  routeStore.setActive(id);
+  routeStore.toggleShown(id, true);
+  // The v2 navigation.course paths are not in the v1 full model, so the stream sends nothing until
+  // the next change. Seed the cells once from a REST GET so the nav strip shows values immediately,
+  // then the stream keeps them live.
+  const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
+  if (info) {
+    store.cell(SK_PATHS.courseNextPoint).value = info.nextPoint;
+    store.cell(SK_PATHS.coursePreviousPoint).value = info.previousPoint;
+    store.cell(SK_PATHS.courseActiveRoute).value = info.activeRoute;
+    store.cell(SK_PATHS.courseArrivalCircle).value = info.arrivalCircle;
+  }
+  if (calc) store.cell(SK_PATHS.courseCalcValues).value = calc;
+}
+
+async function onStopCourse(): Promise<void> {
+  await clearCourse(serverOrigin(), chartsToken);
+  routeStore.setActive(undefined);
+  // Clear the local course cells so the nav strip hides at once rather than waiting for a delta.
+  store.cell(SK_PATHS.courseNextPoint).value = undefined;
+  store.cell(SK_PATHS.courseCalcValues).value = undefined;
+  arrivalAlarm.stop();
+}
+
+// Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
+let arrivedLast = false;
+$effect(() => {
+  const arrived = courseGuidance.arrived && routeStore.activeId !== undefined;
+  arrivalAlarm.update(arrived, arrivalMuted.value);
+  if (arrived && !arrivedLast) {
+    // Rising edge: request the next point. The streamed activeRoute.pointIndex stays authoritative,
+    // so a server that also auto-advances and this request converge on the same active point.
+    void advancePoint(serverOrigin(), chartsToken, 1);
+  }
+  arrivedLast = arrived;
+});
+
 function closeNote(): void {
   selectedNote = undefined;
   mapCommands?.clearNoteSelection();
 }
 
-// Browsers block audio until a user gesture; prime the audio context on the first one so
-// the alarm can sound later on its own.
-const primeAudio = () => lookoutAlarm.prime();
+// Browsers block audio until a user gesture; prime the audio contexts on the first one so the
+// collision and arrival alarms can sound later on their own.
+const primeAudio = () => {
+  lookoutAlarm.prime();
+  arrivalAlarm.prime();
+};
 
 const CONNECTION_LABELS: Record<ConnectionPhase, string> = {
   open: 'Connected',
@@ -451,6 +520,11 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.position, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.courseOverGroundTrue, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.speedOverGround, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.courseNextPoint, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.coursePreviousPoint, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.courseActiveRoute, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.courseArrivalCircle, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.courseCalcValues, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.position, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.courseOverGroundTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.speedOverGround, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
@@ -524,6 +598,7 @@ onDestroy(() => {
       {collision}
       {recorder}
       {routeStore}
+      theme={theme.theme}
       {trackSettings}
       savedTracks={savedSource}
       {chartsToken}
@@ -546,6 +621,9 @@ onDestroy(() => {
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
+    <div class="nav-slot">
+      <NavStrip guidance={courseGuidance} onStop={onStopCourse} />
+    </div>
     <div class="danger-slot">
       <DangerStrip {collision} />
     </div>
@@ -565,11 +643,14 @@ onDestroy(() => {
           routes={routeStore.routes}
           shownIds={routeStore.shownIds}
           working={routeStore.working}
+          activeId={routeStore.activeId}
           onNew={onNewRoute}
           {onEditRoute}
           onSave={onSaveRoute}
           onCancelEdit={onCancelRouteEdit}
           onToggleShown={(id, shown) => routeStore.toggleShown(id, shown)}
+          onActivate={onActivateRoute}
+          onStop={onStopCourse}
           onDelete={onDeleteRoute}
           onClose={() => {
             onCancelRouteEdit();
@@ -690,6 +771,20 @@ onDestroy(() => {
   justify-content: center;
   pointer-events: none;
   z-index: var(--z-overlay);
+}
+/* The nav strip shares the bottom-center area with the danger strip. The danger strip is later in
+   the DOM and the more urgent, so on the rare occasion both show, danger paints over the nav strip. */
+.nav-slot {
+  position: absolute;
+  inset-block-end: 0.75rem;
+  inset-inline: 0.75rem;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: var(--z-overlay);
+}
+.nav-slot :global(.nav-strip) {
+  pointer-events: auto;
 }
 .note-panel-slot {
   position: absolute;

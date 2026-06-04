@@ -9,10 +9,19 @@ import {
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { Route, Waypoint } from '$entities/route';
 import { latLonToLonLat, lonLatToLatLon } from '$shared/signalk';
+import type { Theme } from '$shared/ui';
 
 // Terra Draw tags every feature with its mode in properties.mode; the on-chart route is a
 // single linestring drawn or edited in that mode.
 const LINESTRING_MODE = 'linestring';
+
+// The draw color per theme, so the on-chart editing line never glows out of band: a blue on day
+// and dusk, and a pure red at night to honor the night-red contract.
+const DRAW_COLOR: Record<Theme, `#${string}`> = {
+  day: '#1f6fb2',
+  dusk: '#4f9fd8',
+  'night-red': '#ff6a5a',
+};
 
 export function routeToDrawFeature(route: Route): GeoJSON.Feature {
   return {
@@ -52,6 +61,7 @@ function routeToStoreFeature(route: Route): GeoJSONStoreFeatures<GeoJSON.LineStr
 export interface RouteEditor {
   start(route?: Route): void;
   setMode(mode: 'point' | 'linestring' | 'select'): void;
+  setTheme(theme: Theme): void;
   read(): Waypoint[];
   stop(): void;
 }
@@ -59,6 +69,7 @@ export interface RouteEditor {
 export function createRouteEditor(opts: {
   map: MapLibreMap;
   beforeId?: string;
+  theme: Theme;
   onChange: (waypoints: Waypoint[]) => void;
 }): RouteEditor {
   const draw = new TerraDraw({
@@ -68,9 +79,15 @@ export function createRouteEditor(opts: {
       renderBelowLayerId: opts.beforeId,
     }),
     modes: [
-      new TerraDrawPointMode(),
-      new TerraDrawLineStringMode(),
+      new TerraDrawPointMode({ styles: { pointColor: DRAW_COLOR[opts.theme], pointWidth: 5 } }),
+      new TerraDrawLineStringMode({
+        styles: { lineStringColor: DRAW_COLOR[opts.theme], lineStringWidth: 3 },
+      }),
       new TerraDrawSelectMode({
+        styles: {
+          selectionPointColor: DRAW_COLOR[opts.theme],
+          midPointColor: DRAW_COLOR[opts.theme],
+        },
         flags: {
           linestring: {
             feature: {
@@ -102,6 +119,16 @@ export function createRouteEditor(opts: {
     },
     setMode(mode) {
       draw.setMode(mode);
+    },
+    setTheme(theme) {
+      const color = DRAW_COLOR[theme];
+      draw.updateModeOptions('point', { styles: { pointColor: color, pointWidth: 5 } });
+      draw.updateModeOptions('linestring', {
+        styles: { lineStringColor: color, lineStringWidth: 3 },
+      });
+      draw.updateModeOptions('select', {
+        styles: { selectionPointColor: color, midPointColor: color },
+      });
     },
     read,
     stop() {

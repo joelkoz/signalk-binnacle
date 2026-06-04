@@ -11,7 +11,7 @@ import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/
 import { LayersView } from '$features/layers-panel';
 import { COLLISION_OVERLAY_ID, createCollisionOverlay } from '$features/lookout';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
-import { createRouteEditor } from '$features/route-edit';
+import { createRouteEditor, type RouteEditor } from '$features/route-edit';
 import { createRouteOverlay } from '$features/route-layer';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
@@ -36,6 +36,8 @@ interface Props {
   recorder: TrackRecorder;
   // The route store, drawn by the route overlay and edited on the chart via Terra Draw.
   routeStore: RouteStore;
+  // The active theme, so the on-chart route editor restyles its draw layers per theme.
+  theme: Theme;
   trackSettings: PersistedValue<TrackSettings>;
   // Saved tracks to draw, pulled each frame so show/hide and edits reflect without a remount.
   savedTracks?: SavedTracksSource;
@@ -65,6 +67,7 @@ const {
   collision,
   recorder,
   routeStore,
+  theme,
   trackSettings,
   savedTracks,
   chartsToken,
@@ -84,6 +87,13 @@ const {
 
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
+let routeEditor: RouteEditor | undefined;
+
+// Restyle the on-chart route editor whenever the theme changes (the saved-route overlay recolors
+// through the layer manager; the Terra Draw editing line is restyled here).
+$effect(() => {
+  routeEditor?.setTheme(theme);
+});
 
 registerPmtilesProtocol();
 
@@ -131,9 +141,10 @@ onMount(() => {
 
       // The Terra Draw route editor draws into its own layers anchored in the routes band. It writes
       // edits back into the working route, which the panel reads for its live distance and count.
-      const routeEditor = createRouteEditor({
+      routeEditor = createRouteEditor({
         map,
         beforeId: ctx.beforeIdFor('routes'),
+        theme,
         onChange: (waypoints) => {
           const working = routeStore.working;
           if (working) routeStore.setWorking({ ...working, waypoints });
@@ -173,8 +184,8 @@ onMount(() => {
           map.setCenter([longitude, latitude]);
         },
         clearNoteSelection: () => notesOverlay.deselect(ctx),
-        startRouteEdit: (route) => routeEditor.start(route),
-        stopRouteEdit: () => routeEditor.stop(),
+        startRouteEdit: (route) => routeEditor?.start(route),
+        stopRouteEdit: () => routeEditor?.stop(),
       });
 
       runTick([routeOverlay, notesOverlay, aisOverlay, collisionOverlay, trackOverlay, overlay]);

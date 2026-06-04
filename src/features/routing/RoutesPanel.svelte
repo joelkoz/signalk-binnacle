@@ -1,5 +1,5 @@
 <script lang="ts">
-import { Eye, EyeOff, Plus, Save, SquarePen, Trash2, X } from '@lucide/svelte';
+import { Eye, EyeOff, Navigation, Plus, Save, Square, SquarePen, Trash2, X } from '@lucide/svelte';
 import { type Route, routeDistanceMeters } from '$entities/route';
 import { formatNm } from '$shared/lib';
 
@@ -8,12 +8,16 @@ interface Props {
   shownIds: ReadonlySet<string>;
   // The route currently under edit on the chart, or undefined when not editing.
   working: Route | undefined;
+  // The active (being navigated) route id, or undefined when none is active.
+  activeId: string | undefined;
   onNew: () => void;
   onEditRoute: (id: string) => void;
   // Called with the name the user enters; the panel prompts for it (mirror TracksPanel.promptSave).
   onSave: (name: string) => void;
   onCancelEdit: () => void;
   onToggleShown: (id: string, shown: boolean) => void;
+  onActivate: (id: string) => void;
+  onStop: () => void;
   onDelete: (id: string) => void;
   onClose: () => void;
 }
@@ -22,11 +26,14 @@ const {
   routes,
   shownIds,
   working,
+  activeId,
   onNew,
   onEditRoute,
   onSave,
   onCancelEdit,
   onToggleShown,
+  onActivate,
+  onStop,
   onDelete,
   onClose,
 }: Props = $props();
@@ -123,6 +130,28 @@ function promptSave(): void {
             >
               <SquarePen size={18} aria-hidden="true" />
             </button>
+            {#if route.id === activeId}
+              <button
+                type="button"
+                class="icon active"
+                aria-label="Stop navigation"
+                title="Stop navigation"
+                onclick={onStop}
+              >
+                <Square size={18} aria-hidden="true" />
+              </button>
+            {:else}
+              <button
+                type="button"
+                class="icon"
+                aria-label="Activate route"
+                title="Activate route"
+                disabled={working !== undefined}
+                onclick={() => onActivate(route.id)}
+              >
+                <Navigation size={18} aria-hidden="true" />
+              </button>
+            {/if}
             <button
               type="button"
               class="icon danger"
@@ -300,6 +329,9 @@ function promptSave(): void {
   cursor: not-allowed;
 }
 .icon[aria-pressed="true"] {
+  color: var(--accent);
+}
+.icon.active {
   color: var(--accent);
 }
 .icon.danger:hover {
