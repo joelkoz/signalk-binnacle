@@ -21,10 +21,13 @@ async function tryFetch(url: string, token?: string): Promise<Route[] | undefine
   }
 }
 
-export async function fetchRoutes(base: string, token?: string): Promise<Route[]> {
+// Returns the routes, or undefined when both the v2 and v1 endpoints are unreachable (a transient
+// failure), so a caller can keep the current list rather than blanking it. A reachable but empty
+// server returns []. A reachable v2 wins; v1 is the fallback.
+export async function fetchRoutes(base: string, token?: string): Promise<Route[] | undefined> {
   const v2 = await tryFetch(`${base}${V2}`, token);
   if (v2) return v2;
-  return (await tryFetch(`${base}${V1}`, token)) ?? [];
+  return tryFetch(`${base}${V1}`, token);
 }
 
 // PUT the route to its client-chosen id. Returns whether the write succeeded.

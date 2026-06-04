@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { drawFeatureToWaypoints, routeToDrawFeature } from './route-edit';
+import { drawFeatureToWaypoints, routeToStoreFeature } from './route-edit';
 
 describe('route-edit converters', () => {
-  it('routeToDrawFeature emits a linestring Feature in [lon, lat] with mode linestring', () => {
-    const f = routeToDrawFeature({
+  it('routeToStoreFeature emits a linestring Feature in [lon, lat] with mode linestring', () => {
+    const f = routeToStoreFeature({
       id: 'r',
       name: 'R',
       waypoints: [

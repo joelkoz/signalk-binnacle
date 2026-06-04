@@ -383,7 +383,34 @@ function onExportSavedTrack(track: SavedTrack): void {
 }
 
 async function refreshRoutes(): Promise<void> {
-  routeStore.setRoutes(await fetchRoutes(serverOrigin(), chartsToken));
+  const routes = await fetchRoutes(serverOrigin(), chartsToken);
+  // undefined means both endpoints were unreachable: keep the current list rather than blanking the
+  // routes the user is looking at over a transient failure. An empty array (reachable, no routes)
+  // does clear it.
+  if (routes) routeStore.setRoutes(routes);
+}
+
+// A transient routing error shown in the panel, auto-cleared so it does not linger on screen.
+let routeError = $state<string | undefined>();
+let routeErrorTimer: ReturnType<typeof setTimeout> | undefined;
+function flagRouteError(message: string): void {
+  routeError = message;
+  if (routeErrorTimer) clearTimeout(routeErrorTimer);
+  routeErrorTimer = setTimeout(() => {
+    routeError = undefined;
+  }, 6000);
+}
+
+// Clear the active course on the server and locally. Returns whether the server clear succeeded; the
+// local state is cleared only on success, so a failed stop does not desync from a server that is
+// still navigating (the next course delta would otherwise revive the nav strip).
+async function stopActiveCourse(): Promise<boolean> {
+  if (!(await clearCourse(serverOrigin(), chartsToken))) return false;
+  routeStore.setActive(undefined);
+  store.cell(SK_PATHS.courseNextPoint).value = undefined;
+  store.cell(SK_PATHS.courseCalcValues).value = undefined;
+  arrivalAlarm.stop();
+  return true;
 }
 
 // A client-chosen route id (a UUID in a secure context, a timestamp fallback over plain http), so
@@ -413,8 +440,8 @@ async function onSaveRoute(name: string): Promise<void> {
   const route = { ...working, name };
   if (!(await saveRoute(serverOrigin(), chartsToken, route))) {
     // A failed write (offline, no write permission, server error) must not lose the work: keep the
-    // route under edit, with its name, so the navigator can retry without redrawing it.
-    console.warn('[routing] route save failed; keeping it under edit to retry');
+    // route under edit, with its name, so the navigator can retry, and tell them it did not save.
+    flagRouteError('Could not save the route. It is kept under edit so you can retry.');
     routeStore.setWorking(route);
     return;
   }
@@ -430,14 +457,23 @@ function onCancelRouteEdit(): void {
 }
 
 async function onDeleteRoute(id: string): Promise<void> {
-  if (!(await deleteRoute(serverOrigin(), chartsToken, id))) return;
+  // Stop navigating before deleting the active route, so the server is not left navigating a route
+  // that no longer exists. Abort the delete if the stop did not take.
+  if (id === routeStore.activeId && !(await stopActiveCourse())) {
+    flagRouteError('Could not stop the active route, so it was not deleted.');
+    return;
+  }
+  if (!(await deleteRoute(serverOrigin(), chartsToken, id))) {
+    flagRouteError('Could not delete the route.');
+    return;
+  }
   routeStore.toggleShown(id, false);
   await refreshRoutes();
 }
 
 async function onActivateRoute(id: string): Promise<void> {
   if (!(await activateRoute(serverOrigin(), chartsToken, `/resources/routes/${id}`))) {
-    console.warn('[routing] route activation failed');
+    flagRouteError('Could not activate the route. Check the connection.');
     return;
   }
   routeStore.setActive(id);
@@ -456,12 +492,9 @@ async function onActivateRoute(id: string): Promise<void> {
 }
 
 async function onStopCourse(): Promise<void> {
-  await clearCourse(serverOrigin(), chartsToken);
-  routeStore.setActive(undefined);
-  // Clear the local course cells so the nav strip hides at once rather than waiting for a delta.
-  store.cell(SK_PATHS.courseNextPoint).value = undefined;
-  store.cell(SK_PATHS.courseCalcValues).value = undefined;
-  arrivalAlarm.stop();
+  if (!(await stopActiveCourse())) {
+    flagRouteError('Could not stop the active route. Check the connection.');
+  }
 }
 
 // Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
@@ -469,10 +502,13 @@ let arrivedLast = false;
 $effect(() => {
   const arrived = courseGuidance.arrived && routeStore.activeId !== undefined;
   arrivalAlarm.update(arrived, arrivalMuted.value);
-  if (arrived && !arrivedLast) {
-    // Rising edge: request the next point. The streamed activeRoute.pointIndex stays authoritative,
-    // so a server that also auto-advances and this request converge on the same active point.
-    void advancePoint(serverOrigin(), chartsToken, 1);
+  if (arrived && !arrivedLast && !courseGuidance.isLastPoint) {
+    // Rising edge, and not yet at the last point: request the next point. The streamed
+    // activeRoute.pointIndex stays authoritative, so a server that also auto-advances and this
+    // request converge on the same active point. A failed advance is surfaced.
+    void advancePoint(serverOrigin(), chartsToken, 1).then((ok) => {
+      if (!ok) flagRouteError('Could not advance to the next waypoint.');
+    });
   }
   arrivedLast = arrived;
 });
@@ -644,6 +680,7 @@ onDestroy(() => {
           shownIds={routeStore.shownIds}
           working={routeStore.working}
           activeId={routeStore.activeId}
+          error={routeError}
           onNew={onNewRoute}
           {onEditRoute}
           onSave={onSaveRoute}

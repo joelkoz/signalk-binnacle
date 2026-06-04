@@ -6,7 +6,13 @@ import {
   rhumbDistanceMeters,
   vmgMps,
 } from '$shared/nav';
-import type { CourseCalculations, CourseInfo, LatLon, SignalKStore } from '$shared/signalk';
+import type {
+  ActiveRoute,
+  CourseCalculations,
+  CourseInfo,
+  LatLon,
+  SignalKStore,
+} from '$shared/signalk';
 import { SK_PATHS } from '$shared/signalk';
 
 export type CourseSource = 'server' | 'computed';
@@ -27,6 +33,7 @@ export class CourseGuidance {
     // updates would not re-render. This mirrors OwnVessel's constructor.
     store.cell(SK_PATHS.courseNextPoint);
     store.cell(SK_PATHS.coursePreviousPoint);
+    store.cell(SK_PATHS.courseActiveRoute);
     store.cell(SK_PATHS.courseCalcValues);
     store.cell(SK_PATHS.courseArrivalCircle);
   }
@@ -35,6 +42,7 @@ export class CourseGuidance {
     nextPoint: this.#store.cell(SK_PATHS.courseNextPoint).value as CourseInfo['nextPoint'],
     previousPoint: this.#store.cell(SK_PATHS.coursePreviousPoint)
       .value as CourseInfo['previousPoint'],
+    activeRoute: this.#store.cell(SK_PATHS.courseActiveRoute).value as ActiveRoute | undefined,
     arrivalCircle: this.#store.cell(SK_PATHS.courseArrivalCircle).value as number | undefined,
   }));
 
@@ -44,6 +52,14 @@ export class CourseGuidance {
 
   get active(): boolean {
     return !!this.#info.nextPoint?.position;
+  }
+
+  // True when the active point is the last in the route, so the arrival advance does not step past
+  // the end. Conservative: false when the route extent is unknown.
+  get isLastPoint(): boolean {
+    const route = this.#info.activeRoute;
+    if (route?.pointIndex == null || route?.pointTotal == null) return false;
+    return route.pointIndex >= route.pointTotal - 1;
   }
 
   // 'server' when the provider supplied a usable cross-track error, otherwise 'computed'. The

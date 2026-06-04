@@ -10,6 +10,8 @@ interface Props {
   working: Route | undefined;
   // The active (being navigated) route id, or undefined when none is active.
   activeId: string | undefined;
+  // A transient error to show (a failed save, activate, stop, or delete), or undefined when clear.
+  error: string | undefined;
   onNew: () => void;
   onEditRoute: (id: string) => void;
   // Called with the name the user enters; the panel prompts for it (mirror TracksPanel.promptSave).
@@ -27,6 +29,7 @@ const {
   shownIds,
   working,
   activeId,
+  error,
   onNew,
   onEditRoute,
   onSave,
@@ -62,6 +65,10 @@ function promptSave(): void {
       <X size={18} aria-hidden="true" />
     </button>
   </div>
+
+  {#if error}
+    <p class="error" role="alert">{error}</p>
+  {/if}
 
   <div class="controls">
     <button type="button" onclick={onNew} disabled={working !== undefined}>
@@ -242,6 +249,14 @@ function promptSave(): void {
 .hint {
   margin: 0;
   color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.error {
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--alarm);
+  border-radius: var(--radius-sm);
+  color: var(--alarm);
   font-size: var(--text-sm);
 }
 /* One grid for the whole list (label, number, unit) so every number shares a column and

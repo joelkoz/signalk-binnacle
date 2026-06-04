@@ -30,8 +30,13 @@ describe('fetchRoutes', () => {
       .mockResolvedValue(jsonResponse({ 'id-1': ROUTE_BODY }));
     const routes = await fetchRoutes('http://pi', 'tok');
     expect(fetchMock.mock.calls[0][0]).toContain('/signalk/v2/api/resources/routes');
-    expect(routes[0].id).toBe('id-1');
-    expect(routes[0].waypoints).toHaveLength(2);
+    expect(routes?.[0]?.id).toBe('id-1');
+    expect(routes?.[0]?.waypoints).toHaveLength(2);
+  });
+
+  it('returns undefined when both v2 and v1 are unreachable, so the list is not blanked', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, false));
+    expect(await fetchRoutes('http://pi')).toBeUndefined();
   });
 
   it('falls back to v1 when v2 is not ok', async () => {

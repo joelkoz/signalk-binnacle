@@ -28,8 +28,10 @@ export class RouteStore {
   }
 
   setWorking(route: Route | undefined): void {
+    // No version bump: the working route is drawn by the Terra Draw editor, not the route overlay,
+    // and the panel reads `working` as reactive $state directly, so the overlay's poll counter does
+    // not need to change on every edit.
     this.working = route;
-    this.version += 1;
   }
 
   setActive(id: string | undefined): void {

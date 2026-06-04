@@ -23,17 +23,6 @@ const DRAW_COLOR: Record<Theme, `#${string}`> = {
   'night-red': '#ff6a5a',
 };
 
-export function routeToDrawFeature(route: Route): GeoJSON.Feature {
-  return {
-    type: 'Feature',
-    properties: { mode: LINESTRING_MODE },
-    geometry: {
-      type: 'LineString',
-      coordinates: route.waypoints.map((w) => latLonToLonLat(w.position)),
-    },
-  };
-}
-
 export function drawFeatureToWaypoints(feature: GeoJSON.Feature): Waypoint[] {
   const geom = feature.geometry;
   if (geom.type !== 'LineString') return [];
@@ -45,9 +34,9 @@ export function drawFeatureToWaypoints(feature: GeoJSON.Feature): Waypoint[] {
     .map((c) => ({ position: lonLatToLatLon([c[0], c[1]]) }));
 }
 
-// addFeatures wants the narrower store feature shape (LineString geometry, non-null
-// Record<string, JSON> properties), so build that directly rather than casting the pure feature.
-function routeToStoreFeature(route: Route): GeoJSONStoreFeatures<GeoJSON.LineString> {
+// The single waypoints-to-LineString mapper, in the narrower store-feature shape (non-null
+// Record<string, JSON> properties) that Terra Draw's addFeatures wants.
+export function routeToStoreFeature(route: Route): GeoJSONStoreFeatures<GeoJSON.LineString> {
   return {
     type: 'Feature',
     properties: { mode: LINESTRING_MODE },

@@ -2,5 +2,5 @@ export {
   createRouteEditor,
   drawFeatureToWaypoints,
   type RouteEditor,
-  routeToDrawFeature,
+  routeToStoreFeature,
 } from './route-edit';
