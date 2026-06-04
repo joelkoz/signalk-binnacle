@@ -71,6 +71,40 @@ export interface AisTargetState {
   lastUpdate: number;
 }
 
+// Mirrors the Signal K v2 navigation.course shapes Binnacle reads. Units: meters, radians, m/s,
+// seconds, ISO 8601, positions decimal degrees. Never import @signalk/server-api in browser code.
+export interface CoursePoint {
+  type?: string;
+  href?: string;
+  name?: string;
+  position?: { latitude: number; longitude: number };
+}
+export interface ActiveRoute {
+  href?: string;
+  pointIndex?: number;
+  pointTotal?: number;
+  reverse?: boolean;
+  name?: string;
+}
+export interface CourseInfo {
+  arrivalCircle?: number; // meters
+  activeRoute?: ActiveRoute;
+  nextPoint?: CoursePoint;
+  previousPoint?: CoursePoint;
+  startTime?: string;
+  targetArrivalTime?: string | null;
+}
+export interface CourseCalculations {
+  calcMethod?: 'GreatCircle' | 'Rhumbline';
+  crossTrackError?: number | null; // meters
+  bearingTrackTrue?: number | null; // radians
+  distance?: number | null; // meters to next point
+  bearingTrue?: number | null; // radians to next point
+  velocityMadeGood?: number | null; // m/s
+  timeToGo?: number | null; // seconds
+  estimatedTimeOfArrival?: string | null; // ISO 8601
+}
+
 export interface SignalKClientApi {
   connect(url: string, onFrame: (frame: SKFrame) => void): Promise<void>;
   subscribe(entries: SubscribeEntry[]): Promise<void>;

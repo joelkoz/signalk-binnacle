@@ -12,6 +12,11 @@ export const SK_PATHS = {
   closestApproach: 'navigation.closestApproach',
   name: 'name',
   aisShipType: 'design.aisShipType',
+  courseNextPoint: 'navigation.course.nextPoint',
+  coursePreviousPoint: 'navigation.course.previousPoint',
+  courseActiveRoute: 'navigation.course.activeRoute',
+  courseArrivalCircle: 'navigation.course.arrivalCircle',
+  courseCalcValues: 'navigation.course.calcValues',
 } as const satisfies Record<string, Path>;
 
 export type SkPathKey = keyof typeof SK_PATHS;

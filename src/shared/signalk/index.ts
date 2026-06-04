@@ -10,10 +10,14 @@ export { SK_PATHS } from './paths';
 export { asKeyedObject, authInit, str, strArray } from './resource';
 export { PathCell, SignalKStore } from './store.svelte';
 export type {
+  ActiveRoute,
   AisTargetState,
   ConnectionPhase,
   ConnectionState,
   Context,
+  CourseCalculations,
+  CourseInfo,
+  CoursePoint,
   SKFrame,
   SubscribeEntry,
   SubscribePolicy,
