@@ -2,6 +2,7 @@
 import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
+import type { RouteStore } from '$entities/route';
 import type { TrackRecorder } from '$entities/track';
 import type { OwnVessel } from '$entities/vessel';
 import { createAisOverlay } from '$features/ais-layer';
@@ -10,6 +11,8 @@ import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/
 import { LayersView } from '$features/layers-panel';
 import { COLLISION_OVERLAY_ID, createCollisionOverlay } from '$features/lookout';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
+import { createRouteEditor } from '$features/route-edit';
+import { createRouteOverlay } from '$features/route-layer';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
 import {
@@ -31,6 +34,8 @@ interface Props {
   aisTargets: AisTargets;
   collision: CollisionAssessment;
   recorder: TrackRecorder;
+  // The route store, drawn by the route overlay and edited on the chart via Terra Draw.
+  routeStore: RouteStore;
   trackSettings: PersistedValue<TrackSettings>;
   // Saved tracks to draw, pulled each frame so show/hide and edits reflect without a remount.
   savedTracks?: SavedTracksSource;
@@ -59,6 +64,7 @@ const {
   aisTargets,
   collision,
   recorder,
+  routeStore,
   trackSettings,
   savedTracks,
   chartsToken,
@@ -105,6 +111,7 @@ onMount(() => {
       // applied once instead of restacking after each. Registration order is the z-order intent:
       // server charts, then streaming bathymetry just above the base, the notes, AIS, and collision
       // live overlays, then the track beneath the vessel so the boat draws on top of its own trail.
+      const routeOverlay = createRouteOverlay(routeStore);
       const notesOverlay = createNotesOverlay(serverOrigin(), chartsToken, onNoteSelect);
       const aisOverlay = createAisOverlay(aisTargets, store);
       const collisionOverlay = createCollisionOverlay(collision);
@@ -113,6 +120,7 @@ onMount(() => {
       await manager.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, serverOrigin())),
         ...STREAMING_CHART_SOURCES.map((source) => createStreamingChartOverlay(source)),
+        routeOverlay,
         notesOverlay,
         aisOverlay,
         collisionOverlay,
@@ -120,6 +128,17 @@ onMount(() => {
         overlay,
       ]);
       if (isDestroyed()) return;
+
+      // The Terra Draw route editor draws into its own layers anchored in the routes band. It writes
+      // edits back into the working route, which the panel reads for its live distance and count.
+      const routeEditor = createRouteEditor({
+        map,
+        beforeId: ctx.beforeIdFor('routes'),
+        onChange: (waypoints) => {
+          const working = routeStore.working;
+          if (working) routeStore.setWorking({ ...working, waypoints });
+        },
+      });
 
       const view = new LayersView(manager);
       view.refresh();
@@ -154,9 +173,11 @@ onMount(() => {
           map.setCenter([longitude, latitude]);
         },
         clearNoteSelection: () => notesOverlay.deselect(ctx),
+        startRouteEdit: (route) => routeEditor.start(route),
+        stopRouteEdit: () => routeEditor.stop(),
       });
 
-      runTick([notesOverlay, aisOverlay, collisionOverlay, trackOverlay, overlay]);
+      runTick([routeOverlay, notesOverlay, aisOverlay, collisionOverlay, trackOverlay, overlay]);
     },
   });
 });

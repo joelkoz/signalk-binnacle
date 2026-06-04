@@ -1,3 +1,4 @@
+import type { Route } from '$entities/route';
 import type { SignalKChart } from '$shared/map';
 
 // Imperative map actions the chart exposes to the app shell (e.g. for menu items),
@@ -9,6 +10,10 @@ export interface MapCommands {
   recenterOnVessel: (latitude: number, longitude: number) => void;
   // Clear any selected note (drop the selection ring); used when the detail panel closes.
   clearNoteSelection: () => void;
+  // Start on-chart route editing (Terra Draw): with a route, edit it; without one, draw a fresh
+  // route. stopRouteEdit tears the editor down.
+  startRouteEdit: (route?: Route) => void;
+  stopRouteEdit: () => void;
 }
 
 // Register or remove a user-imported chart overlay once the map is ready. The app drives this

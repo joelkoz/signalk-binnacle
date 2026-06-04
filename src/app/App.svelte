@@ -4,6 +4,7 @@ import {
   Layers,
   LocateFixed,
   Navigation,
+  Route,
   SlidersHorizontal,
   Spline,
   Volume2,
@@ -12,6 +13,7 @@ import {
 import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
+import { RouteStore } from '$entities/route';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
 import { OwnVessel } from '$entities/vessel';
@@ -26,6 +28,7 @@ import {
   NoteDetailPanel,
   type NoteSelection,
 } from '$features/notes';
+import { deleteRoute, fetchRoutes, RoutesPanel, saveRoute } from '$features/routing';
 import { ThemeToggle } from '$features/theme-toggle';
 import type { SavedTracksSource } from '$features/track-layer';
 import {
@@ -97,6 +100,9 @@ const collisionNotifier = new CollisionNotifier(
 const trackSettings = createTrackSettings();
 const recorder = new TrackRecorder(trackSettings, createTrackStore<TrackPoint>());
 
+// Routes: planned and stored as Signal K resources, drawn by the route overlay, edited on the chart.
+const routeStore = new RouteStore();
+
 // Weather forecast, fetched browser-side from Open-Meteo. It lives in a dedicated mini-map panel
 // (the Forecast button), not on the nav chart, so the chart stays clean and the weather can never
 // be zoomed past its data resolution. The panel owns the fetch, keyed off its own viewport.
@@ -130,6 +136,7 @@ const savedSource: SavedTracksSource = {
 
 let layersView = $state<LayersView | undefined>();
 let layersPanelOpen = $state(false);
+let routesPanelOpen = $state(false);
 let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
 
@@ -199,7 +206,20 @@ const menuItems = $derived<MenuItem[]>([
     label: 'Layers and charts',
     icon: Layers,
     disabled: !layersView,
-    onSelect: () => (layersPanelOpen = true),
+    onSelect: () => {
+      routesPanelOpen = false;
+      layersPanelOpen = true;
+    },
+  },
+  {
+    id: 'routes',
+    label: 'Routes',
+    icon: Route,
+    disabled: !mapCommands,
+    onSelect: () => {
+      layersPanelOpen = false;
+      routesPanelOpen = true;
+    },
   },
 ]);
 
@@ -338,6 +358,59 @@ function onExportSavedTrack(track: SavedTrack): void {
   downloadGeoJson(track.name, points);
 }
 
+async function refreshRoutes(): Promise<void> {
+  routeStore.setRoutes(await fetchRoutes(serverOrigin(), chartsToken));
+}
+
+// A client-chosen route id (a UUID in a secure context, a timestamp fallback over plain http), so
+// the id is known before the PUT and activation does not need to parse a create response.
+function newRouteId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `route-${Date.now()}-${Math.floor(Math.random() * 1e9).toString(36)}`;
+}
+
+function onNewRoute(): void {
+  routeStore.setWorking({ id: newRouteId(), name: '', waypoints: [] });
+  mapCommands?.startRouteEdit();
+}
+
+function onEditRoute(id: string): void {
+  const route = routeStore.routes.find((r) => r.id === id);
+  if (!route) return;
+  routeStore.setWorking(route);
+  mapCommands?.startRouteEdit(route);
+}
+
+async function onSaveRoute(name: string): Promise<void> {
+  const working = routeStore.working;
+  if (!working || working.waypoints.length < 2) return;
+  const route = { ...working, name };
+  if (!(await saveRoute(serverOrigin(), chartsToken, route))) {
+    // A failed write (offline, no write permission, server error) must not lose the work: keep the
+    // route under edit, with its name, so the navigator can retry without redrawing it.
+    console.warn('[routing] route save failed; keeping it under edit to retry');
+    routeStore.setWorking(route);
+    return;
+  }
+  mapCommands?.stopRouteEdit();
+  routeStore.setWorking(undefined);
+  routeStore.toggleShown(route.id, true);
+  await refreshRoutes();
+}
+
+function onCancelRouteEdit(): void {
+  mapCommands?.stopRouteEdit();
+  routeStore.setWorking(undefined);
+}
+
+async function onDeleteRoute(id: string): Promise<void> {
+  if (!(await deleteRoute(serverOrigin(), chartsToken, id))) return;
+  routeStore.toggleShown(id, false);
+  await refreshRoutes();
+}
+
 function closeNote(): void {
   selectedNote = undefined;
   mapCommands?.clearNoteSelection();
@@ -387,6 +460,7 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.closestApproach, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
   ]);
   await refreshSavedTracks();
+  await refreshRoutes();
   // Detect a configured Signal K weather provider so the panel can prefer it over the free sources.
   // Best-effort: a server without the weather API leaves the provider undefined and the grid answers.
   weatherProviderName = defaultProviderName(await fetchWeatherProviders(serverOrigin(), token));
@@ -449,6 +523,7 @@ onDestroy(() => {
       {aisTargets}
       {collision}
       {recorder}
+      {routeStore}
       {trackSettings}
       savedTracks={savedSource}
       {chartsToken}
@@ -482,6 +557,25 @@ onDestroy(() => {
     {#if layersPanelOpen && layersView}
       <div class="layers-panel-slot">
         <LayersPanel view={layersView} {userCharts} onClose={() => (layersPanelOpen = false)} />
+      </div>
+    {/if}
+    {#if routesPanelOpen}
+      <div class="routes-panel-slot">
+        <RoutesPanel
+          routes={routeStore.routes}
+          shownIds={routeStore.shownIds}
+          working={routeStore.working}
+          onNew={onNewRoute}
+          {onEditRoute}
+          onSave={onSaveRoute}
+          onCancelEdit={onCancelRouteEdit}
+          onToggleShown={(id, shown) => routeStore.toggleShown(id, shown)}
+          onDelete={onDeleteRoute}
+          onClose={() => {
+            onCancelRouteEdit();
+            routesPanelOpen = false;
+          }}
+        />
       </div>
     {/if}
     {#if weatherPanelOpen}
@@ -611,11 +705,26 @@ onDestroy(() => {
   inset-inline-start: 0;
   z-index: var(--z-panel);
 }
+/* The Routes panel docks at the same leading edge as the Layers panel; opening one closes the other,
+   so they never overlap. RoutesPanel is content-only, so the slot supplies the panel chrome. */
+.routes-panel-slot {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-panel);
+  inline-size: min(20rem, 82vw);
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: var(--surface);
+  border-inline-end: 1px solid var(--border);
+}
 @media (max-width: 600px) {
   .note-panel-slot,
-  .layers-panel-slot {
+  .layers-panel-slot,
+  .routes-panel-slot {
     inset-block-start: auto;
     inset-inline: 0;
+    inline-size: auto;
   }
 }
 .danger-slot :global(.danger-strip) {
