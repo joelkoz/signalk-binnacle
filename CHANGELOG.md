@@ -409,7 +409,9 @@ All notable changes to Binnacle are documented here. The format follows
 - The on-chart route editing line is easier to see and the Routes controls read as actions. The
   editing line was a blue that blended into the water; it now uses the bright selection accent (amber
   by day, a light red at night) and a heavier stroke, and the New route and Save buttons are filled
-  with the accent instead of flat gray.
+  with the accent instead of flat gray. Each saved route now sits in its own card with the name on its
+  own line, so a long name is no longer truncated by the row of action buttons, and the active route's
+  card is outlined in the accent.
 
 - A vector chart that declares a coverage extent now honors it. The raster chart paths already passed
   the declared `bounds` to MapLibre, but the vector path dropped it, so a regional vector chart

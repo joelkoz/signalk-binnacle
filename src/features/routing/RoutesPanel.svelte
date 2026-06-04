@@ -120,7 +120,7 @@ function promptSave(): void {
     {:else}
       <ul>
         {#each routes as route (route.id)}
-          <li>
+          <li class:active={route.id === activeId}>
             <button
               type="button"
               class="name"
@@ -129,61 +129,63 @@ function promptSave(): void {
             >
               {route.name}
             </button>
-            <button
-              type="button"
-              class="icon"
-              aria-pressed={shownIds.has(route.id)}
-              aria-label={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
-              title={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
-              onclick={() => onToggleShown(route.id, !shownIds.has(route.id))}
-            >
-              {#if shownIds.has(route.id)}
-                <Eye size={18} aria-hidden="true" />
-              {:else}
-                <EyeOff size={18} aria-hidden="true" />
-              {/if}
-            </button>
-            <button
-              type="button"
-              class="icon"
-              aria-label="Edit route"
-              title="Edit"
-              disabled={working !== undefined}
-              onclick={() => onEditRoute(route.id)}
-            >
-              <SquarePen size={18} aria-hidden="true" />
-            </button>
-            {#if route.id === activeId}
-              <button
-                type="button"
-                class="icon active"
-                aria-label="Stop navigation"
-                title="Stop navigation"
-                onclick={onStop}
-              >
-                <Square size={18} aria-hidden="true" />
-              </button>
-            {:else}
+            <div class="actions">
               <button
                 type="button"
                 class="icon"
-                aria-label="Activate route"
-                title="Activate route"
-                disabled={working !== undefined}
-                onclick={() => onActivate(route.id)}
+                aria-pressed={shownIds.has(route.id)}
+                aria-label={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
+                title={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
+                onclick={() => onToggleShown(route.id, !shownIds.has(route.id))}
               >
-                <Navigation size={18} aria-hidden="true" />
+                {#if shownIds.has(route.id)}
+                  <Eye size={18} aria-hidden="true" />
+                {:else}
+                  <EyeOff size={18} aria-hidden="true" />
+                {/if}
               </button>
-            {/if}
-            <button
-              type="button"
-              class="icon danger"
-              aria-label="Delete route"
-              title="Delete"
-              onclick={() => onDelete(route.id)}
-            >
-              <Trash2 size={18} aria-hidden="true" />
-            </button>
+              <button
+                type="button"
+                class="icon"
+                aria-label="Edit route"
+                title="Edit"
+                disabled={working !== undefined}
+                onclick={() => onEditRoute(route.id)}
+              >
+                <SquarePen size={18} aria-hidden="true" />
+              </button>
+              {#if route.id === activeId}
+                <button
+                  type="button"
+                  class="icon nav"
+                  aria-label="Stop navigation"
+                  title="Stop navigation"
+                  onclick={onStop}
+                >
+                  <Square size={18} aria-hidden="true" />
+                </button>
+              {:else}
+                <button
+                  type="button"
+                  class="icon"
+                  aria-label="Activate route"
+                  title="Activate route"
+                  disabled={working !== undefined}
+                  onclick={() => onActivate(route.id)}
+                >
+                  <Navigation size={18} aria-hidden="true" />
+                </button>
+              {/if}
+              <button
+                type="button"
+                class="icon danger"
+                aria-label="Delete route"
+                title="Delete"
+                onclick={() => onDelete(route.id)}
+              >
+                <Trash2 size={18} aria-hidden="true" />
+              </button>
+            </div>
           </li>
         {/each}
       </ul>
@@ -338,11 +340,17 @@ function promptSave(): void {
 }
 .saved li {
   display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+.saved li.active {
+  border-color: var(--accent);
 }
 .saved .name {
-  flex: 1;
   display: flex;
   align-items: center;
   min-block-size: var(--control-size);
@@ -354,11 +362,16 @@ function promptSave(): void {
   background: transparent;
   color: inherit;
   font: inherit;
+  font-weight: 600;
   text-align: start;
   cursor: pointer;
 }
 .saved .name:hover {
   color: var(--accent);
+}
+.saved .actions {
+  display: flex;
+  gap: 0.25rem;
 }
 .icon {
   display: inline-flex;
@@ -384,7 +397,7 @@ function promptSave(): void {
 .icon[aria-pressed="true"] {
   color: var(--accent);
 }
-.icon.active {
+.icon.nav {
   color: var(--accent);
 }
 .icon.danger:hover {
