@@ -209,7 +209,7 @@ function stepLabel(timeMs: number): string {
               <b>{formatFixed(current.waveHeightM, 1)}</b>
               m
               {#if current.wavePeriodS !== undefined}
-                / <b>{formatFixed(current.wavePeriodS, 0)}</b> s
+                / <b>{formatFixed(current.wavePeriodS, 1)}</b> s
               {/if}
             </dd>
           </div>

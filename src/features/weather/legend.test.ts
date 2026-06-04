@@ -6,8 +6,8 @@ describe('weatherLegend', () => {
     const legend = weatherLegend('weather-wind', 'day');
     expect(legend?.title).toMatch(/wind/i);
     expect(legend?.gradient).toMatch(/linear-gradient/);
-    expect(legend?.lowLabel).toBe('0');
-    expect(legend?.highLabel).toBe('51');
+    expect(legend?.lowLabel).toBe('0.0');
+    expect(legend?.highLabel).toBe('50.5');
   });
 
   it('builds a single isobar swatch for pressure', () => {

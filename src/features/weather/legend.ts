@@ -1,4 +1,4 @@
-import { metersPerSecondToKnots } from '$shared/lib';
+import { formatFixed, metersPerSecondToKnots } from '$shared/lib';
 import type { Theme } from '$shared/ui';
 import { cloudColor } from './cloud-colormap';
 import { type Rgba, rgbaCss } from './color-ramp';
@@ -70,7 +70,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         'Wind (kn)',
         WIND_STOPS,
         (s) => windColor(s, theme),
-        (s) => String(Math.round(metersPerSecondToKnots(s) ?? 0)),
+        (s) => formatFixed(metersPerSecondToKnots(s), 1),
       );
     case WEATHER_LAYER_IDS.pressure:
       return {
@@ -86,7 +86,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         'Waves (m)',
         WAVE_STOPS,
         (h) => waveColor(h, theme),
-        (h) => String(h),
+        (h) => formatFixed(h, 1),
       );
     case WEATHER_LAYER_IDS.precip:
       return rampLegend(
@@ -94,7 +94,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         'Rain (mm/h)',
         PRECIP_STOPS,
         (p) => precipColor(p, theme),
-        (p) => String(p),
+        (p) => formatFixed(p, 1),
       );
     case WEATHER_LAYER_IDS.cloud:
       return rampLegend(
@@ -102,7 +102,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         'Cloud (%)',
         CLOUD_STOPS,
         (c) => cloudColor(c, theme),
-        (c) => String(Math.round(c * 100)),
+        (c) => formatFixed(c * 100, 1),
       );
     case WEATHER_LAYER_IDS.radar:
       // RainViewer's palette is fixed (not theme-dependent), so these are approximate fixed swatches

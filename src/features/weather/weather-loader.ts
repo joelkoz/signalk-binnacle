@@ -23,7 +23,11 @@ export interface WeatherLoader {
   ): Promise<void>;
 }
 
-const GRID_TTL_MS = 30 * 60 * 1000;
+// Open-Meteo model runs are hours apart, and the time slider shows the right hour from the cached
+// 5-day window regardless, so a forecast stays useful far longer than the old 30-minute TTL. An hour
+// keeps "now" reasonably fresh while roughly halving the request volume (and the rate-limit risk).
+const GRID_TTL_MS = 60 * 60 * 1000;
+// Radar is a nowcast: RainViewer publishes a new frame about every 10 minutes, so keep it short.
 const RADAR_TTL_MS = 5 * 60 * 1000;
 const QUANTIZE_DEG = 0.25;
 // Cap the viewport cache so a long session of panning does not grow it without bound.
@@ -66,17 +70,21 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
   // the next network attempt so panning and resizing do not retry-storm and deepen the rate limit.
   let gridCooldownUntil = 0;
 
+  // Returns the merged grid plus whether it is partial: waves were requested but the marine endpoint
+  // failed (commonly an Open-Meteo 429 on the separate marine host). A partial grid still carries
+  // wind and pressure, so it is shown, but it is not cached and it triggers the cooldown so the
+  // rate-limited marine endpoint is not re-hit on the next pan.
   async function fetchMerged(
     bbox: Bbox,
     opts: ForecastOptions,
     waves: boolean,
-  ): Promise<WeatherGrid | undefined> {
+  ): Promise<{ grid: WeatherGrid | undefined; partial: boolean }> {
     const [base, marine] = await Promise.all([
       deps.forecast(bbox, opts),
       waves ? deps.marine(bbox, opts) : Promise.resolve(undefined),
     ]);
-    if (!base) return undefined;
-    return marine ? mergeMarine(base, marine) : base;
+    if (!base) return { grid: undefined, partial: false };
+    return { grid: marine ? mergeMarine(base, marine) : base, partial: waves && !marine };
   }
 
   return {
@@ -88,9 +96,10 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
       const gridHit = Boolean(cachedGrid && cachedGrid.expires > t);
       // Fetch unless a cached grid covers it, or a recent failure put us in the cooldown window.
       const inCooldown = !gridHit && t < gridCooldownUntil;
-      let gridPromise: Promise<WeatherGrid | undefined>;
-      if (gridHit && cachedGrid) gridPromise = Promise.resolve(cachedGrid.grid);
-      else if (inCooldown) gridPromise = Promise.resolve(undefined);
+      let gridPromise: Promise<{ grid: WeatherGrid | undefined; partial: boolean }>;
+      if (gridHit && cachedGrid)
+        gridPromise = Promise.resolve({ grid: cachedGrid.grid, partial: false });
+      else if (inCooldown) gridPromise = Promise.resolve({ grid: undefined, partial: false });
       else gridPromise = fetchMerged(bbox, opts, want.waves);
 
       let radarPromise: Promise<RadarData | undefined>;
@@ -99,17 +108,23 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
         radarPromise = Promise.resolve(radarCache.data);
       else radarPromise = deps.radar();
 
-      const [grid, radar] = await Promise.all([gridPromise, radarPromise]);
+      const [{ grid, partial }, radar] = await Promise.all([gridPromise, radarPromise]);
 
       if (grid) {
-        for (const [k, entry] of gridCache) if (entry.expires <= t) gridCache.delete(k);
-        gridCache.set(key, { grid, expires: t + GRID_TTL_MS });
-        while (gridCache.size > MAX_GRID_ENTRIES) {
-          const oldest = gridCache.keys().next().value;
-          if (oldest === undefined) break;
-          gridCache.delete(oldest);
-        }
         store.setGrid(grid);
+        if (partial) {
+          // Waves failed: show the wind and pressure we got, but do not cache (so a later view
+          // retries marine) and back off so the rate-limited endpoint is not re-hit on the next pan.
+          if (!gridHit && !inCooldown) gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;
+        } else {
+          for (const [k, entry] of gridCache) if (entry.expires <= t) gridCache.delete(k);
+          gridCache.set(key, { grid, expires: t + GRID_TTL_MS });
+          while (gridCache.size > MAX_GRID_ENTRIES) {
+            const oldest = gridCache.keys().next().value;
+            if (oldest === undefined) break;
+            gridCache.delete(oldest);
+          }
+        }
       } else {
         // A real fetch attempt (not a cooldown skip) failed: back off before trying again.
         if (!gridHit && !inCooldown) gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;

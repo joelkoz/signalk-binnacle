@@ -254,8 +254,10 @@ $effect(() => {
 onMount(() => {
   mapHandle = createThemedMap({
     container,
-    // The panel opens at its own remembered view, or the nav chart's current view the first time.
-    view: savedView ?? initialView,
+    // The panel opens centered on the nav chart's current view, so the forecast is for the area you
+    // are looking at; the zoom is capped to MAX_ZOOM by createThemedMap. It falls back to its own
+    // remembered view only when the nav chart has not reported one yet.
+    view: initialView ?? savedView,
     defaultZoom: DEFAULT_ZOOM,
     minZoom: MIN_ZOOM,
     maxZoom: MAX_ZOOM,
@@ -368,7 +370,7 @@ onDestroy(() => {
           {#if showField(WEATHER_LAYER_IDS.waves) && readout.waveHeightM !== undefined}
             &middot; sea <b>{fmt(readout.waveHeightM, 1)}</b> m
             {#if readout.wavePeriodS !== undefined}
-              / <b>{fmt(readout.wavePeriodS, 0)}</b> s
+              / <b>{fmt(readout.wavePeriodS, 1)}</b> s
             {/if}
           {/if}
           {#if (showField(WEATHER_LAYER_IDS.precip) || showField(WEATHER_LAYER_IDS.radar)) && readout.precipitationMm !== undefined && readout.precipitationMm >= 0.1}

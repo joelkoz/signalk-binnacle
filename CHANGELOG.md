@@ -216,6 +216,10 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- The weather mini-map opens centered on the navigation chart's current view, so the forecast is for
+  the area you are looking at, rather than reopening at its own last position. The zoom is still capped
+  to the mini-map's maximum so weather never zooms past its data resolution.
+
 - Whole-repo cleanup pass (six expert audit lanes, weather-weighted), no behavior change. One shared
   `emptyFeatureCollection` in `$shared/map` replaces the per-overlay copies (vessel, track, ais,
   notes, and weather), a shared `headingDegrees` helper folds the vessel and AIS heading fallback,
@@ -346,6 +350,17 @@ All notable changes to Binnacle are documented here. The format follows
   `.github/FUNDING.yml`, and the `package.json` funding field).
 
 ### Fixed
+
+- Weather values now read consistently to one decimal. The legend low and high labels and the wave
+  period readout previously mixed bare integers ("0", "9") with decimals ("0.0", "0.5"); wind, waves,
+  precipitation, and cloud now all show one decimal place ("X.X"). Bearing, pressure, and temperature
+  stay whole numbers, as those units are conventionally integers.
+
+- Weather caching now fits the data. Forecasts are cached for an hour rather than 30 minutes (Open-Meteo
+  model runs are hours apart, and the time slider already shows the right hour from the cached 5-day
+  window), roughly halving request volume. When only the marine (waves) endpoint fails, commonly an
+  Open-Meteo 429 on its separate host, the forecast grid (wind and pressure) is still shown but is not
+  cached and the loader backs off, so panning no longer re-hits the rate-limited endpoint on every move.
 
 - The weather mini-map no longer freezes blank when Rain radar is on. The RainViewer raster source
   starts with no frame URL (real frames arrive later), and MapLibre loads tiles for a layer in the
