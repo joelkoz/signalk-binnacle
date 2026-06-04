@@ -9,7 +9,12 @@ const { title, visible, onToggle }: Props = $props();
 </script>
 
 <label class="layer-toggle">
-  <input type="checkbox" checked={visible} onchange={(e) => onToggle(e.currentTarget.checked)}>
+  <input
+    type="checkbox"
+    checked={visible}
+    aria-label={`Show ${title} on chart`}
+    onchange={(e) => onToggle(e.currentTarget.checked)}
+  >
   <span class="title" {title}>{title}</span>
 </label>
 

@@ -8,6 +8,7 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { Route, Waypoint } from '$entities/route';
+import { mapThemePaint } from '$shared/map';
 import { latLonToLonLat, lonLatToLatLon } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 
@@ -16,13 +17,12 @@ import type { Theme } from '$shared/ui';
 const LINESTRING_MODE = 'linestring';
 
 // The on-chart editing line uses the theme's bright selection accent so it reads vividly against
-// blue water and the chart instead of blending in: a warm amber in day and dusk, and a light red
-// at night that stays within the night-red band. Mirrors the --select token in app.css.
-const DRAW_COLOR: Record<Theme, `#${string}`> = {
-  day: '#ffb300',
-  dusk: '#ffc24d',
-  'night-red': '#ffb39a',
-};
+// blue water and the chart instead of blending in. It reads the one source (the map-theme select,
+// which the --select CSS token mirrors) rather than a second copy, so the two can never drift. The
+// cast is safe because every theme's select is a hex color.
+function drawColor(theme: Theme): `#${string}` {
+  return mapThemePaint(theme).select as `#${string}`;
+}
 
 export function drawFeatureToWaypoints(feature: GeoJSON.Feature): Waypoint[] {
   const geom = feature.geometry;
@@ -67,14 +67,14 @@ export function createRouteEditor(opts: {
       renderBelowLayerId: opts.beforeId,
     }),
     modes: [
-      new TerraDrawPointMode({ styles: { pointColor: DRAW_COLOR[opts.theme], pointWidth: 6 } }),
+      new TerraDrawPointMode({ styles: { pointColor: drawColor(opts.theme), pointWidth: 6 } }),
       new TerraDrawLineStringMode({
-        styles: { lineStringColor: DRAW_COLOR[opts.theme], lineStringWidth: 4 },
+        styles: { lineStringColor: drawColor(opts.theme), lineStringWidth: 4 },
       }),
       new TerraDrawSelectMode({
         styles: {
-          selectionPointColor: DRAW_COLOR[opts.theme],
-          midPointColor: DRAW_COLOR[opts.theme],
+          selectionPointColor: drawColor(opts.theme),
+          midPointColor: drawColor(opts.theme),
         },
         flags: {
           linestring: {
@@ -106,7 +106,7 @@ export function createRouteEditor(opts: {
       }
     },
     setTheme(theme) {
-      const color = DRAW_COLOR[theme];
+      const color = drawColor(theme);
       draw.updateModeOptions('point', { styles: { pointColor: color, pointWidth: 6 } });
       draw.updateModeOptions('linestring', {
         styles: { lineStringColor: color, lineStringWidth: 4 },

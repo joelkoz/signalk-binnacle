@@ -87,7 +87,7 @@ const ttg = $derived(
   margin-block-end: 0.4rem;
 }
 .title {
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);

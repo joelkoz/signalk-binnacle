@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Download, Eraser, Eye, EyeOff, Pause, Play, Save, Trash2 } from '@lucide/svelte';
 import type { TrackRecorder } from '$entities/track';
-import { formatKnots, formatNm } from '$shared/lib';
+import { formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
 import type { SavedTrack } from './tracks-client';
 
@@ -21,6 +21,8 @@ const { recorder, settings, saved, shown, onSave, onDelete, onToggleSaved, onExp
 
 const stats = $derived(recorder.stats);
 const colorMode = $derived(settings.value.colorMode);
+// Until the track has captured a point, its stats are absent, not zero, so show the placeholder.
+const hasTrack = $derived(recorder.points.length > 0);
 
 function duration(seconds: number): string {
   const total = Math.max(0, Math.round(seconds));
@@ -48,21 +50,26 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 </script>
 
-<div class="tracks" aria-label="Tracks">
+<section class="tracks" aria-label="Tracks">
   <div class="controls">
     {#if recorder.paused}
       <button type="button" onclick={() => recorder.resume()}>
-        <Play size={15} aria-hidden="true" />
+        <Play size={16} aria-hidden="true" />
         Resume
       </button>
     {:else}
       <button type="button" onclick={() => recorder.pause()}>
-        <Pause size={15} aria-hidden="true" />
+        <Pause size={16} aria-hidden="true" />
         Pause
       </button>
     {/if}
-    <button type="button" onclick={promptSave} disabled={recorder.points.length < 2}>
-      <Save size={15} aria-hidden="true" />
+    <button
+      type="button"
+      class="primary"
+      onclick={promptSave}
+      disabled={recorder.points.length < 2}
+    >
+      <Save size={16} aria-hidden="true" />
       Save
     </button>
     <button
@@ -71,7 +78,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       onclick={confirmClear}
       disabled={recorder.points.length === 0}
     >
-      <Eraser size={15} aria-hidden="true" />
+      <Eraser size={16} aria-hidden="true" />
       Clear
     </button>
   </div>
@@ -95,13 +102,25 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 
   <dl class="stats">
     <dt>Distance</dt>
-    <dd><span class="num">{formatNm(stats.distanceMeters)}</span><span class="unit">nm</span></dd>
+    <dd>
+      <span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span>
+      <span class="unit">nm</span>
+    </dd>
     <dt>Duration</dt>
-    <dd><span class="num">{duration(stats.durationSeconds)}</span><span class="unit"></span></dd>
+    <dd>
+      <span class="num">{hasTrack ? duration(stats.durationSeconds) : PLACEHOLDER}</span>
+      <span class="unit"></span>
+    </dd>
     <dt>Avg</dt>
-    <dd><span class="num">{formatKnots(stats.avgSog)}</span><span class="unit">kn</span></dd>
+    <dd>
+      <span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span>
+      <span class="unit">kn</span>
+    </dd>
     <dt>Max</dt>
-    <dd><span class="num">{formatKnots(stats.maxSog)}</span><span class="unit">kn</span></dd>
+    <dd>
+      <span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span>
+      <span class="unit">kn</span>
+    </dd>
   </dl>
 
   <div class="saved">
@@ -150,7 +169,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       </ul>
     {/if}
   </div>
-</div>
+</section>
 
 <style>
 .tracks {
@@ -187,6 +206,16 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 .controls button.danger {
   color: var(--alarm);
+}
+.controls button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  box-shadow: var(--shadow-overlay);
+}
+.controls button.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
 }
 .color-mode {
   display: flex;
@@ -237,7 +266,10 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 .stats .num {
   text-align: end;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
 }
 .stats .unit {
   min-inline-size: 1.25rem;

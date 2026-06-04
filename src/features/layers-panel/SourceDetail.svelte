@@ -47,7 +47,14 @@ async function doDelete(): Promise<void> {
 
   <label class="name-field">
     <span>Name</span>
-    <input type="text" bind:value={name} onblur={saveName}>
+    <input
+      type="text"
+      bind:value={name}
+      onblur={saveName}
+      onkeydown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
+    >
   </label>
 
   <dl>

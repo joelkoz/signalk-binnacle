@@ -157,10 +157,10 @@ function stepLabel(timeMs: number): string {
   </header>
 
   {#if !position}
-    <p class="cond-empty">Waiting for a vessel position.</p>
+    <p class="cond-empty" role="status">Waiting for a vessel position.</p>
   {:else}
     {#if warnings.length > 0}
-      <ul class="warnings">
+      <ul class="warnings" role="alert">
         {#each warnings as w (w.startTime + w.type)}
           <li class="warning">
             <TriangleAlert size={14} aria-hidden="true" />
@@ -223,9 +223,9 @@ function stepLabel(timeMs: number): string {
         {/if}
       </dl>
     {:else if loading}
-      <p class="cond-empty">Loading conditions.</p>
+      <p class="cond-empty" role="status">Loading conditions.</p>
     {:else}
-      <p class="cond-empty">No conditions for this point.</p>
+      <p class="cond-empty" role="status">No conditions for this point.</p>
     {/if}
 
     {#if forecast.length > 0}

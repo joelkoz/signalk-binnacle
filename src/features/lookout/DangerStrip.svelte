@@ -57,7 +57,7 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
   margin-block-end: 0.4rem;
 }
 .title {
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);
@@ -101,6 +101,10 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
 }
 .row.danger .name {
   color: var(--alarm);
+  font-weight: 600;
+}
+.row.warning .name {
+  color: var(--warning);
   font-weight: 600;
 }
 .metric b {

@@ -27,4 +27,12 @@ describe('mapThemePaint', () => {
     expect(ownVessel.r).toBeGreaterThan(ownVessel.b);
     expect(ownVessel.b).toBeLessThan(0x40);
   });
+
+  it('keeps the night-red AIS target in the red band, with no green or blue spike', () => {
+    const { aisTarget } = mapThemePaint('night-red');
+    expect(aisTarget.r).toBeGreaterThan(aisTarget.g);
+    expect(aisTarget.r).toBeGreaterThan(aisTarget.b);
+    expect(aisTarget.g).toBeLessThan(0x50);
+    expect(aisTarget.b).toBeLessThan(0x40);
+  });
 });

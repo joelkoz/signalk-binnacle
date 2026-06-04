@@ -56,9 +56,9 @@ function promptSave(): void {
 }
 </script>
 
-<div class="routes" aria-label="Routes">
+<section class="routes" aria-label="Routes">
   <div class="panel-head">
-    <span class="panel-title">Routes</span>
+    <h2 class="panel-title">Routes</h2>
     <button
       type="button"
       class="close"
@@ -202,7 +202,7 @@ function promptSave(): void {
       </ul>
     {/if}
   </div>
-</div>
+</section>
 
 <style>
 .routes {
@@ -219,11 +219,10 @@ function promptSave(): void {
   border-block-end: 1px solid var(--border);
 }
 .panel-title {
-  font-size: var(--text-xs);
+  margin: 0;
+  font-size: var(--text-lg);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
+  color: var(--text);
 }
 .close {
   display: inline-flex;

@@ -105,17 +105,26 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         (c) => formatFixed(c * 100, 1),
       );
     case WEATHER_LAYER_IDS.radar:
-      // RainViewer's palette is fixed (not theme-dependent), so these are approximate fixed swatches
-      // for its universal-blue intensity scale.
+      // RainViewer's raster palette is a fixed light-to-intense scale. At night the tiles are
+      // desaturated to red (applyRasterTheme), so the legend uses a red-band ramp there to honor the
+      // night-red contract rather than showing literal blue and green chips.
       return {
         id: layerId,
         title: 'Rain radar',
-        swatches: [
-          { color: 'rgb(120, 160, 230)', label: 'light' },
-          { color: 'rgb(60, 170, 90)', label: 'moderate' },
-          { color: 'rgb(230, 200, 60)', label: 'heavy' },
-          { color: 'rgb(220, 70, 60)', label: 'intense' },
-        ],
+        swatches:
+          theme === 'night-red'
+            ? [
+                { color: 'rgb(90, 26, 20)', label: 'light' },
+                { color: 'rgb(140, 36, 26)', label: 'moderate' },
+                { color: 'rgb(190, 50, 36)', label: 'heavy' },
+                { color: 'rgb(240, 80, 60)', label: 'intense' },
+              ]
+            : [
+                { color: 'rgb(120, 160, 230)', label: 'light' },
+                { color: 'rgb(60, 170, 90)', label: 'moderate' },
+                { color: 'rgb(230, 200, 60)', label: 'heavy' },
+                { color: 'rgb(220, 70, 60)', label: 'intense' },
+              ],
         note: 'live radar, regional resolution',
       };
     default:

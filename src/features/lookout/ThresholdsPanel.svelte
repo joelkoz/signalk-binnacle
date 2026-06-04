@@ -27,7 +27,7 @@ const nm = (meters: number): string => formatCpaNm(meters);
 const min = (seconds: number): string => formatTcpaMin(seconds);
 </script>
 
-<div class="thresholds" aria-label="Collision thresholds">
+<section class="thresholds" aria-label="Collision thresholds">
   <div class="group">
     <span class="group-title danger">Danger</span>
     <label class="field">
@@ -36,6 +36,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
         type="number"
         min="0"
         step="0.05"
+        aria-label="Danger CPA"
         value={nm(t.dangerCpaMeters)}
         onchange={(e) => setMeters('dangerCpaMeters', Number(e.currentTarget.value))}
       >
@@ -47,6 +48,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
         type="number"
         min="0"
         step="1"
+        aria-label="Danger TCPA"
         value={min(t.dangerTcpaSeconds)}
         onchange={(e) => setSeconds('dangerTcpaSeconds', Number(e.currentTarget.value))}
       >
@@ -61,6 +63,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
         type="number"
         min="0"
         step="0.05"
+        aria-label="Warning CPA"
         value={nm(t.warningCpaMeters)}
         onchange={(e) => setMeters('warningCpaMeters', Number(e.currentTarget.value))}
       >
@@ -72,6 +75,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
         type="number"
         min="0"
         step="1"
+        aria-label="Warning TCPA"
         value={min(t.warningTcpaSeconds)}
         onchange={(e) => setSeconds('warningTcpaSeconds', Number(e.currentTarget.value))}
       >
@@ -81,7 +85,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   <button type="button" class="reset" onclick={() => thresholds.set({ ...DEFAULT_THRESHOLDS })}>
     Reset to defaults
   </button>
-</div>
+</section>
 
 <style>
 .thresholds {
@@ -105,7 +109,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   color: var(--alarm);
 }
 .group-title.warning {
-  color: var(--text-muted);
+  color: var(--warning);
 }
 .field {
   display: flex;
@@ -126,6 +130,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   color: var(--text);
   accent-color: var(--accent);
   font: inherit;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 .unit {

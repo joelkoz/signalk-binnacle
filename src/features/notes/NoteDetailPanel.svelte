@@ -72,9 +72,9 @@ function measure(item: NormalizedItem): string {
 
   <div class="body">
     {#if loading}
-      <p class="status">Loading...</p>
+      <p class="status" role="status">Loading...</p>
     {:else if failed}
-      <p class="status">Could not load detail.</p>
+      <p class="status" role="alert">Could not load detail.</p>
       <button type="button" class="retry" onclick={() => (attempt += 1)}>Retry</button>
     {:else if sections}
       {#each sections as section (section.id)}
@@ -112,7 +112,11 @@ function measure(item: NormalizedItem): string {
                     {:else if linkUrl}
                       <a href={linkUrl} target="_blank" rel="noopener noreferrer">{item.label}</a>
                     {:else if item.kind === 'rating'}
-                      <span class="rating" aria-label={`Rating ${Number(item.value)} of 5`}>
+                      <span
+                        class="rating"
+                        role="img"
+                        aria-label={`Rating ${Number(item.value)} of 5`}
+                      >
                         {#each STARS as n (n)}
                           <Star
                             size={14}
@@ -136,7 +140,7 @@ function measure(item: NormalizedItem): string {
     {:else if detail?.fallbackText}
       <p class="prose">{detail.fallbackText}</p>
     {:else}
-      <p class="status">No additional detail.</p>
+      <p class="status" role="status">No additional detail.</p>
     {/if}
   </div>
 

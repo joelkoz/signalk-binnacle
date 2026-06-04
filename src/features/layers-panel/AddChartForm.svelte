@@ -74,12 +74,16 @@ function dragOver(event: DragEvent): void {
 
 <div class="add-form">
   <div class="field">
-    <span class="field-label"><Link2 size={13} aria-hidden="true" /> From a URL</span>
+    <span class="field-label" id="add-chart-url-label">
+      <Link2 size={14} aria-hidden="true" />
+      From a URL
+    </span>
     <div class="url-row">
       <input
         class="url"
         type="url"
         placeholder="https://.../chart.pmtiles"
+        aria-labelledby="add-chart-url-label"
         bind:value={url}
         disabled={busy}
       >
@@ -91,7 +95,7 @@ function dragOver(event: DragEvent): void {
 
   <div class="field">
     <span class="field-label" id="add-chart-file-label">
-      <CloudUpload size={13} aria-hidden="true" />
+      <CloudUpload size={14} aria-hidden="true" />
       From a file
     </span>
     <button
