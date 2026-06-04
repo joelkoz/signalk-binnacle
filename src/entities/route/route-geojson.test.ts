@@ -21,6 +21,26 @@ describe('routeToFeature', () => {
     expect(f.name).toBe('Test');
     expect(f.distance).toBeGreaterThan(0);
   });
+
+  it('omits coordinatesMeta for a fully unnamed route and names every entry otherwise', () => {
+    const unnamed: Route = {
+      id: 'u',
+      name: 'U',
+      waypoints: [
+        { position: { latitude: 0, longitude: 0 } },
+        { position: { latitude: 0, longitude: 1 } },
+      ],
+    };
+    // The server rejects an empty {} coordinatesMeta entry, so a fully unnamed route omits it.
+    expect(routeToFeature(unnamed).feature.properties.coordinatesMeta).toBeUndefined();
+    // ROUTE has A and B named and a third unnamed: the unnamed gap is filled with its 1-based index
+    // so every entry carries a name, which the schema requires.
+    expect(routeToFeature(ROUTE).feature.properties.coordinatesMeta).toEqual([
+      { name: 'A' },
+      { name: 'B' },
+      { name: '3' },
+    ]);
+  });
 });
 
 describe('featureToRoute', () => {

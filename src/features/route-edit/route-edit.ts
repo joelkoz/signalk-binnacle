@@ -15,12 +15,13 @@ import type { Theme } from '$shared/ui';
 // single linestring drawn or edited in that mode.
 const LINESTRING_MODE = 'linestring';
 
-// The draw color per theme, so the on-chart editing line never glows out of band: a blue on day
-// and dusk, and a pure red at night to honor the night-red contract.
+// The on-chart editing line uses the theme's bright selection accent so it reads vividly against
+// blue water and the chart instead of blending in: a warm amber in day and dusk, and a light red
+// at night that stays within the night-red band. Mirrors the --select token in app.css.
 const DRAW_COLOR: Record<Theme, `#${string}`> = {
-  day: '#1f6fb2',
-  dusk: '#4f9fd8',
-  'night-red': '#ff6a5a',
+  day: '#ffb300',
+  dusk: '#ffc24d',
+  'night-red': '#ffb39a',
 };
 
 export function drawFeatureToWaypoints(feature: GeoJSON.Feature): Waypoint[] {
@@ -66,9 +67,9 @@ export function createRouteEditor(opts: {
       renderBelowLayerId: opts.beforeId,
     }),
     modes: [
-      new TerraDrawPointMode({ styles: { pointColor: DRAW_COLOR[opts.theme], pointWidth: 5 } }),
+      new TerraDrawPointMode({ styles: { pointColor: DRAW_COLOR[opts.theme], pointWidth: 6 } }),
       new TerraDrawLineStringMode({
-        styles: { lineStringColor: DRAW_COLOR[opts.theme], lineStringWidth: 3 },
+        styles: { lineStringColor: DRAW_COLOR[opts.theme], lineStringWidth: 4 },
       }),
       new TerraDrawSelectMode({
         styles: {
@@ -106,9 +107,9 @@ export function createRouteEditor(opts: {
     },
     setTheme(theme) {
       const color = DRAW_COLOR[theme];
-      draw.updateModeOptions('point', { styles: { pointColor: color, pointWidth: 5 } });
+      draw.updateModeOptions('point', { styles: { pointColor: color, pointWidth: 6 } });
       draw.updateModeOptions('linestring', {
-        styles: { lineStringColor: color, lineStringWidth: 3 },
+        styles: { lineStringColor: color, lineStringWidth: 4 },
       });
       draw.updateModeOptions('select', {
         styles: { selectionPointColor: color, midPointColor: color },

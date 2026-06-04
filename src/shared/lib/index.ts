@@ -1,6 +1,6 @@
 export { formatBytes } from './bytes';
 export { formatLatitude, formatLongitude, PLACEHOLDER } from './coords';
-export { clientId } from './id';
+export { uuidv4 } from './id';
 export { lerp } from './math';
 export {
   DEG_TO_RAD,

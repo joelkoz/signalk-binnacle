@@ -397,6 +397,20 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- Saving a route now works. The Signal K server validates the standard route resource, and two
+  things failed that validation silently: an unnamed waypoint wrote an empty metadata entry the
+  schema rejects (every entry must carry a name), and over plain HTTP the route id fell back to a
+  non-UUID string that the resources API refuses for standard types. Routes now omit per-waypoint
+  metadata when no waypoint is named (and name the gaps by position otherwise), and route and track
+  ids are always real v4 UUIDs, generated from `crypto.getRandomValues` where `crypto.randomUUID` is
+  unavailable. Verified end to end against the server: a drawn, unnamed route now saves, lists, and
+  survives a reload.
+
+- The on-chart route editing line is easier to see and the Routes controls read as actions. The
+  editing line was a blue that blended into the water; it now uses the bright selection accent (amber
+  by day, a light red at night) and a heavier stroke, and the New route and Save buttons are filled
+  with the accent instead of flat gray.
+
 - A vector chart that declares a coverage extent now honors it. The raster chart paths already passed
   the declared `bounds` to MapLibre, but the vector path dropped it, so a regional vector chart
   requested and 404'd tiles across the whole world instead of only within its coverage. The vector

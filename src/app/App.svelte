@@ -60,12 +60,12 @@ import {
   WEATHER_LAYER_IDS,
 } from '$features/weather';
 import {
-  clientId,
   formatFixed,
   formatLatitude,
   formatLongitude,
   metersPerSecondToKnots,
   radiansToBearing,
+  uuidv4,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
@@ -337,7 +337,7 @@ async function refreshSavedTracks(): Promise<void> {
 
 async function onSaveTrack(name: string): Promise<void> {
   if (recorder.points.length < 2) return;
-  const id = clientId('track');
+  const id = uuidv4();
   if (!(await saveTrack(serverOrigin(), chartsToken, id, name, recorder.points))) return;
   recorder.clear();
   // Show the new track, then refresh: refreshSavedTracks bumps the version once with both the
@@ -418,7 +418,8 @@ function onToggleRouteShown(id: string, shown: boolean): void {
 function onNewRoute(): void {
   clearRouteError();
   // A client-chosen route id, known before the PUT, so activation needs no create-response parse.
-  routeStore.setWorking({ id: clientId('route'), name: '', waypoints: [] });
+  // The Signal K resources API requires a UUID for standard route ids, so this must be a real UUID.
+  routeStore.setWorking({ id: uuidv4(), name: '', waypoints: [] });
   mapCommands?.startRouteEdit();
 }
 

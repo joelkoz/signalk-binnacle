@@ -75,7 +75,7 @@ function promptSave(): void {
   {/if}
 
   <div class="controls">
-    <button type="button" onclick={onNew} disabled={working !== undefined}>
+    <button type="button" class="primary" onclick={onNew} disabled={working !== undefined}>
       <Plus size={15} aria-hidden="true" />
       New route
     </button>
@@ -96,7 +96,12 @@ function promptSave(): void {
         Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
       </p>
       <div class="controls">
-        <button type="button" onclick={promptSave} disabled={working.waypoints.length < 2}>
+        <button
+          type="button"
+          class="primary"
+          onclick={promptSave}
+          disabled={working.waypoints.length < 2}
+        >
           <Save size={15} aria-hidden="true" />
           Save
         </button>
@@ -247,6 +252,15 @@ function promptSave(): void {
 .controls button:disabled {
   opacity: var(--disabled-opacity);
   cursor: not-allowed;
+}
+.controls button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+.controls button.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
 }
 .editing {
   display: flex;

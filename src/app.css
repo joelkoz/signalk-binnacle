@@ -32,6 +32,7 @@
   --text: #0b2233;
   --text-muted: #3f586b;
   --accent: #1f6fb2;
+  --accent-contrast: #ffffff;
   --select: #ffb300;
   --alarm: #c8401f;
   /* Floating-card lift; dropped on night-red, where a black shadow on true black is invisible
@@ -49,6 +50,7 @@
   --text: #bcd2e4;
   --text-muted: #8aa6bd;
   --accent: #2c6da3;
+  --accent-contrast: #f4fbff;
   --select: #ffc24d;
   --alarm: #e0703a;
   --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.45);
@@ -64,6 +66,7 @@
   --text: #c8362a;
   --text-muted: #b8473a;
   --accent: #e0473a;
+  --accent-contrast: #1a0000;
   --select: #ffb39a;
   --alarm: #ff6a5a;
   --shadow-overlay: none;

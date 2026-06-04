@@ -10,11 +10,20 @@ export interface RouteResourceBody {
   feature: {
     type: 'Feature';
     geometry: { type: 'LineString'; coordinates: LonLat[] };
-    properties: { coordinatesMeta: Array<{ name?: string }> };
+    // The Signal K route schema requires every coordinatesMeta entry to carry a name, so it is
+    // present only when at least one waypoint is named, and absent for a fully unnamed route.
+    properties: { coordinatesMeta?: Array<{ name: string }> };
   };
 }
 
 export function routeToFeature(route: Route): RouteResourceBody {
+  // The server validates the standard route resource: each coordinatesMeta entry must have a name
+  // (or href), so an unnamed-waypoint placeholder of {} is rejected. Emit coordinatesMeta only when
+  // a waypoint is named, filling the unnamed gaps with their 1-based index, and omit it otherwise.
+  const named = route.waypoints.some((w) => w.name);
+  const properties = named
+    ? { coordinatesMeta: route.waypoints.map((w, i) => ({ name: w.name ?? `${i + 1}` })) }
+    : {};
   return {
     name: route.name,
     distance: routeDistanceMeters(route.waypoints),
@@ -24,7 +33,7 @@ export function routeToFeature(route: Route): RouteResourceBody {
         type: 'LineString',
         coordinates: route.waypoints.map((w) => latLonToLonLat(w.position)),
       },
-      properties: { coordinatesMeta: route.waypoints.map((w) => ({ name: w.name })) },
+      properties,
     },
   };
 }
