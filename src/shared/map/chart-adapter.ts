@@ -9,13 +9,17 @@ export const THEME_PAINT_KEY = 'binnacle:themePaint';
 // The pmtiles protocol scheme prefix, shared so the overlay can detect and strip it.
 export const PMTILES_SCHEME = 'pmtiles://';
 
+// The prefix on every chart source and layer id, so the base-theme recolor can recognize and
+// skip chart-owned layers from a single source of truth rather than a hardcoded string.
+export const CHART_SOURCE_PREFIX = 'chart-';
+
 export interface ChartSpecs {
   sources: Record<string, SourceSpecification>;
   layers: LayerSpecification[];
 }
 
 export function chartSourceId(identifier: string): string {
-  return `chart-${identifier}`;
+  return `${CHART_SOURCE_PREFIX}${identifier}`;
 }
 
 function absolute(url: string, base: string): string {
@@ -165,6 +169,9 @@ function vectorSpecs(chart: SignalKChart, base: string): ChartSpecs {
     url,
     ...(chart.minzoom !== undefined ? { minzoom: chart.minzoom } : {}),
     ...(chart.maxzoom !== undefined ? { maxzoom: chart.maxzoom } : {}),
+    // Honor a declared coverage extent so MapLibre suppresses tile requests outside it; a
+    // regional vector chart would otherwise fetch and 404 tiles across the whole world.
+    ...(chart.bounds ? { bounds: chart.bounds } : {}),
   };
   return {
     sources: { [sourceId]: source },

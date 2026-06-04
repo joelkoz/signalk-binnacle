@@ -54,9 +54,11 @@ export function assessContacts(
     let tcpaSeconds: number;
     let source: CpaSource;
     if (t.cpaMeters != null && t.tcpaSeconds != null) {
-      // A negative TCPA means the closest approach is in the past: the target is
-      // opening or has passed, so it is not a danger even at a small CPA.
-      if (t.tcpaSeconds < 0) continue;
+      // A TCPA at or below zero means the closest approach is now or already past, so the
+      // target is no longer closing and is not a danger even at a small CPA. This matches the
+      // computed branch, which also treats tcpa <= 0 as not closing, so the two CPA sources
+      // apply the same gate.
+      if (t.tcpaSeconds <= 0) continue;
       cpaMeters = t.cpaMeters;
       tcpaSeconds = t.tcpaSeconds;
       source = 'provider';
