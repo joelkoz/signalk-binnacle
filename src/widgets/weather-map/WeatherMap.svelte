@@ -160,7 +160,10 @@ function togglePlay(): void {
 // Fetch a forecast for the mini-map's own viewport, debounced. The loader fetches atmospheric data
 // always, marine only when waves is on, and radar only when radar is on, so a wind-only view pulls
 // nothing extra, and it caches by view so small pans reuse a recent fetch.
-const FORECAST_OPTS = { maxCells: 600, forecastDays: 5 };
+// 200 cells fits one Open-Meteo request (the per-request location cap), so a load is two calls
+// (forecast plus marine) rather than six. The grid is coarse anyway, and fewer, smaller requests
+// keep well under Open-Meteo's free-tier rate limit.
+const FORECAST_OPTS = { maxCells: 200, forecastDays: 5 };
 function scheduleFetch(): void {
   if (fetchTimer) clearTimeout(fetchTimer);
   fetchTimer = setTimeout(() => {
@@ -357,7 +360,7 @@ onDestroy(() => {
     {#if readout}
       <div class="readout" role="status" aria-live="polite">
         <span class="readout-line">
-          Wind <b>{fmt(metersPerSecondToKnots(readout.speedMs), 0)}</b> kn from
+          Wind <b>{fmt(metersPerSecondToKnots(readout.speedMs), 1)}</b> kn from
           <b>{fmt(radiansToBearing(readout.fromRad), 0)}</b>&deg;
           {#if showField(WEATHER_LAYER_IDS.pressure) && readout.pressurePa !== undefined}
             &middot; <b>{fmt(pascalsToHectopascals(readout.pressurePa), 0)}</b> hPa

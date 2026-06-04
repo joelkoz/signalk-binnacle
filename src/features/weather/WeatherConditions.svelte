@@ -41,29 +41,42 @@ let seq = 0;
 
 const sourceLabel = $derived(providerName ?? 'Open-Meteo');
 
-// Provider data: fetch only when the position or the provider changes, not on every scrub. The
-// observations, point forecast, and warnings do not depend on the selected time, so reading it here
-// would refire three network calls per slider tick.
+// A position key rounded to about 110 m. The boat's fix jitters every GPS delta, so keying the
+// effects on the rounded string instead of the raw object stops a refetch (and a burst of provider
+// 400s) on every tick; weather does not change within 110 m.
+const posKey = $derived(
+  position ? `${position.latitude.toFixed(3)},${position.longitude.toFixed(3)}` : '',
+);
+
+function posCoords(key: string): [number, number] {
+  const [lat, lon] = key.split(',').map(Number);
+  return [lat, lon];
+}
+
+// Provider data: fetch only when the rounded position or the provider changes, not on every scrub or
+// GPS jitter. Observations, the point forecast, and warnings do not depend on the selected time.
 $effect(() => {
-  const pos = position;
+  const key = posKey;
   const provider = providerName;
-  if (!pos) {
+  if (!key) {
     clear();
     return;
   }
   if (!provider) return; // the free-fallback effect owns the no-provider case
-  void loadProvider(pos.latitude, pos.longitude);
+  const [lat, lon] = posCoords(key);
+  void loadProvider(lat, lon);
 });
 
-// Free fallback: recompute from the grid on position or selected-time change, but only when no
-// provider is configured. With a provider, the effect above owns the conditions.
+// Free fallback: recompute from the grid on rounded-position or selected-time change, but only when
+// no provider is configured. With a provider, the effect above owns the conditions.
 $effect(() => {
-  const pos = position;
+  const key = posKey;
   const provider = providerName;
   void store.selectedTime;
-  if (!pos || provider) return;
-  current = freeCurrent(pos.latitude, pos.longitude);
-  forecast = freeForecast(pos.latitude, pos.longitude);
+  if (!key || provider) return;
+  const [lat, lon] = posCoords(key);
+  current = freeCurrent(lat, lon);
+  forecast = freeForecast(lat, lon);
   warnings = [];
 });
 
@@ -124,7 +137,7 @@ function readoutFields(r: NonNullable<ReturnType<typeof readoutAt>>): Partial<Po
   };
 }
 
-const knots = (v: number | undefined) => formatFixed(metersPerSecondToKnots(v), 0);
+const knots = (v: number | undefined) => formatFixed(metersPerSecondToKnots(v), 1);
 const bearing = (v: number | undefined) => formatFixed(radiansToBearing(v), 0);
 const hpa = (v: number | undefined) => formatFixed(pascalsToHectopascals(v), 0);
 const degC = (v: number | undefined) => formatFixed(kelvinToCelsius(v), 0);

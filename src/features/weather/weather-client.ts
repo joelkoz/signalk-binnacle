@@ -91,7 +91,9 @@ function buildUrl(
     hourly,
     forecast_days: String(opts.forecastDays),
     timeformat: 'unixtime',
-    cell_selection: 'sea',
+    // cell_selection is per-endpoint: the atmospheric forecast wants the default land cell (the
+    // caller omits it), and only the marine request passes cell_selection=sea. Forcing sea on the
+    // forecast picked wrong or missing cells over inland and freshwater areas like the Great Lakes.
     ...extra,
   });
   return `${baseUrl}?${params}`;
@@ -172,7 +174,8 @@ export async function fetchMarine(
   const result = await fetchGridLocations<MarineLoc>(
     MARINE_URL,
     'wave_height,wave_direction,wave_period',
-    {},
+    // Marine data exists only at sea cells; the forecast above keeps the default land selection.
+    { cell_selection: 'sea' },
     bbox,
     opts,
     fetchFn,

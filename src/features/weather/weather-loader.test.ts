@@ -105,4 +105,24 @@ describe('createWeatherLoader', () => {
     await loader.load(store, BBOX, OPTS, { waves: false, radar: false });
     expect(status).toContain('stale');
   });
+
+  it('backs off after a failed grid fetch, then retries once the cooldown passes', async () => {
+    const nowRef = { ms: 0 };
+    const deps = makeDeps(nowRef);
+    deps.forecast.mockResolvedValue(undefined as unknown as WeatherGrid);
+    const loader = createWeatherLoader(deps);
+    const { store } = makeStore();
+
+    await loader.load(store, BBOX, OPTS, { waves: false, radar: false });
+    expect(deps.forecast).toHaveBeenCalledTimes(1);
+
+    // Within the cooldown a pan or resize does not retry the network.
+    await loader.load(store, BBOX, OPTS, { waves: false, radar: false });
+    expect(deps.forecast).toHaveBeenCalledTimes(1);
+
+    // Past the cooldown it retries.
+    nowRef.ms += 61_000;
+    await loader.load(store, BBOX, OPTS, { waves: false, radar: false });
+    expect(deps.forecast).toHaveBeenCalledTimes(2);
+  });
 });

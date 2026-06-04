@@ -627,6 +627,9 @@ onDestroy(() => {
   align-items: center;
   gap: 1.5rem;
   padding: 0.5rem 1rem;
+  /* Tall enough for the absolutely-centered Forecast button (a full control-size touch target), so
+     it is not clipped at the bottom by the overflow-hidden viewport. */
+  min-block-size: calc(var(--control-size) + 0.5rem);
   border-block-start: 1px solid var(--border);
   color: var(--text-muted);
   font-size: var(--text-md);

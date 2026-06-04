@@ -28,6 +28,8 @@ const RADAR_TTL_MS = 5 * 60 * 1000;
 const QUANTIZE_DEG = 0.25;
 // Cap the viewport cache so a long session of panning does not grow it without bound.
 const MAX_GRID_ENTRIES = 16;
+// How long to stop fetching the grid after a failure, so a rate-limited state is not made worse.
+const GRID_FAIL_COOLDOWN_MS = 60 * 1000;
 
 const quantize = (v: number): number => Math.round(v / QUANTIZE_DEG) * QUANTIZE_DEG;
 
@@ -60,6 +62,9 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
   const deps = { ...realDeps, ...overrides };
   const gridCache = new Map<string, { grid: WeatherGrid; expires: number }>();
   let radarCache: { data: RadarData; expires: number } | undefined;
+  // After a grid fetch fails (Open-Meteo rate-limiting returns 429 or 502 with no body), hold off on
+  // the next network attempt so panning and resizing do not retry-storm and deepen the rate limit.
+  let gridCooldownUntil = 0;
 
   async function fetchMerged(
     bbox: Bbox,
@@ -80,10 +85,13 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
       const t = deps.now();
       const key = weatherCacheKey(bbox, opts, want.waves);
       const cachedGrid = gridCache.get(key);
-      const gridPromise =
-        cachedGrid && cachedGrid.expires > t
-          ? Promise.resolve(cachedGrid.grid)
-          : fetchMerged(bbox, opts, want.waves);
+      const gridHit = Boolean(cachedGrid && cachedGrid.expires > t);
+      // Fetch unless a cached grid covers it, or a recent failure put us in the cooldown window.
+      const inCooldown = !gridHit && t < gridCooldownUntil;
+      let gridPromise: Promise<WeatherGrid | undefined>;
+      if (gridHit && cachedGrid) gridPromise = Promise.resolve(cachedGrid.grid);
+      else if (inCooldown) gridPromise = Promise.resolve(undefined);
+      else gridPromise = fetchMerged(bbox, opts, want.waves);
 
       let radarPromise: Promise<RadarData | undefined>;
       if (!want.radar) radarPromise = Promise.resolve(undefined);
@@ -103,6 +111,8 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
         }
         store.setGrid(grid);
       } else {
+        // A real fetch attempt (not a cooldown skip) failed: back off before trying again.
+        if (!gridHit && !inCooldown) gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;
         store.setStatus(store.grid ? 'stale' : 'error');
       }
       if (radar) {
