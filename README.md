@@ -15,13 +15,37 @@ bluewater cruiser and the liveaboard.
 ## What it does
 
 Signal K is the modern marine data standard, streaming a boat's navigation, environment,
-and AIS data over a single open API. Binnacle is the screen for that data: a fast,
-offline-first, touch-friendly chart plotter that runs in any browser and is served straight
-from the boat's Signal K server.
+and AIS data over a single open API. Binnacle is the screen for that data: a fast, modern
+chart plotter, GPU-rendered and offline-first, that runs in any browser and is served
+straight from the boat's Signal K server.
 
 The design center is the offshore watch and the swinging anchor: a chart you can read on a
 night watch, danger that surfaces before you ask for it, and a plotter that keeps working
-1,500 nautical miles from the nearest cell tower.
+1,500 nautical miles from the nearest cell tower, all of it rendered smoothly enough to run
+on the Raspberry Pi at the helm.
+
+## Modern and fast
+
+Binnacle is a clean-room, next-generation plotter, not a port of an older app. It is built on a
+current web stack and engineered to stay smooth on modest helm hardware:
+
+- **A modern front end.** Svelte 5 with runes, Vite, and TypeScript, linted and formatted with
+  Biome, with module boundaries enforced by the build (Feature-Sliced Design plus a
+  dependency-cruiser gate) so the codebase stays fast to work in as it grows.
+- **GPU-rendered charts.** MapLibre GL JS draws the vector base map and chart layers on the GPU. The
+  own vessel and every AIS target render as GPU symbol layers that rotate with heading and course,
+  and wind draws as a live WebGL particle field, thousands of particles advected through the forecast
+  on the graphics card.
+- **A real-time pipeline that stays off the main thread.** A dedicated Web Worker hosts the Signal K
+  WebSocket client; incoming deltas are coalesced to a single flush per animation frame and fed into
+  a path-keyed, fine-grained reactive store, so a busy AIS anchorage updates the readouts without
+  janking the chart.
+- **Lean on the wire and in the loop.** Binnacle subscribes to exactly what it draws, at controlled
+  rates (own vessel fast, AIS slower), keeps everything in SI internally, and converts only at the
+  display edge, so neither the network nor the render loop does work it does not need to.
+- **Offline-first by construction.** Self-hosted fonts and assets (no CDN for app code), a
+  service-worker runtime cache for the base map and chart tiles, and an IndexedDB weather cache, so
+  previously seen areas keep rendering with no internet.
 
 ## Status
 
