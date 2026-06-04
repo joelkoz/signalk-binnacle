@@ -26,11 +26,23 @@ export function createRadarOverlay(
   let lastRadar: unknown;
   let frameIndex = 0;
   let lastAdvance = 0;
-  let visible = false;
+  // The layer is shown only when the user wants it AND a real frame has been pointed at the source.
+  // A raster source whose tiles array is still empty crashes MapLibre's tile loader (it indexes into
+  // [] and calls .replace on undefined), so the layer must stay hidden until setTiles lands a frame.
+  let desiredVisible = false;
+  let frameApplied = false;
+  let visible = false; // actual on-screen state; also gates the animation
+
+  function applyVisibility(ctx: OverlayContext): void {
+    visible = desiredVisible && frameApplied;
+    ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');
+  }
 
   function showFrame(ctx: OverlayContext, host: string, path: string): void {
     const source = ctx.map.getSource(SOURCE_ID) as { setTiles(t: string[]): void } | undefined;
-    source?.setTiles([frameTiles(host, { time: 0, path })]);
+    if (!source) return;
+    source.setTiles([frameTiles(host, { time: 0, path })]);
+    frameApplied = true;
   }
 
   return {
@@ -43,8 +55,10 @@ export function createRadarOverlay(
     layerIds: [LAYER_ID],
     add(ctx) {
       // Reset the dirty-check so a reattach (after a base-style swap recreates the source with empty
-      // tiles) re-points it at the latest frame on the next sync instead of staying blank.
+      // tiles) re-points it at the latest frame on the next sync instead of staying blank. The new
+      // source has no frame yet, so the layer must re-hide until one lands.
       lastRadar = undefined;
+      frameApplied = false;
       if (!ctx.map.getSource(SOURCE_ID)) {
         const spec: RasterSourceSpecification = {
           type: 'raster',
@@ -63,10 +77,16 @@ export function createRadarOverlay(
           id: LAYER_ID,
           type: 'raster',
           source: SOURCE_ID,
+          // Start hidden: the source has no tiles yet, and a visible empty-tiles raster crashes the
+          // tile loader. applyVisibility reveals it once a frame is set.
+          layout: { visibility: 'none' },
           paint: { 'raster-opacity': DEFAULT_OPACITY },
         };
         ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
+      } else {
+        ctx.map.setLayoutProperty(LAYER_ID, 'visibility', 'none');
       }
+      visible = false;
     },
     sync(ctx) {
       const radar = store.radar;
@@ -76,6 +96,8 @@ export function createRadarOverlay(
         lastRadar = radar;
         frameIndex = Math.max(0, frames.length - 1);
         if (radar && frames.length > 0) showFrame(ctx, radar.host, frames[frameIndex].path);
+        else frameApplied = false;
+        applyVisibility(ctx);
         lastAdvance = now();
         return;
       }
@@ -93,8 +115,8 @@ export function createRadarOverlay(
       if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
     },
     setVisible(ctx, isVisible) {
-      visible = isVisible;
-      ctx.map.setLayoutProperty(LAYER_ID, 'visibility', isVisible ? 'visible' : 'none');
+      desiredVisible = isVisible;
+      applyVisibility(ctx);
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(LAYER_ID, 'raster-opacity', opacity);
