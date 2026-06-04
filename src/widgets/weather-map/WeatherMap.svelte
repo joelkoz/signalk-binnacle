@@ -520,7 +520,10 @@ onDestroy(() => {
   inset-inline: 0;
   margin-inline: auto;
   inline-size: min(94vw, 46rem);
-  max-block-size: min(74vh, 36rem);
+  /* A definite height (not max-block-size) so the flex column resolves: the map fills the space
+     between the header and footer. With only max-block-size the panel is shrink-to-fit, the map's
+     percentage height collapses, and the MapLibre canvas renders blank. */
+  block-size: min(74vh, 36rem);
   display: flex;
   flex-direction: column;
   background: var(--surface-overlay);
@@ -587,11 +590,13 @@ onDestroy(() => {
 .panel-map {
   position: relative;
   flex: 1 1 auto;
-  min-block-size: 14rem;
+  min-block-size: 0;
 }
+/* Absolute fill rather than a percentage height, so the canvas always has real pixels regardless of
+   how the flex parent resolves its height. */
 .map {
-  inline-size: 100%;
-  block-size: 100%;
+  position: absolute;
+  inset: 0;
 }
 .readout {
   position: absolute;
