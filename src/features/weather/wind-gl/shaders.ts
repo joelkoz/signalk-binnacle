@@ -50,7 +50,7 @@ void main() {
   vec4 w = texture2D(u_wind, pos);
   vec2 velocity = w.a < 0.5 ? vec2(0.0) : mix(u_wind_min, u_wind_max, w.rg);
   float speed_t = length(velocity) / length(u_wind_max);
-  vec2 offset = vec2(velocity.x, velocity.y) * u_speed_factor;
+  vec2 offset = velocity * u_speed_factor;
   pos = fract(1.0 + pos + offset);
   vec2 seed = (pos + v_tex_pos) * u_rand_seed;
   float drop_rate = u_drop_rate + speed_t * u_drop_rate_bump;

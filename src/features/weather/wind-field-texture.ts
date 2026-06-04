@@ -28,8 +28,8 @@ export function windFieldTexture(grid: WeatherGrid, bracket: TimeBracket): WindF
   const vHi = grid.windV[bracket.hi] ?? vLo;
   const cols = grid.lons.length;
   const rows = grid.lats.length;
-  const u = new Float64Array(cols * rows);
-  const v = new Float64Array(cols * rows);
+  const u = new Float32Array(cols * rows);
+  const v = new Float32Array(cols * rows);
   let uMin = Number.POSITIVE_INFINITY;
   let uMax = Number.NEGATIVE_INFINITY;
   let vMin = Number.POSITIVE_INFINITY;
@@ -64,7 +64,6 @@ export function windFieldTexture(grid: WeatherGrid, bracket: TimeBracket): WindF
     const land = Number.isNaN(u[i]) || Number.isNaN(v[i]);
     data[o] = land ? 0 : Math.round(((u[i] - uMin) / uSpan) * 255);
     data[o + 1] = land ? 0 : Math.round(((v[i] - vMin) / vSpan) * 255);
-    data[o + 2] = 0;
     data[o + 3] = land ? 0 : 255;
   }
   return {

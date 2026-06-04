@@ -35,6 +35,14 @@ function matrixOf(args: unknown): number[] {
   return data?.mainMatrix ?? [];
 }
 
+function sameMatrix(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 // The wind layer: an animated WebGL particle field advected through the forecast u/v, colored by
 // speed with fading trails, in the weather band. Off by default. Falls back to a per-cell arrow line
 // layer when WebGL is unavailable. Rebuilds the wind texture only when the grid or selected time
@@ -49,7 +57,7 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
 
   // Particle path.
   let particles: WindParticles | undefined;
-  let lastMatrix = '';
+  let lastMatrix: number[] = [];
 
   // Arrow fallback path.
   function colorExpr(t: Theme): ExpressionSpecification {
@@ -111,9 +119,9 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
       render(gl: GL, args: unknown) {
         if (!particles || !visible) return;
         const matrix = matrixOf(args);
-        const key = matrix.join(',');
-        const moved = key !== lastMatrix;
-        lastMatrix = key;
+        if (matrix.length < 16) return; // unrecognized render args; MapLibre 5 gives a 4x4 matrix
+        const moved = !sameMatrix(matrix, lastMatrix);
+        lastMatrix = matrix;
         particles.render(matrix, gl.drawingBufferWidth, gl.drawingBufferHeight, moved);
         ctx.map.triggerRepaint();
       },
@@ -133,6 +141,11 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
     defaultVisible: false,
     layerIds: [useParticles ? GL_LAYER_ID : LAYER_ID],
     add(ctx) {
+      // Reset the dirty-check so a re-add after a base-style swap repopulates the source. Without
+      // this the arrow fallback stays blank when the grid object is unchanged, the same hazard
+      // radar-overlay guards against.
+      lastGrid = undefined;
+      lastTime = Number.NaN;
       if (useParticles) addParticleLayer(ctx);
       else addArrowLayer(ctx);
     },
@@ -141,8 +154,8 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
       if (grid === lastGrid && store.selectedTime === lastTime) return;
       lastGrid = grid;
       lastTime = store.selectedTime;
-      if (particles) pushWind();
-      else if (ctx.map.getLayer(LAYER_ID)) syncArrows(ctx);
+      pushWind(); // a no-op without particles
+      if (!particles && ctx.map.getLayer(LAYER_ID)) syncArrows(ctx);
     },
     remove(ctx) {
       if (ctx.map.getLayer(GL_LAYER_ID)) ctx.map.removeLayer(GL_LAYER_ID);
