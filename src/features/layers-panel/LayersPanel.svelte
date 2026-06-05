@@ -124,7 +124,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 }
 </script>
 
-<aside class="layers-panel" aria-label="Layers" use:dialog={onClose}>
+<aside class="slide-over slide-over--dock-left" aria-label="Layers" use:dialog={onClose}>
   <header>
     <h2>Layers</h2>
     <button type="button" class="panel-close" aria-label="Close" onclick={onClose}>
@@ -193,20 +193,6 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 </aside>
 
 <style>
-.layers-panel {
-  display: flex;
-  flex-direction: column;
-  block-size: 100%;
-  inline-size: 22rem;
-  max-inline-size: 100%;
-  background: var(--surface-overlay);
-  border-inline-end: 1px solid var(--border);
-  box-shadow: var(--shadow-overlay);
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: var(--text-base);
-  overflow: hidden;
-}
 header {
   display: flex;
   align-items: center;
@@ -303,14 +289,5 @@ header h2 {
 }
 .add-chart:hover {
   border-color: var(--accent);
-}
-@media (max-width: 600px) {
-  .layers-panel {
-    inline-size: 100%;
-    block-size: auto;
-    max-block-size: 60vh;
-    border-inline-end: 0;
-    border-block-start: 1px solid var(--border);
-  }
 }
 </style>

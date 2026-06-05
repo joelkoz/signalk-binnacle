@@ -195,6 +195,41 @@ body {
   color: var(--text);
 }
 
+/* The edge-docked slide-over panels (layers, note detail) share one shell: a full-height column on
+   the translucent surface that docks to a screen edge, and collapses to a bottom sheet on a phone.
+   The dock modifier sets which edge it borders. */
+.slide-over {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  inline-size: 22rem;
+  max-inline-size: 100%;
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  overflow: hidden;
+}
+.slide-over--dock-left {
+  border-inline-end: 1px solid var(--border);
+}
+.slide-over--dock-right {
+  border-inline-start: 1px solid var(--border);
+}
+@media (max-width: 600px) {
+  .slide-over {
+    inline-size: 100%;
+    block-size: auto;
+    max-block-size: 60vh;
+    border-block-start: 1px solid var(--border);
+  }
+  .slide-over--dock-left,
+  .slide-over--dock-right {
+    border-inline: 0;
+  }
+}
+
 /* One keyboard-focus indicator for every interactive control, visible on every theme. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);

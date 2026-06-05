@@ -60,7 +60,11 @@ function measure(item: NormalizedItem): string {
 }
 </script>
 
-<aside class="note-panel" aria-label="Point of interest detail" use:dialog={onClose}>
+<aside
+  class="slide-over slide-over--dock-right"
+  aria-label="Point of interest detail"
+  use:dialog={onClose}
+>
   <header>
     <div class="heading">
       <h2>{selection.name}</h2>
@@ -163,19 +167,6 @@ function measure(item: NormalizedItem): string {
 </aside>
 
 <style>
-.note-panel {
-  display: flex;
-  flex-direction: column;
-  block-size: 100%;
-  inline-size: 22rem;
-  max-inline-size: 100%;
-  background: var(--surface-overlay);
-  border-inline-start: 1px solid var(--border);
-  box-shadow: var(--shadow-overlay);
-  color: var(--text);
-  font-size: var(--text-base);
-  overflow: hidden;
-}
 header {
   display: flex;
   align-items: flex-start;
@@ -318,14 +309,5 @@ footer {
   min-block-size: var(--control-size);
   margin-inline-start: auto;
   color: var(--accent);
-}
-@media (max-width: 600px) {
-  .note-panel {
-    inline-size: 100%;
-    block-size: auto;
-    max-block-size: 60vh;
-    border-inline-start: 0;
-    border-block-start: 1px solid var(--border);
-  }
 }
 </style>
