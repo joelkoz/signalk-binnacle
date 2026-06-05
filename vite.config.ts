@@ -16,8 +16,8 @@ const alias = {
 };
 
 export default defineConfig({
-  // Signal K serves the webapp at /<package-name>/, so production assets resolve under /binnacle/.
-  base: process.env.NODE_ENV === 'production' ? '/binnacle/' : '/',
+  // Signal K serves the webapp at /<package-name>/, so production assets resolve under /signalk-binnacle/.
+  base: process.env.NODE_ENV === 'production' ? '/signalk-binnacle/' : '/',
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.1.0'),
   },
@@ -33,8 +33,8 @@ export default defineConfig({
         name: 'Binnacle',
         short_name: 'Binnacle',
         description: 'A next-generation marine chart plotter for Signal K.',
-        start_url: '/binnacle/',
-        scope: '/binnacle/',
+        start_url: '/signalk-binnacle/',
+        scope: '/signalk-binnacle/',
         display: 'standalone',
         background_color: '#cfe0ec',
         theme_color: '#cfe0ec',
@@ -48,7 +48,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallback: '/binnacle/index.html',
+        navigateFallback: '/signalk-binnacle/index.html',
         // The app chunk is large (MapLibre), so raise the precache size ceiling.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],

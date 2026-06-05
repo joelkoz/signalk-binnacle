@@ -6,12 +6,12 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:4173/binnacle/',
+    baseURL: 'http://localhost:4173/signalk-binnacle/',
     trace: 'on-first-retry',
   },
   webServer: {
     command: 'npm run preview',
-    url: 'http://localhost:4173/binnacle/',
+    url: 'http://localhost:4173/signalk-binnacle/',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

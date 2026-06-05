@@ -183,7 +183,7 @@ Everything in this release:
 ## Installation
 
 Binnacle is delivered as a Signal K webapp: the production build writes static files into
-`public/`, which the Signal K server serves same-origin at `/binnacle/`.
+`public/`, which the Signal K server serves same-origin at `/signalk-binnacle/`.
 
 ### From source (for development)
 
@@ -250,18 +250,18 @@ Link the built webapp into your Signal K server's module directory, then add it 
 server config so it loads:
 
 ```bash
-ln -sfn "$(pwd)" ~/.signalk/node_modules/binnacle
+ln -sfn "$(pwd)" ~/.signalk/node_modules/signalk-binnacle
 ```
 
 ```json
 {
   "dependencies": {
-    "binnacle": "file:../path/to/signalk-binnacle"
+    "signalk-binnacle": "file:../path/to/signalk-binnacle"
   }
 }
 ```
 
-Restart Signal K, then open `http://your-sk-server:3000/binnacle/` in a browser.
+Restart Signal K, then open `http://your-sk-server:3000/signalk-binnacle/` in a browser.
 
 ## License
 

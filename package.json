@@ -1,5 +1,5 @@
 {
-  "name": "binnacle",
+  "name": "signalk-binnacle",
   "version": "0.1.0",
   "description": "Next-generation marine chart plotter for Signal K",
   "type": "module",
