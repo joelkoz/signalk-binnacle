@@ -25,9 +25,8 @@ export class SignalKStore {
   }
 
   applyFrame(frame: SKFrame): void {
-    for (const path in frame.self) {
-      const cell = this.cell(path);
-      cell.value = frame.self[path];
+    for (const [path, value] of Object.entries(frame.self)) {
+      this.cell(path).value = value;
     }
     if (frame.ais) {
       let changed = false;

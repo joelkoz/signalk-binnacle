@@ -818,7 +818,7 @@ onDestroy(() => {
   pointer-events: none;
   z-index: var(--z-overlay);
 }
-.nav-slot :global(.nav-strip) {
+.nav-slot :global(.bottom-strip) {
   pointer-events: auto;
 }
 .note-panel-slot {
@@ -857,7 +857,7 @@ onDestroy(() => {
     inline-size: auto;
   }
 }
-.danger-slot :global(.danger-strip) {
+.danger-slot :global(.bottom-strip) {
   pointer-events: auto;
 }
 .status-strip {
