@@ -57,8 +57,8 @@ function promptSave(): void {
 }
 </script>
 
-<section class="routes" aria-label="Routes" use:dialog={onClose}>
-  <div class="panel-head">
+<aside class="slide-over slide-over--dock-left" aria-label="Routes" use:dialog={onClose}>
+  <header>
     <h2 class="panel-title">Routes</h2>
     <button
       type="button"
@@ -69,155 +69,172 @@ function promptSave(): void {
     >
       <X size={18} aria-hidden="true" />
     </button>
-  </div>
+  </header>
 
-  {#if error}
-    <p class="error" role="alert">{error}</p>
-  {/if}
-
-  <div class="controls">
-    <button type="button" class="btn btn-primary" onclick={onNew} disabled={working !== undefined}>
-      <Plus size={16} aria-hidden="true" />
-      New route
-    </button>
-  </div>
-
-  {#if working}
-    <div class="editing" role="group" aria-label="Route under edit">
-      <dl class="stats">
-        <dt>Waypoints</dt>
-        <dd><span class="num">{working.waypoints.length}</span><span class="unit"></span></dd>
-        <dt>Distance</dt>
-        <dd>
-          <span class="num">{formatNm(routeDistanceMeters(working.waypoints))}</span>
-          <span class="unit">nm</span>
-        </dd>
-      </dl>
-      <p class="hint">
-        Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
-      </p>
-      <div class="controls">
-        <button
-          type="button"
-          class="btn btn-primary"
-          onclick={promptSave}
-          disabled={working.waypoints.length < 2}
-        >
-          <Save size={16} aria-hidden="true" />
-          Save
-        </button>
-        <button type="button" class="btn" onclick={onCancelEdit}>
-          <X size={16} aria-hidden="true" />
-          Cancel
-        </button>
-      </div>
-    </div>
-  {/if}
-
-  <div class="saved">
-    <span class="saved-title">Saved routes</span>
-    {#if routes.length === 0}
-      <p class="empty">No routes yet</p>
-    {:else}
-      <ul>
-        {#each routes as route (route.id)}
-          <li class:active={route.id === activeId}>
-            <div class="card-head">
-              <button
-                type="button"
-                class="name"
-                title="Go to this route on the chart"
-                onclick={() => onLocate(route.id)}
-              >
-                {route.name}
-              </button>
-              {#if route.id === activeId}
-                <span class="pill">Active</span>
-              {/if}
-            </div>
-            <dl class="card-stats">
-              <dt>Distance</dt>
-              <dd><span class="num">{formatNm(routeDistanceMeters(route.waypoints))}</span> nm</dd>
-              <dt>Waypoints</dt>
-              <dd><span class="num">{route.waypoints.length}</span></dd>
-            </dl>
-            <div class="actions">
-              <button
-                type="button"
-                class="icon"
-                aria-pressed={shownIds.has(route.id)}
-                aria-label={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
-                title={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
-                onclick={() => onToggleShown(route.id, !shownIds.has(route.id))}
-              >
-                {#if shownIds.has(route.id)}
-                  <Eye size={18} aria-hidden="true" />
-                {:else}
-                  <EyeOff size={18} aria-hidden="true" />
-                {/if}
-              </button>
-              <button
-                type="button"
-                class="icon"
-                aria-label="Edit route"
-                title="Edit"
-                disabled={working !== undefined}
-                onclick={() => onEditRoute(route.id)}
-              >
-                <SquarePen size={18} aria-hidden="true" />
-              </button>
-              {#if route.id === activeId}
-                <button
-                  type="button"
-                  class="icon nav"
-                  aria-label="Stop navigation"
-                  title="Stop navigation"
-                  onclick={onStop}
-                >
-                  <Square size={18} aria-hidden="true" />
-                </button>
-              {:else}
-                <button
-                  type="button"
-                  class="icon"
-                  aria-label="Activate route"
-                  title="Activate route"
-                  disabled={working !== undefined}
-                  onclick={() => onActivate(route.id)}
-                >
-                  <Navigation size={18} aria-hidden="true" />
-                </button>
-              {/if}
-              <button
-                type="button"
-                class="icon danger"
-                aria-label="Delete route"
-                title="Delete"
-                onclick={() => onDelete(route.id)}
-              >
-                <Trash2 size={18} aria-hidden="true" />
-              </button>
-            </div>
-          </li>
-        {/each}
-      </ul>
+  <div class="body">
+    {#if error}
+      <p class="error" role="alert">{error}</p>
     {/if}
+
+    <div class="controls">
+      <button
+        type="button"
+        class="btn btn-primary"
+        onclick={onNew}
+        disabled={working !== undefined}
+      >
+        <Plus size={16} aria-hidden="true" />
+        New route
+      </button>
+    </div>
+
+    {#if working}
+      <div class="editing" role="group" aria-label="Route under edit">
+        <dl class="stats">
+          <dt>Waypoints</dt>
+          <dd><span class="num">{working.waypoints.length}</span><span class="unit"></span></dd>
+          <dt>Distance</dt>
+          <dd>
+            <span class="num">{formatNm(routeDistanceMeters(working.waypoints))}</span>
+            <span class="unit">nm</span>
+          </dd>
+        </dl>
+        <p class="hint">
+          Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
+        </p>
+        <div class="controls">
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick={promptSave}
+            disabled={working.waypoints.length < 2}
+          >
+            <Save size={16} aria-hidden="true" />
+            Save
+          </button>
+          <button type="button" class="btn" onclick={onCancelEdit}>
+            <X size={16} aria-hidden="true" />
+            Cancel
+          </button>
+        </div>
+      </div>
+    {/if}
+
+    <div class="saved">
+      <span class="saved-title">Saved routes</span>
+      {#if routes.length === 0}
+        <p class="empty">No routes yet</p>
+      {:else}
+        <ul>
+          {#each routes as route (route.id)}
+            <li class:active={route.id === activeId}>
+              <div class="card-head">
+                <button
+                  type="button"
+                  class="name"
+                  title="Go to this route on the chart"
+                  onclick={() => onLocate(route.id)}
+                >
+                  {route.name}
+                </button>
+                {#if route.id === activeId}
+                  <span class="badge">Active</span>
+                {/if}
+              </div>
+              <dl class="card-stats">
+                <dt>Distance</dt>
+                <dd>
+                  <span class="num">{formatNm(routeDistanceMeters(route.waypoints))}</span>
+                  nm
+                </dd>
+                <dt>Waypoints</dt>
+                <dd><span class="num">{route.waypoints.length}</span></dd>
+              </dl>
+              <div class="actions">
+                <button
+                  type="button"
+                  class="icon-btn"
+                  aria-pressed={shownIds.has(route.id)}
+                  aria-label={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
+                  title={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
+                  onclick={() => onToggleShown(route.id, !shownIds.has(route.id))}
+                >
+                  {#if shownIds.has(route.id)}
+                    <Eye size={18} aria-hidden="true" />
+                  {:else}
+                    <EyeOff size={18} aria-hidden="true" />
+                  {/if}
+                </button>
+                <button
+                  type="button"
+                  class="icon-btn"
+                  aria-label="Edit route"
+                  title="Edit"
+                  disabled={working !== undefined}
+                  onclick={() => onEditRoute(route.id)}
+                >
+                  <SquarePen size={18} aria-hidden="true" />
+                </button>
+                {#if route.id === activeId}
+                  <button
+                    type="button"
+                    class="icon-btn icon-btn--accent"
+                    aria-label="Stop navigation"
+                    title="Stop navigation"
+                    onclick={onStop}
+                  >
+                    <Square size={18} aria-hidden="true" />
+                  </button>
+                {:else}
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    aria-label="Activate route"
+                    title="Activate route"
+                    disabled={working !== undefined}
+                    onclick={() => onActivate(route.id)}
+                  >
+                    <Navigation size={18} aria-hidden="true" />
+                  </button>
+                {/if}
+                <button
+                  type="button"
+                  class="icon-btn icon-btn--danger"
+                  aria-label="Delete route"
+                  title="Delete"
+                  onclick={() => onDelete(route.id)}
+                >
+                  <Trash2 size={18} aria-hidden="true" />
+                </button>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
   </div>
-</section>
+</aside>
 
 <style>
-.routes {
+header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-block-end: 1px solid var(--border);
+}
+header .panel-title {
+  flex: 1;
+}
+.body {
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  font-size: var(--text-base);
-}
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-block-end: 0.5rem;
-  border-block-end: 1px solid var(--border);
+  padding: 0.5rem 0.75rem 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 .controls {
   display: flex;
@@ -362,7 +379,7 @@ function promptSave(): void {
 .saved .name:hover {
   color: var(--accent);
 }
-.pill {
+.badge {
   flex-shrink: 0;
   padding: 0.1rem 0.5rem;
   border-radius: var(--radius-pill);
@@ -405,43 +422,7 @@ function promptSave(): void {
 }
 /* Push the destructive delete to the trailing edge so it is not flush against the safe
    actions and an accidental tap is less likely. */
-.saved .actions .danger {
+.saved .actions .icon-btn--danger {
   margin-inline-start: auto;
-}
-.icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--control-size);
-  min-inline-size: var(--control-size);
-  padding: 0.25rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition:
-    background-color var(--transition-fast),
-    color var(--transition-fast);
-}
-.icon:hover {
-  background: var(--surface);
-  color: var(--text);
-}
-.icon:active:not(:disabled) {
-  filter: brightness(0.92);
-}
-.icon:disabled {
-  opacity: var(--disabled-opacity);
-  cursor: not-allowed;
-}
-.icon[aria-pressed="true"] {
-  color: var(--accent);
-}
-.icon.nav {
-  color: var(--accent);
-}
-.icon.danger:hover {
-  color: var(--alarm);
 }
 </style>

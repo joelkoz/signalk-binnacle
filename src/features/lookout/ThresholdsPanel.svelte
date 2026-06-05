@@ -82,7 +82,11 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
       <span class="unit">min</span>
     </label>
   </div>
-  <button type="button" class="reset" onclick={() => thresholds.set({ ...DEFAULT_THRESHOLDS })}>
+  <button
+    type="button"
+    class="btn btn-ghost reset"
+    onclick={() => thresholds.set({ ...DEFAULT_THRESHOLDS })}
+  >
     Reset to defaults
   </button>
 </section>
@@ -138,18 +142,6 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
 }
 .reset {
   align-self: flex-start;
-  min-block-size: var(--control-size);
   margin-block-start: 0.1rem;
-  padding: 0.3rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-.reset:hover {
-  border-color: var(--accent);
 }
 </style>

@@ -13,7 +13,8 @@ const { label, icon, children }: Props = $props();
 // Submenus start collapsed; the menu is minimal until you drill into a section.
 let expanded = $state(false);
 
-// Tie the trigger to its content region for assistive tech.
+// Tie the trigger to its content region for assistive tech. Derived from the prop so Svelte
+// tracks it correctly (a plain const reading a prop trips state_referenced_locally).
 const contentId = $derived(`submenu-${label.toLowerCase().replace(/\s+/g, '-')}`);
 </script>
 

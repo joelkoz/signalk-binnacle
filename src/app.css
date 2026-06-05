@@ -172,6 +172,17 @@ body {
 .btn-danger {
   color: var(--alarm);
 }
+/* A ghost variant of .btn: transparent over the surface with accent text, for secondary actions
+   (reset, retry, add by URL) that should read lighter than a filled primary while keeping the
+   bordered shape and the shared hover feel. */
+.btn-ghost {
+  background: transparent;
+  color: var(--accent);
+}
+/* A fully rounded variant for the chrome toggles (Update, Forecast) that read as pills. */
+.btn-pill {
+  border-radius: var(--radius-pill);
+}
 
 /* The close button shared by the panels: a transparent icon button that highlights on hover. */
 .panel-close {
@@ -193,6 +204,47 @@ body {
 .panel-close:hover {
   background: var(--surface);
   color: var(--text);
+}
+
+/* The transparent icon-only button shared by the list-row actions (show or hide, edit, activate,
+   delete, manage, drag): a control-size square that highlights on hover. The accent modifier holds
+   a persistent accent for an active action; the danger modifier turns the icon to the alarm on
+   hover for a destructive one. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--control-size);
+  min-inline-size: var(--control-size);
+  padding: 0.25rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+.icon-btn:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.icon-btn:active:not(:disabled) {
+  filter: brightness(0.92);
+}
+.icon-btn:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+.icon-btn[aria-pressed="true"] {
+  color: var(--accent);
+}
+.icon-btn--accent {
+  color: var(--accent);
+}
+.icon-btn--danger:hover {
+  color: var(--alarm);
 }
 
 /* The edge-docked slide-over panels (layers, note detail) share one shell: a full-height column on
@@ -264,6 +316,20 @@ body {
 .bottom-strip .note {
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+/* The metrics line shared by both strips: baseline-aligned readouts on one row. */
+.bottom-strip .row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: var(--text-base);
+}
+/* A name that ellipsizes rather than wrapping (the active destination, a contact). The strips add
+   their own flex and weight on top. */
+.bottom-strip .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .bottom-strip .ack {
   margin-inline-start: auto;

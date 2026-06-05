@@ -134,7 +134,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
             <span class="name" title={track.name}>{track.name}</span>
             <button
               type="button"
-              class="icon"
+              class="icon-btn"
               aria-pressed={shown.has(track.id)}
               aria-label={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
               title={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
@@ -148,7 +148,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
             </button>
             <button
               type="button"
-              class="icon"
+              class="icon-btn"
               aria-label="Export GeoJSON"
               title="Export GeoJSON"
               onclick={() => onExport(track)}
@@ -157,7 +157,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
             </button>
             <button
               type="button"
-              class="icon danger"
+              class="icon-btn icon-btn--danger"
               aria-label="Delete track"
               title="Delete"
               onclick={() => onDelete(track.id)}
@@ -276,28 +276,5 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--control-size);
-  min-inline-size: var(--control-size);
-  padding: 0.25rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.icon:hover {
-  background: var(--surface);
-  color: var(--text);
-}
-.icon[aria-pressed="true"] {
-  color: var(--accent);
-}
-.icon.danger:hover {
-  color: var(--alarm);
 }
 </style>

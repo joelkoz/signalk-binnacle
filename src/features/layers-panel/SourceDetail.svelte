@@ -39,7 +39,7 @@ async function doDelete(): Promise<void> {
 
 <div class="detail">
   <header>
-    <button type="button" class="back" aria-label="Back to layers" onclick={onBack}>
+    <button type="button" class="icon-btn" aria-label="Back to layers" onclick={onBack}>
       <ArrowLeft size={18} aria-hidden="true" />
     </button>
     <h3>Chart detail</h3>
@@ -86,12 +86,12 @@ async function doDelete(): Promise<void> {
     <div class="confirm">
       <p>Delete this chart?{source.byteSize ? ` Frees ${formatBytes(source.byteSize)}.` : ''}</p>
       <div class="actions">
-        <button type="button" onclick={() => (confirming = false)}>Cancel</button>
-        <button type="button" class="danger" onclick={doDelete}>Delete</button>
+        <button type="button" class="btn" onclick={() => (confirming = false)}>Cancel</button>
+        <button type="button" class="btn btn-danger" onclick={doDelete}>Delete</button>
       </div>
     </div>
   {:else}
-    <button type="button" class="delete" onclick={() => (confirming = true)}>
+    <button type="button" class="btn btn-danger" onclick={() => (confirming = true)}>
       <Trash2 size={16} aria-hidden="true" />
       Delete chart
     </button>
@@ -109,22 +109,6 @@ header {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-}
-.back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: var(--control-size);
-  min-block-size: var(--control-size);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.back:hover {
-  color: var(--text);
 }
 header h3 {
   margin: 0;
@@ -170,20 +154,6 @@ dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
-.delete {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-block-size: var(--control-size);
-  padding-inline: 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--alarm);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
 .confirm {
   padding: 0.5rem;
   border: 1px solid var(--alarm);
@@ -196,20 +166,5 @@ dd {
   display: flex;
   justify-content: flex-end;
   gap: 0.4rem;
-}
-.actions button {
-  min-block-size: var(--control-size);
-  padding-inline: 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-.actions .danger {
-  border-color: var(--alarm);
-  color: var(--alarm);
 }
 </style>

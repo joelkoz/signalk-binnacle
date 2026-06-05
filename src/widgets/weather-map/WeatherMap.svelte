@@ -349,7 +349,7 @@ onDestroy(() => {
     >
       Here
     </button>
-    <button type="button" class="close" aria-label="Close weather" onclick={onClose}>
+    <button type="button" class="panel-close" aria-label="Close weather" onclick={onClose}>
       <X size={18} aria-hidden="true" />
     </button>
   </header>
@@ -519,17 +519,6 @@ onDestroy(() => {
 .pill.on {
   color: var(--accent);
   border-color: var(--accent);
-}
-.close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--control-size);
-  min-inline-size: var(--control-size);
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
 }
 .panel-map {
   position: relative;

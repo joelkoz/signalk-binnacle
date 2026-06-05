@@ -126,7 +126,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 
 <aside class="slide-over slide-over--dock-left" aria-label="Layers" use:dialog={onClose}>
   <header>
-    <h2>Layers</h2>
+    <h2 class="panel-title">Layers</h2>
     <button type="button" class="panel-close" aria-label="Close" onclick={onClose}>
       <X size={18} aria-hidden="true" />
     </button>
@@ -202,9 +202,6 @@ header {
 }
 header h2 {
   flex: 1;
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: 600;
 }
 .body {
   flex: 1;

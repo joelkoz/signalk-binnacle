@@ -29,7 +29,7 @@ export class LayersView {
 
   // Move a layer to a new index in the top-to-bottom display order, then rebuild the list in
   // the new order. A reorder is a discrete drop, not a per-pixel stream, so a full refresh is
-  // fine here (unlike the in-place toggle and opacity writes above).
+  // fine here (unlike the in-place opacity write above, which mutates one item).
   reorder(id: string, toIndex: number): void {
     this.#manager.reorder(id, toIndex);
     this.refresh();

@@ -87,7 +87,9 @@ function dragOver(event: DragEvent): void {
         bind:value={url}
         disabled={busy}
       >
-      <button type="button" class="go" onclick={addUrl} disabled={busy || !url.trim()}>Add</button>
+      <button type="button" class="btn btn-ghost" onclick={addUrl} disabled={busy || !url.trim()}>
+        Add
+      </button>
     </div>
   </div>
 
@@ -133,7 +135,7 @@ function dragOver(event: DragEvent): void {
     <p class="status error">{error}</p>
   {/if}
 
-  <button type="button" class="cancel" onclick={onDone} disabled={busy}>Close</button>
+  <button type="button" class="btn btn-ghost" onclick={onDone} disabled={busy}>Close</button>
 </div>
 
 <style>
@@ -173,24 +175,6 @@ function dragOver(event: DragEvent): void {
   color: var(--text);
   font: inherit;
   font-size: var(--text-sm);
-}
-.go,
-.cancel {
-  min-block-size: var(--control-size);
-  padding-inline: 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-.go:disabled,
-.cancel:disabled {
-  color: var(--text-muted);
-  cursor: default;
-  opacity: var(--disabled-opacity);
 }
 .divider {
   display: flex;

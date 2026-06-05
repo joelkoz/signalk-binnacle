@@ -53,17 +53,8 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
   flex-direction: column;
   gap: 0.25rem;
 }
-.row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  font-size: var(--text-base);
-}
 .name {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .row.danger .name {
   color: var(--alarm);

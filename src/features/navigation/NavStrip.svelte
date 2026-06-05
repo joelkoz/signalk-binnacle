@@ -72,17 +72,8 @@ const ttg = $derived(
 
 <style>
 .name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: var(--text-base);
   font-weight: 600;
-}
-.row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  font-size: var(--text-base);
 }
 .steer {
   font-family: var(--font-mono);

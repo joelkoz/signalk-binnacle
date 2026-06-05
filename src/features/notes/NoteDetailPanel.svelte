@@ -67,7 +67,7 @@ function measure(item: NormalizedItem): string {
 >
   <header>
     <div class="heading">
-      <h2>{selection.name}</h2>
+      <h2 class="panel-title">{selection.name}</h2>
       <span class="type">{categoryLabel(selection.category)}</span>
     </div>
     <button type="button" class="panel-close" aria-label="Close detail" onclick={onClose}>
@@ -80,7 +80,7 @@ function measure(item: NormalizedItem): string {
       <p class="status" role="status">Loading...</p>
     {:else if failed}
       <p class="status" role="alert">Could not load detail.</p>
-      <button type="button" class="retry" onclick={() => (attempt += 1)}>Retry</button>
+      <button type="button" class="btn btn-ghost" onclick={() => (attempt += 1)}>Retry</button>
     {:else if sections}
       {#each sections as section (section.id)}
         <section>
@@ -117,6 +117,7 @@ function measure(item: NormalizedItem): string {
                     {:else if linkUrl}
                       <a href={linkUrl} target="_blank" rel="noopener noreferrer">{item.label}</a>
                     {:else if item.kind === 'rating'}
+                      {@const filled = Math.round(Number(item.value))}
                       <span
                         class="rating"
                         role="img"
@@ -125,7 +126,7 @@ function measure(item: NormalizedItem): string {
                         {#each STARS as n (n)}
                           <Star
                             size={14}
-                            fill={n <= Math.round(Number(item.value)) ? 'currentColor' : 'none'}
+                            fill={n <= filled ? 'currentColor' : 'none'}
                             aria-hidden="true"
                           />
                         {/each}
@@ -177,11 +178,6 @@ header {
 .heading {
   flex: 1;
   min-inline-size: 0;
-}
-.heading h2 {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: 600;
 }
 .type {
   color: var(--text-muted);
@@ -278,19 +274,6 @@ dd {
 .status {
   margin-block: 0.25rem;
   color: var(--text-muted);
-}
-.retry {
-  display: inline-flex;
-  align-items: center;
-  min-block-size: var(--control-size);
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
 }
 footer {
   display: flex;

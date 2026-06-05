@@ -617,7 +617,9 @@ onDestroy(() => {
     </span>
     <span class="topbar-actions">
       {#if updateReady}
-        <button type="button" class="update" onclick={() => pwa.update()}>Update</button>
+        <button type="button" class="btn btn-primary btn-pill" onclick={() => pwa.update()}>
+          Update
+        </button>
       {/if}
       <ThemeToggle controller={theme} />
     </span>
@@ -715,7 +717,7 @@ onDestroy(() => {
     <div class="forecast-center">
       <button
         type="button"
-        class="forecast-btn"
+        class="btn btn-pill forecast-btn"
         class:on={weatherPanelOpen}
         aria-pressed={weatherPanelOpen}
         onclick={() => (weatherPanelOpen = !weatherPanelOpen)}
@@ -776,16 +778,6 @@ onDestroy(() => {
   align-items: center;
   gap: 0.5rem;
 }
-.update {
-  font: inherit;
-  font-size: var(--text-sm);
-  padding: 0.3rem 0.7rem;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--surface-raised);
-  cursor: pointer;
-}
 .brand {
   font-weight: 600;
 }
@@ -836,17 +828,12 @@ onDestroy(() => {
   z-index: var(--z-panel);
 }
 /* The Routes panel docks at the same leading edge as the Layers panel; opening one closes the other,
-   so they never overlap. RoutesPanel is content-only, so the slot supplies the panel chrome. */
+   so they never overlap. RoutesPanel renders its own slide-over shell, so the slot only positions it. */
 .routes-panel-slot {
   position: absolute;
   inset-block: 0;
   inset-inline-start: 0;
   z-index: var(--z-panel);
-  inline-size: min(22rem, 100%);
-  overflow-y: auto;
-  padding: 0.75rem;
-  background: var(--surface-overlay);
-  border-inline-end: 1px solid var(--border);
 }
 @media (max-width: 600px) {
   .note-panel-slot,
@@ -883,19 +870,9 @@ onDestroy(() => {
   justify-content: center;
   pointer-events: none;
 }
+/* The base look comes from the shared .btn .btn-pill; the slot disables pointer events to let
+   clicks fall through to the chart, so the button re-enables them, and .on marks the open state. */
 .forecast-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  min-block-size: var(--control-size);
-  padding: 0.2rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface-raised);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
   pointer-events: auto;
 }
 .forecast-btn.on {

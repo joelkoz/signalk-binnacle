@@ -44,7 +44,7 @@ const percent = $derived(Math.round(item.opacity * 100));
   <div class="row-main">
     <button
       type="button"
-      class="handle"
+      class="icon-btn handle"
       aria-label={`Move ${item.title}, position ${index + 1} of ${count}`}
       aria-keyshortcuts="ArrowUp ArrowDown"
       onpointerdown={onHandlePointerDown}
@@ -58,8 +58,8 @@ const percent = $derived(Math.round(item.opacity * 100));
       onToggle={(visible) => view.toggle(item.id, visible)}
     />
     {#if onManage}
-      <button type="button" class="manage" aria-label={`Manage ${item.title}`} onclick={onManage}>
-        <Settings2 size={16} aria-hidden="true" />
+      <button type="button" class="icon-btn" aria-label={`Manage ${item.title}`} onclick={onManage}>
+        <Settings2 size={18} aria-hidden="true" />
       </button>
     {/if}
   </div>
@@ -115,38 +115,11 @@ const percent = $derived(Math.round(item.opacity * 100));
   align-items: center;
   gap: 0.4rem;
 }
+/* The drag handle is an .icon-btn that keeps the grab cursor and suppresses touch scrolling so a
+   drag starts cleanly on a touchscreen. */
 .handle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: var(--control-size);
-  min-block-size: var(--control-size);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
   cursor: grab;
   touch-action: none;
-}
-.handle:hover {
-  color: var(--text);
-}
-.manage {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: var(--control-size);
-  min-block-size: var(--control-size);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.manage:hover {
-  color: var(--accent);
 }
 .opacity-line {
   display: flex;
