@@ -237,11 +237,13 @@ All notable changes to Binnacle are documented here. The format follows
 ### Changed
 
 - A final whole-codebase cleanup (six audit lanes) before the 0.1.0 release, no feature change. The
-  panel, button, icon, and instrument-strip styling moved into shared `app.css` utilities (`.icon-btn`
-  with accent and danger modifiers, `.btn-ghost`, `.btn-pill`, and a shared bottom-strip metrics row):
-  the Routes panel now renders the same slide-over shell as the Layers and note panels instead of
-  having the app shell hand-roll its dock chrome, every panel header reads the shared `.panel-title`,
-  and the row-action icon buttons and ghost buttons stop being re-declared per component. The Signal K
+  panel, button, icon, label, and instrument-strip styling moved into shared `app.css` utilities
+  (`.icon-btn` with accent and danger modifiers, `.btn-ghost`, `.btn-pill`, a shared bottom-strip
+  metrics row, a `.caps-label` for the uppercase section labels, and a 4px-based `--space-*` spacing
+  scale for the common padding, gap, and margin values): the Routes panel now renders the same
+  slide-over shell as the Layers and note panels instead of having the app shell hand-roll its dock
+  chrome, every panel header reads the shared `.panel-title`, and the row-action icon buttons and
+  ghost buttons stop being re-declared per component. The Signal K
   resource clients (routes, charts, tracks, and course) now share one `fetchKeyedResource` plus
   `putResource` and `deleteResource` instead of three copies of the v2-then-v1 fetch and five copies
   of the PUT and DELETE wrapper; the three IndexedDB stores share one `openIdbDatabase` opener and one
