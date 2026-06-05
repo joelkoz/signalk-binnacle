@@ -9,6 +9,14 @@
     "type": "buymeacoffee",
     "url": "https://www.buymeacoffee.com/nearlcrews"
   },
+  "homepage": "https://github.com/NearlCrews/signalk-binnacle#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NearlCrews/signalk-binnacle.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NearlCrews/signalk-binnacle/issues"
+  },
   "keywords": [
     "signalk-webapp",
     "signalk-category-chart-plotters"

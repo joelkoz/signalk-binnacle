@@ -1,6 +1,7 @@
 # Binnacle
 
 [![CI](https://github.com/NearlCrews/signalk-binnacle/actions/workflows/ci.yml/badge.svg)](https://github.com/NearlCrews/signalk-binnacle/actions/workflows/ci.yml)
+[![SignalK Webapp CI](https://github.com/NearlCrews/signalk-binnacle/actions/workflows/signalk-webapp-ci.yml/badge.svg)](https://github.com/NearlCrews/signalk-binnacle/actions/workflows/signalk-webapp-ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/nearlcrews)
@@ -8,9 +9,15 @@
 A next-generation marine chart plotter for [Signal K](https://signalk.org), built for the
 bluewater cruiser and the liveaboard.
 
-> **Pre-alpha.** Binnacle is early in active development. It is not certified for
-> safety-of-life navigation. Always carry redundant means of navigation, and treat all
-> displays as advisory.
+> **0.1.0, the first release.** Binnacle is young, but it is already a complete chart plotter:
+> GPU charts and depth, route planning and following, a full weather workspace, an active
+> collision watch, voyage tracks, and rich points of interest all ship in this release.
+>
+> **It has not been field-tested at any scale.** It has been developed and verified against a
+> single Signal K server, never across a fleet or a range of real-world boats, hardware, and
+> conditions. It is also not certified for safety-of-life navigation. Always carry redundant
+> means of navigation, cross-check against your primary instruments, and treat every display as
+> advisory.
 
 ## What it does
 
@@ -23,6 +30,37 @@ The design center is the offshore watch and the swinging anchor: a chart you can
 night watch, danger that surfaces before you ask for it, and a plotter that keeps working
 1,500 nautical miles from the nearest cell tower, all of it rendered smoothly enough to run
 on the Raspberry Pi at the helm.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="https://raw.githubusercontent.com/NearlCrews/signalk-binnacle/main/static/screenshots/01-chart.png" alt="The chart with AIS traffic and the app menu"><br>
+      <sub>The chart with AIS traffic, points of interest, and the app menu.</sub>
+    </td>
+    <td width="50%">
+      <img src="https://raw.githubusercontent.com/NearlCrews/signalk-binnacle/main/static/screenshots/02-routes.png" alt="Planning a route on the chart"><br>
+      <sub>Planning a route, with the leg count and total distance updating live.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="https://raw.githubusercontent.com/NearlCrews/signalk-binnacle/main/static/screenshots/03-charts.png" alt="NOAA ENC charts and bathymetry layered from the Layers panel"><br>
+      <sub>NOAA ENC charts and bathymetry, layered and faded from the Layers panel.</sub>
+    </td>
+    <td width="50%">
+      <img src="https://raw.githubusercontent.com/NearlCrews/signalk-binnacle/main/static/screenshots/04-anchorage.png" alt="An anchorage point-of-interest detail panel"><br>
+      <sub>A native anchorage detail from ActiveCaptain, rendered in a side panel.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="https://raw.githubusercontent.com/NearlCrews/signalk-binnacle/main/static/screenshots/05-weather.png" alt="The weather mini-map" width="80%"><br>
+      <sub>The weather mini-map: animated wind, pressure isobars, radar, and a time scrubber.</sub>
+    </td>
+  </tr>
+</table>
 
 ## Modern and fast
 
@@ -71,7 +109,7 @@ utilities, shares the Signal K resource clients and the IndexedDB stores behind 
 completes the App Store manifest (screenshots and a "Works well with" list). See the
 [changelog](CHANGELOG.md) for the full list.
 
-## Status
+## Features
 
 The 0.1.0 release ships Binnacle's full first feature set. The foundation (the build, the module
 architecture, the verification gates, the real-time data layer, the map, chart layers, AIS targets,
@@ -79,7 +117,7 @@ day, dusk, and night-red theming, and the identity pass) and the differentiating
 and layers, routing, weather, the Lookout collision safety feature, tracks, and points of interest)
 are all in place.
 
-What is in place now:
+Everything in this release:
 
 - A Svelte 5, Vite, and TypeScript application that builds as a Signal K webapp.
 - A Feature-Sliced Design layout (`app`, `views`, `widgets`, `features`, `entities`, and
@@ -235,8 +273,9 @@ Restart Signal K, then open `http://your-sk-server:3000/binnacle/` in a browser.
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE) for the full text. The software is provided "AS IS",
-without warranty of any kind. Treat all on-screen information as advisory, and always carry
-independent means of position-fixing.
+without warranty of any kind. It has not been field-tested at scale and is not certified for
+navigation. Treat all on-screen information as advisory, and always carry independent means of
+position-fixing.
 
 ## Support
 
