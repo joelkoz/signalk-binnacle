@@ -66,6 +66,8 @@ jobs:
       - run: npm run build
         env:
           NODE_ENV: production
-      - run: npm publish --provenance
+      # --access public is required for the first publish of a new package when generating
+      # provenance; for later versions it is the default for an unscoped public package.
+      - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
