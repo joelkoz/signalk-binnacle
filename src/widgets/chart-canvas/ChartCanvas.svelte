@@ -187,6 +187,15 @@ onMount(() => {
           const zoom = map.getZoom();
           map.flyTo({ center: [longitude, latitude], zoom: zoom < 11 ? 12 : zoom });
         },
+        fitBounds: ([west, south, east, north]) => {
+          map.fitBounds(
+            [
+              [west, south],
+              [east, north],
+            ],
+            { padding: 40, maxZoom: 16, duration: 800 },
+          );
+        },
         clearNoteSelection: () => notesOverlay.deselect(ctx),
         startRouteEdit: (route) => routeEditor?.start(route),
         stopRouteEdit: () => routeEditor?.stop(),

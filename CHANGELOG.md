@@ -4,6 +4,21 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-06-05
+
+### Fixed
+
+- Importing a chart now flies the map to the chart's bounds, so a PMTiles archive (by file or URL)
+  is immediately visible instead of staying off-screen when it covers a different area than the
+  current view. Previously the chart was added to the Layers panel but the map did not move, so it
+  looked like nothing happened. (A new fitBounds map command, fired only on a user import, never on
+  the charts restored at startup.)
+
+### Changed
+
+- The layer-toggle checkbox no longer shrinks when a layer name is long: it stays square (the name
+  ellipsizes instead).
+
 ## [0.1.1] - 2026-06-05
 
 ### Changed

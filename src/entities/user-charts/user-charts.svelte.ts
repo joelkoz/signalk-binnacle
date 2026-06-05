@@ -49,15 +49,20 @@ export class UserCharts {
 
   #store: PmtilesStore;
   #persist: (sources: UserChartSource[]) => void;
+  // Fires only when the user imports a chart (addUrl or addFile), never for the persisted set
+  // restored at startup, so the app can fly the map to a freshly imported chart.
+  #onAdd?: (source: UserChartSource) => void;
 
   constructor(
     store: PmtilesStore,
     persisted: UserChartSource[],
     persist: (sources: UserChartSource[]) => void,
+    onAdd?: (source: UserChartSource) => void,
   ) {
     this.#store = store;
     this.sources = persisted;
     this.#persist = persist;
+    this.#onAdd = onAdd;
   }
 
   async addUrl(url: string): Promise<void> {
@@ -112,5 +117,6 @@ export class UserCharts {
   #add(source: UserChartSource): void {
     this.sources = [...this.sources, source];
     this.#persist(this.sources);
+    this.#onAdd?.(source);
   }
 }

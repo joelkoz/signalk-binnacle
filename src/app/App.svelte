@@ -178,8 +178,15 @@ const layerOrder = new PersistedValue<string[]>('binnacle:layer-order', []);
 // PMTiles store, and the chart-canvas registers an overlay per source.
 const pmtilesStore = createPmtilesStore();
 const userChartsStore = new PersistedValue<UserChartSource[]>('binnacle:user-charts', []);
-const userCharts = new UserCharts(pmtilesStore, userChartsStore.value, (sources) =>
-  userChartsStore.set(sources),
+const userCharts = new UserCharts(
+  pmtilesStore,
+  userChartsStore.value,
+  (sources) => userChartsStore.set(sources),
+  // Fly to a freshly imported chart so the user sees it, even when it covers a different area
+  // than the current view. Charts without known bounds (rare) leave the view unchanged.
+  (source) => {
+    if (source.bounds) mapCommands?.fitBounds(source.bounds);
+  },
 );
 let userChartRegistrar = $state<UserChartRegistrar | undefined>();
 const registeredUserCharts = new Map<string, string | undefined>();
