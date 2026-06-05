@@ -1,5 +1,5 @@
 import { computeStats, type TrackPoint, toLonLat } from '$entities/track';
-import { asKeyedObject, authInit } from '$shared/signalk';
+import { deleteResource, fetchKeyedResource, putResource } from '$shared/signalk';
 import { toGeoJsonFeature } from './track-export';
 
 // A track read back from the Signal K resources API. Points are grouped one array per segment
@@ -88,36 +88,22 @@ function trackName(value: unknown, id: string): string {
   return id;
 }
 
-async function tryFetch(url: string, token?: string): Promise<SavedTrack[] | undefined> {
-  try {
-    const response = await fetch(url, authInit(token));
-    if (!response.ok) return undefined;
-    const keyed = asKeyedObject(await response.json());
-    if (!keyed) return undefined;
-    const out: SavedTrack[] = [];
-    for (const [id, raw] of Object.entries(keyed)) {
-      const geom = extractGeometry(raw);
-      if (!geom) continue;
-      const segments = geometryToSegments(geom);
-      if (segments.length === 0) continue;
-      out.push({ id, name: trackName(raw, id), points: segments });
-    }
-    return out;
-  } catch {
-    return undefined;
-  }
+// Map one keyed track record to a SavedTrack, or undefined when it carries no drawable line.
+function toSavedTrack(id: string, raw: unknown): SavedTrack | undefined {
+  const geom = extractGeometry(raw);
+  if (!geom) return undefined;
+  const segments = geometryToSegments(geom);
+  if (segments.length === 0) return undefined;
+  return { id, name: trackName(raw, id), points: segments };
 }
 
 export async function fetchSavedTracks(base: string, token?: string): Promise<SavedTrack[]> {
-  const v2 = await tryFetch(`${base}${V2}`, token);
-  if (v2) return v2;
-  const v1 = await tryFetch(`${base}${V1}`, token);
-  return v1 ?? [];
+  return (await fetchKeyedResource(base, [V2, V1], token, toSavedTrack)) ?? [];
 }
 
 // Splits the points into a MultiLineString at gaps; distance (meters) and timespan (seconds)
 // ride along as SI metadata. Returns whether the write succeeded.
-export async function saveTrack(
+export function saveTrack(
   base: string,
   token: string | undefined,
   id: string,
@@ -135,33 +121,9 @@ export async function saveTrack(
       timespan: stats.durationSeconds,
     },
   };
-  try {
-    const response = await fetch(
-      `${base}${V2}/${encodeURIComponent(id)}`,
-      authInit(token, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(feature),
-      }),
-    );
-    return response.ok;
-  } catch {
-    return false;
-  }
+  return putResource(`${base}${V2}/${encodeURIComponent(id)}`, token, feature);
 }
 
-export async function deleteTrack(
-  base: string,
-  token: string | undefined,
-  id: string,
-): Promise<boolean> {
-  try {
-    const response = await fetch(
-      `${base}${V2}/${encodeURIComponent(id)}`,
-      authInit(token, { method: 'DELETE' }),
-    );
-    return response.ok;
-  } catch {
-    return false;
-  }
+export function deleteTrack(base: string, token: string | undefined, id: string): Promise<boolean> {
+  return deleteResource(`${base}${V2}/${encodeURIComponent(id)}`, token);
 }

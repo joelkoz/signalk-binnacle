@@ -1,23 +1,7 @@
 import type { CourseCalculations, CourseInfo } from '$shared/signalk';
-import { authInit } from '$shared/signalk';
+import { authInit, deleteResource, putResource } from '$shared/signalk';
 
 const COURSE = '/signalk/v2/api/vessels/self/navigation/course';
-
-async function put(url: string, token: string | undefined, body: unknown): Promise<boolean> {
-  try {
-    const res = await fetch(
-      url,
-      authInit(token, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }),
-    );
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 export function activateRoute(
   base: string,
@@ -26,7 +10,7 @@ export function activateRoute(
   pointIndex = 0,
   reverse = false,
 ): Promise<boolean> {
-  return put(`${base}${COURSE}/activeRoute`, token, { href, pointIndex, reverse });
+  return putResource(`${base}${COURSE}/activeRoute`, token, { href, pointIndex, reverse });
 }
 
 export function advancePoint(
@@ -34,16 +18,11 @@ export function advancePoint(
   token: string | undefined,
   value: number,
 ): Promise<boolean> {
-  return put(`${base}${COURSE}/activeRoute/nextPoint`, token, { value });
+  return putResource(`${base}${COURSE}/activeRoute/nextPoint`, token, { value });
 }
 
-export async function clearCourse(base: string, token: string | undefined): Promise<boolean> {
-  try {
-    const res = await fetch(`${base}${COURSE}`, authInit(token, { method: 'DELETE' }));
-    return res.ok;
-  } catch {
-    return false;
-  }
+export function clearCourse(base: string, token: string | undefined): Promise<boolean> {
+  return deleteResource(`${base}${COURSE}`, token);
 }
 
 // One-time hydration: v2 course paths are not in the v1 full model, so the stream sends nothing
