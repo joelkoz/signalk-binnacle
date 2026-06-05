@@ -18,6 +18,9 @@ import { SK_PATHS } from '$shared/signalk';
 
 export type CourseSource = 'server' | 'computed';
 
+// Arrival radius used when the server reports no arrivalCircle for the active leg.
+const DEFAULT_ARRIVAL_CIRCLE_METERS = 100;
+
 // Source-agnostic active-following guidance. It reads the Signal K navigation.course paths from
 // the store and exposes the active-leg readouts, preferring the server's calcValues when a
 // provider populates them and computing the derived values client-side when they are absent or
@@ -145,7 +148,7 @@ export class CourseGuidance {
 
   get arrived(): boolean {
     const d = this.distanceToNextMeters;
-    const circle = this.#info.arrivalCircle ?? 100;
+    const circle = this.#info.arrivalCircle ?? DEFAULT_ARRIVAL_CIRCLE_METERS;
     return d != null && d <= circle;
   }
 }

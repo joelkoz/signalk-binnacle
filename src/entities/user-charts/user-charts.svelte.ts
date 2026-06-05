@@ -1,3 +1,4 @@
+import { uuidv4 } from '$shared/lib';
 import { readPmtilesMeta, type SignalKChart } from '$shared/map';
 import type { PmtilesStore } from '$shared/storage';
 
@@ -33,16 +34,6 @@ export function userChartToSignalK(source: UserChartSource, url: string): Signal
   };
 }
 
-let counter = 0;
-function newId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  // crypto.randomUUID needs a secure context; on plain http fall back to a unique-enough id.
-  counter += 1;
-  return `uc-${Date.now().toString(36)}-${counter}`;
-}
-
 function nameFromUrl(url: string): string {
   try {
     const path = new URL(url).pathname;
@@ -72,7 +63,7 @@ export class UserCharts {
   async addUrl(url: string): Promise<void> {
     const meta = await readPmtilesMeta(url);
     this.#add({
-      id: newId(),
+      id: uuidv4(),
       name: meta.name ?? nameFromUrl(url),
       kind: meta.kind,
       origin: { type: 'url', url },
@@ -86,7 +77,7 @@ export class UserCharts {
   async addFile(file: File): Promise<void> {
     const meta = await readPmtilesMeta(file);
     // One id for both the descriptor and the stored blob, so a chart and its file share an identity.
-    const id = newId();
+    const id = uuidv4();
     await this.#store.put(id, file);
     this.#add({
       id,

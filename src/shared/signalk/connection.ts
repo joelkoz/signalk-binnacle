@@ -65,9 +65,11 @@ export class SkConnection {
     this.#stopped = true;
     if (this.#reconnectTimer) clearTimeout(this.#reconnectTimer);
     // Only emit 'closed' when a socket actually existed, so a disconnect before any connect does
-    // not report a close that never had an open.
+    // not report a close that never had an open. Null the socket after closing so a repeat
+    // disconnect is a no-op rather than emitting a second 'closed'.
     const had = this.#ws !== undefined;
     this.#ws?.close();
+    this.#ws = undefined;
     if (had) this.#emit('closed');
   }
 

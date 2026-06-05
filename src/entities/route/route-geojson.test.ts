@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { featureToRoute, routeDistanceMeters, routeLegs, routeToFeature } from './route-geojson';
+import { rhumbDistanceMeters } from '$shared/nav';
+import { featureToRoute, routeDistanceMeters, routeToFeature } from './route-geojson';
 import type { Route } from './route-types';
 
 const ROUTE: Route = {
@@ -78,17 +79,12 @@ describe('featureToRoute', () => {
   });
 });
 
-describe('routeLegs and routeDistanceMeters', () => {
-  it('derives one leg per consecutive pair with SI distance and bearing', () => {
-    const legs = routeLegs(ROUTE.waypoints);
-    expect(legs).toHaveLength(2);
-    expect(legs[0].distanceMeters).toBeGreaterThan(0);
-    expect(legs[0].bearingRad).toBeCloseTo(Math.PI / 2, 1);
-  });
-
-  it('totals the leg distances', () => {
+describe('routeDistanceMeters', () => {
+  it('sums the rhumb distance of every consecutive pair', () => {
     const total = routeDistanceMeters(ROUTE.waypoints);
-    const legs = routeLegs(ROUTE.waypoints);
-    expect(total).toBeCloseTo(legs[0].distanceMeters + legs[1].distanceMeters, 3);
+    const leg0 = rhumbDistanceMeters(ROUTE.waypoints[0].position, ROUTE.waypoints[1].position);
+    const leg1 = rhumbDistanceMeters(ROUTE.waypoints[1].position, ROUTE.waypoints[2].position);
+    expect(total).toBeGreaterThan(0);
+    expect(total).toBeCloseTo(leg0 + leg1, 3);
   });
 });

@@ -70,12 +70,15 @@ export function nauticalMilesToMeters(value: number): number {
 }
 
 // A meters-to-nautical-miles reading for any distance (track length, range), centralized so
-// the conversion and rounding do not drift across the readouts that show it.
+// the conversion and rounding do not drift across the readouts that show it. A null input reads as
+// 0.00; callers that must show a blank for an absent value (the NavStrip, TracksPanel) guard with
+// PLACEHOLDER before calling, so a null never reaches the `?? 0` path in those readouts.
 export function formatNm(meters: number, digits = 2): string {
   return (metersToNauticalMiles(meters) ?? 0).toFixed(digits);
 }
 
-// A knots reading for a speed in m/s (SI), centralized so the SOG readouts do not drift.
+// A knots reading for a speed in m/s (SI), centralized so the SOG readouts do not drift. As with
+// formatNm, a null reads as 0.0; callers that need a blank guard with PLACEHOLDER first.
 export function formatKnots(metersPerSecond: number | null | undefined, digits = 1): string {
   return (metersPerSecondToKnots(metersPerSecond) ?? 0).toFixed(digits);
 }

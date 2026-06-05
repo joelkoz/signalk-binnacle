@@ -12,11 +12,3 @@ export interface Route {
   name: string;
   waypoints: Waypoint[];
 }
-
-// A derived leg between two consecutive waypoints. Distance meters, bearing radians (SI).
-export interface RouteLeg {
-  from: Waypoint;
-  to: Waypoint;
-  distanceMeters: number;
-  bearingRad: number;
-}

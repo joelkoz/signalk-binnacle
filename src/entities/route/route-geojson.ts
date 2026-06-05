@@ -1,6 +1,6 @@
-import { rhumbBearingRad, rhumbDistanceMeters } from '$shared/nav';
+import { rhumbDistanceMeters } from '$shared/nav';
 import { type LonLat, latLonToLonLat, lonLatToLatLon, str } from '$shared/signalk';
-import type { Route, RouteLeg, Waypoint } from './route-types';
+import type { Route, Waypoint } from './route-types';
 
 // The Signal K v2 route resource body: a GeoJSON Feature with a LineString, plus name and the
 // total SI distance. Per-waypoint names ride in properties.coordinatesMeta, index-aligned.
@@ -62,21 +62,6 @@ export function featureToRoute(id: string, raw: unknown): Route | undefined {
   if (waypoints.length < 2) return undefined;
   const name = str(r.name) ?? id;
   return { id, name, waypoints };
-}
-
-export function routeLegs(waypoints: readonly Waypoint[]): RouteLeg[] {
-  const legs: RouteLeg[] = [];
-  for (let i = 1; i < waypoints.length; i += 1) {
-    const from = waypoints[i - 1];
-    const to = waypoints[i];
-    legs.push({
-      from,
-      to,
-      distanceMeters: rhumbDistanceMeters(from.position, to.position),
-      bearingRad: rhumbBearingRad(from.position, to.position),
-    });
-  }
-  return legs;
 }
 
 export function routeDistanceMeters(waypoints: readonly Waypoint[]): number {

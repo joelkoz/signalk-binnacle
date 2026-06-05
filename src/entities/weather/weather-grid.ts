@@ -1,3 +1,5 @@
+import { lerp } from '$shared/lib';
+
 export interface Bbox {
   west: number;
   south: number;
@@ -80,9 +82,9 @@ export function bilinearAt(
   const v10 = values[cy.i * cols + cx.i + 1];
   const v01 = values[(cy.i + 1) * cols + cx.i];
   const v11 = values[(cy.i + 1) * cols + cx.i + 1];
-  const top = v00 + (v10 - v00) * cx.f;
-  const bot = v01 + (v11 - v01) * cx.f;
-  return top + (bot - top) * cy.f;
+  const top = lerp(v00, v10, cx.f);
+  const bot = lerp(v01, v11, cx.f);
+  return lerp(top, bot, cy.f);
 }
 
 function frac(axisVals: number[], v: number): { i: number; f: number } | undefined {

@@ -4,12 +4,10 @@ import { DEG_TO_RAD } from '$shared/lib';
 export const EARTH_RADIUS_M = 6_371_000;
 
 // Wrap a longitude delta into [-180, 180] so a pair straddling the antimeridian does not read as a
-// ~360-degree separation. Shared by the rhumb-line geometry and the CPA local projection.
+// ~360-degree separation. Shared by the rhumb-line geometry and the CPA local projection. Total
+// over any input (not just one turn), so an accumulated or out-of-range delta still normalizes.
 export function normalizeLonDeltaDeg(delta: number): number {
-  let d = delta;
-  if (d > 180) d -= 360;
-  else if (d < -180) d += 360;
-  return d;
+  return delta - 360 * Math.round(delta / 360);
 }
 
 // Great-circle distance between two lat/lon points in meters.
