@@ -1,3 +1,5 @@
+import { degradeToMemory, openIdbDatabase } from './idb';
+
 // A persistent, time-to-live key-value store backed by IndexedDB, for caching fetched data across
 // reloads and over plain HTTP. CacheStorage and service workers are secure-context only (so they are
 // inert when the server is served over plain http on a LAN), but IndexedDB is not, so this is the
@@ -69,90 +71,70 @@ export function createExpiringStore<T>(dbName: string, options: Options = {}): E
   // Mirror to memory so a mid-session degrade keeps what was cached so far, and so a read right after
   // a write does not depend on the IndexedDB round-trip.
   const memory = memoryStore<T>(maxEntries);
-  let degraded = false;
-  let dbPromise: Promise<IDBDatabase> | undefined;
-  const db = (): Promise<IDBDatabase> => {
-    if (!dbPromise) {
-      dbPromise = new Promise((resolve, reject) => {
-        const req = factory.open(dbName, 1);
-        req.onupgradeneeded = () => {
-          const conn = req.result;
-          conn.createObjectStore(VALUES);
-          conn.createObjectStore(META);
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-        // A second tab holding the prior version blocks the upgrade; reject instead of hanging.
-        req.onblocked = () => reject(new Error('indexedDB open blocked'));
-      });
-    }
-    return dbPromise;
-  };
+  const idb = degradeToMemory();
+  const db = openIdbDatabase(factory, dbName, 1, (conn) => {
+    conn.createObjectStore(VALUES);
+    conn.createObjectStore(META);
+  });
 
   return {
-    get: async (key) => {
-      if (degraded) return memory.get(key);
-      try {
-        const conn = await db();
-        // Issue both reads synchronously on the one transaction; awaiting between requests would let
-        // the transaction auto-commit and the second request would throw.
-        const tx = conn.transaction([VALUES, META], 'readonly');
-        const metaReq = tx.objectStore(META).get(key);
-        const valueReq = tx.objectStore(VALUES).get(key);
-        const [expires, value] = await Promise.all([
-          reqPromise<number | undefined>(metaReq),
-          reqPromise<T | undefined>(valueReq),
-        ]);
-        if (expires === undefined || value === undefined) return undefined;
-        return { value, expires };
-      } catch {
-        degraded = true;
-        return memory.get(key);
-      }
-    },
-    put: async (key, value, expires) => {
-      if (degraded) return memory.put(key, value, expires);
-      await memory.put(key, value, expires);
-      try {
-        const conn = await db();
-        const tx = conn.transaction([VALUES, META], 'readwrite');
-        tx.objectStore(VALUES).put(value, key);
-        tx.objectStore(META).put(expires, key);
-        await txDone(tx);
-      } catch {
-        degraded = true;
-      }
-    },
-    prune: async (now) => {
-      if (degraded) return memory.prune(now);
-      await memory.prune(now);
-      try {
-        const conn = await db();
-        const readTx = conn.transaction(META, 'readonly');
-        const expiriesReq = readTx.objectStore(META).getAll();
-        const keysReq = readTx.objectStore(META).getAllKeys();
-        const [expiries, keys] = await Promise.all([
-          reqPromise<number[]>(expiriesReq),
-          reqPromise<IDBValidKey[]>(keysReq),
-        ]);
-        const items = keys.map((k, i) => ({ key: String(k), expires: expiries[i] }));
-        const expired = items.filter((it) => it.expires <= now).map((it) => it.key);
-        const live = items.filter((it) => it.expires > now).sort((a, b) => a.expires - b.expires);
-        const overflow =
-          live.length > maxEntries
-            ? live.slice(0, live.length - maxEntries).map((it) => it.key)
-            : [];
-        const toDelete = [...expired, ...overflow];
-        if (toDelete.length === 0) return;
-        const writeTx = conn.transaction([VALUES, META], 'readwrite');
-        for (const k of toDelete) {
-          writeTx.objectStore(VALUES).delete(k);
-          writeTx.objectStore(META).delete(k);
-        }
-        await txDone(writeTx);
-      } catch {
-        degraded = true;
-      }
-    },
+    get: (key) =>
+      idb.read<ExpiringEntry<T> | undefined>(
+        async () => {
+          const conn = await db();
+          // Issue both reads synchronously on the one transaction; awaiting between requests would
+          // let the transaction auto-commit and the second request would throw.
+          const tx = conn.transaction([VALUES, META], 'readonly');
+          const metaReq = tx.objectStore(META).get(key);
+          const valueReq = tx.objectStore(VALUES).get(key);
+          const [expires, value] = await Promise.all([
+            reqPromise<number | undefined>(metaReq),
+            reqPromise<T | undefined>(valueReq),
+          ]);
+          if (expires === undefined || value === undefined) return undefined;
+          return { value, expires };
+        },
+        () => memory.get(key),
+      ),
+    put: (key, value, expires) =>
+      idb.write(
+        async () => {
+          const conn = await db();
+          const tx = conn.transaction([VALUES, META], 'readwrite');
+          tx.objectStore(VALUES).put(value, key);
+          tx.objectStore(META).put(expires, key);
+          await txDone(tx);
+        },
+        () => memory.put(key, value, expires),
+      ),
+    prune: (now) =>
+      idb.write(
+        async () => {
+          const conn = await db();
+          const readTx = conn.transaction(META, 'readonly');
+          const expiriesReq = readTx.objectStore(META).getAll();
+          const keysReq = readTx.objectStore(META).getAllKeys();
+          const [expiries, keys] = await Promise.all([
+            reqPromise<number[]>(expiriesReq),
+            reqPromise<IDBValidKey[]>(keysReq),
+          ]);
+          const items = keys.map((k, i) => ({ key: String(k), expires: expiries[i] }));
+          const expired = items.filter((it) => it.expires <= now).map((it) => it.key);
+          const live = items.filter((it) => it.expires > now).sort((a, b) => a.expires - b.expires);
+          const overflow =
+            live.length > maxEntries
+              ? live.slice(0, live.length - maxEntries).map((it) => it.key)
+              : [];
+          const toDelete = [...expired, ...overflow];
+          if (toDelete.length === 0) return;
+          const writeTx = conn.transaction([VALUES, META], 'readwrite');
+          for (const k of toDelete) {
+            writeTx.objectStore(VALUES).delete(k);
+            writeTx.objectStore(META).delete(k);
+          }
+          await txDone(writeTx);
+        },
+        () => memory.prune(now),
+      ),
   };
 }

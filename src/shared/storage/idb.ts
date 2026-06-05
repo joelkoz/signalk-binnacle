@@ -1,23 +1,26 @@
-// The IndexedDB plumbing shared by the stores: a lazy single-store database opener (version 1,
-// rejecting rather than hanging when a second tab blocks the upgrade) and a typed transaction
-// runner. Each store layers its own degrade-to-memory policy on top.
+// The IndexedDB plumbing shared by the stores: a lazy database opener (rejecting rather than
+// hanging when a second tab blocks the upgrade), a typed single-store transaction runner, and the
+// degrade-to-memory policy each store layers on top.
 
 export interface IdbRunner {
   run<R>(mode: IDBTransactionMode, op: (store: IDBObjectStore) => IDBRequest): Promise<R>;
 }
 
-export function openIdbStore(
+// A lazy, memoized IndexedDB opener: opens on first call and reuses the connection, rejecting (not
+// hanging) when a second tab blocks the upgrade. Shared so the single-store and dual-store stores
+// open the database the same way.
+export function openIdbDatabase(
   factory: IDBFactory,
   dbName: string,
-  storeName: string,
-  createStore: (db: IDBDatabase) => void,
-): IdbRunner {
+  version: number,
+  upgrade: (db: IDBDatabase) => void,
+): () => Promise<IDBDatabase> {
   let dbPromise: Promise<IDBDatabase> | undefined;
-  const db = (): Promise<IDBDatabase> => {
+  return () => {
     if (!dbPromise) {
       dbPromise = new Promise((resolve, reject) => {
-        const req = factory.open(dbName, 1);
-        req.onupgradeneeded = () => createStore(req.result);
+        const req = factory.open(dbName, version);
+        req.onupgradeneeded = () => upgrade(req.result);
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
         // A second tab holding the prior version blocks the upgrade; reject instead of hanging.
@@ -26,7 +29,15 @@ export function openIdbStore(
     }
     return dbPromise;
   };
+}
 
+export function openIdbStore(
+  factory: IDBFactory,
+  dbName: string,
+  storeName: string,
+  createStore: (db: IDBDatabase) => void,
+): IdbRunner {
+  const db = openIdbDatabase(factory, dbName, 1, createStore);
   return {
     run: <R>(mode: IDBTransactionMode, op: (store: IDBObjectStore) => IDBRequest): Promise<R> =>
       db().then(
@@ -37,5 +48,39 @@ export function openIdbStore(
             req.onerror = () => reject(req.error);
           }),
       ),
+  };
+}
+
+// The degrade-to-memory policy shared by the persistent stores: a write mirrors to memory first,
+// then tries IndexedDB and degrades on failure; a read tries IndexedDB and falls back to memory.
+// Once any op fails, every later op goes straight to memory, so a persistence failure never throws
+// and never loses what was already mirrored. Defined once so the stores cannot drift.
+export interface DegradeToMemory {
+  read<R>(fromIdb: () => Promise<R>, fromMemory: () => Promise<R>): Promise<R>;
+  write(toIdb: () => Promise<unknown>, toMemory: () => Promise<void>): Promise<void>;
+}
+
+export function degradeToMemory(): DegradeToMemory {
+  let degraded = false;
+  return {
+    read: async (fromIdb, fromMemory) => {
+      if (degraded) return fromMemory();
+      try {
+        return await fromIdb();
+      } catch {
+        degraded = true;
+        return fromMemory();
+      }
+    },
+    write: async (toIdb, toMemory) => {
+      // Mirror to memory on every write, so a mid-session degrade keeps everything stored so far.
+      await toMemory();
+      if (degraded) return;
+      try {
+        await toIdb();
+      } catch {
+        degraded = true;
+      }
+    },
   };
 }

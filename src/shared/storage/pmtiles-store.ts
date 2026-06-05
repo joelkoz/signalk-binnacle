@@ -1,4 +1,4 @@
-import { openIdbStore } from './idb';
+import { degradeToMemory, openIdbStore } from './idb';
 
 // A persistent blob store for user-uploaded PMTiles archives, keyed by id. IndexedDB stores the
 // Blob natively. It degrades to an in-memory map, and never throws, when IndexedDB is missing
@@ -33,37 +33,24 @@ export function createPmtilesStore(
   if (!factory) return memoryStore();
 
   const memory = memoryStore();
-  let degraded = false;
   const { run } = openIdbStore(factory, DB_NAME, STORE, (db) => db.createObjectStore(STORE));
+  const idb = degradeToMemory();
 
   return {
-    // Mirror to memory on every write so a mid-session degrade keeps everything stored so far.
-    put: async (id, blob) => {
-      if (degraded) return memory.put(id, blob);
-      await memory.put(id, blob);
-      try {
-        await run('readwrite', (s) => s.put(blob, id));
-      } catch {
-        degraded = true;
-      }
-    },
-    get: async (id) => {
-      if (degraded) return memory.get(id);
-      try {
-        return await run<Blob | undefined>('readonly', (s) => s.get(id));
-      } catch {
-        degraded = true;
-        return memory.get(id);
-      }
-    },
-    delete: async (id) => {
-      if (degraded) return memory.delete(id);
-      await memory.delete(id);
-      try {
-        await run('readwrite', (s) => s.delete(id));
-      } catch {
-        degraded = true;
-      }
-    },
+    put: (id, blob) =>
+      idb.write(
+        () => run('readwrite', (s) => s.put(blob, id)),
+        () => memory.put(id, blob),
+      ),
+    get: (id) =>
+      idb.read<Blob | undefined>(
+        () => run<Blob | undefined>('readonly', (s) => s.get(id)),
+        () => memory.get(id),
+      ),
+    delete: (id) =>
+      idb.write(
+        () => run('readwrite', (s) => s.delete(id)),
+        () => memory.delete(id),
+      ),
   };
 }

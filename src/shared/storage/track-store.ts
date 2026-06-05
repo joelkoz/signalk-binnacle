@@ -1,4 +1,4 @@
-import { openIdbStore } from './idb';
+import { degradeToMemory, openIdbStore } from './idb';
 
 // A small append log generic over the record type so this stays domain-free (the track point
 // shape lives in entities/track). It degrades to an in-memory log, and never throws, when
@@ -33,40 +33,26 @@ export function createTrackStore<T>(
   if (!factory) return memoryStore<T>();
 
   const memory = memoryStore<T>();
-  let degraded = false;
   const { run } = openIdbStore(factory, DB_NAME, STORE, (db) =>
     db.createObjectStore(STORE, { autoIncrement: true }),
   );
+  const idb = degradeToMemory();
 
   return {
-    all: async () => {
-      if (degraded) return memory.all();
-      try {
-        return await run<T[]>('readonly', (s) => s.getAll());
-      } catch {
-        degraded = true;
-        return memory.all();
-      }
-    },
-    // Mirror to memory on every write, so if IndexedDB degrades mid-session the in-memory log
-    // still holds the records appended before the failure, not only the ones after it.
-    append: async (item) => {
-      if (degraded) return memory.append(item);
-      await memory.append(item);
-      try {
-        await run('readwrite', (s) => s.add(item));
-      } catch {
-        degraded = true;
-      }
-    },
-    clear: async () => {
-      if (degraded) return memory.clear();
-      await memory.clear();
-      try {
-        await run('readwrite', (s) => s.clear());
-      } catch {
-        degraded = true;
-      }
-    },
+    all: () =>
+      idb.read<T[]>(
+        () => run<T[]>('readonly', (s) => s.getAll()),
+        () => memory.all(),
+      ),
+    append: (item) =>
+      idb.write(
+        () => run('readwrite', (s) => s.add(item)),
+        () => memory.append(item),
+      ),
+    clear: () =>
+      idb.write(
+        () => run('readwrite', (s) => s.clear()),
+        () => memory.clear(),
+      ),
   };
 }
