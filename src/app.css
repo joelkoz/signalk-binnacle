@@ -123,6 +123,56 @@ body {
   color: var(--text);
 }
 
+/* One button vocabulary for the panels: the bordered base, plus a filled-primary and a danger
+   modifier, so panels share these instead of each re-declaring the accent fill and hover feel. */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--control-size);
+  gap: 0.3rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    filter var(--transition-fast);
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.btn:active:not(:disabled) {
+  filter: brightness(0.94);
+}
+.btn:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  box-shadow: var(--shadow-overlay);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.btn-primary:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn-danger {
+  color: var(--alarm);
+}
+
 /* One keyboard-focus indicator for every interactive control, visible on every theme. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);

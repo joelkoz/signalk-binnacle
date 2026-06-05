@@ -76,8 +76,8 @@ function promptSave(): void {
   {/if}
 
   <div class="controls">
-    <button type="button" class="primary" onclick={onNew} disabled={working !== undefined}>
-      <Plus size={15} aria-hidden="true" />
+    <button type="button" class="btn btn-primary" onclick={onNew} disabled={working !== undefined}>
+      <Plus size={16} aria-hidden="true" />
       New route
     </button>
   </div>
@@ -99,15 +99,15 @@ function promptSave(): void {
       <div class="controls">
         <button
           type="button"
-          class="primary"
+          class="btn btn-primary"
           onclick={promptSave}
           disabled={working.waypoints.length < 2}
         >
-          <Save size={15} aria-hidden="true" />
+          <Save size={16} aria-hidden="true" />
           Save
         </button>
-        <button type="button" onclick={onCancelEdit}>
-          <X size={15} aria-hidden="true" />
+        <button type="button" class="btn" onclick={onCancelEdit}>
+          <X size={16} aria-hidden="true" />
           Cancel
         </button>
       </div>
@@ -243,50 +243,8 @@ function promptSave(): void {
   display: flex;
   gap: 0.35rem;
 }
-.controls button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--control-size);
-  gap: 0.3rem;
-  padding: 0.3rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast),
-    filter var(--transition-fast);
-}
-.controls button:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: var(--accent-tint);
-}
-.controls button:active:not(:disabled) {
-  filter: brightness(0.94);
-}
-.controls button:disabled {
-  opacity: var(--disabled-opacity);
-  cursor: not-allowed;
-}
-.controls button.primary {
+.controls .btn-primary {
   flex: 1;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
-  font-weight: 600;
-  box-shadow: var(--shadow-overlay);
-}
-.controls button.primary:hover:not(:disabled) {
-  background: var(--accent);
-  filter: brightness(1.08);
-}
-.controls button.primary:active:not(:disabled) {
-  filter: brightness(0.96);
 }
 .editing {
   display: flex;

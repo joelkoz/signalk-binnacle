@@ -53,19 +53,19 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 <section class="tracks" aria-label="Tracks">
   <div class="controls">
     {#if recorder.paused}
-      <button type="button" onclick={() => recorder.resume()}>
+      <button type="button" class="btn" onclick={() => recorder.resume()}>
         <Play size={16} aria-hidden="true" />
         Resume
       </button>
     {:else}
-      <button type="button" onclick={() => recorder.pause()}>
+      <button type="button" class="btn" onclick={() => recorder.pause()}>
         <Pause size={16} aria-hidden="true" />
         Pause
       </button>
     {/if}
     <button
       type="button"
-      class="primary"
+      class="btn btn-primary"
       onclick={promptSave}
       disabled={recorder.points.length < 2}
     >
@@ -74,7 +74,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     </button>
     <button
       type="button"
-      class="danger"
+      class="btn btn-danger"
       onclick={confirmClear}
       disabled={recorder.points.length === 0}
     >
@@ -181,41 +181,6 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 .controls {
   display: flex;
   gap: 0.35rem;
-}
-.controls button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--control-size);
-  gap: 0.3rem;
-  padding: 0.3rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-.controls button:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-.controls button:disabled {
-  opacity: var(--disabled-opacity);
-  cursor: not-allowed;
-}
-.controls button.danger {
-  color: var(--alarm);
-}
-.controls button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
-  font-weight: 600;
-  box-shadow: var(--shadow-overlay);
-}
-.controls button.primary:hover:not(:disabled) {
-  filter: brightness(1.08);
 }
 .color-mode {
   display: flex;
