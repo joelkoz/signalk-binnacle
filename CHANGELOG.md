@@ -4,7 +4,7 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-06-05
 
 ### Added
 
@@ -236,6 +236,26 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- A final whole-codebase cleanup (six audit lanes) before the 0.1.0 release, no feature change. The
+  panel, button, icon, and instrument-strip styling moved into shared `app.css` utilities (`.icon-btn`
+  with accent and danger modifiers, `.btn-ghost`, `.btn-pill`, and a shared bottom-strip metrics row):
+  the Routes panel now renders the same slide-over shell as the Layers and note panels instead of
+  having the app shell hand-roll its dock chrome, every panel header reads the shared `.panel-title`,
+  and the row-action icon buttons and ghost buttons stop being re-declared per component. The Signal K
+  resource clients (routes, charts, tracks, and course) now share one `fetchKeyedResource` plus
+  `putResource` and `deleteResource` instead of three copies of the v2-then-v1 fetch and five copies
+  of the PUT and DELETE wrapper; the three IndexedDB stores share one `openIdbDatabase` opener and one
+  `degradeToMemory` policy; the weather grid blends through the shared `lerp`; user-chart ids and the
+  save-name prompt use shared helpers; the store iterates own keys with `Object.entries`; the
+  longitude-delta normalize is total over any input; and the unused `routeLegs` was removed.
+
+- The Signal K webapp manifest is complete for the App Store and the 0.1.0 release: five screenshots
+  (the chart with AIS, route planning, charts and depth, an anchorage point-of-interest detail, and
+  the weather mini-map) and a "Works well with" list (Crow's Nest for the points of interest Binnacle
+  renders, signalk-ssl for the HTTPS its offline cache needs, and signalk-virtual-weather-sensors as a
+  weather provider it reads). A cross-platform webapp CI builds, tests, and packs on Linux, macOS, and
+  Windows on Node 22 and 24, and a release publishes to npm with a provenance attestation.
+
 - A five-lens UI review (design tokens, layout, typography, accessibility, and SignalK marine HMI)
   brought the whole interface to one standard. New tokens defined for all three themes (a large
   radius, a shared hover and press timing, a caution-tier warning color, and an alarm tint) replace
@@ -406,6 +426,12 @@ All notable changes to Binnacle are documented here. The format follows
   `.github/FUNDING.yml`, and the `package.json` funding field).
 
 ### Fixed
+
+- The active-route Stop button and the collision-alarm Acknowledge button on the bottom strips were
+  inert. When both strips moved to the shared `.bottom-strip` class, the app shell's `pointer-events`
+  override still targeted their old `.nav-strip` and `.danger-strip` selectors, so each slot's
+  `pointer-events: none` reached the button. The override now targets `.bottom-strip`, restoring both
+  safety-critical actions.
 
 - Night-red contract violations the UI review found are corrected: the AIS target was orange (it is
   now in the red band, with a test guarding it), and the rain-radar legend showed literal blue and

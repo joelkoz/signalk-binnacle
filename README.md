@@ -47,12 +47,37 @@ stay smooth on modest helm hardware:
   service-worker runtime cache for the base map and chart tiles, and an IndexedDB weather cache, so
   previously seen areas keep rendering with no internet.
 
+## What's new in 0.1.0
+
+The first published release. Binnacle ships its full first feature set as a Signal K webapp:
+
+- **Charts and layers.** A GPU vector base map, server charts, four free streaming bathymetry and
+  ENC sources, and your own imported PMTiles, all managed from a Layers panel that toggles, fades,
+  and drag-reorders the z-order.
+- **Routing.** Draw and save routes as Signal K resources, then follow one with a nav strip (active
+  waypoint, cross-track steer side, distance and bearing, velocity made good, and time to go) over
+  the v2 Course API, with a client-side fallback and an arrival alarm.
+- **Weather.** A zoom-capped weather mini-map with an animated WebGL wind field, isobars, wave,
+  precipitation, and cloud fields, animated radar, a tap readout, and a "Here" conditions and
+  warnings panel, preferring a configured Signal K weather provider for point data.
+- **Lookout, tracks, and points of interest.** Collision danger with chart-highlight rings, an
+  audible alarm, and a published notification; voyage track recording; and native point-of-interest
+  detail panels.
+- **Built for the helm.** Day, dusk, and night-red themes, offline-first caching, self-hosted
+  assets, and an off-main-thread real-time pipeline, tuned to run on the Raspberry Pi at the helm.
+
+This release also folds the per-component panel, button, and instrument-strip styling into shared
+utilities, shares the Signal K resource clients and the IndexedDB stores behind single helpers, and
+completes the App Store manifest (screenshots and a "Works well with" list). See the
+[changelog](CHANGELOG.md) for the full list.
+
 ## Status
 
-The foundation is complete: the build, the module architecture, the verification gates, the
-real-time data layer, the map, chart layers, AIS targets, day, dusk, and night-red theming, and
-the identity pass (typography, iconography, and theme-aware symbols) are all in place. The
-differentiating features arrive in the following cycles.
+The 0.1.0 release ships Binnacle's full first feature set. The foundation (the build, the module
+architecture, the verification gates, the real-time data layer, the map, chart layers, AIS targets,
+day, dusk, and night-red theming, and the identity pass) and the differentiating features (charts
+and layers, routing, weather, the Lookout collision safety feature, tracks, and points of interest)
+are all in place.
 
 What is in place now:
 
