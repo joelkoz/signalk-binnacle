@@ -44,6 +44,8 @@ jobs:
       - name: Simulate App Store install (npm pack --ignore-scripts)
         shell: bash
         run: |
+          # npm pack prints only the tarball filename; the file is created in --pack-destination,
+          # so check it there rather than in the working directory.
           PLUGIN_TGZ=$(npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP")
-          echo "Packed: $PLUGIN_TGZ"
-          test -f "$PLUGIN_TGZ"
+          echo "Packed: $RUNNER_TEMP/$PLUGIN_TGZ"
+          test -f "$RUNNER_TEMP/$PLUGIN_TGZ"
