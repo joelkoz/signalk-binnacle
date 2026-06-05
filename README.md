@@ -28,9 +28,9 @@ collision and course data on the client when no server provider supplies them, a
 areas so they keep rendering without a connection. It runs on the same Raspberry Pi that hosts the
 Signal K server.
 
-## What's new in 0.1.0
+## Features
 
-The first published release ships Binnacle's full feature set as a Signal K webapp:
+Binnacle ships its full feature set as a Signal K webapp:
 
 - **Charts and layers** — a GPU vector base map, server charts, four streaming bathymetry and ENC
   sources, and your own imported PMTiles, in a toggle, fade, and drag-reorder Layers panel.

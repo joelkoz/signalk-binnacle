@@ -4,6 +4,17 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-06-05
+
+### Changed
+
+- App Store polish, reviewed against the Signal K AppStore publishing doc. The appIcon is now
+  256x256 (the previous 72x72 was below the documented 128x128 minimum). The README is scannable,
+  since the server's Webapps view renders it: the screenshots gallery that showed as raw HTML there
+  is removed (the screenshots stay in `signalk.screenshots` for the App Store detail page), and the
+  duplicate feature inventory is collapsed into one concise list. The title is now "WebGL chart
+  plotter for Signal K" across the README, the PWA manifest, and the repository description.
+
 ## [0.1.0] - 2026-06-05
 
 ### Added
