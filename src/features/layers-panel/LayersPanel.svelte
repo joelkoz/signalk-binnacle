@@ -160,7 +160,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
             <!-- Group the movable rows by z-band; a header marks each category change. Reorder still
                  operates on the live order. -->
             {#if i === 0 || layerGroup(movable[i - 1].band) !== layerGroup(item.band)}
-              <li class="group-label" aria-hidden="true">{layerGroup(item.band)}</li>
+              <li class="group-label caps-label" aria-hidden="true">{layerGroup(item.band)}</li>
             {/if}
             <LayerRow
               {item}
@@ -196,8 +196,8 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 0.75rem;
+  gap: var(--space-2);
+  padding: 0.6rem var(--space-3);
   border-block-end: 1px solid var(--border);
 }
 header h2 {
@@ -206,7 +206,7 @@ header h2 {
 .body {
   flex: 1;
   overflow-y: auto;
-  padding: 0.5rem 0.75rem 0.75rem;
+  padding: var(--space-2) var(--space-3) var(--space-3);
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
@@ -230,9 +230,9 @@ header h2 {
 .pinned-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   min-block-size: var(--control-size);
-  padding: 0.45rem 0.5rem;
+  padding: 0.45rem var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -259,18 +259,13 @@ header h2 {
 .group-label {
   margin-block-start: 0.35rem;
   padding-inline: 0.2rem;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
 }
 .group-label:first-child {
   margin-block-start: 0;
 }
 .add-chart-area {
-  margin-block-start: 0.5rem;
-  padding-block-start: 0.5rem;
+  margin-block-start: var(--space-2);
+  padding-block-start: var(--space-2);
   border-block-start: 1px solid var(--border);
 }
 .add-chart {

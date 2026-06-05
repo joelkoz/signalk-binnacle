@@ -765,7 +765,7 @@ onDestroy(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-4);
   border-block-end: 1px solid var(--border);
 }
 .topbar-start {
@@ -776,7 +776,7 @@ onDestroy(() => {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .brand {
   font-weight: 600;
@@ -792,8 +792,8 @@ onDestroy(() => {
 }
 .danger-slot {
   position: absolute;
-  inset-block-end: 0.75rem;
-  inset-inline: 0.75rem;
+  inset-block-end: var(--space-3);
+  inset-inline: var(--space-3);
   display: flex;
   justify-content: center;
   pointer-events: none;
@@ -803,8 +803,8 @@ onDestroy(() => {
    the DOM and the more urgent, so on the rare occasion both show, danger paints over the nav strip. */
 .nav-slot {
   position: absolute;
-  inset-block-end: 0.75rem;
-  inset-inline: 0.75rem;
+  inset-block-end: var(--space-3);
+  inset-inline: var(--space-3);
   display: flex;
   justify-content: center;
   pointer-events: none;
@@ -851,8 +851,8 @@ onDestroy(() => {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: 0.5rem 1rem;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-4);
   /* Tall enough for the absolutely-centered Forecast button (a full control-size touch target), so
      it is not clipped at the bottom by the overflow-hidden viewport. */
   min-block-size: calc(var(--control-size) + 0.5rem);

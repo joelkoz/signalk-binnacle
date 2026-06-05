@@ -14,6 +14,14 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-pill: 999px;
+  /* A 4px-based spacing scale for padding, gaps, margins, and insets, so the common spacing values
+     share one rhythm. Off-scale fine-tuning (0.3, 0.35, 0.4, 0.45, 0.6 rem) stays a literal. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
   --text-xs: 0.72rem;
   --text-sm: 0.8rem;
   --text-base: 0.85rem;
@@ -123,6 +131,17 @@ body {
   color: var(--text);
 }
 
+/* The uppercase section sub-label shared by the panels: muted, bold, tracked caps at the small type
+   size, so "Saved routes", "Overlays", the add-chart field labels, and the section sub-headings all
+   read the same. Components layer only their own box (margins, flex) on top. */
+.caps-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
 /* One button vocabulary for the panels: the bordered base, plus a filled-primary and a danger
    modifier, so panels share these instead of each re-declaring the accent fill and hover feel. */
 .btn {
@@ -131,7 +150,7 @@ body {
   justify-content: center;
   min-block-size: var(--control-size);
   gap: 0.3rem;
-  padding: 0.3rem 0.5rem;
+  padding: 0.3rem var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
@@ -191,7 +210,7 @@ body {
   justify-content: center;
   min-block-size: var(--control-size);
   min-inline-size: var(--control-size);
-  padding: 0.25rem;
+  padding: var(--space-1);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -216,7 +235,7 @@ body {
   justify-content: center;
   min-block-size: var(--control-size);
   min-inline-size: var(--control-size);
-  padding: 0.25rem;
+  padding: var(--space-1);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -287,7 +306,7 @@ body {
    --strip-accent (the route accent or the alarm) for the border and the title. */
 .bottom-strip {
   inline-size: min(28rem, calc(100% - 1.5rem));
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-overlay);
   border: 1px solid var(--strip-accent);
   border-radius: var(--radius-md);
@@ -303,7 +322,7 @@ body {
 .bottom-strip .head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin-block-end: 0.4rem;
 }
 .bottom-strip .title {
@@ -321,7 +340,7 @@ body {
 .bottom-strip .row {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: var(--space-3);
   font-size: var(--text-base);
 }
 /* A name that ellipsizes rather than wrapping (the active destination, a contact). The strips add
@@ -335,7 +354,7 @@ body {
   margin-inline-start: auto;
   font: inherit;
   font-size: var(--text-base);
-  padding: 0.5rem 0.9rem;
+  padding: var(--space-2) 0.9rem;
   min-block-size: var(--control-size);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);

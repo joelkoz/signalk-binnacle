@@ -74,7 +74,7 @@ function dragOver(event: DragEvent): void {
 
 <div class="add-form">
   <div class="field">
-    <span class="field-label" id="add-chart-url-label">
+    <span class="field-label caps-label" id="add-chart-url-label">
       <Link2 size={14} aria-hidden="true" />
       From a URL
     </span>
@@ -96,7 +96,7 @@ function dragOver(event: DragEvent): void {
   <div class="divider" aria-hidden="true"><span>or</span></div>
 
   <div class="field">
-    <span class="field-label" id="add-chart-file-label">
+    <span class="field-label caps-label" id="add-chart-file-label">
       <CloudUpload size={14} aria-hidden="true" />
       From a file
     </span>
@@ -154,11 +154,6 @@ function dragOver(event: DragEvent): void {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
 }
 .url-row {
   display: flex;
@@ -168,7 +163,7 @@ function dragOver(event: DragEvent): void {
   flex: 1;
   min-inline-size: 0;
   min-block-size: var(--control-size);
-  padding-inline: 0.5rem;
+  padding-inline: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
@@ -179,7 +174,7 @@ function dragOver(event: DragEvent): void {
 .divider {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);
@@ -199,7 +194,7 @@ function dragOver(event: DragEvent): void {
   gap: 0.15rem;
   inline-size: 100%;
   min-block-size: calc(var(--control-size) + 1.25rem);
-  padding: 0.55rem 0.5rem;
+  padding: 0.55rem var(--space-2);
   border: 1px dashed var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-raised);

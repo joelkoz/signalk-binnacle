@@ -115,7 +115,7 @@ function promptSave(): void {
     {/if}
 
     <div class="saved">
-      <span class="saved-title">Saved routes</span>
+      <span class="caps-label">Saved routes</span>
       {#if routes.length === 0}
         <p class="empty">No routes yet</p>
       {:else}
@@ -213,8 +213,8 @@ function promptSave(): void {
 header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 0.75rem;
+  gap: var(--space-2);
+  padding: 0.6rem var(--space-3);
   border-block-end: 1px solid var(--border);
 }
 header .panel-title {
@@ -226,7 +226,7 @@ header .panel-title {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  padding: 0.5rem 0.75rem 0.75rem;
+  padding: var(--space-2) var(--space-3) var(--space-3);
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
@@ -255,7 +255,7 @@ header .panel-title {
 }
 .error {
   margin: 0;
-  padding: 0.4rem 0.5rem;
+  padding: 0.4rem var(--space-2);
   border: 1px solid var(--alarm);
   border-radius: var(--radius-sm);
   color: var(--alarm);
@@ -269,7 +269,7 @@ header .panel-title {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: baseline;
-  column-gap: 0.5rem;
+  column-gap: var(--space-2);
   row-gap: 0.3rem;
   margin: 0;
 }
@@ -295,13 +295,6 @@ header .panel-title {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-}
-.saved-title {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
 }
 .empty {
   margin: 0;
@@ -375,7 +368,7 @@ header .panel-title {
 }
 .badge {
   flex-shrink: 0;
-  padding: 0.1rem 0.5rem;
+  padding: 0.1rem var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--accent-tint-strong);
   color: var(--accent);
@@ -390,7 +383,7 @@ header .panel-title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.8rem;
+  gap: var(--space-1) 0.8rem;
   margin: 0;
   font-size: var(--text-sm);
   color: var(--text-muted);

@@ -87,7 +87,7 @@ const percent = $derived(Math.round(item.opacity * 100));
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
-  padding: 0.1rem 0.5rem;
+  padding: 0.1rem var(--space-2);
 }
 .row.dragging {
   background: var(--surface);
@@ -124,7 +124,7 @@ const percent = $derived(Math.round(item.opacity * 100));
 .opacity-line {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin-block-start: 0.1rem;
 }
 .opacity-line .lbl {

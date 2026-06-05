@@ -120,7 +120,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   </dl>
 
   <div class="saved">
-    <span class="saved-title">Saved tracks</span>
+    <span class="caps-label">Saved tracks</span>
     {#if saved.length === 0}
       <p class="empty">None saved yet</p>
     {:else}
@@ -185,7 +185,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 .color-mode button {
   flex: 1;
   min-block-size: var(--control-size);
-  padding: 0.3rem 0.5rem;
+  padding: 0.3rem var(--space-2);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
@@ -215,7 +215,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: baseline;
-  column-gap: 0.5rem;
+  column-gap: var(--space-2);
   row-gap: 0.3rem;
   margin: 0;
 }
@@ -242,13 +242,6 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   flex-direction: column;
   gap: 0.3rem;
 }
-.saved-title {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
-}
 .empty {
   margin: 0;
   color: var(--text-muted);
@@ -265,7 +258,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 .saved li {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .saved .name {
   flex: 1;

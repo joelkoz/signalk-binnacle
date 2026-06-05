@@ -46,7 +46,7 @@ async function doDelete(): Promise<void> {
   </header>
 
   <label class="name-field">
-    <span>Name</span>
+    <span class="caps-label">Name</span>
     <input
       type="text"
       bind:value={name}
@@ -120,15 +120,9 @@ header h3 {
   flex-direction: column;
   gap: 0.2rem;
 }
-.name-field span {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
-}
 .name-field input {
   min-block-size: var(--control-size);
-  padding-inline: 0.5rem;
+  padding-inline: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
@@ -145,7 +139,7 @@ dl {
 dl div {
   display: grid;
   grid-template-columns: 5rem 1fr;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 dt {
   color: var(--text-muted);
@@ -155,7 +149,7 @@ dd {
   overflow-wrap: anywhere;
 }
 .confirm {
-  padding: 0.5rem;
+  padding: var(--space-2);
   border: 1px solid var(--alarm);
   border-radius: var(--radius-sm);
 }

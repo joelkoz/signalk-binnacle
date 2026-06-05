@@ -84,7 +84,7 @@ function measure(item: NormalizedItem): string {
     {:else if sections}
       {#each sections as section (section.id)}
         <section>
-          <h3>{section.title}</h3>
+          <h3 class="caps-label">{section.title}</h3>
           <dl>
             {#each section.items as item, i (item.label + i)}
               {@const linkUrl =
@@ -171,8 +171,8 @@ function measure(item: NormalizedItem): string {
 header {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.6rem 0.75rem;
+  gap: var(--space-2);
+  padding: 0.6rem var(--space-3);
   border-block-end: 1px solid var(--border);
 }
 .heading {
@@ -190,20 +190,15 @@ header {
 .body {
   flex: 1;
   overflow-y: auto;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
 .body section {
-  margin-block-end: 0.75rem;
+  margin-block-end: var(--space-3);
 }
 .body h3 {
-  margin-block: 0 0.25rem;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
+  margin-block: 0 var(--space-1);
 }
 dl {
   margin: 0;
@@ -217,7 +212,7 @@ dd {
 .item {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0.5rem;
+  gap: var(--space-2);
   padding-block: 0.15rem;
 }
 .item dd {
@@ -272,15 +267,15 @@ dd {
   text-align: start;
 }
 .status {
-  margin-block: 0.25rem;
+  margin-block: var(--space-1);
   color: var(--text-muted);
 }
 footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-block-start: 1px solid var(--border);
   color: var(--text-muted);
   font-size: var(--text-xs);
@@ -288,7 +283,7 @@ footer {
 .source-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
   min-block-size: var(--control-size);
   margin-inline-start: auto;
   color: var(--accent);

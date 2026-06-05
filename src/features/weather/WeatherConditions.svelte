@@ -152,7 +152,7 @@ function stepLabel(timeMs: number): string {
 
 <section class="conditions" aria-label="Conditions at the vessel">
   <header class="cond-head">
-    <span class="cond-title">Here</span>
+    <span class="caps-label">Here</span>
     <span class="cond-source">{sourceLabel}</span>
   </header>
 
@@ -248,11 +248,11 @@ function stepLabel(timeMs: number): string {
 .conditions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   inline-size: 15rem;
   max-block-size: 100%;
   overflow-y: auto;
-  padding: 0.5rem 0.6rem;
+  padding: var(--space-2) 0.6rem;
   background: var(--surface-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -263,14 +263,7 @@ function stepLabel(timeMs: number): string {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
-}
-.cond-title {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
+  gap: var(--space-2);
 }
 .cond-source {
   font-size: var(--text-xs);
@@ -335,12 +328,12 @@ function stepLabel(timeMs: number): string {
   border-block-start: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .forecast li {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-size: var(--text-sm);
 }
 .f-time {

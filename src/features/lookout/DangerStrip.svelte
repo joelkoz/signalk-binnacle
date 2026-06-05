@@ -51,7 +51,7 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .name {
   flex: 1;

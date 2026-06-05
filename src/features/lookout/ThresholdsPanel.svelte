@@ -95,13 +95,13 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
 .thresholds {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-size: var(--text-base);
 }
 .group {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .group-title {
   font-size: var(--text-xs);
@@ -118,7 +118,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
 .field {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .name {
   inline-size: 3rem;
@@ -127,7 +127,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
 .field input {
   inline-size: 5rem;
   min-block-size: var(--control-size);
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);

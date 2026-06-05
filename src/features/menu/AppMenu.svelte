@@ -135,7 +135,7 @@ function onWindowKeydown(event: KeyboardEvent): void {
 }
 .divider {
   block-size: 1px;
-  margin-block: 0.25rem;
+  margin-block: var(--space-1);
   margin-inline: 0.3rem;
   background: var(--border);
 }

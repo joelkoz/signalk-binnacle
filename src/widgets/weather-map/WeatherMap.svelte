@@ -437,7 +437,7 @@ onDestroy(() => {
       <div class="legend" role="group" aria-label="Weather legend">
         {#each legends as legend (legend.id)}
           <div class="legend-row">
-            <span class="legend-title">{legend.title}</span>
+            <span class="legend-title caps-label">{legend.title}</span>
             {#if legend.gradient}
               <span class="legend-scale">
                 <span class="legend-end">{legend.lowLabel}</span>
@@ -488,8 +488,8 @@ onDestroy(() => {
 .panel-head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.5rem 0.4rem 0.7rem;
+  gap: var(--space-2);
+  padding: 0.4rem var(--space-2) 0.4rem 0.7rem;
   border-block-end: 1px solid var(--border);
 }
 .layer-bar {
@@ -533,8 +533,8 @@ onDestroy(() => {
 }
 .readout {
   position: absolute;
-  inset-block-start: 0.5rem;
-  inset-inline-start: 0.5rem;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
   padding: 0.3rem 0.6rem;
   background: var(--surface-overlay);
   border: 1px solid var(--border);
@@ -555,8 +555,8 @@ onDestroy(() => {
 }
 .conditions-slot {
   position: absolute;
-  inset-block: 0.5rem;
-  inset-inline-end: 0.5rem;
+  inset-block: var(--space-2);
+  inset-inline-end: var(--space-2);
   max-block-size: calc(100% - 1rem);
   display: flex;
 }
@@ -609,26 +609,21 @@ onDestroy(() => {
 .legend-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 .legend-title {
   flex: 0 0 6.5rem;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
 }
 .legend-swatches {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .legend-swatch {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
