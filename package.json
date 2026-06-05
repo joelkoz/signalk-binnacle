@@ -19,7 +19,18 @@
   "signalk": {
     "appIcon": "./binnacle-icon.svg",
     "displayName": "Binnacle",
-    "screenshots": []
+    "screenshots": [
+      "./screenshots/01-chart.png",
+      "./screenshots/02-routes.png",
+      "./screenshots/03-charts.png",
+      "./screenshots/04-anchorage.png",
+      "./screenshots/05-weather.png"
+    ],
+    "recommends": [
+      "signalk-crows-nest",
+      "signalk-ssl",
+      "signalk-virtual-weather-sensors"
+    ]
   },
   "files": [
     "public/"

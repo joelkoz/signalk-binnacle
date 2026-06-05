@@ -1,0 +1,49 @@
+name: SignalK Webapp CI
+
+# Binnacle is a Signal K webapp, not a server plugin, so it does NOT use the official reusable
+# SignalK/signalk-server plugin-ci.yml: that workflow's plugin-entry-point, schema(), and
+# start/stop lifecycle steps run unconditionally and would fail for a webapp that exports no plugin.
+# This mirrors the parts of plugin-ci that DO apply to a webapp: a clean cross-platform build, the
+# tests, and a clean `npm pack` (the App Store install check), across Linux, macOS, and Windows on
+# the lowest supported (22) and current (24) Node. The full lint, type-check, dependency-cruiser,
+# and Playwright e2e run on Linux Node 24 in ci.yml.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-pack:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          NODE_ENV: production
+      # Simulate the App Store install: pack with lifecycle scripts disabled and confirm the tarball
+      # path is clean. Binnacle defines no prepare or prepack script, so no lifecycle banner can
+      # corrupt the captured path on npm 10 (Node 22) or npm 11 (Node 24).
+      - name: Simulate App Store install (npm pack --ignore-scripts)
+        shell: bash
+        run: |
+          PLUGIN_TGZ=$(npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP")
+          echo "Packed: $PLUGIN_TGZ"
+          test -f "$PLUGIN_TGZ"
