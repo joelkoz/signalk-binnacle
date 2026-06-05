@@ -32,7 +32,7 @@ export default defineConfig({
       manifest: {
         name: 'Binnacle',
         short_name: 'Binnacle',
-        description: 'A next-generation marine chart plotter for Signal K.',
+        description: 'A WebGL chart plotter for Signal K.',
         start_url: '/signalk-binnacle/',
         scope: '/signalk-binnacle/',
         display: 'standalone',

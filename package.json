@@ -1,7 +1,7 @@
 {
   "name": "signalk-binnacle",
   "version": "0.1.0",
-  "description": "Next-generation marine chart plotter for Signal K",
+  "description": "WebGL chart plotter for Signal K",
   "type": "module",
   "license": "Apache-2.0",
   "author": "Nearl Crews <23341701+NearlCrews@users.noreply.github.com>",
