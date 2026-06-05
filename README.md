@@ -6,8 +6,7 @@
 [![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/nearlcrews)
 
-A next-generation marine chart plotter for [Signal K](https://signalk.org), built for the
-bluewater cruiser and the liveaboard.
+A next-generation marine chart plotter for [Signal K](https://signalk.org).
 
 > **0.1.0, the first release.** Binnacle is young, but it is already a complete chart plotter:
 > GPU charts and depth, route planning and following, a full weather workspace, an active
