@@ -17,7 +17,11 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
 </script>
 
 {#if contacts.length > 0 && !collision.suppressed}
-  <aside class="danger-strip" aria-label="Collision danger" aria-live="assertive">
+  <aside
+    class="bottom-strip bottom-strip--alarm"
+    aria-label="Collision danger"
+    aria-live="assertive"
+  >
     <div class="head">
       <span class="title">Danger</span>
       {#if computedFallback}
@@ -41,44 +45,6 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
 {/if}
 
 <style>
-.danger-strip {
-  inline-size: min(28rem, calc(100% - 1.5rem));
-  padding: 0.5rem 0.75rem;
-  background: var(--surface-overlay);
-  border: 1px solid var(--alarm);
-  border-radius: var(--radius-md);
-  color: var(--text);
-  font-family: var(--font-ui);
-}
-.head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-block-end: 0.4rem;
-}
-.title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--alarm);
-}
-.note {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.ack {
-  margin-inline-start: auto;
-  font: inherit;
-  font-size: var(--text-base);
-  padding: 0.5rem 0.9rem;
-  min-block-size: var(--control-size);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface-raised);
-  color: var(--accent);
-  cursor: pointer;
-}
 .list {
   list-style: none;
   margin: 0;
@@ -106,13 +72,6 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
 .row.warning .name {
   color: var(--warning);
   font-weight: 600;
-}
-.metric b {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--text);
 }
 .more {
   margin: 0;

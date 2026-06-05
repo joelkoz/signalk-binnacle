@@ -44,7 +44,7 @@ const ttg = $derived(
 </script>
 
 {#if guidance.active}
-  <aside class="nav-strip" aria-label="Active route" aria-live="polite">
+  <aside class="bottom-strip bottom-strip--accent" aria-label="Active route" aria-live="polite">
     <div class="head">
       <span class="title">To</span>
       <span class="name">{guidance.nextPointName ?? '--'}</span>
@@ -71,50 +71,12 @@ const ttg = $derived(
 {/if}
 
 <style>
-.nav-strip {
-  inline-size: min(28rem, calc(100% - 1.5rem));
-  padding: 0.5rem 0.75rem;
-  background: var(--surface-overlay);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
-  color: var(--text);
-  font-family: var(--font-ui);
-}
-.head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-block-end: 0.4rem;
-}
-.title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--accent);
-}
 .name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--text-base);
   font-weight: 600;
-}
-.note {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.ack {
-  margin-inline-start: auto;
-  font: inherit;
-  font-size: var(--text-base);
-  padding: 0.5rem 0.9rem;
-  min-block-size: var(--control-size);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface-raised);
-  color: var(--accent);
-  cursor: pointer;
 }
 .row {
   display: flex;
@@ -126,12 +88,5 @@ const ttg = $derived(
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--accent);
-}
-.metric b {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--text);
 }
 </style>
