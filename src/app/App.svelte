@@ -842,10 +842,10 @@ onDestroy(() => {
   inset-block: 0;
   inset-inline-start: 0;
   z-index: var(--z-panel);
-  inline-size: min(20rem, 82vw);
+  inline-size: min(22rem, 100%);
   overflow-y: auto;
   padding: 0.75rem;
-  background: var(--surface);
+  background: var(--surface-overlay);
   border-inline-end: 1px solid var(--border);
 }
 @media (max-width: 600px) {
