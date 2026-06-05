@@ -115,6 +115,14 @@ body {
   block-size: 100dvh;
 }
 
+/* The heading shared by the slide-over and overlay panels, so every panel title reads the same. */
+.panel-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text);
+}
+
 /* One keyboard-focus indicator for every interactive control, visible on every theme. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);

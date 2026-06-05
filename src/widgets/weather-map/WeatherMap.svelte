@@ -492,12 +492,6 @@ onDestroy(() => {
   padding: 0.4rem 0.5rem 0.4rem 0.7rem;
   border-block-end: 1px solid var(--border);
 }
-.panel-title {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--text);
-}
 .layer-bar {
   display: flex;
   flex-wrap: wrap;

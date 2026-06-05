@@ -219,12 +219,6 @@ function promptSave(): void {
   padding-block-end: 0.5rem;
   border-block-end: 1px solid var(--border);
 }
-.panel-title {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--text);
-}
 .close {
   display: inline-flex;
   align-items: center;
