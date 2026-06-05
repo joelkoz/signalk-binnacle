@@ -2,7 +2,7 @@
 import { Eye, EyeOff, Navigation, Plus, Save, Square, SquarePen, Trash2, X } from '@lucide/svelte';
 import { type Route, routeDistanceMeters } from '$entities/route';
 import { formatNm } from '$shared/lib';
-import { dialog } from '$shared/ui';
+import { dialog, promptSaveName } from '$shared/ui';
 
 interface Props {
   routes: Route[];
@@ -15,7 +15,7 @@ interface Props {
   error: string | undefined;
   onNew: () => void;
   onEditRoute: (id: string) => void;
-  // Called with the name the user enters; the panel prompts for it (mirror TracksPanel.promptSave).
+  // Called with the name the user enters; the panel prompts for it via the shared promptSaveName.
   onSave: (name: string) => void;
   onCancelEdit: () => void;
   onToggleShown: (id: string, shown: boolean) => void;
@@ -45,15 +45,9 @@ const {
   onClose,
 }: Props = $props();
 
-function defaultName(): string {
-  return `Route ${new Date().toISOString().slice(0, 10)}`;
-}
-
 function promptSave(): void {
-  const fallback = defaultName();
-  const name = window.prompt('Save route as', fallback);
-  if (name === null) return;
-  onSave(name.trim() || fallback);
+  const name = promptSaveName('Route');
+  if (name !== undefined) onSave(name);
 }
 </script>
 

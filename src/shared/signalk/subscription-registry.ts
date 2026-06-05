@@ -56,9 +56,14 @@ export class SubscriptionRegistry {
   }
 
   resubscribeAll(): void {
+    // Batch by context so a reconnect re-sends one subscribe message per context, not one per path.
+    const byContext = new Map<Context, Record<string, unknown>[]>();
     for (const { entry } of this.#demand.values()) {
-      this.#sendSubscribe(entry);
+      const list = byContext.get(entry.context);
+      if (list) list.push(this.#subscription(entry));
+      else byContext.set(entry.context, [this.#subscription(entry)]);
     }
+    for (const [context, subscribe] of byContext) this.#send({ context, subscribe });
   }
 
   #release(keys: string[]): void {
@@ -87,13 +92,17 @@ export class SubscriptionRegistry {
     };
   }
 
-  #sendSubscribe(entry: Resolved): void {
+  #subscription(entry: Resolved): Record<string, unknown> {
     const subscription: Record<string, unknown> = {
       path: entry.path,
       period: entry.period,
       policy: entry.policy,
     };
     if (entry.minPeriod !== undefined) subscription.minPeriod = entry.minPeriod;
-    this.#send({ context: entry.context, subscribe: [subscription] });
+    return subscription;
+  }
+
+  #sendSubscribe(entry: Resolved): void {
+    this.#send({ context: entry.context, subscribe: [this.#subscription(entry)] });
   }
 }

@@ -3,6 +3,7 @@ import { Download, Eraser, Eye, EyeOff, Pause, Play, Save, Trash2 } from '@lucid
 import type { TrackRecorder } from '$entities/track';
 import { formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
+import { promptSaveName } from '$shared/ui';
 import type { SavedTrack } from './tracks-client';
 
 interface Props {
@@ -31,14 +32,9 @@ function duration(seconds: number): string {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
-function defaultName(): string {
-  return `Track ${new Date().toISOString().slice(0, 10)}`;
-}
-
 function promptSave(): void {
-  const name = window.prompt('Save track as', defaultName());
-  if (name === null) return;
-  onSave(name.trim() || defaultName());
+  const name = promptSaveName('Track');
+  if (name !== undefined) onSave(name);
 }
 
 function confirmClear(): void {
