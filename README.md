@@ -8,9 +8,9 @@
 
 A next-generation marine chart plotter for [Signal K](https://signalk.org).
 
-> **0.1.0, the first release.** Binnacle is young, but it is already a complete chart plotter:
-> GPU charts and depth, route planning and following, a full weather workspace, an active
-> collision watch, voyage tracks, and rich points of interest all ship in this release.
+> **0.1.0, the first release.** Binnacle 0.1.0 is a complete chart plotter: GPU charts and depth,
+> route planning and following, weather, an active collision watch, voyage tracks, and points of
+> interest all ship in this release.
 >
 > **It has not been field-tested at any scale.** It has been developed and verified against a
 > single Signal K server, never across a fleet or a range of real-world boats, hardware, and
@@ -20,15 +20,14 @@ A next-generation marine chart plotter for [Signal K](https://signalk.org).
 
 ## What it does
 
-Signal K is the modern marine data standard, streaming a boat's navigation, environment,
-and AIS data over a single open API. Binnacle is the screen for that data: a fast, modern
-chart plotter, GPU-rendered and offline-first, that runs in any browser and is served
-straight from the boat's Signal K server.
+Signal K is an open marine data standard that streams a boat's navigation, environment, and
+AIS data over a single API. Binnacle displays that data: a GPU-rendered, offline-capable
+chart plotter that runs in a browser and is served by the boat's Signal K server.
 
-The design center is the offshore watch and the swinging anchor: a chart you can read on a
-night watch, danger that surfaces before you ask for it, and a plotter that keeps working
-1,500 nautical miles from the nearest cell tower, all of it rendered smoothly enough to run
-on the Raspberry Pi at the helm.
+It is built for low-bandwidth and offline use on modest hardware. It has night-readable
+themes, computes collision and course data on the client when no server provider supplies
+them, and caches previously viewed areas so they keep rendering without a connection. It runs
+on the same Raspberry Pi that hosts the Signal K server.
 
 ## Screenshots
 
@@ -61,28 +60,26 @@ on the Raspberry Pi at the helm.
   </tr>
 </table>
 
-## Modern and fast
+## Architecture
 
-Binnacle is a clean-room, next-generation plotter built on a current web stack and engineered to
-stay smooth on modest helm hardware:
+Binnacle is built on a current web stack and engineered to run on modest helm hardware:
 
-- **A modern front end.** Svelte 5 with runes, Vite, and TypeScript, linted and formatted with
-  Biome, with module boundaries enforced by the build (Feature-Sliced Design plus a
-  dependency-cruiser gate) so the codebase stays fast to work in as it grows.
-- **GPU-rendered charts.** MapLibre GL JS draws the vector base map and chart layers on the GPU. The
-  own vessel and every AIS target render as GPU symbol layers that rotate with heading and course,
-  and wind draws as a live WebGL particle field, thousands of particles advected through the forecast
-  on the graphics card.
-- **A real-time pipeline that stays off the main thread.** A dedicated Web Worker hosts the Signal K
-  WebSocket client; incoming deltas are coalesced to a single flush per animation frame and fed into
-  a path-keyed, fine-grained reactive store, so a busy AIS anchorage updates the readouts without
-  janking the chart.
-- **Lean on the wire and in the loop.** Binnacle subscribes to exactly what it draws, at controlled
+- **Front end.** Svelte 5 with runes, Vite, and TypeScript, linted and formatted with Biome, with
+  module boundaries enforced by the build (Feature-Sliced Design plus a dependency-cruiser gate).
+- **GPU rendering.** MapLibre GL JS draws the vector base map and chart layers on the GPU. The own
+  vessel and every AIS target render as GPU symbol layers that rotate with heading and course, and
+  wind draws as a WebGL particle field of thousands of particles advected through the forecast on the
+  graphics card.
+- **Off-main-thread real-time pipeline.** A dedicated Web Worker hosts the Signal K WebSocket client;
+  incoming deltas are coalesced to a single flush per animation frame and fed into a path-keyed,
+  fine-grained reactive store, so a busy AIS anchorage updates the readouts without stalling the
+  chart render.
+- **Minimal network and render work.** Binnacle subscribes to exactly what it draws, at controlled
   rates (own vessel fast, AIS slower), keeps everything in SI internally, and converts only at the
-  display edge, so neither the network nor the render loop does work it does not need to.
-- **Offline-first by construction.** Self-hosted fonts and assets (no CDN for app code), a
-  service-worker runtime cache for the base map and chart tiles, and an IndexedDB weather cache, so
-  previously seen areas keep rendering with no internet.
+  display edge.
+- **Offline caching.** Self-hosted fonts and assets (no CDN for app code), a service-worker runtime
+  cache for the base map and chart tiles, and an IndexedDB weather cache, so previously seen areas
+  keep rendering with no internet.
 
 ## What's new in 0.1.0
 
@@ -100,8 +97,8 @@ The first published release. Binnacle ships its full first feature set as a Sign
 - **Lookout, tracks, and points of interest.** Collision danger with chart-highlight rings, an
   audible alarm, and a published notification; voyage track recording; and native point-of-interest
   detail panels.
-- **Built for the helm.** Day, dusk, and night-red themes, offline-first caching, self-hosted
-  assets, and an off-main-thread real-time pipeline, tuned to run on the Raspberry Pi at the helm.
+- **Display and runtime.** Day, dusk, and night-red themes, offline caching, self-hosted assets,
+  and an off-main-thread real-time pipeline that runs on a Raspberry Pi.
 
 This release also folds the per-component panel, button, and instrument-strip styling into shared
 utilities, shares the Signal K resource clients and the IndexedDB stores behind single helpers, and
@@ -182,9 +179,6 @@ Everything in this release:
 - Lint and format with Biome, type-checking with svelte-check, unit tests with Vitest, an
   end-to-end smoke test with Playwright, and architectural boundary checks with
   dependency-cruiser, all wired into CI, plus verify-before-push git hooks.
-
-The design and the build plans live in [`docs/superpowers`](docs/superpowers): the foundation
-design spec, and the per-phase implementation plans.
 
 ## Installation
 
