@@ -66,7 +66,7 @@ function measure(item: NormalizedItem): string {
       <h2>{selection.name}</h2>
       <span class="type">{categoryLabel(selection.category)}</span>
     </div>
-    <button type="button" class="close" aria-label="Close detail" onclick={onClose}>
+    <button type="button" class="panel-close" aria-label="Close detail" onclick={onClose}>
       <X size={18} aria-hidden="true" />
     </button>
   </header>
@@ -199,22 +199,6 @@ header {
 .rating {
   display: inline-flex;
   color: var(--select);
-}
-.close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--control-size);
-  min-inline-size: var(--control-size);
-  padding: 0.5rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.close:hover {
-  color: var(--text);
 }
 .body {
   flex: 1;

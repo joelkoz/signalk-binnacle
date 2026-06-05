@@ -62,7 +62,7 @@ function promptSave(): void {
     <h2 class="panel-title">Routes</h2>
     <button
       type="button"
-      class="close"
+      class="panel-close"
       aria-label="Close routes panel"
       title="Close"
       onclick={onClose}
@@ -218,26 +218,6 @@ function promptSave(): void {
   justify-content: space-between;
   padding-block-end: 0.5rem;
   border-block-end: 1px solid var(--border);
-}
-.close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--control-size);
-  min-inline-size: var(--control-size);
-  padding: 0.25rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition:
-    background-color var(--transition-fast),
-    color var(--transition-fast);
-}
-.close:hover {
-  background: var(--surface);
-  color: var(--text);
 }
 .controls {
   display: flex;

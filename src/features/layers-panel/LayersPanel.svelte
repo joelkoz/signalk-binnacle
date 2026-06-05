@@ -127,7 +127,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 <aside class="layers-panel" aria-label="Layers" use:dialog={onClose}>
   <header>
     <h2>Layers</h2>
-    <button type="button" class="close" aria-label="Close" onclick={onClose}>
+    <button type="button" class="panel-close" aria-label="Close" onclick={onClose}>
       <X size={18} aria-hidden="true" />
     </button>
   </header>
@@ -219,22 +219,6 @@ header h2 {
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 600;
-}
-.close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--control-size);
-  min-inline-size: var(--control-size);
-  padding: 0.5rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.close:hover {
-  color: var(--text);
 }
 .body {
   flex: 1;
