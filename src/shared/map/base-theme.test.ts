@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { applyBaseTheme, baseLayerPaint, captureBaseTheme, restoreBaseTheme } from './base-theme';
+import {
+  applyBaseTheme,
+  applyPoiVisibility,
+  baseLayerPaint,
+  captureBaseTheme,
+  restoreBaseTheme,
+} from './base-theme';
 import { mapThemePaint } from './map-theme';
 
 const paint = mapThemePaint('night-red');
@@ -152,5 +158,29 @@ describe('captureBaseTheme and restoreBaseTheme', () => {
     const snapshot = captureBaseTheme(map as any, mapThemePaint('day'));
     expect(snapshot).toHaveLength(1);
     expect(snapshot[0]).toMatchObject({ id: 'water', property: 'fill-color', color: 'rgb(1,2,3)' });
+  });
+});
+
+describe('applyPoiVisibility', () => {
+  it('hides the POI sprite icons at night-red and shows them otherwise', () => {
+    const map = fakeStyleMap([
+      { id: 'poi_r1', type: 'symbol', 'source-layer': 'poi' },
+      // A road shield and a place label are symbols too, but not POI, so their icons are left alone.
+      { id: 'road_shield', type: 'symbol', 'source-layer': 'transportation' },
+      { id: 'label_city', type: 'symbol', 'source-layer': 'place' },
+    ]);
+
+    // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
+    applyPoiVisibility(map as any, mapThemePaint('night-red'));
+    expect(map.getPaintProperty('poi_r1', 'icon-opacity')).toBe(0);
+    expect(map.getPaintProperty('road_shield', 'icon-opacity')).toBeUndefined();
+    expect(map.getPaintProperty('label_city', 'icon-opacity')).toBeUndefined();
+
+    // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
+    applyPoiVisibility(map as any, mapThemePaint('day'));
+    expect(map.getPaintProperty('poi_r1', 'icon-opacity')).toBe(1);
+    // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
+    applyPoiVisibility(map as any, mapThemePaint('dusk'));
+    expect(map.getPaintProperty('poi_r1', 'icon-opacity')).toBe(1);
   });
 });

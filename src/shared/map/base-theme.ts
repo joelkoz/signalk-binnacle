@@ -101,6 +101,27 @@ export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
   }
 }
 
+// The base style's POI markers are pre-colored sprite icons (the green dots), which no paint recolor
+// can touch. Hide them at night-red so the map holds the red band, and show them on the other
+// themes. The POI name text is unaffected; it recolors with the other labels.
+export function applyPoiVisibility(map: MapLibreMap, paint: MapThemePaint): void {
+  let layers: BaseLayer[];
+  try {
+    layers = (map.getStyle().layers ?? []) as BaseLayer[];
+  } catch {
+    return;
+  }
+  const opacity = paint.theme === 'night-red' ? 0 : 1;
+  for (const layer of layers) {
+    if (layer.type !== 'symbol' || layer['source-layer'] !== 'poi') continue;
+    try {
+      map.setPaintProperty(layer.id, 'icon-opacity', opacity);
+    } catch {
+      // A POI layer without an icon is fine; skip it.
+    }
+  }
+}
+
 // The source style's own paint, captured per base layer so the day theme can restore the real
 // map colors exactly rather than approximate them. Each entry keeps the property the theme would
 // recolor, its original color, the original text-halo (labels), and whether a fill pattern was
