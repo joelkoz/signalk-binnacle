@@ -209,9 +209,9 @@ invocations with `NODE_OPTIONS="--max-old-space-size=2048"` as a backstop.
 
 ## Workflow
 
-- Brainstorming artifacts live in `.superpowers/brainstorm/`; add `.superpowers/` to
-  `.gitignore`.
-- Specs live in `docs/superpowers/specs/`. Each differentiator gets its own brainstorm, spec,
-  and plan: active-safety CoPilot, weather and routing, anchor intelligence, the liveaboard
-  dashboard, and multi-station watch handoff. The offline and PWA pipeline is the spec
-  immediately after the foundation.
+- Brainstorming artifacts live in `.superpowers/brainstorm/`, gitignored.
+- Design specs live in `docs/superpowers/specs/` and build plans in `docs/superpowers/plans/`.
+  These are local-only working notes: `docs/superpowers/` is gitignored and is NOT committed to the
+  repo. Each differentiator gets its own brainstorm, spec, and plan: active-safety CoPilot, weather
+  and routing, anchor intelligence, the liveaboard dashboard, and multi-station watch handoff. The
+  offline and PWA pipeline is the spec immediately after the foundation.
