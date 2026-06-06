@@ -35,13 +35,13 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   aria-label="Collision thresholds"
   use:dialog={onClose}
 >
-  <header>
+  <header class="panel-header">
     <h2 class="panel-title">Collision thresholds</h2>
     <button type="button" class="panel-close" aria-label="Close" onclick={onClose}>
       <X size={18} aria-hidden="true" />
     </button>
   </header>
-  <div class="body">
+  <div class="panel-body">
     <section class="thresholds">
       <div class="group">
         <span class="group-title danger">Danger</span>
@@ -109,23 +109,6 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
 </aside>
 
 <style>
-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0.6rem var(--space-3);
-  border-block-end: 1px solid var(--border);
-}
-header h2 {
-  flex: 1;
-}
-.body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-2) var(--space-3) var(--space-3);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
 .thresholds {
   display: flex;
   flex-direction: column;

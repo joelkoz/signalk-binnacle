@@ -32,7 +32,7 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
         <span class="note">computing locally</span>
       {/if}
       <div class="actions">
-        <button type="button" class="ack" aria-pressed={muted} onclick={onToggleMute}>
+        <button type="button" class="ack mute" aria-pressed={muted} onclick={onToggleMute}>
           {muted ? 'Unmute' : 'Mute'}
         </button>
         <button type="button" class="ack" onclick={() => collision.acknowledge()}>
@@ -57,18 +57,23 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
 
 <style>
 /* The two strip actions sit together at the trailing edge. The shared .ack carries its own auto
-   margin, so it is neutralized here and the wrapper owns the push instead. */
+   margin, so it is neutralized here and the wrapper owns the push instead. A wide gutter and the
+   warning-colored Mute keep the two safety buttons from reading as twins, so a wrong tap in a
+   seaway is less likely. */
 .actions {
   margin-inline-start: auto;
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-4);
 }
 .actions .ack {
   margin-inline-start: 0;
 }
-.actions .ack[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent-tint);
+.actions .mute {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.actions .mute[aria-pressed="true"] {
+  background: var(--alarm-tint);
 }
 .list {
   list-style: none;
@@ -93,6 +98,6 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
   margin: 0;
   margin-block-start: 0.3rem;
   font-size: var(--text-xs);
-  color: var(--text-muted);
+  color: var(--text);
 }
 </style>

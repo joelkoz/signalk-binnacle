@@ -266,6 +266,35 @@ body {
   color: var(--alarm);
 }
 
+/* A round chrome icon button on the raised surface with an accent icon, shared by the floating and
+   top-bar controls (the menu trigger, the theme toggle, and the map dock) so they all lift, hover,
+   and press alike. A component adds only its own modifier (for example the dock's active fill). */
+.icon-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--control-size);
+  block-size: var(--control-size);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--accent);
+  cursor: pointer;
+  box-shadow: var(--shadow-overlay);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+.icon-pill:hover {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.icon-pill:active:not(:disabled) {
+  filter: brightness(0.94);
+}
+
 /* The edge-docked slide-over panels (layers, note detail) share one shell: a full-height column on
    the translucent surface that docks to a screen edge, and collapses to a bottom sheet on a phone.
    The dock modifier sets which edge it borders. */
@@ -299,6 +328,31 @@ body {
   .slide-over--dock-right {
     border-inline: 0;
   }
+}
+/* The slide-over title row and scrolling body, shared by the edge-docked panels so the header and
+   the body read the same across them. A panel marks its header .panel-header and its scroll area
+   .panel-body, adding --flex when the body lays its content out as a gapped column. */
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.6rem var(--space-3);
+  border-block-end: 1px solid var(--border);
+}
+.panel-header .panel-title {
+  flex: 1;
+}
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.panel-body--flex {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
 /* The bottom instrument strips (active route, collision danger) share one shell: a centered card on
@@ -354,13 +408,23 @@ body {
   margin-inline-start: auto;
   font: inherit;
   font-size: var(--text-base);
-  padding: var(--space-2) 0.9rem;
+  padding: var(--space-2) var(--space-3);
   min-block-size: var(--control-size);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--surface-raised);
   color: var(--accent);
   cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+.bottom-strip .ack:hover {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.bottom-strip .ack:active {
+  filter: brightness(0.94);
 }
 .bottom-strip .metric b {
   font-family: var(--font-mono);
@@ -381,6 +445,20 @@ body {
 :root[data-theme="night-red"] :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline-width: 1px;
   outline-color: var(--text);
+}
+
+/* Visually hidden but exposed to assistive tech: for live regions and off-screen labels that should
+   be announced without taking visual space. */
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Respect a reduced-motion preference: drop transitions and animations app-wide. */

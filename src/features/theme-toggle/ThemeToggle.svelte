@@ -27,29 +27,10 @@ const label = $derived(LABELS[controller.theme]);
 
 <button
   type="button"
-  class="theme-toggle"
+  class="icon-pill"
   aria-label={`Switch theme (currently ${label})`}
   title={label}
   onclick={() => controller.cycle()}
 >
   <Icon size={20} aria-hidden="true" />
 </button>
-
-<style>
-.theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--control-size);
-  block-size: var(--control-size);
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface-raised);
-  color: var(--accent);
-  cursor: pointer;
-}
-.theme-toggle:hover {
-  border-color: var(--accent);
-}
-</style>

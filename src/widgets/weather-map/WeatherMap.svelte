@@ -1,5 +1,5 @@
 <script lang="ts">
-import { Pause, Play, X } from '@lucide/svelte';
+import { ChevronLeft, ChevronRight, Pause, Play, X } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { type Bbox, boundsToBbox, type WeatherStore } from '$entities/weather';
 import { LayersView } from '$features/layers-panel';
@@ -398,7 +398,7 @@ onDestroy(() => {
           aria-label="Earlier"
           onclick={() => setTime(stepTime(store.selectedTime, -1, range))}
         >
-          <span aria-hidden="true">&#9664;</span>
+          <ChevronLeft size={16} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -418,7 +418,7 @@ onDestroy(() => {
           aria-label="Later"
           onclick={() => setTime(stepTime(store.selectedTime, 1, range))}
         >
-          <span aria-hidden="true">&#9654;</span>
+          <ChevronRight size={16} aria-hidden="true" />
         </button>
         <input
           class="track"
@@ -467,7 +467,9 @@ onDestroy(() => {
 <style>
 .weather-panel {
   position: fixed;
-  inset-block-end: 2.9rem;
+  /* Sit just above the status strip, which is calc(--control-size + 0.5rem) tall, derived from the
+     same token so the panel cannot drift out of sync with the strip it clears. */
+  inset-block-end: calc(var(--control-size) + var(--space-1));
   inset-inline: 0;
   margin-inline: auto;
   inline-size: min(94vw, 46rem);
@@ -519,6 +521,7 @@ onDestroy(() => {
 .pill.on {
   color: var(--accent);
   border-color: var(--accent);
+  background: var(--accent-tint);
 }
 .panel-map {
   position: relative;
@@ -579,10 +582,11 @@ onDestroy(() => {
 .scrubber {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 .scrubber .track {
   flex: 1;
+  min-block-size: var(--control-size);
   accent-color: var(--accent);
 }
 .scrubber .step {

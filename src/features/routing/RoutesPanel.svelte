@@ -52,7 +52,7 @@ function promptSave(): void {
 </script>
 
 <aside class="slide-over slide-over--dock-left" aria-label="Routes" use:dialog={onClose}>
-  <header>
+  <header class="panel-header">
     <h2 class="panel-title">Routes</h2>
     <button
       type="button"
@@ -65,7 +65,7 @@ function promptSave(): void {
     </button>
   </header>
 
-  <div class="body">
+  <div class="panel-body panel-body--flex">
     {#if error}
       <p class="error" role="alert">{error}</p>
     {/if}
@@ -210,26 +210,6 @@ function promptSave(): void {
 </aside>
 
 <style>
-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0.6rem var(--space-3);
-  border-block-end: 1px solid var(--border);
-}
-header .panel-title {
-  flex: 1;
-}
-.body {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: var(--space-2) var(--space-3) var(--space-3);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
 .controls {
   display: flex;
   gap: 0.35rem;

@@ -41,7 +41,7 @@ const { auth, requestsUrl }: Props = $props();
   align-items: center;
   font: inherit;
   margin-inline-start: var(--space-2);
-  padding: var(--space-2) 0.9rem;
+  padding: var(--space-2) var(--space-3);
   min-block-size: var(--control-size);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);

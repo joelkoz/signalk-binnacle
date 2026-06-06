@@ -59,9 +59,11 @@ import {
   WEATHER_LAYER_IDS,
 } from '$features/weather';
 import {
+  formatCpaNm,
   formatFixed,
   formatLatitude,
   formatLongitude,
+  formatTcpaMin,
   metersPerSecondToKnots,
   radiansToBearing,
   uuidv4,
@@ -267,6 +269,21 @@ const menuItems = $derived<MenuItem[]>([
 $effect(() => {
   lookoutAlarm.update(collision.assessment.worst, collision.suppressed, alarmMuted.value);
 });
+
+// A concise spoken summary of the active collision danger, written into a persistent assertive live
+// region so a new threat is announced for a screen-reader or hard-of-hearing operator, not only
+// sounded. It mirrors the danger strip's own visibility (contacts present and not acknowledged),
+// and contacts[0] is the worst since the list is severity-then-time sorted.
+const collisionAlert = $derived.by(() => {
+  const { contacts } = collision.assessment;
+  if (collision.suppressed || contacts.length === 0) return '';
+  const nearest = contacts[0];
+  const who = nearest.name || nearest.id;
+  const count = contacts.length;
+  return `Collision danger: ${count} ${count === 1 ? 'contact' : 'contacts'}, nearest ${who}, CPA ${formatCpaNm(nearest.cpaMeters)} nautical miles in ${formatTcpaMin(nearest.tcpaSeconds, 1)} minutes.`;
+});
+// A muted collision alarm is a safety state, so announce it politely; clearing it on unmute is silent.
+const muteAlert = $derived(alarmMuted.value ? 'Collision alarm muted.' : '');
 
 // Publish the collision notification to Signal K as the assessment changes.
 $effect(() => {
@@ -609,6 +626,10 @@ onDestroy(() => {
 </script>
 
 <main class="binnacle-shell">
+  <div class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true">
+    {collisionAlert}
+  </div>
+  <div class="visually-hidden" aria-live="polite" aria-atomic="true">{muteAlert}</div>
   <header class="topbar">
     <span class="topbar-start">
       <AppMenu items={menuItems} />
@@ -837,6 +858,15 @@ onDestroy(() => {
   font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    filter var(--transition-fast);
+}
+.muted-badge:hover {
+  background: var(--alarm-tint);
+}
+.muted-badge:active {
+  filter: brightness(0.94);
 }
 .brand {
   font-weight: 600;

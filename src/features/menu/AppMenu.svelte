@@ -12,6 +12,13 @@ const { items = [], label = 'Menu' }: Props = $props();
 let menuOpen = $state(false);
 let root = $state<HTMLElement>();
 let trigger = $state<HTMLButtonElement>();
+let popout = $state<HTMLElement>();
+
+// On open, move focus to the first enabled item so a keyboard user lands inside the menu rather
+// than having to tab into it. focus-visible keeps this ring-free for pointer and touch opens.
+$effect(() => {
+  if (menuOpen) popout?.querySelector<HTMLButtonElement>('.item:not(:disabled)')?.focus();
+});
 
 function closeMenu(restoreFocus = false): void {
   menuOpen = false;
@@ -49,7 +56,7 @@ function startsGroup(index: number): boolean {
 <div class="app-menu" bind:this={root}>
   <button
     type="button"
-    class="trigger"
+    class="icon-pill trigger"
     bind:this={trigger}
     aria-haspopup="true"
     aria-expanded={menuOpen}
@@ -61,13 +68,13 @@ function startsGroup(index: number): boolean {
     <Menu size={20} aria-hidden="true" />
   </button>
   {#if menuOpen}
-    <div class="popout" id="app-menu-popout">
+    <div class="popout" id="app-menu-popout" bind:this={popout}>
       {#if items.length === 0}
         <span class="empty">No options</span>
       {:else}
         {#each items as item, i (item.id)}
           {#if startsGroup(i)}
-            <div class="group-label caps-label" aria-hidden="true">{item.group}</div>
+            <div class="group-label caps-label">{item.group}</div>
           {/if}
           <button
             type="button"
@@ -93,23 +100,8 @@ function startsGroup(index: number): boolean {
   position: relative;
   display: inline-flex;
 }
-.trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--control-size);
-  block-size: var(--control-size);
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface-raised);
-  color: var(--accent);
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast);
-}
-.trigger:hover,
+/* The base look is the shared .icon-pill; keep the open state lit without hover, matching its
+   hover treatment, so the trigger reads as active while the menu is open. */
 .trigger[aria-expanded="true"] {
   border-color: var(--accent);
   background: var(--accent-tint);
@@ -174,6 +166,7 @@ function startsGroup(index: number): boolean {
 }
 .item:disabled {
   color: var(--text-muted);
+  opacity: var(--disabled-opacity);
   cursor: default;
 }
 .empty {

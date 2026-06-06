@@ -57,13 +57,13 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 </script>
 
 <aside class="slide-over slide-over--dock-left" aria-label="Tracks" use:dialog={onClose}>
-  <header>
+  <header class="panel-header">
     <h2 class="panel-title">Tracks</h2>
     <button type="button" class="panel-close" aria-label="Close" onclick={onClose}>
       <X size={18} aria-hidden="true" />
     </button>
   </header>
-  <div class="body">
+  <div class="panel-body panel-body--flex">
     <div class="controls">
       {#if recorder.paused}
         <button type="button" class="btn" onclick={() => recorder.resume()}>
@@ -100,6 +100,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       <button
         type="button"
         class:active={colorMode === 'speed'}
+        aria-pressed={colorMode === 'speed'}
         onclick={() => setColorMode('speed')}
       >
         Speed
@@ -107,6 +108,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       <button
         type="button"
         class:active={colorMode === 'solid'}
+        aria-pressed={colorMode === 'solid'}
         onclick={() => setColorMode('solid')}
       >
         Solid
@@ -174,27 +176,6 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 </aside>
 
 <style>
-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0.6rem var(--space-3);
-  border-block-end: 1px solid var(--border);
-}
-header h2 {
-  flex: 1;
-}
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-2) var(--space-3) var(--space-3);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-  font-size: var(--text-base);
-}
 .controls {
   display: flex;
   gap: 0.35rem;

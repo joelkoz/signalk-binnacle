@@ -125,14 +125,14 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 </script>
 
 <aside class="slide-over slide-over--dock-left" aria-label="Layers" use:dialog={onClose}>
-  <header>
+  <header class="panel-header">
     <h2 class="panel-title">Layers</h2>
     <button type="button" class="panel-close" aria-label="Close" onclick={onClose}>
       <X size={18} aria-hidden="true" />
     </button>
   </header>
 
-  <div class="body">
+  <div class="panel-body">
     {#if manageSource && userCharts}
       {#key manageSource.id}
         <SourceDetail source={manageSource} {userCharts} onBack={() => (manageId = undefined)} />
@@ -193,23 +193,6 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 </aside>
 
 <style>
-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0.6rem var(--space-3);
-  border-block-end: 1px solid var(--border);
-}
-header h2 {
-  flex: 1;
-}
-.body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-2) var(--space-3) var(--space-3);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
 .empty {
   margin: 0;
   font-size: var(--text-sm);

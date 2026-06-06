@@ -237,9 +237,13 @@ dd {
   font-size: var(--text-sm);
   font-weight: 600;
 }
+/* A bordered, tinted caution rather than a solid bright fill, so the hazard reads clearly without
+   painting the brightest pixel in the palette (the night-red --alarm) across a full-width block.
+   This matches the weather warning treatment. */
 .alert[data-danger="true"] {
-  background: var(--alarm);
-  color: var(--surface-raised);
+  border: 1px solid var(--alarm);
+  background: var(--alarm-tint);
+  color: var(--text);
 }
 .alert[data-danger="false"] {
   border: 1px solid var(--border);
