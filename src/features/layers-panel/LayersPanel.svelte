@@ -1,8 +1,8 @@
 <script lang="ts">
-import { Pin, X } from '@lucide/svelte';
+import { Pin } from '@lucide/svelte';
 import type { UserCharts } from '$entities/user-charts';
 import { chartSourceId } from '$shared/map';
-import { dialog } from '$shared/ui';
+import { SlideOver } from '$shared/ui';
 import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
 import { layerGroup } from './layer-group';
@@ -104,6 +104,10 @@ function handlePointerDown(id: string, event: PointerEvent): void {
   handle.addEventListener('pointercancel', () => finish(false), { signal });
 }
 
+// Announced politely after a keyboard reorder, so a screen-reader user hears the new z-order rather
+// than only the refocused handle re-reading its label.
+let reorderAnnouncement = $state('');
+
 function handleKeydown(id: string, event: KeyboardEvent): void {
   const from = movableIndex(id);
   if (from < 0) return;
@@ -113,7 +117,9 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
   else return;
   event.preventDefault();
   if (to < 0 || to >= movable.length) return;
+  const title = movable[from]?.title ?? 'Layer';
   view.reorder(id, to);
+  reorderAnnouncement = `Moved ${title} to position ${to + 1} of ${movable.length}.`;
   // Keep focus on the moved handle as it follows the row to its new position.
   requestAnimationFrame(() => {
     const moved = listEl?.querySelector<HTMLElement>(
@@ -124,73 +130,65 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 }
 </script>
 
-<aside class="slide-over slide-over--dock-left" aria-label="Layers" use:dialog={onClose}>
-  <header class="panel-header">
-    <h2 class="panel-title">Layers</h2>
-    <button type="button" class="panel-close" aria-label="Close" onclick={onClose}>
-      <X size={18} aria-hidden="true" />
-    </button>
-  </header>
-
-  <div class="panel-body">
-    {#if manageSource && userCharts}
-      {#key manageSource.id}
-        <SourceDetail source={manageSource} {userCharts} onBack={() => (manageId = undefined)} />
-      {/key}
+<SlideOver title="Layers" {onClose}>
+  <div class="visually-hidden" aria-live="polite">{reorderAnnouncement}</div>
+  {#if manageSource && userCharts}
+    {#key manageSource.id}
+      <SourceDetail source={manageSource} {userCharts} onBack={() => (manageId = undefined)} />
+    {/key}
+  {:else}
+    {#if view.items.length === 0}
+      <p class="empty">No layers</p>
     {:else}
-      {#if view.items.length === 0}
-        <p class="empty">No layers</p>
-      {:else}
-        {#if pinned.length > 0}
-          <ul class="pinned-list">
-            {#each pinned as item (item.id)}
-              <li class="pinned-row">
-                <span class="pin" aria-hidden="true"><Pin size={16} /></span>
-                <span class="title" title={item.title}>{item.title}</span>
-                <span class="on-top">On top</span>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-
-        <ul class="rows" bind:this={listEl}>
-          {#each movable as item, i (item.id)}
-            {@const indicator = indicatorFor(item.id)}
-            {@const removeId = userChartIds.get(item.id)}
-            <!-- Group the movable rows by z-band; a header marks each category change. Reorder still
-                 operates on the live order. -->
-            {#if i === 0 || layerGroup(movable[i - 1].band) !== layerGroup(item.band)}
-              <li class="group-label caps-label" aria-hidden="true">{layerGroup(item.band)}</li>
-            {/if}
-            <LayerRow
-              {item}
-              {view}
-              index={i}
-              count={movable.length}
-              dragging={dragId === item.id}
-              dropBefore={indicator.before}
-              dropAfter={indicator.after}
-              onHandlePointerDown={(e) => handlePointerDown(item.id, e)}
-              onHandleKeydown={(e) => handleKeydown(item.id, e)}
-              onManage={removeId ? () => (manageId = removeId) : undefined}
-            />
+      {#if pinned.length > 0}
+        <ul class="pinned-list">
+          {#each pinned as item (item.id)}
+            <li class="pinned-row">
+              <span class="pin" aria-hidden="true"><Pin size={16} /></span>
+              <span class="title" title={item.title}>{item.title}</span>
+              <span class="on-top">On top</span>
+            </li>
           {/each}
         </ul>
       {/if}
-      {#if userCharts}
-        <div class="add-chart-area">
-          {#if addOpen}
-            <AddChartForm {userCharts} onDone={() => (addOpen = false)} />
-          {:else}
-            <button type="button" class="add-chart" onclick={() => (addOpen = true)}>
-              + Add a chart
-            </button>
+
+      <ul class="rows" bind:this={listEl}>
+        {#each movable as item, i (item.id)}
+          {@const indicator = indicatorFor(item.id)}
+          {@const removeId = userChartIds.get(item.id)}
+          <!-- Group the movable rows by z-band; a header marks each category change. Reorder still
+                 operates on the live order. -->
+          {#if i === 0 || layerGroup(movable[i - 1].band) !== layerGroup(item.band)}
+            <li class="group-label caps-label" aria-hidden="true">{layerGroup(item.band)}</li>
           {/if}
-        </div>
-      {/if}
+          <LayerRow
+            {item}
+            {view}
+            index={i}
+            count={movable.length}
+            dragging={dragId === item.id}
+            dropBefore={indicator.before}
+            dropAfter={indicator.after}
+            onHandlePointerDown={(e) => handlePointerDown(item.id, e)}
+            onHandleKeydown={(e) => handleKeydown(item.id, e)}
+            onManage={removeId ? () => (manageId = removeId) : undefined}
+          />
+        {/each}
+      </ul>
     {/if}
-  </div>
-</aside>
+    {#if userCharts}
+      <div class="add-chart-area">
+        {#if addOpen}
+          <AddChartForm {userCharts} onDone={() => (addOpen = false)} />
+        {:else}
+          <button type="button" class="add-chart" onclick={() => (addOpen = true)}>
+            + Add a chart
+          </button>
+        {/if}
+      </div>
+    {/if}
+  {/if}
+</SlideOver>
 
 <style>
 .empty {

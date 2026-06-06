@@ -1,8 +1,7 @@
 <script lang="ts">
-import { X } from '@lucide/svelte';
 import { formatCpaNm, formatTcpaMin, nauticalMilesToMeters } from '$shared/lib';
 import { DEFAULT_THRESHOLDS, type PersistedValue, type Thresholds } from '$shared/settings';
-import { dialog } from '$shared/ui';
+import { SlideOver } from '$shared/ui';
 
 interface Props {
   thresholds: PersistedValue<Thresholds>;
@@ -30,83 +29,71 @@ const nm = (meters: number): string => formatCpaNm(meters);
 const min = (seconds: number): string => formatTcpaMin(seconds);
 </script>
 
-<aside
-  class="slide-over slide-over--dock-left"
-  aria-label="Collision thresholds"
-  use:dialog={onClose}
->
-  <header class="panel-header">
-    <h2 class="panel-title">Collision thresholds</h2>
-    <button type="button" class="panel-close" aria-label="Close" onclick={onClose}>
-      <X size={18} aria-hidden="true" />
+<SlideOver title="Collision thresholds" {onClose}>
+  <section class="thresholds">
+    <div class="group">
+      <span class="group-title danger">Danger</span>
+      <label class="field">
+        <span class="name">CPA</span>
+        <input
+          type="number"
+          min="0"
+          step="0.05"
+          aria-label="Danger CPA"
+          value={nm(t.dangerCpaMeters)}
+          onchange={(e) => setMeters('dangerCpaMeters', Number(e.currentTarget.value))}
+        >
+        <span class="unit">nm</span>
+      </label>
+      <label class="field">
+        <span class="name">TCPA</span>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          aria-label="Danger TCPA"
+          value={min(t.dangerTcpaSeconds)}
+          onchange={(e) => setSeconds('dangerTcpaSeconds', Number(e.currentTarget.value))}
+        >
+        <span class="unit">min</span>
+      </label>
+    </div>
+    <div class="group">
+      <span class="group-title warning">Warning</span>
+      <label class="field">
+        <span class="name">CPA</span>
+        <input
+          type="number"
+          min="0"
+          step="0.05"
+          aria-label="Warning CPA"
+          value={nm(t.warningCpaMeters)}
+          onchange={(e) => setMeters('warningCpaMeters', Number(e.currentTarget.value))}
+        >
+        <span class="unit">nm</span>
+      </label>
+      <label class="field">
+        <span class="name">TCPA</span>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          aria-label="Warning TCPA"
+          value={min(t.warningTcpaSeconds)}
+          onchange={(e) => setSeconds('warningTcpaSeconds', Number(e.currentTarget.value))}
+        >
+        <span class="unit">min</span>
+      </label>
+    </div>
+    <button
+      type="button"
+      class="btn btn-ghost reset"
+      onclick={() => thresholds.set({ ...DEFAULT_THRESHOLDS })}
+    >
+      Reset to defaults
     </button>
-  </header>
-  <div class="panel-body">
-    <section class="thresholds">
-      <div class="group">
-        <span class="group-title danger">Danger</span>
-        <label class="field">
-          <span class="name">CPA</span>
-          <input
-            type="number"
-            min="0"
-            step="0.05"
-            aria-label="Danger CPA"
-            value={nm(t.dangerCpaMeters)}
-            onchange={(e) => setMeters('dangerCpaMeters', Number(e.currentTarget.value))}
-          >
-          <span class="unit">nm</span>
-        </label>
-        <label class="field">
-          <span class="name">TCPA</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            aria-label="Danger TCPA"
-            value={min(t.dangerTcpaSeconds)}
-            onchange={(e) => setSeconds('dangerTcpaSeconds', Number(e.currentTarget.value))}
-          >
-          <span class="unit">min</span>
-        </label>
-      </div>
-      <div class="group">
-        <span class="group-title warning">Warning</span>
-        <label class="field">
-          <span class="name">CPA</span>
-          <input
-            type="number"
-            min="0"
-            step="0.05"
-            aria-label="Warning CPA"
-            value={nm(t.warningCpaMeters)}
-            onchange={(e) => setMeters('warningCpaMeters', Number(e.currentTarget.value))}
-          >
-          <span class="unit">nm</span>
-        </label>
-        <label class="field">
-          <span class="name">TCPA</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            aria-label="Warning TCPA"
-            value={min(t.warningTcpaSeconds)}
-            onchange={(e) => setSeconds('warningTcpaSeconds', Number(e.currentTarget.value))}
-          >
-          <span class="unit">min</span>
-        </label>
-      </div>
-      <button
-        type="button"
-        class="btn btn-ghost reset"
-        onclick={() => thresholds.set({ ...DEFAULT_THRESHOLDS })}
-      >
-        Reset to defaults
-      </button>
-    </section>
-  </div>
-</aside>
+  </section>
+</SlideOver>
 
 <style>
 .thresholds {

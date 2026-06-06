@@ -2,7 +2,7 @@
 import { Eye, EyeOff, Navigation, Plus, Save, Square, SquarePen, Trash2, X } from '@lucide/svelte';
 import { type Route, routeDistanceMeters } from '$entities/route';
 import { formatNm } from '$shared/lib';
-import { dialog, promptSaveName } from '$shared/ui';
+import { promptSaveName, SlideOver } from '$shared/ui';
 
 interface Props {
   routes: Route[];
@@ -51,163 +51,143 @@ function promptSave(): void {
 }
 </script>
 
-<aside class="slide-over slide-over--dock-left" aria-label="Routes" use:dialog={onClose}>
-  <header class="panel-header">
-    <h2 class="panel-title">Routes</h2>
-    <button
-      type="button"
-      class="panel-close"
-      aria-label="Close routes panel"
-      title="Close"
-      onclick={onClose}
-    >
-      <X size={18} aria-hidden="true" />
+<SlideOver title="Routes" bodyFlex closeLabel="Close routes panel" {onClose}>
+  {#if error}
+    <p class="error" role="alert">{error}</p>
+  {/if}
+
+  <div class="controls">
+    <button type="button" class="btn btn-primary" onclick={onNew} disabled={working !== undefined}>
+      <Plus size={16} aria-hidden="true" />
+      New route
     </button>
-  </header>
-
-  <div class="panel-body panel-body--flex">
-    {#if error}
-      <p class="error" role="alert">{error}</p>
-    {/if}
-
-    <div class="controls">
-      <button
-        type="button"
-        class="btn btn-primary"
-        onclick={onNew}
-        disabled={working !== undefined}
-      >
-        <Plus size={16} aria-hidden="true" />
-        New route
-      </button>
-    </div>
-
-    {#if working}
-      <div class="editing" role="group" aria-label="Route under edit">
-        <dl class="stats">
-          <dt>Waypoints</dt>
-          <dd><span class="num">{working.waypoints.length}</span><span class="unit"></span></dd>
-          <dt>Distance</dt>
-          <dd>
-            <span class="num">{formatNm(routeDistanceMeters(working.waypoints))}</span>
-            <span class="unit">nm</span>
-          </dd>
-        </dl>
-        <p class="hint">
-          Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
-        </p>
-        <div class="controls">
-          <button
-            type="button"
-            class="btn btn-primary"
-            onclick={promptSave}
-            disabled={working.waypoints.length < 2}
-          >
-            <Save size={16} aria-hidden="true" />
-            Save
-          </button>
-          <button type="button" class="btn" onclick={onCancelEdit}>
-            <X size={16} aria-hidden="true" />
-            Cancel
-          </button>
-        </div>
-      </div>
-    {/if}
-
-    <div class="saved">
-      <span class="caps-label">Saved routes</span>
-      {#if routes.length === 0}
-        <p class="empty">No routes yet</p>
-      {:else}
-        <ul>
-          {#each routes as route (route.id)}
-            <li class:active={route.id === activeId}>
-              <div class="card-head">
-                <button
-                  type="button"
-                  class="name"
-                  title="Go to this route on the chart"
-                  onclick={() => onLocate(route.id)}
-                >
-                  {route.name}
-                </button>
-                {#if route.id === activeId}
-                  <span class="badge">Active</span>
-                {/if}
-              </div>
-              <dl class="card-stats">
-                <dt>Distance</dt>
-                <dd>
-                  <span class="num">{formatNm(routeDistanceMeters(route.waypoints))}</span>
-                  nm
-                </dd>
-                <dt>Waypoints</dt>
-                <dd><span class="num">{route.waypoints.length}</span></dd>
-              </dl>
-              <div class="actions">
-                <button
-                  type="button"
-                  class="icon-btn"
-                  aria-pressed={shownIds.has(route.id)}
-                  aria-label={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
-                  title={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
-                  onclick={() => onToggleShown(route.id, !shownIds.has(route.id))}
-                >
-                  {#if shownIds.has(route.id)}
-                    <Eye size={18} aria-hidden="true" />
-                  {:else}
-                    <EyeOff size={18} aria-hidden="true" />
-                  {/if}
-                </button>
-                <button
-                  type="button"
-                  class="icon-btn"
-                  aria-label="Edit route"
-                  title="Edit"
-                  disabled={working !== undefined}
-                  onclick={() => onEditRoute(route.id)}
-                >
-                  <SquarePen size={18} aria-hidden="true" />
-                </button>
-                {#if route.id === activeId}
-                  <button
-                    type="button"
-                    class="icon-btn icon-btn--accent"
-                    aria-label="Stop navigation"
-                    title="Stop navigation"
-                    onclick={onStop}
-                  >
-                    <Square size={18} aria-hidden="true" />
-                  </button>
-                {:else}
-                  <button
-                    type="button"
-                    class="icon-btn"
-                    aria-label="Activate route"
-                    title="Activate route"
-                    disabled={working !== undefined}
-                    onclick={() => onActivate(route.id)}
-                  >
-                    <Navigation size={18} aria-hidden="true" />
-                  </button>
-                {/if}
-                <button
-                  type="button"
-                  class="icon-btn icon-btn--danger"
-                  aria-label="Delete route"
-                  title="Delete"
-                  onclick={() => onDelete(route.id)}
-                >
-                  <Trash2 size={18} aria-hidden="true" />
-                </button>
-              </div>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </div>
   </div>
-</aside>
+
+  {#if working}
+    <div class="editing" role="group" aria-label="Route under edit">
+      <dl class="stats">
+        <dt>Waypoints</dt>
+        <dd><span class="num">{working.waypoints.length}</span><span class="unit"></span></dd>
+        <dt>Distance</dt>
+        <dd>
+          <span class="num">{formatNm(routeDistanceMeters(working.waypoints))}</span>
+          <span class="unit">nm</span>
+        </dd>
+      </dl>
+      <p class="hint">
+        Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
+      </p>
+      <div class="controls">
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick={promptSave}
+          disabled={working.waypoints.length < 2}
+        >
+          <Save size={16} aria-hidden="true" />
+          Save
+        </button>
+        <button type="button" class="btn" onclick={onCancelEdit}>
+          <X size={16} aria-hidden="true" />
+          Cancel
+        </button>
+      </div>
+    </div>
+  {/if}
+
+  <div class="saved">
+    <span class="caps-label">Saved routes</span>
+    {#if routes.length === 0}
+      <p class="empty">No routes yet</p>
+    {:else}
+      <ul>
+        {#each routes as route (route.id)}
+          <li class:active={route.id === activeId}>
+            <div class="card-head">
+              <button
+                type="button"
+                class="name"
+                title="Go to this route on the chart"
+                onclick={() => onLocate(route.id)}
+              >
+                {route.name}
+              </button>
+              {#if route.id === activeId}
+                <span class="badge">Active</span>
+              {/if}
+            </div>
+            <dl class="card-stats">
+              <dt>Distance</dt>
+              <dd>
+                <span class="num">{formatNm(routeDistanceMeters(route.waypoints))}</span>
+                nm
+              </dd>
+              <dt>Waypoints</dt>
+              <dd><span class="num">{route.waypoints.length}</span></dd>
+            </dl>
+            <div class="actions">
+              <button
+                type="button"
+                class="icon-btn"
+                aria-pressed={shownIds.has(route.id)}
+                aria-label={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
+                title={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
+                onclick={() => onToggleShown(route.id, !shownIds.has(route.id))}
+              >
+                {#if shownIds.has(route.id)}
+                  <Eye size={18} aria-hidden="true" />
+                {:else}
+                  <EyeOff size={18} aria-hidden="true" />
+                {/if}
+              </button>
+              <button
+                type="button"
+                class="icon-btn"
+                aria-label="Edit route"
+                title="Edit"
+                disabled={working !== undefined}
+                onclick={() => onEditRoute(route.id)}
+              >
+                <SquarePen size={18} aria-hidden="true" />
+              </button>
+              {#if route.id === activeId}
+                <button
+                  type="button"
+                  class="icon-btn icon-btn--accent"
+                  aria-label="Stop navigation"
+                  title="Stop navigation"
+                  onclick={onStop}
+                >
+                  <Square size={18} aria-hidden="true" />
+                </button>
+              {:else}
+                <button
+                  type="button"
+                  class="icon-btn"
+                  aria-label="Activate route"
+                  title="Activate route"
+                  disabled={working !== undefined}
+                  onclick={() => onActivate(route.id)}
+                >
+                  <Navigation size={18} aria-hidden="true" />
+                </button>
+              {/if}
+              <button
+                type="button"
+                class="icon-btn icon-btn--danger"
+                aria-label="Delete route"
+                title="Delete"
+                onclick={() => onDelete(route.id)}
+              >
+                <Trash2 size={18} aria-hidden="true" />
+              </button>
+            </div>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
+</SlideOver>
 
 <style>
 .controls {
@@ -328,7 +308,8 @@ function promptSave(): void {
   flex: 1;
   display: flex;
   align-items: center;
-  min-block-size: 1.6rem;
+  /* Fill the card-head row so the locate target is a full 44px tall, not a 26px sliver. */
+  min-block-size: var(--control-size);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

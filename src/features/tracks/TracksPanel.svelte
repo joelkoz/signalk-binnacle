@@ -1,9 +1,9 @@
 <script lang="ts">
-import { Download, Eraser, Eye, EyeOff, Pause, Play, Save, Trash2, X } from '@lucide/svelte';
+import { Download, Eraser, Eye, EyeOff, Pause, Play, Save, Trash2 } from '@lucide/svelte';
 import type { TrackRecorder } from '$entities/track';
 import { formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
-import { dialog, promptSaveName } from '$shared/ui';
+import { promptSaveName, SlideOver } from '$shared/ui';
 import type { SavedTrack } from './tracks-client';
 
 interface Props {
@@ -56,124 +56,116 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 </script>
 
-<aside class="slide-over slide-over--dock-left" aria-label="Tracks" use:dialog={onClose}>
-  <header class="panel-header">
-    <h2 class="panel-title">Tracks</h2>
-    <button type="button" class="panel-close" aria-label="Close" onclick={onClose}>
-      <X size={18} aria-hidden="true" />
+<SlideOver title="Tracks" bodyFlex {onClose}>
+  <div class="controls">
+    {#if recorder.paused}
+      <button type="button" class="btn" onclick={() => recorder.resume()}>
+        <Play size={16} aria-hidden="true" />
+        Resume
+      </button>
+    {:else}
+      <button type="button" class="btn" onclick={() => recorder.pause()}>
+        <Pause size={16} aria-hidden="true" />
+        Pause
+      </button>
+    {/if}
+    <button
+      type="button"
+      class="btn btn-primary"
+      onclick={promptSave}
+      disabled={recorder.points.length < 2}
+    >
+      <Save size={16} aria-hidden="true" />
+      Save
     </button>
-  </header>
-  <div class="panel-body panel-body--flex">
-    <div class="controls">
-      {#if recorder.paused}
-        <button type="button" class="btn" onclick={() => recorder.resume()}>
-          <Play size={16} aria-hidden="true" />
-          Resume
-        </button>
-      {:else}
-        <button type="button" class="btn" onclick={() => recorder.pause()}>
-          <Pause size={16} aria-hidden="true" />
-          Pause
-        </button>
-      {/if}
-      <button
-        type="button"
-        class="btn btn-primary"
-        onclick={promptSave}
-        disabled={recorder.points.length < 2}
-      >
-        <Save size={16} aria-hidden="true" />
-        Save
-      </button>
-      <button
-        type="button"
-        class="btn btn-danger"
-        onclick={confirmClear}
-        disabled={recorder.points.length === 0}
-      >
-        <Eraser size={16} aria-hidden="true" />
-        Clear
-      </button>
-    </div>
-
-    <div class="color-mode" role="group" aria-label="Track color">
-      <button
-        type="button"
-        class:active={colorMode === 'speed'}
-        aria-pressed={colorMode === 'speed'}
-        onclick={() => setColorMode('speed')}
-      >
-        Speed
-      </button>
-      <button
-        type="button"
-        class:active={colorMode === 'solid'}
-        aria-pressed={colorMode === 'solid'}
-        onclick={() => setColorMode('solid')}
-      >
-        Solid
-      </button>
-    </div>
-
-    <dl class="stats">
-      <dt>Distance</dt>
-      <dd><span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span> nm</dd>
-      <dt>Duration</dt>
-      <dd><span class="num">{hasTrack ? duration(stats.durationSeconds) : PLACEHOLDER}</span></dd>
-      <dt>Avg</dt>
-      <dd><span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span> kn</dd>
-      <dt>Max</dt>
-      <dd><span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span> kn</dd>
-    </dl>
-
-    <div class="saved">
-      <span class="caps-label">Saved tracks</span>
-      {#if saved.length === 0}
-        <p class="empty">None saved yet</p>
-      {:else}
-        <ul>
-          {#each saved as track (track.id)}
-            <li>
-              <span class="name" title={track.name}>{track.name}</span>
-              <button
-                type="button"
-                class="icon-btn"
-                aria-pressed={shown.has(track.id)}
-                aria-label={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
-                title={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
-                onclick={() => onToggleSaved(track.id)}
-              >
-                {#if shown.has(track.id)}
-                  <Eye size={18} aria-hidden="true" />
-                {:else}
-                  <EyeOff size={18} aria-hidden="true" />
-                {/if}
-              </button>
-              <button
-                type="button"
-                class="icon-btn"
-                aria-label="Export GeoJSON"
-                title="Export GeoJSON"
-                onclick={() => onExport(track)}
-              >
-                <Download size={18} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="icon-btn icon-btn--danger"
-                aria-label="Delete track"
-                title="Delete"
-                onclick={() => onDelete(track.id)}
-              >
-                <Trash2 size={18} aria-hidden="true" />
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </div>
+    <button
+      type="button"
+      class="btn btn-danger"
+      onclick={confirmClear}
+      disabled={recorder.points.length === 0}
+    >
+      <Eraser size={16} aria-hidden="true" />
+      Clear
+    </button>
   </div>
-</aside>
+
+  <div class="color-mode" role="group" aria-label="Track color">
+    <button
+      type="button"
+      class:active={colorMode === 'speed'}
+      aria-pressed={colorMode === 'speed'}
+      onclick={() => setColorMode('speed')}
+    >
+      Speed
+    </button>
+    <button
+      type="button"
+      class:active={colorMode === 'solid'}
+      aria-pressed={colorMode === 'solid'}
+      onclick={() => setColorMode('solid')}
+    >
+      Solid
+    </button>
+  </div>
+
+  <dl class="stats">
+    <dt>Distance</dt>
+    <dd><span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span> nm</dd>
+    <dt>Duration</dt>
+    <dd><span class="num">{hasTrack ? duration(stats.durationSeconds) : PLACEHOLDER}</span></dd>
+    <dt>Avg</dt>
+    <dd><span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span> kn</dd>
+    <dt>Max</dt>
+    <dd><span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span> kn</dd>
+  </dl>
+
+  <div class="saved">
+    <span class="caps-label">Saved tracks</span>
+    {#if saved.length === 0}
+      <p class="empty">None saved yet</p>
+    {:else}
+      <ul>
+        {#each saved as track (track.id)}
+          <li>
+            <span class="name" title={track.name}>{track.name}</span>
+            <button
+              type="button"
+              class="icon-btn"
+              aria-pressed={shown.has(track.id)}
+              aria-label={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
+              title={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
+              onclick={() => onToggleSaved(track.id)}
+            >
+              {#if shown.has(track.id)}
+                <Eye size={18} aria-hidden="true" />
+              {:else}
+                <EyeOff size={18} aria-hidden="true" />
+              {/if}
+            </button>
+            <button
+              type="button"
+              class="icon-btn"
+              aria-label="Export GeoJSON"
+              title="Export GeoJSON"
+              onclick={() => onExport(track)}
+            >
+              <Download size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              class="icon-btn icon-btn--danger"
+              aria-label="Delete track"
+              title="Delete"
+              onclick={() => onDelete(track.id)}
+            >
+              <Trash2 size={18} aria-hidden="true" />
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
+</SlideOver>
 
 <style>
 .controls {

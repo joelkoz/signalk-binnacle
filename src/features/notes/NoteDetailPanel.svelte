@@ -115,7 +115,9 @@ function measure(item: NormalizedItem): string {
                         {item.value === true ? 'Yes' : 'No'}
                       </span>
                     {:else if linkUrl}
-                      <a href={linkUrl} target="_blank" rel="noopener noreferrer">{item.label}</a>
+                      <a href={linkUrl} target="_blank" rel="noopener noreferrer"
+                        >{item.label}<span class="visually-hidden"> (opens in a new tab)</span></a
+                      >
                     {:else if item.kind === 'rating'}
                       {@const filled = Math.round(Number(item.value))}
                       <span
@@ -160,7 +162,8 @@ function measure(item: NormalizedItem): string {
       {/if}
       {#if sourceUrl}
         <a class="source-link" href={sourceUrl} target="_blank" rel="noopener noreferrer">
-          View source <ExternalLink size={13} aria-hidden="true" />
+          View source <span class="visually-hidden">(opens in a new tab)</span>
+          <ExternalLink size={13} aria-hidden="true" />
         </a>
       {/if}
     </footer>
