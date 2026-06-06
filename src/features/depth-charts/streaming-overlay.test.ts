@@ -18,6 +18,16 @@ describe('streaming chart sources', () => {
     expect(ids.size).toBe(STREAMING_CHART_SOURCES.length);
   });
 
+  it('splits the NOAA ENC categories across separate overlays', () => {
+    const tilesById = (id: string): string =>
+      STREAMING_CHART_SOURCES.find((s) => s.id === id)?.tiles[0] ?? '';
+    // The chart carries the chart categories only; data quality (8, 9) and the shallow-water and
+    // overscale warning patterns (11, 12) live in their own overlays so they toggle independently.
+    expect(tilesById('depth-noaa-enc')).toContain('LAYERS=0,1,2,3,4,5,6,7,10&');
+    expect(tilesById('depth-noaa-enc-quality')).toContain('LAYERS=8,9&');
+    expect(tilesById('depth-noaa-enc-warnings')).toContain('LAYERS=11,12&');
+  });
+
   it('builds a hidden bathymetry overlay for each source', () => {
     for (const source of STREAMING_CHART_SOURCES) {
       const overlay = createStreamingChartOverlay(source);

@@ -14,10 +14,32 @@ export interface StreamingChartSource {
   attribution: string;
 }
 
+// The NOAA Maritime Chart Service renders S-52 chart symbology server-side and returns it as
+// transparent raster tiles. The LAYERS list selects S-57 display categories (numbering from the
+// service GetCapabilities): 0 to 7 and 10 are the chart itself, 8 and 9 are data quality (the ZOC
+// triangle-of-stars and low-accuracy markers), and 11 and 12 are the shallow-water and overscale
+// warning patterns. The categories are split across separate overlays below so the metadata ones
+// toggle off without losing the chart. Each subset is its own WMS request, so each enabled overlay
+// is its own fetch; the two metadata overlays default hidden, so the default view is the chart alone.
+const NOAA_ENC_WMS =
+  'https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/NOAAChartDisplay/MapServer/exts/MaritimeChartService/WMSServer';
+const noaaEncTiles = (layers: string): string =>
+  `${NOAA_ENC_WMS}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layers}&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=`;
+const noaaEncSource = (id: string, title: string, layers: string): StreamingChartSource => ({
+  id,
+  title,
+  tiles: [noaaEncTiles(layers)],
+  tileSize: 256,
+  minzoom: 0,
+  maxzoom: 18,
+  bounds: [-180, -15, 180, 75],
+  attribution: 'NOAA Office of Coast Survey, Electronic Navigational Charts (ENC)',
+});
+
 // Live-verified free services (2026-06-02), global first then regional. Every one carries a
 // "not for navigation" constraint, so they are reference overlays, not the primary chart. Two
-// traps kept exactly as verified: BlueTopo serves 512px PNG8 tiles, and NOAA ENC is a full
-// chart-display WMS that needs the whole S-57 category stack, not a single depth layer.
+// traps kept exactly as verified: BlueTopo serves 512px PNG8 tiles, and the NOAA ENC is a full
+// chart-display WMS whose LAYERS list selects S-57 display categories (see noaaEncSource above).
 export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-gebco',
@@ -44,18 +66,10 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
     bounds: [-73.125, 5.625, 45.0, 90.0],
     attribution: 'EMODnet Bathymetry Consortium (2022): EMODnet Digital Bathymetry (DTM)',
   },
-  {
-    id: 'depth-noaa-enc',
-    title: 'NOAA ENC chart (US)',
-    tiles: [
-      'https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/NOAAChartDisplay/MapServer/exts/MaritimeChartService/WMSServer?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=0,1,2,3,4,5,6,7,8,9,10,11,12&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=',
-    ],
-    tileSize: 256,
-    minzoom: 0,
-    maxzoom: 18,
-    bounds: [-180, -15, 180, 75],
-    attribution: 'NOAA Office of Coast Survey, Electronic Navigational Charts (ENC)',
-  },
+  // Registration order is z-order, so the chart sits below its data-quality and warning overlays.
+  noaaEncSource('depth-noaa-enc', 'NOAA ENC chart (US)', '0,1,2,3,4,5,6,7,10'),
+  noaaEncSource('depth-noaa-enc-quality', 'NOAA ENC data quality', '8,9'),
+  noaaEncSource('depth-noaa-enc-warnings', 'NOAA ENC shallow/overscale', '11,12'),
   {
     id: 'depth-bluetopo',
     title: 'NOAA BlueTopo bathymetry (US)',
