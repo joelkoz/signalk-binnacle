@@ -649,13 +649,13 @@ onDestroy(() => {
       {#if alarmMuted.value}
         <button
           type="button"
-          class="muted-badge"
+          class="btn btn-pill btn-warning"
           aria-label="Collision alarm muted, tap to unmute"
           title="Collision alarm muted, tap to unmute"
           onclick={() => alarmMuted.set(false)}
         >
           <VolumeX size={16} aria-hidden="true" />
-          <span>Muted</span>
+          Muted
         </button>
       {/if}
       {#if updateReady}
@@ -873,33 +873,6 @@ onDestroy(() => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-/* An always-visible indicator that the collision alarm is muted, so the silenced state is never
-   hidden behind the menu. It reads as a caution (warning color) and unmutes on tap. */
-.muted-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-block-size: var(--control-size);
-  padding-block: var(--space-1);
-  padding-inline: var(--space-3);
-  border: 1px solid var(--warning);
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--warning);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    background-color var(--transition-fast),
-    filter var(--transition-fast);
-}
-.muted-badge:hover {
-  background: var(--alarm-tint);
-}
-.muted-badge:active {
-  filter: brightness(0.94);
 }
 .brand {
   font-weight: 600;

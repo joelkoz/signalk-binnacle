@@ -15,6 +15,7 @@ import { createRouteEditor, type RouteEditor } from '$features/route-edit';
 import { createRouteOverlay } from '$features/route-layer';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
+import { prefersReducedMotion } from '$shared/lib';
 import {
   chartSourceId,
   createChartOverlay,
@@ -178,6 +179,7 @@ onMount(() => {
           map.flyTo({
             center: [position.longitude, position.latitude],
             zoom: zoom < 12 ? 14 : zoom,
+            ...(prefersReducedMotion() ? { duration: 0 } : {}),
           });
         },
         recenterOnVessel: (latitude, longitude) => {
@@ -185,7 +187,11 @@ onMount(() => {
         },
         flyTo: (latitude, longitude) => {
           const zoom = map.getZoom();
-          map.flyTo({ center: [longitude, latitude], zoom: zoom < 11 ? 12 : zoom });
+          map.flyTo({
+            center: [longitude, latitude],
+            zoom: zoom < 11 ? 12 : zoom,
+            ...(prefersReducedMotion() ? { duration: 0 } : {}),
+          });
         },
         fitBounds: ([west, south, east, north]) => {
           map.fitBounds(
@@ -193,7 +199,7 @@ onMount(() => {
               [west, south],
               [east, north],
             ],
-            { padding: 40, maxZoom: 16, duration: 800 },
+            { padding: 40, maxZoom: 16, duration: prefersReducedMotion() ? 0 : 800 },
           );
         },
         clearNoteSelection: () => notesOverlay.deselect(ctx),

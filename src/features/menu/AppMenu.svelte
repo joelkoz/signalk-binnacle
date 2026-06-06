@@ -16,11 +16,37 @@ const { items = [], label = 'Menu', open, onOpenChange }: Props = $props();
 let root = $state<HTMLElement>();
 let trigger = $state<HTMLButtonElement>();
 let popout = $state<HTMLElement>();
+// The id of the item that holds the roving tabindex 0 (the rest are -1), so Tab moves into and out
+// of the menu as one stop while Arrow keys move between items, per the WAI-ARIA menu pattern.
+let activeId = $state('');
 
-// On open, move focus to the first enabled item so a keyboard user lands inside the menu rather
-// than having to tab into it. focus-visible keeps this ring-free for pointer and touch opens.
+// The items split into contiguous groups by their group label, so each renders inside a role=group
+// with an accessible name and its caps-label header.
+const groups = $derived.by(() => {
+  const out: { label: string; items: MenuItem[] }[] = [];
+  for (const item of items) {
+    const label = item.group ?? '';
+    const last = out.at(-1);
+    if (last && last.label === label) last.items.push(item);
+    else out.push({ label, items: [item] });
+  }
+  return out;
+});
+
+function itemButtons(): HTMLButtonElement[] {
+  return [...(popout?.querySelectorAll<HTMLButtonElement>('.item:not([disabled])') ?? [])];
+}
+function focusItem(button: HTMLButtonElement | null | undefined): void {
+  if (!button) return;
+  activeId = button.dataset.id ?? '';
+  button.focus();
+}
+
+// On open, give the roving focus to the first enabled item. The lookup is a DOM query, not a reactive
+// read, so a disabled-state change while the menu is open (for example mapCommands resolving) does
+// not re-run this and re-steal focus.
 $effect(() => {
-  if (open) popout?.querySelector<HTMLButtonElement>('.item:not(:disabled)')?.focus();
+  if (open) focusItem(popout?.querySelector<HTMLButtonElement>('.item:not([disabled])'));
 });
 
 function closeMenu(restoreFocus = false): void {
@@ -46,11 +72,27 @@ function onWindowKeydown(event: KeyboardEvent): void {
   if (open && event.key === 'Escape') closeMenu(true);
 }
 
-// An item starts a new group when it carries a group label and the item above it does not share it,
-// so a caps-label header renders before it. The menu groups itself from the data this way.
-function startsGroup(index: number): boolean {
-  const group = items[index]?.group;
-  return group !== undefined && (index === 0 || items[index - 1]?.group !== group);
+// Arrow keys move the roving focus between enabled items, wrapping; Home and End jump to the ends.
+function onPopoutKeydown(event: KeyboardEvent): void {
+  const buttons = itemButtons();
+  if (buttons.length === 0) return;
+  const at = Math.max(
+    0,
+    buttons.findIndex((b) => b.dataset.id === activeId),
+  );
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    focusItem(buttons[(at + 1) % buttons.length]);
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    focusItem(buttons[(at - 1 + buttons.length) % buttons.length]);
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    focusItem(buttons[0]);
+  } else if (event.key === 'End') {
+    event.preventDefault();
+    focusItem(buttons.at(-1));
+  }
 }
 </script>
 
@@ -71,27 +113,62 @@ function startsGroup(index: number): boolean {
     <Menu size={20} aria-hidden="true" />
   </button>
   {#if open}
-    <div class="popout" id="app-menu-popout" bind:this={popout}>
+    <div
+      class="popout"
+      role="menu"
+      tabindex="-1"
+      aria-label={label}
+      id="app-menu-popout"
+      bind:this={popout}
+      onkeydown={onPopoutKeydown}
+    >
       {#if items.length === 0}
         <span class="empty">No options</span>
       {:else}
-        {#each items as item, i (item.id)}
-          {#if startsGroup(i)}
-            <div class="group-label caps-label">{item.group}</div>
-          {/if}
-          <button
-            type="button"
-            class="item"
-            disabled={item.disabled}
-            aria-pressed={item.pressed}
-            onclick={() => select(item)}
-          >
-            {#if item.icon}
-              {@const Icon = item.icon}
-              <Icon size={18} aria-hidden="true" />
+        {#each groups as group, gi (gi)}
+          <div class="group" role="group" aria-label={group.label || undefined}>
+            {#if group.label}
+              <div class="group-label caps-label" aria-hidden="true">{group.label}</div>
             {/if}
-            <span>{item.label}</span>
-          </button>
+            {#each group.items as item (item.id)}
+              <!-- A plain action is a menuitem; a toggle (the mutes) is a menuitemcheckbox carrying
+                   aria-checked. Split into two static roles so the role is never a dynamic value. -->
+              {#if item.pressed === undefined}
+                <button
+                  type="button"
+                  class="item"
+                  role="menuitem"
+                  data-id={item.id}
+                  tabindex={item.id === activeId ? 0 : -1}
+                  disabled={item.disabled}
+                  onclick={() => select(item)}
+                >
+                  {#if item.icon}
+                    {@const Icon = item.icon}
+                    <Icon size={18} aria-hidden="true" />
+                  {/if}
+                  <span>{item.label}</span>
+                </button>
+              {:else}
+                <button
+                  type="button"
+                  class="item"
+                  role="menuitemcheckbox"
+                  aria-checked={item.pressed}
+                  data-id={item.id}
+                  tabindex={item.id === activeId ? 0 : -1}
+                  disabled={item.disabled}
+                  onclick={() => select(item)}
+                >
+                  {#if item.icon}
+                    {@const Icon = item.icon}
+                    <Icon size={18} aria-hidden="true" />
+                  {/if}
+                  <span>{item.label}</span>
+                </button>
+              {/if}
+            {/each}
+          </div>
         {/each}
       {/if}
     </div>
@@ -127,12 +204,13 @@ function startsGroup(index: number): boolean {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-overlay);
 }
-.group-label {
-  margin-block-start: var(--space-1);
-  padding-inline: var(--space-2);
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
-.group-label:first-child {
-  margin-block-start: 0;
+.group-label {
+  padding-inline: var(--space-2);
 }
 .item {
   display: flex;
@@ -163,7 +241,7 @@ function startsGroup(index: number): boolean {
 .item:active:not(:disabled) {
   filter: brightness(0.94);
 }
-.item[aria-pressed="true"] {
+.item[aria-checked="true"] {
   color: var(--accent);
   background: var(--accent-tint);
 }

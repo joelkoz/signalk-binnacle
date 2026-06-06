@@ -365,6 +365,12 @@ function promptSave(): void {
   font-weight: 600;
   color: var(--text);
 }
+/* On the active card (its background is the accent tint), lift the muted stat labels to the body text
+   color so they stay readable, especially in night-red where muted-on-tint is the lowest-contrast
+   pairing. This raises contrast with the body color already in use, not a brighter one. */
+.saved li.active .card-stats {
+  color: var(--text);
+}
 .saved .actions {
   display: flex;
   align-items: center;

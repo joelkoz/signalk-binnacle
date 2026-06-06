@@ -204,6 +204,16 @@ body {
   background: transparent;
   color: var(--accent);
 }
+/* A caution variant of .btn: warning-colored text and border, tinting with the alarm token on hover,
+   for a caution chrome action like the muted-alarm badge. */
+.btn-warning {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.btn-warning:hover:not(:disabled) {
+  border-color: var(--warning);
+  background: var(--alarm-tint);
+}
 /* A fully rounded variant for the chrome toggles (Update, Forecast) that read as pills. */
 .btn-pill {
   border-radius: var(--radius-pill);
