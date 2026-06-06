@@ -1,37 +1,46 @@
 <script lang="ts">
 import { Menu } from '@lucide/svelte';
-import type { Snippet } from 'svelte';
 import type { MenuItem } from './menu-item';
 
 interface Props {
   items?: MenuItem[];
   label?: string;
-  // Rich content (e.g. the layers controls) rendered below the action items.
-  children?: Snippet;
 }
 
-const { items = [], label = 'Menu', children }: Props = $props();
+const { items = [], label = 'Menu' }: Props = $props();
 
 let menuOpen = $state(false);
 let root = $state<HTMLElement>();
+let trigger = $state<HTMLButtonElement>();
 
-function closeMenu(): void {
+function closeMenu(restoreFocus = false): void {
   menuOpen = false;
+  // Return focus to the trigger when the menu closes by keyboard or selection, so a keyboard user
+  // lands back on the control that opened it rather than at the top of the document.
+  if (restoreFocus) trigger?.focus();
 }
 
 function select(item: MenuItem): void {
   if (item.disabled) return;
   item.onSelect();
-  closeMenu();
+  closeMenu(true);
 }
 
-// Close when a pointer goes down outside the menu, or on Escape.
+// Close when a pointer goes down outside the menu (focus follows the pointer), or on Escape (focus
+// returns to the trigger).
 function onWindowPointerDown(event: PointerEvent): void {
   if (menuOpen && root && !root.contains(event.target as Node)) closeMenu();
 }
 
 function onWindowKeydown(event: KeyboardEvent): void {
-  if (menuOpen && event.key === 'Escape') closeMenu();
+  if (menuOpen && event.key === 'Escape') closeMenu(true);
+}
+
+// An item starts a new group when it carries a group label and the item above it does not share it,
+// so a caps-label header renders before it. The menu groups itself from the data this way.
+function startsGroup(index: number): boolean {
+  const group = items[index]?.group;
+  return group !== undefined && (index === 0 || items[index - 1]?.group !== group);
 }
 </script>
 
@@ -41,6 +50,7 @@ function onWindowKeydown(event: KeyboardEvent): void {
   <button
     type="button"
     class="trigger"
+    bind:this={trigger}
     aria-haspopup="true"
     aria-expanded={menuOpen}
     aria-controls="app-menu-popout"
@@ -52,21 +62,27 @@ function onWindowKeydown(event: KeyboardEvent): void {
   </button>
   {#if menuOpen}
     <div class="popout" id="app-menu-popout">
-      {#each items as item (item.id)}
-        <button type="button" class="item" disabled={item.disabled} onclick={() => select(item)}>
-          {#if item.icon}
-            {@const Icon = item.icon}
-            <Icon size={16} aria-hidden="true" />
-          {/if}
-          <span>{item.label}</span>
-        </button>
-      {/each}
-      {#if items.length > 0 && children}
-        <div class="divider" aria-hidden="true"></div>
-      {/if}
-      {@render children?.()}
-      {#if items.length === 0 && !children}
+      {#if items.length === 0}
         <span class="empty">No options</span>
+      {:else}
+        {#each items as item, i (item.id)}
+          {#if startsGroup(i)}
+            <div class="group-label caps-label" aria-hidden="true">{item.group}</div>
+          {/if}
+          <button
+            type="button"
+            class="item"
+            disabled={item.disabled}
+            aria-pressed={item.pressed}
+            onclick={() => select(item)}
+          >
+            {#if item.icon}
+              {@const Icon = item.icon}
+              <Icon size={18} aria-hidden="true" />
+            {/if}
+            <span>{item.label}</span>
+          </button>
+        {/each}
       {/if}
     </div>
   {/if}
@@ -89,34 +105,48 @@ function onWindowKeydown(event: KeyboardEvent): void {
   background: var(--surface-raised);
   color: var(--accent);
   cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
 }
-.trigger:hover {
+.trigger:hover,
+.trigger[aria-expanded="true"] {
   border-color: var(--accent);
+  background: var(--accent-tint);
 }
 .popout {
   position: absolute;
-  inset-block-start: calc(100% + 0.4rem);
+  inset-block-start: calc(100% + var(--space-2));
   inset-inline-start: 0;
   z-index: var(--z-menu);
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  inline-size: 18rem;
+  gap: var(--space-1);
+  inline-size: 20rem;
+  max-inline-size: calc(100vw - var(--space-4));
   max-block-size: calc(100dvh - 4rem);
   overflow-y: auto;
-  padding: 0.4rem;
+  padding: var(--space-2);
   background: var(--surface-overlay);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-overlay);
+}
+.group-label {
+  margin-block-start: var(--space-1);
+  padding-inline: var(--space-2);
+}
+.group-label:first-child {
+  margin-block-start: 0;
 }
 .item {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   inline-size: 100%;
-  padding-block: 0.6rem;
-  padding-inline: 0.6rem;
+  min-block-size: var(--control-size);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -125,23 +155,30 @@ function onWindowKeydown(event: KeyboardEvent): void {
   font-size: var(--text-base);
   text-align: start;
   cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+.item :global(svg) {
+  flex-shrink: 0;
 }
 .item:hover:not(:disabled) {
-  background: var(--surface);
+  background: var(--accent-tint);
+}
+.item:active:not(:disabled) {
+  filter: brightness(0.94);
+}
+.item[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-tint);
 }
 .item:disabled {
   color: var(--text-muted);
   cursor: default;
 }
-.divider {
-  block-size: 1px;
-  margin-block: var(--space-1);
-  margin-inline: 0.3rem;
-  background: var(--border);
-}
 .empty {
   display: block;
-  padding: 0.45rem 0.6rem;
+  padding: var(--space-2) var(--space-3);
   font-size: var(--text-base);
   color: var(--text-muted);
 }

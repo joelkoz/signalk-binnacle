@@ -8,5 +8,11 @@ export interface MenuItem {
   // Optional leading icon (a lucide-svelte component).
   icon?: LucideIcon;
   disabled?: boolean;
+  // For a toggle (mute, follow), the current on state. When set, the item renders aria-pressed and
+  // an accent on-state; when undefined, the item is a plain action and carries no pressed semantics.
+  pressed?: boolean;
+  // Optional section heading. Consecutive items sharing a group render under one caps-label header,
+  // so the menu groups itself from data without the menu component knowing the sections.
+  group?: string;
   onSelect: () => void;
 }

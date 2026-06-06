@@ -375,6 +375,13 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* Night-red dims the ring: --accent is the brightest red in the palette, and a bright 2px outline
+   appearing as you tab through controls in the dark hurts dark adaptation. A thinner, dimmer red
+   (--text) still marks focus while keeping the brightest pixel low. */
+:root[data-theme="night-red"] :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline-width: 1px;
+  outline-color: var(--text);
+}
 
 /* Respect a reduced-motion preference: drop transitions and animations app-wide. */
 @media (prefers-reduced-motion: reduce) {

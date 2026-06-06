@@ -4,8 +4,6 @@ import {
   BellOff,
   CloudSun,
   Layers,
-  LocateFixed,
-  Navigation,
   Route,
   SlidersHorizontal,
   Spline,
@@ -24,7 +22,8 @@ import { WeatherStore } from '$entities/weather';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
-import { AppMenu, type MenuItem, MenuSubmenu } from '$features/menu';
+import { MapDock } from '$features/map-dock';
+import { AppMenu, type MenuItem } from '$features/menu';
 import { ArrivalAlarm, NavStrip } from '$features/navigation';
 import {
   createNoteDetailLoader,
@@ -154,8 +153,14 @@ const savedSource: SavedTracksSource = {
 };
 
 let layersView = $state<LayersView | undefined>();
-let layersPanelOpen = $state(false);
-let routesPanelOpen = $state(false);
+// The edge-docked panels (routes, layers, tracks, collision thresholds) are mutually exclusive: one
+// docks at the leading edge at a time. A single active-panel value enforces that structurally, so
+// opening one closes whatever was open without each opener having to clear the others by hand.
+type LeftPanel = 'routes' | 'layers' | 'tracks' | 'thresholds';
+let activePanel = $state<LeftPanel | null>(null);
+const closePanel = (): void => {
+  activePanel = null;
+};
 let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
 
@@ -206,52 +211,55 @@ let mapCommands = $state<MapCommands | undefined>();
 // (dragging the chart) releases it; it does not persist across reloads.
 let following = $state(false);
 
-// The app menu's action options. Adding one is a single entry here. "Layers and charts" opens
-// the layers slide-over; Tracks and the collision thresholds stay as inline submenus below.
+// The app menu's options, grouped from the data: a Navigation group of panel-openers, then an Alarms
+// group of the two mute toggles and the threshold editor. Center and Follow live on the on-chart
+// dock, not here. Adding an option is a single entry; the menu renders and groups whatever it is given.
 const menuItems = $derived<MenuItem[]>([
-  {
-    id: 'center-on-boat',
-    label: 'Center on boat',
-    icon: LocateFixed,
-    onSelect: () => mapCommands?.centerOnVessel(),
-  },
-  {
-    id: 'follow-boat',
-    label: following ? 'Stop following' : 'Follow boat',
-    icon: Navigation,
-    onSelect: () => (following = !following),
-  },
-  {
-    id: 'mute-alarm',
-    label: alarmMuted.value ? 'Unmute alarm' : 'Mute alarm',
-    icon: alarmMuted.value ? VolumeX : Volume2,
-    onSelect: () => alarmMuted.set(!alarmMuted.value),
-  },
-  {
-    id: 'mute-arrival',
-    label: arrivalMuted.value ? 'Unmute arrival' : 'Mute arrival',
-    icon: arrivalMuted.value ? BellOff : Bell,
-    onSelect: () => arrivalMuted.set(!arrivalMuted.value),
-  },
   {
     id: 'routes',
     label: 'Routes',
     icon: Route,
+    group: 'Navigation',
     disabled: !mapCommands,
-    onSelect: () => {
-      layersPanelOpen = false;
-      routesPanelOpen = true;
-    },
+    onSelect: () => (activePanel = 'routes'),
   },
   {
     id: 'layers',
     label: 'Layers and charts',
     icon: Layers,
+    group: 'Navigation',
     disabled: !layersView,
-    onSelect: () => {
-      routesPanelOpen = false;
-      layersPanelOpen = true;
-    },
+    onSelect: () => (activePanel = 'layers'),
+  },
+  {
+    id: 'tracks',
+    label: 'Tracks',
+    icon: Spline,
+    group: 'Navigation',
+    onSelect: () => (activePanel = 'tracks'),
+  },
+  {
+    id: 'mute-alarm',
+    label: 'Mute alarm',
+    icon: alarmMuted.value ? VolumeX : Volume2,
+    group: 'Alarms',
+    pressed: alarmMuted.value,
+    onSelect: () => alarmMuted.set(!alarmMuted.value),
+  },
+  {
+    id: 'mute-arrival',
+    label: 'Mute arrival',
+    icon: arrivalMuted.value ? BellOff : Bell,
+    group: 'Alarms',
+    pressed: arrivalMuted.value,
+    onSelect: () => arrivalMuted.set(!arrivalMuted.value),
+  },
+  {
+    id: 'collision-thresholds',
+    label: 'Collision thresholds',
+    icon: SlidersHorizontal,
+    group: 'Alarms',
+    onSelect: () => (activePanel = 'thresholds'),
   },
 ]);
 
@@ -603,26 +611,22 @@ onDestroy(() => {
 <main class="binnacle-shell">
   <header class="topbar">
     <span class="topbar-start">
-      <AppMenu items={menuItems}>
-        <MenuSubmenu label="Tracks" icon={Spline}>
-          <TracksPanel
-            {recorder}
-            settings={trackSettings}
-            saved={savedTracks}
-            shown={shownSaved}
-            onSave={onSaveTrack}
-            onDelete={onDeleteSavedTrack}
-            {onToggleSaved}
-            onExport={onExportSavedTrack}
-          />
-        </MenuSubmenu>
-        <MenuSubmenu label="Collision thresholds" icon={SlidersHorizontal}>
-          <ThresholdsPanel {thresholds} />
-        </MenuSubmenu>
-      </AppMenu>
+      <AppMenu items={menuItems} />
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>
     <span class="topbar-actions">
+      {#if alarmMuted.value}
+        <button
+          type="button"
+          class="muted-badge"
+          aria-label="Collision alarm muted, tap to unmute"
+          title="Collision alarm muted, tap to unmute"
+          onclick={() => alarmMuted.set(false)}
+        >
+          <VolumeX size={16} aria-hidden="true" />
+          <span>Muted</span>
+        </button>
+      {/if}
       {#if updateReady}
         <button type="button" class="btn btn-primary btn-pill" onclick={() => pwa.update()}>
           Update
@@ -659,6 +663,13 @@ onDestroy(() => {
       onNoteSelect={(selection) => (selectedNote = selection)}
       onUserPan={() => (following = false)}
     />
+    <div class="map-dock-slot">
+      <MapDock
+        {following}
+        onCenter={() => mapCommands?.centerOnVessel()}
+        onToggleFollow={() => (following = !following)}
+      />
+    </div>
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
@@ -666,20 +677,24 @@ onDestroy(() => {
       <NavStrip guidance={courseGuidance} onStop={onStopCourse} />
     </div>
     <div class="danger-slot">
-      <DangerStrip {collision} />
+      <DangerStrip
+        {collision}
+        muted={alarmMuted.value}
+        onToggleMute={() => alarmMuted.set(!alarmMuted.value)}
+      />
     </div>
     {#if selectedNote && noteLoader}
       <div class="note-panel-slot">
         <NoteDetailPanel selection={selectedNote} load={noteLoader.load} onClose={closeNote} />
       </div>
     {/if}
-    {#if layersPanelOpen && layersView}
-      <div class="layers-panel-slot">
-        <LayersPanel view={layersView} {userCharts} onClose={() => (layersPanelOpen = false)} />
+    {#if activePanel === 'layers' && layersView}
+      <div class="panel-slot">
+        <LayersPanel view={layersView} {userCharts} onClose={closePanel} />
       </div>
     {/if}
-    {#if routesPanelOpen}
-      <div class="routes-panel-slot">
+    {#if activePanel === 'routes'}
+      <div class="panel-slot">
         <RoutesPanel
           routes={routeStore.routes}
           shownIds={routeStore.shownIds}
@@ -698,9 +713,29 @@ onDestroy(() => {
           onClose={() => {
             onCancelRouteEdit();
             clearRouteError();
-            routesPanelOpen = false;
+            closePanel();
           }}
         />
+      </div>
+    {/if}
+    {#if activePanel === 'tracks'}
+      <div class="panel-slot">
+        <TracksPanel
+          {recorder}
+          settings={trackSettings}
+          saved={savedTracks}
+          shown={shownSaved}
+          onSave={onSaveTrack}
+          onDelete={onDeleteSavedTrack}
+          {onToggleSaved}
+          onExport={onExportSavedTrack}
+          onClose={closePanel}
+        />
+      </div>
+    {/if}
+    {#if activePanel === 'thresholds'}
+      <div class="panel-slot">
+        <ThresholdsPanel {thresholds} onClose={closePanel} />
       </div>
     {/if}
     {#if weatherPanelOpen}
@@ -785,6 +820,24 @@ onDestroy(() => {
   align-items: center;
   gap: var(--space-2);
 }
+/* An always-visible indicator that the collision alarm is muted, so the silenced state is never
+   hidden behind the menu. It reads as a caution (warning color) and unmutes on tap. */
+.muted-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--control-size);
+  padding-block: var(--space-1);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--warning);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
 .brand {
   font-weight: 600;
 }
@@ -826,26 +879,26 @@ onDestroy(() => {
   inset-inline-end: 0;
   z-index: var(--z-panel);
 }
-/* The Layers panel docks at the opposite (leading) edge from the note detail, so both can be
-   open at once without overlapping; the menu popout closes on selection, leaving the edge free. */
-.layers-panel-slot {
+/* Routes, layers, tracks, and the collision thresholds all dock at the leading edge, one at a time
+   (activePanel is exclusive), opposite the note detail so the two never overlap. Each panel renders
+   its own slide-over shell, so the slot only positions it. */
+.panel-slot {
   position: absolute;
   inset-block: 0;
   inset-inline-start: 0;
   z-index: var(--z-panel);
 }
-/* The Routes panel docks at the same leading edge as the Layers panel; opening one closes the other,
-   so they never overlap. RoutesPanel renders its own slide-over shell, so the slot only positions it. */
-.routes-panel-slot {
+/* The map dock floats at the top trailing corner of the chart, clear of the leading-edge panels and
+   the bottom strips, and reachable for a one-handed thumb. */
+.map-dock-slot {
   position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  z-index: var(--z-panel);
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
+  z-index: var(--z-overlay);
 }
 @media (max-width: 600px) {
   .note-panel-slot,
-  .layers-panel-slot,
-  .routes-panel-slot {
+  .panel-slot {
     inset-block-start: auto;
     inset-inline: 0;
     inline-size: auto;

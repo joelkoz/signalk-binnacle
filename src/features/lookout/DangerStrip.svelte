@@ -4,9 +4,13 @@ import { formatCpaNm, formatTcpaMin } from '$shared/lib';
 
 interface Props {
   collision: CollisionAssessment;
+  // Whether the collision alarm sound is currently muted, and a handler to toggle it. Surfaced here
+  // so silencing the alarm during a close-quarters situation is one tap, not a dive into the menu.
+  muted: boolean;
+  onToggleMute: () => void;
 }
 
-const { collision }: Props = $props();
+const { collision, muted, onToggleMute }: Props = $props();
 
 const MAX_ROWS = 4;
 
@@ -27,7 +31,14 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
       {#if computedFallback}
         <span class="note">computing locally</span>
       {/if}
-      <button type="button" class="ack" onclick={() => collision.acknowledge()}>Acknowledge</button>
+      <div class="actions">
+        <button type="button" class="ack" aria-pressed={muted} onclick={onToggleMute}>
+          {muted ? 'Unmute' : 'Mute'}
+        </button>
+        <button type="button" class="ack" onclick={() => collision.acknowledge()}>
+          Acknowledge
+        </button>
+      </div>
     </div>
     <ul class="list">
       {#each top as contact (contact.id)}
@@ -45,6 +56,20 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
 {/if}
 
 <style>
+/* The two strip actions sit together at the trailing edge. The shared .ack carries its own auto
+   margin, so it is neutralized here and the wrapper owns the push instead. */
+.actions {
+  margin-inline-start: auto;
+  display: flex;
+  gap: var(--space-2);
+}
+.actions .ack {
+  margin-inline-start: 0;
+}
+.actions .ack[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
 .list {
   list-style: none;
   margin: 0;
