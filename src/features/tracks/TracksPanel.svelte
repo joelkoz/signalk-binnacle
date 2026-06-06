@@ -98,25 +98,13 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 
   <dl class="stats">
     <dt>Distance</dt>
-    <dd>
-      <span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span>
-      <span class="unit">nm</span>
-    </dd>
+    <dd><span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span> nm</dd>
     <dt>Duration</dt>
-    <dd>
-      <span class="num">{hasTrack ? duration(stats.durationSeconds) : PLACEHOLDER}</span>
-      <span class="unit"></span>
-    </dd>
+    <dd><span class="num">{hasTrack ? duration(stats.durationSeconds) : PLACEHOLDER}</span></dd>
     <dt>Avg</dt>
-    <dd>
-      <span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span>
-      <span class="unit">kn</span>
-    </dd>
+    <dd><span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span> kn</dd>
     <dt>Max</dt>
-    <dd>
-      <span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span>
-      <span class="unit">kn</span>
-    </dd>
+    <dd><span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span> kn</dd>
   </dl>
 
   <div class="saved">
@@ -207,35 +195,28 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   color: var(--accent);
   border-color: var(--accent);
 }
-/* One grid for the whole list (label, number, unit) so every number shares a column and
-   every unit shares a column. The dd is display: contents so its number and unit become
-   direct grid items; a row with no unit (Duration) leaves a blank unit cell without
-   nudging the number out of the shared column. */
+/* Label and value in two columns, with every value left-aligned in a shared second column so the
+   values line up on one left edge regardless of width. The unit follows each value inline. */
 .stats {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   align-items: baseline;
-  column-gap: var(--space-2);
-  row-gap: 0.3rem;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
   margin: 0;
 }
 .stats dt {
   color: var(--text-muted);
 }
 .stats dd {
-  display: contents;
+  margin: 0;
+  color: var(--text-muted);
 }
 .stats .num {
-  text-align: end;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--text);
-}
-.stats .unit {
-  min-inline-size: 1.25rem;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
 }
 .saved {
   display: flex;
