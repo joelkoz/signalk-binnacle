@@ -4,6 +4,8 @@ import {
   BellOff,
   CloudSun,
   Layers,
+  LocateFixed,
+  Navigation,
   Route,
   SlidersHorizontal,
   Spline,
@@ -22,7 +24,6 @@ import { WeatherStore } from '$entities/weather';
 import { AuthBanner } from '$features/auth-banner';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
-import { MapDock } from '$features/map-dock';
 import { AppMenu, type MenuItem } from '$features/menu';
 import { ArrivalAlarm, NavStrip } from '$features/navigation';
 import {
@@ -160,8 +161,17 @@ let layersView = $state<LayersView | undefined>();
 // opening one closes whatever was open without each opener having to clear the others by hand.
 type LeftPanel = 'routes' | 'layers' | 'tracks' | 'thresholds';
 let activePanel = $state<LeftPanel | null>(null);
+// The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
+// the menu after it closed on selection.
+let menuOpen = $state(false);
 const closePanel = (): void => {
   activePanel = null;
+};
+// Back returns to the menu: close the panel and reopen the hamburger in one update, so the navigator
+// can move menu to panel to back to another panel without reopening the menu by hand.
+const backToMenu = (): void => {
+  activePanel = null;
+  menuOpen = true;
 };
 let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
@@ -214,9 +224,16 @@ let mapCommands = $state<MapCommands | undefined>();
 let following = $state(false);
 
 // The app menu's options, grouped from the data: a Navigation group of panel-openers, then an Alarms
-// group of the two mute toggles and the threshold editor. Center and Follow live on the on-chart
-// dock, not here. Adding an option is a single entry; the menu renders and groups whatever it is given.
+// group of the two mute toggles and the threshold editor. Center and Follow live on the bottom status
+// strip, not here. Adding an option is a single entry; the menu renders and groups whatever it is given.
 const menuItems = $derived<MenuItem[]>([
+  {
+    id: 'tracks',
+    label: 'Tracks',
+    icon: Spline,
+    group: 'Navigation',
+    onSelect: () => (activePanel = 'tracks'),
+  },
   {
     id: 'routes',
     label: 'Routes',
@@ -232,13 +249,6 @@ const menuItems = $derived<MenuItem[]>([
     group: 'Navigation',
     disabled: !layersView,
     onSelect: () => (activePanel = 'layers'),
-  },
-  {
-    id: 'tracks',
-    label: 'Tracks',
-    icon: Spline,
-    group: 'Navigation',
-    onSelect: () => (activePanel = 'tracks'),
   },
   {
     id: 'mute-alarm',
@@ -632,7 +642,7 @@ onDestroy(() => {
   <div class="visually-hidden" aria-live="polite" aria-atomic="true">{muteAlert}</div>
   <header class="topbar">
     <span class="topbar-start">
-      <AppMenu items={menuItems} />
+      <AppMenu items={menuItems} open={menuOpen} onOpenChange={(next) => (menuOpen = next)} />
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>
     <span class="topbar-actions">
@@ -684,13 +694,6 @@ onDestroy(() => {
       onNoteSelect={(selection) => (selectedNote = selection)}
       onUserPan={() => (following = false)}
     />
-    <div class="map-dock-slot">
-      <MapDock
-        {following}
-        onCenter={() => mapCommands?.centerOnVessel()}
-        onToggleFollow={() => (following = !following)}
-      />
-    </div>
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
@@ -711,7 +714,7 @@ onDestroy(() => {
     {/if}
     {#if activePanel === 'layers' && layersView}
       <div class="panel-slot">
-        <LayersPanel view={layersView} {userCharts} onClose={closePanel} />
+        <LayersPanel view={layersView} {userCharts} onClose={closePanel} onBack={backToMenu} />
       </div>
     {/if}
     {#if activePanel === 'routes'}
@@ -736,6 +739,11 @@ onDestroy(() => {
             clearRouteError();
             closePanel();
           }}
+          onBack={() => {
+            onCancelRouteEdit();
+            clearRouteError();
+            backToMenu();
+          }}
         />
       </div>
     {/if}
@@ -751,12 +759,13 @@ onDestroy(() => {
           {onToggleSaved}
           onExport={onExportSavedTrack}
           onClose={closePanel}
+          onBack={backToMenu}
         />
       </div>
     {/if}
     {#if activePanel === 'thresholds'}
       <div class="panel-slot">
-        <ThresholdsPanel {thresholds} onClose={closePanel} />
+        <ThresholdsPanel {thresholds} onClose={closePanel} onBack={backToMenu} />
       </div>
     {/if}
     {#if weatherPanelOpen}
@@ -777,6 +786,27 @@ onDestroy(() => {
     {/if}
   </section>
   <footer class="status-strip">
+    <div class="strip-controls">
+      <button
+        type="button"
+        class="icon-btn"
+        aria-label="Center on boat"
+        title="Center on boat"
+        onclick={() => mapCommands?.centerOnVessel()}
+      >
+        <LocateFixed size={20} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        class="icon-btn icon-btn--follow"
+        aria-pressed={following}
+        aria-label={following ? 'Stop following the boat' : 'Follow the boat'}
+        title={following ? 'Stop following' : 'Follow boat'}
+        onclick={() => (following = !following)}
+      >
+        <Navigation size={20} aria-hidden="true" />
+      </button>
+    </div>
     <div class="forecast-center">
       <button
         type="button"
@@ -798,10 +828,12 @@ onDestroy(() => {
     >
     <span class="readout">COG <b>{formatFixed(radiansToBearing(vessel.cogRad), 0)}</b>&deg;</span>
     <span class="spacer"></span>
-    <span class="readout">Center</span>
-    <span class="readout"><b>{formatLatitude(mapView?.lat)}</b></span>
-    <span class="readout"><b>{formatLongitude(mapView?.lon)}</b></span>
-    <span class="readout">z<b>{formatFixed(mapView?.zoom, 1)}</b></span>
+    <div class="center-cluster">
+      <span class="readout">Center</span>
+      <span class="readout"><b>{formatLatitude(mapView?.lat)}</b></span>
+      <span class="readout"><b>{formatLongitude(mapView?.lon)}</b></span>
+      <span class="readout">z<b>{formatFixed(mapView?.zoom, 1)}</b></span>
+    </div>
   </footer>
 </main>
 
@@ -918,20 +950,17 @@ onDestroy(() => {
   inset-inline-start: 0;
   z-index: var(--z-panel);
 }
-/* The map dock floats at the top trailing corner of the chart, clear of the leading-edge panels and
-   the bottom strips, and reachable for a one-handed thumb. */
-.map-dock-slot {
-  position: absolute;
-  inset-block-start: var(--space-3);
-  inset-inline-end: var(--space-3);
-  z-index: var(--z-overlay);
-}
 @media (max-width: 600px) {
   .note-panel-slot,
   .panel-slot {
     inset-block-start: auto;
     inset-inline: 0;
     inline-size: auto;
+  }
+  /* On a phone the duplicate position readout is the lowest-priority strip content, so it is dropped
+     to make room for the two view controls and the live SOG and COG. */
+  .center-cluster {
+    display: none;
   }
 }
 .danger-slot :global(.bottom-strip) {
@@ -941,7 +970,7 @@ onDestroy(() => {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-5);
+  gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
   /* Tall enough for the absolutely-centered Forecast button (a full control-size touch target), so
      it is not clipped at the bottom by the overflow-hidden viewport. */
@@ -949,6 +978,20 @@ onDestroy(() => {
   border-block-start: 1px solid var(--border);
   color: var(--text-muted);
   font-size: var(--text-md);
+}
+/* The chart-view controls (center on boat, follow boat) live at the leading edge of the strip as
+   flat footer-density icon buttons, grouped tightly so the thumb finds them as one target. */
+.strip-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* The center lat, lon, and zoom readout reads as one group at the trailing edge, and is the first
+   thing dropped on a phone, where the chart and the panels still report position. */
+.center-cluster {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 /* The Forecast control sits centered in the status strip, between the left and right readouts. */
 .forecast-center {

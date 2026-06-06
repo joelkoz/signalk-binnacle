@@ -5,11 +5,14 @@ import type { MenuItem } from './menu-item';
 interface Props {
   items?: MenuItem[];
   label?: string;
+  // The open state is controlled by the parent, so a panel's "back to menu" action can reopen the
+  // menu after it closed on selection. The menu renders the current state and requests transitions.
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-const { items = [], label = 'Menu' }: Props = $props();
+const { items = [], label = 'Menu', open, onOpenChange }: Props = $props();
 
-let menuOpen = $state(false);
 let root = $state<HTMLElement>();
 let trigger = $state<HTMLButtonElement>();
 let popout = $state<HTMLElement>();
@@ -17,11 +20,11 @@ let popout = $state<HTMLElement>();
 // On open, move focus to the first enabled item so a keyboard user lands inside the menu rather
 // than having to tab into it. focus-visible keeps this ring-free for pointer and touch opens.
 $effect(() => {
-  if (menuOpen) popout?.querySelector<HTMLButtonElement>('.item:not(:disabled)')?.focus();
+  if (open) popout?.querySelector<HTMLButtonElement>('.item:not(:disabled)')?.focus();
 });
 
 function closeMenu(restoreFocus = false): void {
-  menuOpen = false;
+  onOpenChange(false);
   // Return focus to the trigger when the menu closes by keyboard or selection, so a keyboard user
   // lands back on the control that opened it rather than at the top of the document.
   if (restoreFocus) trigger?.focus();
@@ -36,11 +39,11 @@ function select(item: MenuItem): void {
 // Close when a pointer goes down outside the menu (focus follows the pointer), or on Escape (focus
 // returns to the trigger).
 function onWindowPointerDown(event: PointerEvent): void {
-  if (menuOpen && root && !root.contains(event.target as Node)) closeMenu();
+  if (open && root && !root.contains(event.target as Node)) closeMenu();
 }
 
 function onWindowKeydown(event: KeyboardEvent): void {
-  if (menuOpen && event.key === 'Escape') closeMenu(true);
+  if (open && event.key === 'Escape') closeMenu(true);
 }
 
 // An item starts a new group when it carries a group label and the item above it does not share it,
@@ -59,15 +62,15 @@ function startsGroup(index: number): boolean {
     class="icon-pill trigger"
     bind:this={trigger}
     aria-haspopup="true"
-    aria-expanded={menuOpen}
+    aria-expanded={open}
     aria-controls="app-menu-popout"
     aria-label={label}
     title={label}
-    onclick={() => (menuOpen = !menuOpen)}
+    onclick={() => onOpenChange(!open)}
   >
     <Menu size={20} aria-hidden="true" />
   </button>
-  {#if menuOpen}
+  {#if open}
     <div class="popout" id="app-menu-popout" bind:this={popout}>
       {#if items.length === 0}
         <span class="empty">No options</span>

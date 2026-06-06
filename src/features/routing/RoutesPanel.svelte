@@ -25,6 +25,7 @@ interface Props {
   onStop: () => void;
   onDelete: (id: string) => void;
   onClose: () => void;
+  onBack?: () => void;
 }
 
 const {
@@ -43,6 +44,7 @@ const {
   onStop,
   onDelete,
   onClose,
+  onBack,
 }: Props = $props();
 
 function promptSave(): void {
@@ -51,7 +53,7 @@ function promptSave(): void {
 }
 </script>
 
-<SlideOver title="Routes" bodyFlex closeLabel="Close routes panel" {onClose}>
+<SlideOver title="Routes" bodyFlex closeLabel="Close routes panel" {onClose} {onBack}>
   {#if error}
     <p class="error" role="alert">{error}</p>
   {/if}

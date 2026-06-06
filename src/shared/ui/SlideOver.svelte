@@ -1,5 +1,5 @@
 <script lang="ts">
-import { X } from '@lucide/svelte';
+import { ArrowLeft, X } from '@lucide/svelte';
 import type { Snippet } from 'svelte';
 import { dialog } from './dialog';
 
@@ -12,6 +12,11 @@ interface Props {
   bodyFlex?: boolean;
   closeLabel?: string;
   onClose: () => void;
+  // When supplied, a leading back button returns to the menu instead of dismissing to the chart, so
+  // the navigator can move menu to panel to menu to another panel without reopening the hamburger.
+  // Panels opened from the chart (the note detail) omit it, so no back arrow renders.
+  onBack?: () => void;
+  backLabel?: string;
   // Optional extra header content, between the title and the close button.
   headerExtra?: Snippet;
   children: Snippet;
@@ -24,6 +29,8 @@ const {
   bodyFlex = false,
   closeLabel = 'Close',
   onClose,
+  onBack,
+  backLabel = 'Back to menu',
   headerExtra,
   children,
 }: Props = $props();
@@ -35,6 +42,17 @@ const {
   use:dialog={onClose}
 >
   <header class="panel-header">
+    {#if onBack}
+      <button
+        type="button"
+        class="icon-btn icon-btn--accent"
+        aria-label={backLabel}
+        title={backLabel}
+        onclick={onBack}
+      >
+        <ArrowLeft size={20} aria-hidden="true" />
+      </button>
+    {/if}
     <h2 class="panel-title">{title}</h2>
     {@render headerExtra?.()}
     <button

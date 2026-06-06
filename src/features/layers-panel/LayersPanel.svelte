@@ -13,9 +13,10 @@ interface Props {
   view: LayersView;
   userCharts?: UserCharts;
   onClose: () => void;
+  onBack?: () => void;
 }
 
-const { view, userCharts, onClose }: Props = $props();
+const { view, userCharts, onClose, onBack }: Props = $props();
 
 const pinned = $derived(view.items.filter((item) => item.pinned));
 const movable = $derived(view.items.filter((item) => !item.pinned));
@@ -130,7 +131,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 }
 </script>
 
-<SlideOver title="Layers" {onClose}>
+<SlideOver title="Layers" {onClose} {onBack}>
   <div class="visually-hidden" aria-live="polite">{reorderAnnouncement}</div>
   {#if manageSource && userCharts}
     {#key manageSource.id}

@@ -16,6 +16,7 @@ interface Props {
   onToggleSaved: (id: string) => void;
   onExport: (track: SavedTrack) => void;
   onClose: () => void;
+  onBack?: () => void;
 }
 
 const {
@@ -28,6 +29,7 @@ const {
   onToggleSaved,
   onExport,
   onClose,
+  onBack,
 }: Props = $props();
 
 const stats = $derived(recorder.stats);
@@ -56,7 +58,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 </script>
 
-<SlideOver title="Tracks" bodyFlex {onClose}>
+<SlideOver title="Tracks" bodyFlex {onClose} {onBack}>
   <div class="controls">
     {#if recorder.paused}
       <button type="button" class="btn" onclick={() => recorder.resume()}>

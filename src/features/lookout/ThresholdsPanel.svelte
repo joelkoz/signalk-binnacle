@@ -6,9 +6,10 @@ import { SlideOver } from '$shared/ui';
 interface Props {
   thresholds: PersistedValue<Thresholds>;
   onClose: () => void;
+  onBack?: () => void;
 }
 
-const { thresholds, onClose }: Props = $props();
+const { thresholds, onClose, onBack }: Props = $props();
 
 const t = $derived(thresholds.value);
 
@@ -29,7 +30,7 @@ const nm = (meters: number): string => formatCpaNm(meters);
 const min = (seconds: number): string => formatTcpaMin(seconds);
 </script>
 
-<SlideOver title="Collision thresholds" {onClose}>
+<SlideOver title="Collision thresholds" {onClose} {onBack}>
   <section class="thresholds">
     <div class="group">
       <span class="group-title danger">Danger</span>
