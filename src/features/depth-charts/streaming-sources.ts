@@ -16,11 +16,12 @@ export interface StreamingChartSource {
 
 // The NOAA Maritime Chart Service renders S-52 chart symbology server-side and returns it as
 // transparent raster tiles. The LAYERS list selects S-57 display categories (numbering from the
-// service GetCapabilities): 0 to 7 and 10 are the chart itself, 8 and 9 are data quality (the ZOC
-// triangle-of-stars and low-accuracy markers), and 11 and 12 are the shallow-water and overscale
-// warning patterns. The categories are split across separate overlays below so the metadata ones
-// toggle off without losing the chart. Each subset is its own WMS request, so each enabled overlay
-// is its own fetch; the two metadata overlays default hidden, so the default view is the chart alone.
+// service GetCapabilities): 0 to 7 and 10 are the chart itself, and 8 and 9 are data quality (the
+// ZOC triangle-of-stars and low-accuracy markers), split into a separate overlay below so it toggles
+// off without losing the chart. The shallow-water and overscale warning categories (11 and 12) are
+// deliberately left out: 11 just duplicates the chart's depth-area shading, and 12 is the overscale
+// crosshatch, both clutter on a not-for-navigation reference overlay. Each subset is its own WMS
+// request, and the data-quality overlay defaults hidden, so the default view is the chart alone.
 const NOAA_ENC_WMS =
   'https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/NOAAChartDisplay/MapServer/exts/MaritimeChartService/WMSServer';
 const noaaEncTiles = (layers: string): string =>
@@ -66,10 +67,9 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
     bounds: [-73.125, 5.625, 45.0, 90.0],
     attribution: 'EMODnet Bathymetry Consortium (2022): EMODnet Digital Bathymetry (DTM)',
   },
-  // Registration order is z-order, so the chart sits below its data-quality and warning overlays.
+  // Registration order is z-order, so the chart sits below its data-quality overlay.
   noaaEncSource('depth-noaa-enc', 'NOAA ENC chart (US)', '0,1,2,3,4,5,6,7,10'),
   noaaEncSource('depth-noaa-enc-quality', 'NOAA ENC data quality', '8,9'),
-  noaaEncSource('depth-noaa-enc-warnings', 'NOAA ENC shallow/overscale', '11,12'),
   {
     id: 'depth-bluetopo',
     title: 'NOAA BlueTopo bathymetry (US)',
