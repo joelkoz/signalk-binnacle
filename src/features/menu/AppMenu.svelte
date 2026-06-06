@@ -63,7 +63,7 @@ function startsGroup(index: number): boolean {
     bind:this={trigger}
     aria-haspopup="true"
     aria-expanded={open}
-    aria-controls="app-menu-popout"
+    aria-controls={open ? 'app-menu-popout' : undefined}
     aria-label={label}
     title={label}
     onclick={() => onOpenChange(!open)}

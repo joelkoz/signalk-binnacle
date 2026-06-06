@@ -467,9 +467,9 @@ onDestroy(() => {
 <style>
 .weather-panel {
   position: fixed;
-  /* Sit just above the status strip, which is calc(--control-size + 0.5rem) tall, derived from the
-     same token so the panel cannot drift out of sync with the strip it clears. */
-  inset-block-end: calc(var(--control-size) + var(--space-1));
+  /* Sit just above the status strip, whose min-block-size is calc(--control-size + --space-2), using
+     the same expression so the panel cannot drift out of sync with the strip it clears. */
+  inset-block-end: calc(var(--control-size) + var(--space-2));
   inset-inline: 0;
   margin-inline: auto;
   inline-size: min(94vw, 46rem);
@@ -484,7 +484,9 @@ onDestroy(() => {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-overlay);
   color: var(--text);
-  z-index: var(--z-panel);
+  /* One above the edge-docked panels so the weather panel, which can be opened while a panel is up,
+     sits cleanly on top instead of relying on DOM order against an equal z-index. */
+  z-index: calc(var(--z-panel) + 1);
   overflow: hidden;
 }
 .panel-head {
@@ -509,6 +511,7 @@ onDestroy(() => {
 }
 .pill {
   min-block-size: var(--control-size);
+  min-inline-size: 3rem;
   padding: 0.15rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
@@ -660,5 +663,14 @@ onDestroy(() => {
   font-size: var(--text-xs);
   font-style: italic;
   color: var(--text-muted);
+}
+@media (max-width: 600px) {
+  /* On a phone the layer toggles scroll on one row rather than wrapping three rows tall and eating
+     the small map area. */
+  .layer-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
 }
 </style>

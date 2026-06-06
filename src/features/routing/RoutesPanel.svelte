@@ -369,6 +369,7 @@ function promptSave(): void {
   display: flex;
   align-items: center;
   gap: 0.2rem;
+  flex-shrink: 0;
 }
 /* Push the destructive delete to the trailing edge so it is not flush against the safe
    actions and an accidental tap is less likely. */

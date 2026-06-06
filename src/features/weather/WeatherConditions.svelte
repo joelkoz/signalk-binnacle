@@ -298,6 +298,11 @@ function stepLabel(timeMs: number): string {
   flex: 0 0 auto;
   margin-block-start: 0.1rem;
 }
+/* Let a long unbroken provider string wrap rather than overflow the fixed-width conditions panel. */
+.warning span {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
 .now {
   display: grid;
   grid-template-columns: 1fr 1fr;

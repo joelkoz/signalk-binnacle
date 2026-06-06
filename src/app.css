@@ -191,6 +191,12 @@ body {
 .btn-danger {
   color: var(--alarm);
 }
+/* A danger button tints with the alarm token on hover, not the accent, so a destructive control does
+   not flash an accent (blue by day) fill under its red text. */
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--alarm);
+  background: var(--alarm-tint);
+}
 /* A ghost variant of .btn: transparent over the surface with accent text, for secondary actions
    (reset, retry, add by URL) that should read lighter than a filled primary while keeping the
    bordered shape and the shared hover feel. */
@@ -303,7 +309,8 @@ body {
   filter: brightness(0.94);
 }
 
-/* The edge-docked slide-over panels (layers, note detail) share one shell: a full-height column on
+/* The edge-docked slide-over panels (routes, layers, tracks, collision thresholds, and the note
+   detail) share one shell: a full-height column on
    the translucent surface that docks to a screen edge, and collapses to a bottom sheet on a phone.
    The dock modifier sets which edge it borders. */
 .slide-over {
@@ -383,6 +390,7 @@ body {
 }
 .bottom-strip .head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   margin-block-end: 0.4rem;
@@ -398,11 +406,13 @@ body {
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
-/* The metrics line shared by both strips: baseline-aligned readouts on one row. */
+/* The metrics line shared by both strips: baseline-aligned readouts that wrap to a second line
+   rather than overflowing the card when many metrics or a narrow phone leave too little width. */
 .bottom-strip .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-3);
+  gap: var(--space-1) var(--space-3);
   font-size: var(--text-base);
 }
 /* A name that ellipsizes rather than wrapping (the active destination, a contact). The strips add

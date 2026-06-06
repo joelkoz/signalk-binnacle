@@ -249,8 +249,13 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   align-items: center;
   gap: var(--space-1);
 }
+/* The action buttons keep their size; the name absorbs all the shrink and ellipsizes. */
+.saved li .icon-btn {
+  flex-shrink: 0;
+}
 .saved .name {
   flex: 1;
+  min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

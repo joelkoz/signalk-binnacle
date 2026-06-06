@@ -786,28 +786,38 @@ onDestroy(() => {
     {/if}
   </section>
   <footer class="status-strip">
-    <div class="strip-controls">
-      <button
-        type="button"
-        class="icon-btn"
-        aria-label="Center on boat"
-        title="Center on boat"
-        onclick={() => mapCommands?.centerOnVessel()}
+    <div class="strip-start">
+      <div class="strip-controls">
+        <button
+          type="button"
+          class="icon-btn"
+          aria-label="Center on boat"
+          title="Center on boat"
+          onclick={() => mapCommands?.centerOnVessel()}
+        >
+          <LocateFixed size={20} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="icon-btn icon-btn--follow"
+          aria-pressed={following}
+          aria-label={following ? 'Stop following the boat' : 'Follow the boat'}
+          title={following ? 'Stop following' : 'Follow boat'}
+          onclick={() => (following = !following)}
+        >
+          <Navigation size={20} aria-hidden="true" />
+        </button>
+      </div>
+      <span class="conn" role="status" aria-live="polite">{connectionLabel}</span>
+      {#if !net.online}
+        <span class="readout offline" role="status" aria-live="polite">Offline</span>
+      {/if}
+      <span class="readout"
+        >SOG <b>{formatFixed(metersPerSecondToKnots(vessel.sogMps), 1)}</b> kn</span
       >
-        <LocateFixed size={20} aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        class="icon-btn icon-btn--follow"
-        aria-pressed={following}
-        aria-label={following ? 'Stop following the boat' : 'Follow the boat'}
-        title={following ? 'Stop following' : 'Follow boat'}
-        onclick={() => (following = !following)}
-      >
-        <Navigation size={20} aria-hidden="true" />
-      </button>
+      <span class="readout">COG <b>{formatFixed(radiansToBearing(vessel.cogRad), 0)}</b>&deg;</span>
     </div>
-    <div class="forecast-center">
+    <div class="strip-center">
       <button
         type="button"
         class="btn btn-pill forecast-btn"
@@ -819,15 +829,6 @@ onDestroy(() => {
         Forecast
       </button>
     </div>
-    <span role="status" aria-live="polite">{connectionLabel}</span>
-    {#if !net.online}
-      <span class="readout offline" role="status" aria-live="polite">Offline</span>
-    {/if}
-    <span class="readout"
-      >SOG <b>{formatFixed(metersPerSecondToKnots(vessel.sogMps), 1)}</b> kn</span
-    >
-    <span class="readout">COG <b>{formatFixed(radiansToBearing(vessel.cogRad), 0)}</b>&deg;</span>
-    <span class="spacer"></span>
     <div class="center-cluster">
       <span class="readout">Center</span>
       <span class="readout"><b>{formatLatitude(mapView?.lat)}</b></span>
@@ -957,34 +958,42 @@ onDestroy(() => {
     inset-inline: 0;
     inline-size: auto;
   }
-  /* On a phone the duplicate position readout is the lowest-priority strip content, so it is dropped
-     to make room for the two view controls and the live SOG and COG. */
-  .center-cluster {
-    display: none;
-  }
 }
 .danger-slot :global(.bottom-strip) {
   pointer-events: auto;
 }
+/* A three-column grid: the leading readouts, the Forecast button centered in the flexible middle,
+   and the trailing position cluster. Forecast is real grid content, not an absolute overlay, so it
+   can never paint over or steal taps from the readouts at any width. */
 .status-strip {
-  position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
-  /* Tall enough for the absolutely-centered Forecast button (a full control-size touch target), so
-     it is not clipped at the bottom by the overflow-hidden viewport. */
-  min-block-size: calc(var(--control-size) + 0.5rem);
+  /* Tall enough for the Forecast button (a full control-size touch target), so it is not clipped at
+     the bottom by the overflow-hidden viewport. */
+  min-block-size: calc(var(--control-size) + var(--space-2));
   border-block-start: 1px solid var(--border);
   color: var(--text-muted);
   font-size: var(--text-md);
 }
-/* The chart-view controls (center on boat, follow boat) live at the leading edge of the strip as
-   flat footer-density icon buttons, grouped tightly so the thumb finds them as one target. */
+.strip-start {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+/* The chart-view controls (center on boat, follow boat) sit at the leading edge, grouped tightly so
+   the thumb finds them as one target. */
 .strip-controls {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+.strip-center {
+  display: flex;
+  justify-content: center;
 }
 /* The center lat, lon, and zoom readout reads as one group at the trailing edge, and is the first
    thing dropped on a phone, where the chart and the panels still report position. */
@@ -992,31 +1001,38 @@ onDestroy(() => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-inline-size: 0;
 }
-/* The Forecast control sits centered in the status strip, between the left and right readouts. */
-.forecast-center {
-  position: absolute;
-  inset-block: 0;
-  inset-inline: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-/* The base look comes from the shared .btn .btn-pill; the slot disables pointer events to let
-   clicks fall through to the chart, so the button re-enables them, and .on marks the open state. */
-.forecast-btn {
-  pointer-events: auto;
-}
+/* The on-state matches the other lit chrome (the menu trigger, Follow): accent border, accent text,
+   and a faint accent-tint fill. */
 .forecast-btn.on {
   color: var(--accent);
   border-color: var(--accent);
+  background: var(--accent-tint);
 }
-.spacer {
-  margin-inline-start: auto;
+/* On a phone, drop the duplicate position cluster and pull the connection label out of the layout so
+   the two view controls, the live SOG and COG, and the centered Forecast fit. The connection label is
+   visually hidden rather than display:none so its polite live region keeps announcing. This block
+   sits after the base rules above, so it wins the cascade when the query matches. */
+@media (max-width: 600px) {
+  .center-cluster {
+    display: none;
+  }
+  .conn {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 .offline {
   color: var(--alarm);
+}
+/* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
+.readout {
+  white-space: nowrap;
 }
 .readout b {
   color: var(--text);

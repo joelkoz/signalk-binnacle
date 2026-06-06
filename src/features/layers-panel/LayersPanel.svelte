@@ -131,7 +131,9 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 }
 </script>
 
-<SlideOver title="Layers" {onClose} {onBack}>
+<!-- While a chart detail is open it shows its own "Back to layers" control, so the panel-level
+     "Back to menu" arrow is suppressed to avoid two stacked back buttons. -->
+<SlideOver title="Layers" {onClose} onBack={manageSource ? undefined : onBack}>
   <div class="visually-hidden" aria-live="polite">{reorderAnnouncement}</div>
   {#if manageSource && userCharts}
     {#key manageSource.id}

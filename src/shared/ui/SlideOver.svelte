@@ -59,7 +59,7 @@ const {
       type="button"
       class="panel-close"
       aria-label={closeLabel}
-      title="Close"
+      title={closeLabel}
       onclick={onClose}
     >
       <X size={18} aria-hidden="true" />
