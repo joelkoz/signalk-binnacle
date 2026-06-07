@@ -4,6 +4,36 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-06-07
+
+### Added
+
+- A fully keyboard-navigable app menu: arrow keys move between items, Home and End jump to the ends,
+  and it follows the WAI-ARIA menu pattern with grouped sections (Navigation and Alarms), roving
+  focus, and announced toggle states.
+- Reduced-motion support: when the system prefers reduced motion, the chart's center-on-boat,
+  fly-to, and fit-to-bounds camera moves jump instantly instead of animating.
+- An opt-in NOAA ENC data-quality overlay. The NOAA ENC chart is now one clean chart layer plus a
+  separate, default-hidden "data quality" layer carrying the Zones of Confidence (CATZOC) ratings,
+  so the chart no longer always paints the data-quality triangles and overscale patterns on top.
+- One-tap alarm muting from the danger strip, a muted-alarm badge in the top bar, and a spoken
+  collision summary written to a live region for assistive technology.
+
+### Changed
+
+- The app menu is redesigned. Tracks, Routes, and Layers are now edge-docked slide-over panels
+  promoted from inline accordions, each with a back-to-menu button so you can move between panels
+  without reopening the menu, and the menu groups its items under section headers.
+- Center, Follow, and Forecast now sit together in the bottom status strip as three matching labeled
+  pill buttons, in that order. Follow and Forecast show a clear lit on-state, kept dim enough for
+  night-red.
+
+### Fixed
+
+- The bottom status strip no longer overlaps or wraps unevenly on a phone. It stacks into a clean
+  layout: the live readouts above, and the Center, Follow, and Forecast controls on one row below.
+- The Tracks panel's statistics now align in a single value column.
+
 ## [0.1.2] - 2026-06-05
 
 ### Fixed

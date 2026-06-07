@@ -8,9 +8,11 @@
 
 A WebGL chart plotter for [Signal K](https://signalk.org).
 
-> **0.1.0, the first release.** Binnacle 0.1.0 is a complete chart plotter: GPU charts and depth,
-> route planning and following, weather, an active collision watch, voyage tracks, and points of
-> interest all ship in this release.
+> **0.1.3.** This release refines the interface: a grouped, fully keyboard-navigable app menu with
+> edge-docked Tracks, Routes, and Layers panels and back-to-menu navigation, Center, Follow, and
+> Forecast as three matching labeled controls in the bottom status strip, a cleaner phone layout, an
+> opt-in NOAA ENC data-quality overlay, and reduced-motion support. See the
+> [changelog](CHANGELOG.md) for the full list.
 >
 > **It has not been field-tested at any scale.** It has been developed and verified against a single
 > Signal K server, never across a fleet or a range of real-world boats, hardware, and conditions. It
@@ -32,19 +34,19 @@ Signal K server.
 
 Binnacle ships its full feature set as a Signal K webapp:
 
-- **Charts and layers** — a GPU vector base map, server charts, four streaming bathymetry and ENC
+- **Charts and layers:** a GPU vector base map, server charts, four streaming bathymetry and ENC
   sources, and your own imported PMTiles, in a toggle, fade, and drag-reorder Layers panel.
-- **Routing** — draw and save routes as Signal K resources and follow one with a nav strip
+- **Routing:** draw and save routes as Signal K resources and follow one with a nav strip
   (cross-track, distance, bearing, velocity made good, and time to go) over the v2 Course API, with
   an arrival alarm.
-- **Weather** — a zoom-capped mini-map with animated WebGL wind, pressure isobars, waves,
+- **Weather:** a zoom-capped mini-map with animated WebGL wind, pressure isobars, waves,
   precipitation, cloud, and radar, a tap-for-value readout, and a conditions and warnings panel.
-- **Lookout** — a collision watch with CPA and TCPA, chart-highlight rings, an audible alarm, and a
+- **Lookout:** a collision watch with CPA and TCPA, chart-highlight rings, an audible alarm, and a
   published Signal K notification.
-- **Tracks** — record, save, show, and export your voyage track.
-- **Points of interest** — Crow's Nest, ActiveCaptain, and other notes as themed markers with a
+- **Tracks:** record, save, show, and export your voyage track.
+- **Points of interest:** Crow's Nest, ActiveCaptain, and other notes as themed markers with a
   structured detail panel.
-- **Themes and offline** — day, dusk, and night-red themes, offline caching, and self-hosted assets.
+- **Themes and offline:** day, dusk, and night-red themes, offline caching, and self-hosted assets.
 
 See the [changelog](CHANGELOG.md) for the full list.
 
