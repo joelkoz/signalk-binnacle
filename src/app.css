@@ -281,15 +281,6 @@ body {
 .icon-btn--danger:hover {
   color: var(--alarm);
 }
-/* Follow is a persistent mode toggle in the status strip. When engaged it must read at a glance, but
-   a solid --accent fill would be the largest, brightest element in the chrome, so the on-state is an
-   accent-tinted fill with an accent border and icon: clearly lit, brightest pixel kept low. This
-   mirrors the menu trigger's open state, keeping one lit-chrome language across the app. */
-.icon-btn--follow[aria-pressed="true"] {
-  background: var(--accent-tint);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-}
 
 /* A round chrome icon button on the raised surface with an accent icon, shared by the top-bar
    controls (the menu trigger and the theme toggle) so they lift, hover, and press alike. */

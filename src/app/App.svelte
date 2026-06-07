@@ -787,27 +787,6 @@ onDestroy(() => {
   </section>
   <footer class="status-strip">
     <div class="strip-start">
-      <div class="strip-controls">
-        <button
-          type="button"
-          class="icon-btn"
-          aria-label="Center on boat"
-          title="Center on boat"
-          onclick={() => mapCommands?.centerOnVessel()}
-        >
-          <LocateFixed size={20} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="icon-btn icon-btn--follow"
-          aria-pressed={following}
-          aria-label={following ? 'Stop following the boat' : 'Follow the boat'}
-          title={following ? 'Stop following' : 'Follow boat'}
-          onclick={() => (following = !following)}
-        >
-          <Navigation size={20} aria-hidden="true" />
-        </button>
-      </div>
       <span class="conn" role="status" aria-live="polite">{connectionLabel}</span>
       {#if !net.online}
         <span class="readout offline" role="status" aria-live="polite">Offline</span>
@@ -820,7 +799,29 @@ onDestroy(() => {
     <div class="strip-center">
       <button
         type="button"
-        class="btn btn-pill forecast-btn"
+        class="btn btn-pill strip-btn"
+        aria-label="Center on boat"
+        title="Center on boat"
+        onclick={() => mapCommands?.centerOnVessel()}
+      >
+        <LocateFixed size={16} aria-hidden="true" />
+        Center
+      </button>
+      <button
+        type="button"
+        class="btn btn-pill strip-btn"
+        class:on={following}
+        aria-pressed={following}
+        aria-label="Follow boat"
+        title={following ? 'Stop following' : 'Follow boat'}
+        onclick={() => (following = !following)}
+      >
+        <Navigation size={16} aria-hidden="true" />
+        Follow
+      </button>
+      <button
+        type="button"
+        class="btn btn-pill strip-btn"
         class:on={weatherPanelOpen}
         aria-pressed={weatherPanelOpen}
         onclick={() => (weatherPanelOpen = !weatherPanelOpen)}
@@ -957,16 +958,13 @@ onDestroy(() => {
   gap: var(--space-3);
   min-inline-size: 0;
 }
-/* The chart-view controls (center on boat, follow boat) sit at the leading edge, grouped tightly so
-   the thumb finds them as one target. */
-.strip-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
+/* Center, Follow, and Forecast read as one row of matching labeled pills in the flexible middle. They
+   wrap rather than overflow when a narrow phone leaves too little width. */
 .strip-center {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: var(--space-2);
 }
 /* The center lat, lon, and zoom readout reads as one group at the trailing edge, and is the first
    thing dropped on a phone, where the chart and the panels still report position. */
@@ -976,18 +974,31 @@ onDestroy(() => {
   gap: var(--space-2);
   min-inline-size: 0;
 }
-/* The on-state matches the other lit chrome (the menu trigger, Follow): accent border, accent text,
-   and a faint accent-tint fill. */
-.forecast-btn.on {
+/* The toggles' on-state (Follow, Forecast) matches the other lit chrome (the menu trigger): accent
+   border, accent text, and a faint accent-tint fill, so an engaged mode reads at a glance in any
+   theme without lifting the brightest pixel. */
+.strip-btn.on {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-tint);
 }
-/* On a phone, drop the duplicate position cluster and pull the connection label out of the layout so
-   the two view controls, the live SOG and COG, and the centered Forecast fit. The connection label is
-   visually hidden rather than display:none so its polite live region keeps announcing. This block
-   sits after the base rules above, so it wins the cascade when the query matches. */
-@media (max-width: 600px) {
+/* On a phone or small tablet the three labeled pills and the live readouts do not fit one row, so the
+   strip stacks into one centered column: the readouts above, and Center, Follow, and Forecast on a
+   single row below within thumb reach. The duplicate position cluster drops (the chart and panels still
+   report it) and the connection label is visually hidden rather than display:none so its polite live
+   region keeps announcing. This block sits after the base rules above, so it wins the cascade when the
+   query matches. The single row needs about 840px for the readouts, the three pills, and the position
+   cluster, so the strip stacks below 900px to keep a comfortable margin. */
+@media (max-width: 900px) {
+  .status-strip {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: var(--space-2);
+  }
+  .strip-start {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
   .center-cluster {
     display: none;
   }
