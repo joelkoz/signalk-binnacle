@@ -8,11 +8,13 @@
 
 A WebGL chart plotter for [Signal K](https://signalk.org).
 
-> **0.1.3.** This release refines the interface: a grouped, fully keyboard-navigable app menu with
-> edge-docked Tracks, Routes, and Layers panels and back-to-menu navigation, Center, Follow, and
-> Forecast as three matching labeled controls in the bottom status strip, a cleaner phone layout, an
-> opt-in NOAA ENC data-quality overlay, and reduced-motion support. See the
-> [changelog](CHANGELOG.md) for the full list.
+> **0.2.0.** This release adds a Tides panel for US waters (the nearest NOAA station's next high and
+> low, a 48-hour curve, and the nearest tidal-current flood or ebb) and a set of free, key-free chart
+> overlays: OpenSeaMap seamarks, marine protected areas, maritime boundaries, and NASA GIBS ocean
+> conditions (sea-surface temperature and sea ice). The Layers panel is reorganized into collapsible
+> categories with a better default order (US charts on top), imported charts gain a review step and
+> register on the server so other devices discover them, and each depth source splits into a base and
+> a survey-quality facet. See the [changelog](CHANGELOG.md) for the full list.
 >
 > **It has not been field-tested at any scale.** It has been developed and verified against a single
 > Signal K server, never across a fleet or a range of real-world boats, hardware, and conditions. It
@@ -35,12 +37,17 @@ Signal K server.
 Binnacle ships its full feature set as a Signal K webapp:
 
 - **Charts and layers:** a GPU vector base map, server charts, four streaming bathymetry and ENC
-  sources, and your own imported PMTiles, in a toggle, fade, and drag-reorder Layers panel.
+  sources (each splitting into a base chart and a survey-quality facet), and your own imported
+  PMTiles, in a collapsible, categorized Layers panel with per-layer toggle, fade, and drag-reorder.
+- **Overlays:** free, key-free OpenSeaMap seamarks, marine protected areas, maritime boundaries, and
+  NASA GIBS ocean conditions (sea-surface temperature and sea ice), each with its source attribution.
 - **Routing:** draw and save routes as Signal K resources and follow one with a nav strip
   (cross-track, distance, bearing, velocity made good, and time to go) over the v2 Course API, with
   an arrival alarm.
 - **Weather:** a zoom-capped mini-map with animated WebGL wind, pressure isobars, waves,
   precipitation, cloud, and radar, a tap-for-value readout, and a conditions and warnings panel.
+- **Tides:** the nearest NOAA tide station's next high and low with a 48-hour curve, and the nearest
+  tidal-current station's next flood or ebb, for US waters.
 - **Lookout:** a collision watch with CPA and TCPA, chart-highlight rings, an audible alarm, and a
   published Signal K notification.
 - **Tracks:** record, save, show, and export your voyage track.
