@@ -3,6 +3,7 @@ import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
 import type { RouteStore } from '$entities/route';
+import type { TidesStore } from '$entities/tides';
 import type { TrackRecorder } from '$entities/track';
 import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
@@ -18,6 +19,7 @@ import { buildOceanSources } from '$features/ocean-conditions';
 import { createRouteEditor, type RouteEditor } from '$features/route-edit';
 import { createRouteOverlay } from '$features/route-layer';
 import { SEAMARK_SOURCES } from '$features/seamark-overlay';
+import { createTidesOverlay } from '$features/tides';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
 import { prefersReducedMotion } from '$shared/lib';
@@ -43,6 +45,8 @@ interface Props {
   recorder: TrackRecorder;
   // The route store, drawn by the route overlay and edited on the chart via Terra Draw.
   routeStore: RouteStore;
+  // The tides store, drawn as nearest-station markers and fed by the tides loader in App.
+  tides: TidesStore;
   // The active theme, so the on-chart route editor restyles its draw layers per theme.
   theme: Theme;
   trackSettings: PersistedValue<TrackSettings>;
@@ -77,6 +81,7 @@ const {
   collision,
   recorder,
   routeStore,
+  tides,
   theme,
   trackSettings,
   savedTracks,
@@ -147,6 +152,7 @@ onMount(() => {
       const aisOverlay = createAisOverlay(aisTargets, store);
       const collisionOverlay = createCollisionOverlay(collision);
       const trackOverlay = createTrackOverlay(recorder, trackSettings, savedTracks);
+      const tidesOverlay = createTidesOverlay(tides);
       const overlay = createVesselOverlay(vessel);
       await manager.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
@@ -159,6 +165,7 @@ onMount(() => {
         ...BOUNDARY_SOURCES.map((source) => createRasterOverlay(source, 'safety')),
         ...MPA_SOURCES.map((source) => createRasterOverlay(source, 'safety')),
         ...SEAMARK_SOURCES.map((source) => createRasterOverlay(source, 'safety')),
+        tidesOverlay,
         routeOverlay,
         notesOverlay,
         aisOverlay,
@@ -235,7 +242,15 @@ onMount(() => {
         stopRouteEdit: () => routeEditor?.stop(),
       });
 
-      runTick([routeOverlay, notesOverlay, aisOverlay, collisionOverlay, trackOverlay, overlay]);
+      runTick([
+        tidesOverlay,
+        routeOverlay,
+        notesOverlay,
+        aisOverlay,
+        collisionOverlay,
+        trackOverlay,
+        overlay,
+      ]);
     },
   });
 });

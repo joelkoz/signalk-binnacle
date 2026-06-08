@@ -8,6 +8,11 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- A Tides panel (US waters), opened from the app menu, showing the nearest NOAA tide station's next
+  high and low with heights in meters and feet, a 48-hour tide curve with a "now" marker, and the
+  nearest tidal-current station's next flood or ebb with its rate and set. The nearest tide and
+  current stations are also markable on the chart from the Layers panel. It degrades to a clear
+  message outside US coverage, and the data is cached for the session.
 - New built-in chart overlays, all free, key-free, and verified against the live services. Each
   starts hidden, toggles from the Layers panel, and carries its source attribution:
   - OpenSeaMap seamarks: a global overlay of navigation aids (buoys, beacons, lights, and harbors).

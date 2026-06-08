@@ -11,12 +11,14 @@ import {
   Spline,
   Volume2,
   VolumeX,
+  Waves,
 } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
 import { RouteStore } from '$entities/route';
+import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
 import { OwnVessel } from '$entities/vessel';
@@ -44,6 +46,7 @@ import {
   saveRoute,
 } from '$features/routing';
 import { ThemeToggle } from '$features/theme-toggle';
+import { createTidesLoader, TidesPanel } from '$features/tides';
 import type { SavedTracksSource } from '$features/track-layer';
 import {
   deleteTrack,
@@ -125,6 +128,11 @@ const courseGuidance = new CourseGuidance(store, vessel);
 const arrivalAlarm = new ArrivalAlarm();
 const arrivalMuted = new PersistedValue<boolean>('binnacle:arrival-muted', false);
 
+// Tides and tidal currents from NOAA CO-OPS (US waters). The store feeds the panel and the nearest
+// station markers; the loader caches the station lists and predictions for the session.
+const tidesStore = new TidesStore();
+const tidesLoader = createTidesLoader();
+
 // Weather forecast, fetched browser-side from Open-Meteo. It lives in a dedicated mini-map panel
 // (the Forecast button), not on the nav chart, so the chart stays clean and the weather can never
 // be zoomed past its data resolution. The panel owns the fetch, keyed off its own viewport.
@@ -160,7 +168,7 @@ let layersView = $state<LayersView | undefined>();
 // The edge-docked panels (routes, layers, tracks, collision thresholds) are mutually exclusive: one
 // docks at the leading edge at a time. A single active-panel value enforces that structurally, so
 // opening one closes whatever was open without each opener having to clear the others by hand.
-type LeftPanel = 'routes' | 'layers' | 'tracks' | 'thresholds';
+type LeftPanel = 'routes' | 'layers' | 'tracks' | 'tides' | 'thresholds';
 let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
 // the menu after it closed on selection.
@@ -236,7 +244,17 @@ let viewSaveTimer: ReturnType<typeof setTimeout> | undefined;
 function onViewChange(view: MapView): void {
   mapView = view;
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
-  viewSaveTimer = setTimeout(() => mapViewStore.set(view), 400);
+  viewSaveTimer = setTimeout(() => {
+    mapViewStore.set(view);
+    // Refresh tides for the settled view; the loader skips small moves and dedups in flight.
+    void tidesLoader.load(tidesStore, view.lat, view.lon);
+  }, 400);
+}
+
+// Load tides for the current view, so opening the Tides panel shows data without a pan first.
+function loadTides(): void {
+  const view = mapView ?? savedView;
+  if (view) void tidesLoader.load(tidesStore, view.lat, view.lon);
 }
 
 let mapCommands = $state<MapCommands | undefined>();
@@ -263,6 +281,16 @@ const menuItems = $derived<MenuItem[]>([
     group: 'Navigation',
     disabled: !mapCommands,
     onSelect: () => openPanel('routes'),
+  },
+  {
+    id: 'tides',
+    label: 'Tides',
+    icon: Waves,
+    group: 'Navigation',
+    onSelect: () => {
+      openPanel('tides');
+      loadTides();
+    },
   },
   {
     id: 'layers',
@@ -714,6 +742,7 @@ onDestroy(() => {
       {collision}
       {recorder}
       {routeStore}
+      tides={tidesStore}
       theme={theme.theme}
       {trackSettings}
       savedTracks={savedSource}
@@ -800,6 +829,11 @@ onDestroy(() => {
           onClose={closePanel}
           onBack={backToMenu}
         />
+      </div>
+    {/if}
+    {#if activePanel === 'tides'}
+      <div class="panel-slot">
+        <TidesPanel store={tidesStore} onClose={closePanel} onBack={backToMenu} />
       </div>
     {/if}
     {#if activePanel === 'thresholds'}
