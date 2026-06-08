@@ -1,0 +1,99 @@
+import type { RasterLayerSpecification, RasterSourceSpecification } from 'maplibre-gl';
+import { applyRasterTheme } from './map-theme';
+import type { OverlayModule, ZBand } from './types';
+
+// The id prefix on every hosted-raster overlay source and layer. The base-theme recolor skips ids
+// under this prefix, so the id scheme lives here in one place and base-theme imports it.
+export const RASTER_ID_PREFIX = 'streaming-';
+const rasterSourceId = (id: string): string => `${RASTER_ID_PREFIX}${id}`;
+const rasterLayerId = (id: string): string => `${RASTER_ID_PREFIX}${id}-layer`;
+
+// A hosted raster tile service shown as a themed overlay: an XYZ or WMTS template, or a WMS GetMap
+// request. It starts hidden unless told otherwise, streams and caches as the user pans, and follows
+// the theme (day and dusk show it as served; night-red desaturates and dims it, since a raster
+// cannot be recolored to true night-red).
+export interface RasterOverlaySource {
+  id: string;
+  title: string;
+  // MapLibre raster tile URL template(s): {z}/{x}/{y} for XYZ or WMTS, or a WMS GetMap request using
+  // the {bbox-epsg-3857} token.
+  tiles: string[];
+  tileSize?: number;
+  minzoom?: number;
+  maxzoom?: number;
+  // Optional coverage bounds [west, south, east, north] in WGS84 degrees for a regional source.
+  bounds?: [number, number, number, number];
+  attribution: string;
+  // An optional parent source id: a facet of another overlay nests under it in the Layers panel and
+  // only shows when the parent is on.
+  parent?: string;
+  // An optional named group: facets that share a group id render under one labeled header in the
+  // Layers panel.
+  group?: { id: string; title: string };
+  // Initial visibility when there is no saved state. Defaults to hidden so an overlay starts off
+  // until the user enables it for their area.
+  defaultVisible?: boolean;
+  // Initial opacity when there is no saved state. Defaults to 1; a translucent overlay sets it lower.
+  defaultOpacity?: number;
+}
+
+// A WMS 1.3.0 GetMap raster tile template: 256px EPSG:3857 PNG tiles with the {bbox-epsg-3857} token
+// MapLibre substitutes per tile. The optional styles names a non-default WMS style; empty selects the
+// layer default.
+export const wmsTiles = (base: string, layers: string, styles = ''): string =>
+  `${base}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layers}&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=${styles}`;
+
+// Wrap a hosted raster tile service as a themed overlay in the given band. The layer manager sets
+// opacity via setOpacity right after add, and MapLibre defaults raster-opacity to 1, so no inline
+// opacity is set on the layer.
+export function createRasterOverlay(source: RasterOverlaySource, band: ZBand): OverlayModule {
+  const sourceId = rasterSourceId(source.id);
+  const layerId = rasterLayerId(source.id);
+
+  return {
+    id: source.id,
+    title: source.title,
+    band,
+    parent: source.parent,
+    group: source.group,
+    supportsOpacity: true,
+    defaultVisible: source.defaultVisible ?? false,
+    defaultOpacity: source.defaultOpacity ?? 1,
+    layerIds: [layerId],
+    add(ctx) {
+      if (!ctx.map.getSource(sourceId)) {
+        const spec: RasterSourceSpecification = {
+          type: 'raster',
+          tiles: [...source.tiles],
+          tileSize: source.tileSize ?? 256,
+          attribution: source.attribution,
+        };
+        if (source.minzoom !== undefined) spec.minzoom = source.minzoom;
+        if (source.maxzoom !== undefined) spec.maxzoom = source.maxzoom;
+        if (source.bounds) spec.bounds = source.bounds;
+        ctx.map.addSource(sourceId, spec);
+      }
+      if (!ctx.map.getLayer(layerId)) {
+        const layer: RasterLayerSpecification = {
+          id: layerId,
+          type: 'raster',
+          source: sourceId,
+        };
+        ctx.map.addLayer(layer, ctx.beforeIdFor(band));
+      }
+    },
+    remove(ctx) {
+      if (ctx.map.getLayer(layerId)) ctx.map.removeLayer(layerId);
+      if (ctx.map.getSource(sourceId)) ctx.map.removeSource(sourceId);
+    },
+    setVisible(ctx, visible) {
+      ctx.map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+    },
+    setOpacity(ctx, opacity) {
+      ctx.map.setPaintProperty(layerId, 'raster-opacity', opacity);
+    },
+    applyTheme(ctx, paint) {
+      applyRasterTheme(ctx.map, layerId, paint);
+    },
+  };
+}

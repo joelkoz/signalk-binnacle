@@ -1,24 +1,9 @@
+import { type RasterOverlaySource, wmsTiles } from '$shared/map';
+
 // A free hosted bathymetry service streamed as raster tiles and cached as the user pans. All
-// sources start hidden; the user enables the one that covers their cruising area.
-export interface StreamingChartSource {
-  id: string;
-  title: string;
-  // MapLibre raster tile URL template(s): {z}/{x}/{y} for XYZ or WMTS, or a WMS GetMap request
-  // using the {bbox-epsg-3857} token.
-  tiles: string[];
-  tileSize?: number;
-  minzoom?: number;
-  maxzoom?: number;
-  // Optional coverage bounds [west, south, east, north] in WGS84 degrees for a regional source.
-  bounds?: [number, number, number, number];
-  attribution: string;
-  // An optional parent source id: a facet of another chart (the data-quality overlay of the NOAA ENC
-  // chart) nests under it in the Layers panel and only shows when the parent is on.
-  parent?: string;
-  // An optional named group: facets that share a group id render under one labeled group header in
-  // the Layers panel. The NOAA ENC chart and its data-quality overlay share one group.
-  group?: { id: string; title: string };
-}
+// sources start hidden; the user enables the one that covers their cruising area. It is a hosted
+// raster overlay (the generic shape lives in shared/map), always in the bathymetry band.
+export type StreamingChartSource = RasterOverlaySource;
 
 // The NOAA Maritime Chart Service renders S-52 chart symbology server-side and returns it as
 // transparent raster tiles. The LAYERS list selects S-57 display categories (numbering from the
@@ -31,14 +16,11 @@ export interface StreamingChartSource {
 const NOAA_ENC_WMS =
   'https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/NOAAChartDisplay/MapServer/exts/MaritimeChartService/WMSServer';
 
-// A WMS 1.3.0 GetMap raster tile template: 256px EPSG:3857 PNG tiles with the {bbox-epsg-3857}
-// token MapLibre substitutes per tile. Shared by the GEBCO, EMODnet, NOAA ENC, and BlueTopo-facet
-// sources so the GetMap query shape lives in one place. The optional styles names a non-default WMS
-// style (the EMODnet quality index and the BlueTopo uncertainty render the same layer in a different
-// style); empty selects the layer default. (tileSize defaults to 256 in the overlay, so it is
-// omitted below; only BlueTopo's base 512 WMTS is load-bearing.)
-const wmsTiles = (base: string, layers: string, styles = ''): string =>
-  `${base}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layers}&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=${styles}`;
+// The GEBCO, EMODnet, NOAA ENC, and BlueTopo-facet sources build their WMS GetMap templates with the
+// shared wmsTiles helper. The optional styles names a non-default WMS style (the EMODnet quality
+// index and the BlueTopo uncertainty render the same layer in a different style); empty selects the
+// layer default. (tileSize defaults to 256 in the overlay, so it is omitted below; only BlueTopo's
+// base 512 WMTS is load-bearing.)
 const noaaEncSource = (
   id: string,
   title: string,

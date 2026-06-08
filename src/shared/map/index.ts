@@ -23,6 +23,12 @@ export type { MapThemePaint } from './map-theme';
 export { applyRasterTheme, mapThemePaint } from './map-theme';
 export { registerPmtilesProtocol } from './pmtiles';
 export { type PmtilesMeta, readPmtilesMeta } from './pmtiles-metadata';
+export {
+  createRasterOverlay,
+  RASTER_ID_PREFIX,
+  type RasterOverlaySource,
+  wmsTiles,
+} from './raster-overlay';
 export { beforeIdFor, installSentinels, sentinelId } from './sentinels';
 export type { SymbolOverlay, SymbolOverlayConfig } from './symbol-overlay';
 export { createSymbolOverlay } from './symbol-overlay';

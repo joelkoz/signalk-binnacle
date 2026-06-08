@@ -1,17 +1,17 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { CHART_SOURCE_PREFIX } from './chart-adapter';
 import type { MapThemePaint } from './map-theme';
+import { RASTER_ID_PREFIX } from './raster-overlay';
 
 // The base map is the OpenFreeMap "liberty" style (OpenMapTiles schema). Its default
 // palette is a light day theme, so on dusk and night-red the roads stayed white and the
 // landcover green. We recolor it per theme from each layer's source-layer, which is a far
 // more stable key than the individual layer ids.
 
-// A layer whose id starts with one of these is owned by an overlay (the chart, the depth-chart
-// streaming rasters, and every binnacle overlay theme their own layers via the layer manager), so
-// the base recolor leaves them alone. The 'streaming-' literal mirrors the depth-charts feature's
-// id scheme; base-theme is in shared and cannot import upward, so it is named here, not shared.
-const MANAGED_PREFIXES = [CHART_SOURCE_PREFIX, 'binnacle-', 'streaming-'];
+// A layer whose id starts with one of these is owned by an overlay (the chart, every hosted-raster
+// overlay, and every binnacle overlay theme their own layers via the layer manager), so the base
+// recolor leaves them alone. RASTER_ID_PREFIX is shared with the raster-overlay factory.
+const MANAGED_PREFIXES = [CHART_SOURCE_PREFIX, 'binnacle-', RASTER_ID_PREFIX];
 
 interface BaseLayer {
   id: string;
