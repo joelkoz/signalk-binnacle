@@ -5,8 +5,7 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
-import type { OverlayContext, OverlayModule } from '$shared/map';
-import { emptyFeatureCollection } from './feature-collection';
+import { emptyFeatureCollection, type OverlayContext, type OverlayModule } from '$shared/map';
 import { WEATHER_LAYER_IDS } from './fills';
 import { isobarColors } from './pressure-colors';
 import { isobarFeatures } from './pressure-isobars';

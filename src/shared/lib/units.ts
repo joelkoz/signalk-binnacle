@@ -11,8 +11,11 @@ export const PA_PER_HPA = 100;
 // degreesToRadians is defined in terms of it.
 export const DEG_TO_RAD = Math.PI / 180;
 
-// Milliseconds in one hour, shared by the weather time-step constants so the factor is named once.
-export const HOUR_MS = 3_600_000;
+// Milliseconds in a minute, hour, and day, shared by the time-step and TTL constants so the
+// factors are named once rather than re-spelled as 60 * 1000 chains across the loaders.
+export const MINUTE_MS = 60_000;
+export const HOUR_MS = 60 * MINUTE_MS;
+export const DAY_MS = 24 * HOUR_MS;
 
 // The store-to-display converters accept null and undefined because a Signal K value
 // can be absent (the guards use `== null` to catch both). The inverse converters
@@ -96,6 +99,13 @@ export function formatNm(meters: number, digits = 2): string {
 // formatNm, a null reads as 0.0; callers that need a blank guard with PLACEHOLDER first.
 export function formatKnots(metersPerSecond: number | null | undefined, digits = 1): string {
   return (metersPerSecondToKnots(metersPerSecond) ?? 0).toFixed(digits);
+}
+
+// Placeholder-aware nautical-miles reading: PLACEHOLDER when absent, otherwise the value. The
+// NavStrip and TracksPanel show a blank rather than a misleading 0.00 for an absent distance, so
+// they use this instead of guarding formatNm with `!= null` at each site.
+export function formatNmOr(meters: number | null | undefined, digits = 2): string {
+  return formatFixed(metersToNauticalMiles(meters), digits);
 }
 
 // CPA is just a distance; named for the collision metric at its call sites.

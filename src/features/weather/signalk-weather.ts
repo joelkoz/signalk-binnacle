@@ -59,12 +59,10 @@ export interface WeatherWarning {
   type: string;
 }
 
-// The Signal K server serializes each provider as { name, isDefault }. Older docs showed a
-// "provider" field, so both are accepted and the provider id (the map key) is the last resort, which
-// keeps detection working whatever the server emits.
+// The Signal K server serializes each provider as { name, isDefault }. The provider id (the map
+// key) is the last resort so detection still works for a provider the server emits without a name.
 export interface WeatherProviderInfo {
   name?: string;
-  provider?: string;
   isDefault: boolean;
 }
 
@@ -100,7 +98,7 @@ export function defaultProviderName(
   );
   if (entries.length === 0) return undefined;
   const [id, info] = entries.find(([, p]) => p.isDefault) ?? entries[0];
-  return info.name ?? info.provider ?? id;
+  return info.name ?? id;
 }
 
 function pointUrl(origin: string, path: string, lat: number, lon: number, count?: number): string {

@@ -29,19 +29,23 @@ export function readoutAt(
   const speedMs = Math.hypot(u, v);
   const fromRad = (Math.atan2(-u, -v) + 2 * Math.PI) % (2 * Math.PI);
   const pressureField = grid.pressureMsl?.[timeIndex];
-  const pressurePa = pressureField
+  const pressurePa = pressureField?.length
     ? nanToUndef(bilinearAt(grid, pressureField, lon, lat))
     : undefined;
   const waveField = grid.waveHeight?.[timeIndex];
-  const waveHeightM = waveField ? nanToUndef(bilinearAt(grid, waveField, lon, lat)) : undefined;
+  const waveHeightM = waveField?.length
+    ? nanToUndef(bilinearAt(grid, waveField, lon, lat))
+    : undefined;
   const periodField = grid.wavePeriod?.[timeIndex];
-  const wavePeriodS = periodField ? nanToUndef(bilinearAt(grid, periodField, lon, lat)) : undefined;
+  const wavePeriodS = periodField?.length
+    ? nanToUndef(bilinearAt(grid, periodField, lon, lat))
+    : undefined;
   const precipField = grid.precipitation?.[timeIndex];
-  const precipitationMm = precipField
+  const precipitationMm = precipField?.length
     ? nanToUndef(bilinearAt(grid, precipField, lon, lat))
     : undefined;
   const cloudField = grid.cloudCover?.[timeIndex];
-  const cloudCoverFraction = cloudField
+  const cloudCoverFraction = cloudField?.length
     ? nanToUndef(bilinearAt(grid, cloudField, lon, lat))
     : undefined;
   return {

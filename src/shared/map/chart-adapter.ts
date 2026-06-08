@@ -13,7 +13,7 @@ export const PMTILES_SCHEME = 'pmtiles://';
 // skip chart-owned layers from a single source of truth rather than a hardcoded string.
 export const CHART_SOURCE_PREFIX = 'chart-';
 
-export interface ChartSpecs {
+interface ChartSpecs {
   sources: Record<string, SourceSpecification>;
   layers: LayerSpecification[];
 }

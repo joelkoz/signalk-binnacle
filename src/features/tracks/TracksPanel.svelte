@@ -94,7 +94,8 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   <div class="color-mode" role="group" aria-label="Track color">
     <button
       type="button"
-      class:active={colorMode === 'speed'}
+      class="btn"
+      class:is-on={colorMode === 'speed'}
       aria-pressed={colorMode === 'speed'}
       onclick={() => setColorMode('speed')}
     >
@@ -102,7 +103,8 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     </button>
     <button
       type="button"
-      class:active={colorMode === 'solid'}
+      class="btn"
+      class:is-on={colorMode === 'solid'}
       aria-pressed={colorMode === 'solid'}
       onclick={() => setColorMode('solid')}
     >
@@ -170,36 +172,28 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 </SlideOver>
 
 <style>
+/* A segmented toggle built from the shared .btn box, so the lit segment uses the global .is-on
+   accent-tint state every other toggle shares. Only the segment-join (collapsed inner border and
+   squared inner corners) and the off-segment quiet fill are local. */
 .color-mode {
   display: flex;
   gap: 0;
 }
-.color-mode button {
+.color-mode .btn {
   flex: 1;
-  min-block-size: var(--control-size);
-  padding: 0.3rem var(--space-2);
-  border: 1px solid var(--border);
+}
+.color-mode .btn:not(.is-on) {
   background: transparent;
   color: var(--text-muted);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
 }
-.color-mode button:first-child {
-  border-start-start-radius: var(--radius-sm);
-  border-end-start-radius: var(--radius-sm);
+.color-mode .btn:first-child {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
 }
-.color-mode button:last-child {
-  border-start-end-radius: var(--radius-sm);
-  border-end-end-radius: var(--radius-sm);
+.color-mode .btn:last-child {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
   border-inline-start: 0;
-}
-/* The active segment uses the accent-tint lit fill, matching how every other toggle in the app
-   (the strip and weather pills, the menu trigger) signals "on". */
-.color-mode button.active {
-  background: var(--accent-tint);
-  color: var(--accent);
-  border-color: var(--accent);
 }
 /* Label and value in two columns, with every value left-aligned in a shared second column so the
    values line up on one left edge regardless of width. The unit follows each value inline. */

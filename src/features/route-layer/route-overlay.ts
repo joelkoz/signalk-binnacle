@@ -100,6 +100,7 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
           source: WPT_SRC,
           layout: {
             'text-field': ['get', 'name'],
+            'text-font': ['Noto Sans Regular'],
             'text-size': 11,
             'text-offset': [0, 1.1],
             'text-optional': true,

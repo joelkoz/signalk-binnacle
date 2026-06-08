@@ -7,9 +7,8 @@ import type {
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import { prefersReducedMotion } from '$shared/lib';
-import type { OverlayContext, OverlayModule } from '$shared/map';
+import { emptyFeatureCollection, type OverlayContext, type OverlayModule } from '$shared/map';
 import type { Theme } from '$shared/ui';
-import { emptyFeatureCollection } from './feature-collection';
 import { WEATHER_LAYER_IDS } from './fills';
 import { windArrowFeatures } from './wind-arrows';
 import { windColorTexture } from './wind-color-texture';

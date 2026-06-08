@@ -19,6 +19,16 @@ interface BaseLayer {
   'source-layer'?: string;
 }
 
+// The base style's layers, or an empty list if the style is not ready. getStyle throws before the
+// style loads; every base-theme pass guards it the same way, so the guard lives here once.
+function baseLayers(map: MapLibreMap): BaseLayer[] {
+  try {
+    return (map.getStyle().layers ?? []) as BaseLayer[];
+  } catch {
+    return [];
+  }
+}
+
 function paintProperty(type: string): string | null {
   switch (type) {
     case 'fill':
@@ -78,13 +88,7 @@ export function baseLayerPaint(
 // color, clears any fill pattern (the wetland hatch, paved-area texture) so the flat color
 // shows, and gives label text a background-colored halo for contrast on every theme.
 export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
-  let layers: BaseLayer[];
-  try {
-    layers = (map.getStyle().layers ?? []) as BaseLayer[];
-  } catch {
-    return;
-  }
-  for (const layer of layers) {
+  for (const layer of baseLayers(map)) {
     if (MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix))) continue;
     const themed = baseLayerPaint(layer, paint);
     if (!themed) continue;
@@ -105,14 +109,8 @@ export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
 // can touch. Hide them at night-red so the map holds the red band, and show them on the other
 // themes. The POI name text is unaffected; it recolors with the other labels.
 export function applyPoiVisibility(map: MapLibreMap, paint: MapThemePaint): void {
-  let layers: BaseLayer[];
-  try {
-    layers = (map.getStyle().layers ?? []) as BaseLayer[];
-  } catch {
-    return;
-  }
   const opacity = paint.theme === 'night-red' ? 0 : 1;
-  for (const layer of layers) {
+  for (const layer of baseLayers(map)) {
     if (layer.type !== 'symbol' || layer['source-layer'] !== 'poi') continue;
     try {
       map.setPaintProperty(layer.id, 'icon-opacity', opacity);
@@ -138,13 +136,7 @@ export type BaseSnapshot = Array<{
 
 export function captureBaseTheme(map: MapLibreMap, paint: MapThemePaint): BaseSnapshot {
   const snapshot: BaseSnapshot = [];
-  let layers: BaseLayer[];
-  try {
-    layers = (map.getStyle().layers ?? []) as BaseLayer[];
-  } catch {
-    return snapshot;
-  }
-  for (const layer of layers) {
+  for (const layer of baseLayers(map)) {
     if (MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix))) continue;
     const themed = baseLayerPaint(layer, paint);
     if (!themed) continue;

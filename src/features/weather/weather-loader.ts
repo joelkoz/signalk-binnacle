@@ -1,4 +1,5 @@
 import type { Bbox, RadarData, WeatherGrid, WeatherStore } from '$entities/weather';
+import { HOUR_MS, MINUTE_MS } from '$shared/lib';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
 import { fetchRadar } from './rainviewer-client';
 import { type ForecastOptions, fetchForecast, fetchMarine, mergeMarine } from './weather-client';
@@ -30,14 +31,14 @@ export interface WeatherLoader {
 // Open-Meteo model runs are hours apart, and the time slider shows the right hour from the cached
 // 5-day window regardless, so a forecast stays useful far longer than the old 30-minute TTL. An hour
 // keeps "now" reasonably fresh while roughly halving the request volume (and the rate-limit risk).
-const GRID_TTL_MS = 60 * 60 * 1000;
+const GRID_TTL_MS = HOUR_MS;
 // Radar is a nowcast: RainViewer publishes a new frame about every 10 minutes, so keep it short.
-const RADAR_TTL_MS = 5 * 60 * 1000;
+const RADAR_TTL_MS = 5 * MINUTE_MS;
 const QUANTIZE_DEG = 0.25;
 // Cap the viewport cache so a long session of panning does not grow it without bound.
 const MAX_GRID_ENTRIES = 16;
 // How long to stop fetching the grid after a failure, so a rate-limited state is not made worse.
-const GRID_FAIL_COOLDOWN_MS = 60 * 1000;
+const GRID_FAIL_COOLDOWN_MS = MINUTE_MS;
 
 const quantize = (v: number): number => Math.round(v / QUANTIZE_DEG) * QUANTIZE_DEG;
 

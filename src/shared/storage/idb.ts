@@ -2,7 +2,7 @@
 // hanging when a second tab blocks the upgrade), a typed single-store transaction runner, and the
 // degrade-to-memory policy each store layers on top.
 
-export interface IdbRunner {
+interface IdbRunner {
   run<R>(mode: IDBTransactionMode, op: (store: IDBObjectStore) => IDBRequest): Promise<R>;
 }
 
@@ -55,7 +55,7 @@ export function openIdbStore(
 // then tries IndexedDB and degrades on failure; a read tries IndexedDB and falls back to memory.
 // Once any op fails, every later op goes straight to memory, so a persistence failure never throws
 // and never loses what was already mirrored. Defined once so the stores cannot drift.
-export interface DegradeToMemory {
+interface DegradeToMemory {
   read<R>(fromIdb: () => Promise<R>, fromMemory: () => Promise<R>): Promise<R>;
   write(toIdb: () => Promise<unknown>, toMemory: () => Promise<void>): Promise<void>;
 }

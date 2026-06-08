@@ -57,6 +57,9 @@ export class LayerManager {
   #onOrderChange?: (order: string[]) => void;
   #pinned: string[];
   #exclusive: string[][];
+  // The last theme paint broadcast, so a module registered after the first recolor (an imported
+  // user chart) is themed at add time instead of staying day-colored until the next theme change.
+  #lastPaint?: MapThemePaint;
 
   constructor(ctx: OverlayContext, options: LayerManagerOptions = {}) {
     this.#ctx = ctx;
@@ -109,6 +112,7 @@ export class LayerManager {
     await module.add(this.#ctx);
     module.setVisible(this.#ctx, state.visible);
     module.setOpacity?.(this.#ctx, state.opacity);
+    if (this.#lastPaint) module.applyTheme?.(this.#ctx, this.#lastPaint);
   }
 
   unregister(id: string): void {
@@ -167,7 +171,7 @@ export class LayerManager {
   reorder(id: string, toIndex: number): void {
     if (this.#pinned.includes(id) || !this.#modules.has(id)) return;
     // A sub-layer is never reordered on its own; it stays directly above its parent.
-    if (this.#modules.get(id)?.parent !== undefined) return;
+    if (this.#isChild(id)) return;
     const topDown = this.#effectiveOrder()
       .filter((other) => !this.#pinned.includes(other) && !this.#isChild(other))
       .reverse();
@@ -247,6 +251,7 @@ export class LayerManager {
   // Broadcast a theme change to every overlay that recolors itself, so each slice owns
   // the theming of its own layers instead of the widget reaching into them by id.
   applyTheme(paint: MapThemePaint): void {
+    this.#lastPaint = paint;
     for (const module of this.#modules.values()) {
       module.applyTheme?.(this.#ctx, paint);
     }
@@ -264,6 +269,7 @@ export class LayerManager {
       await (module.reattach ?? module.add).call(module, this.#ctx);
       module.setVisible(this.#ctx, state.visible);
       module.setOpacity?.(this.#ctx, state.opacity);
+      if (this.#lastPaint) module.applyTheme?.(this.#ctx, this.#lastPaint);
     }
     this.#applyOrder();
   }

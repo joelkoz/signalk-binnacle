@@ -1,3 +1,4 @@
+import { MINUTE_MS } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
 import type { TrackStore } from '$shared/storage';
@@ -5,7 +6,7 @@ import type { TrackPoint, TrackStats } from './track-types';
 
 // A fix this far in time after the previous one starts a new segment (GPS dropout, app
 // closed, reconnect), so the line is not drawn straight across the gap.
-const GAP_MS = 5 * 60 * 1000;
+const GAP_MS = 5 * MINUTE_MS;
 
 export interface RecordDecision {
   append: boolean;

@@ -1,7 +1,7 @@
 import type { TimeBracket, WeatherGrid } from '$entities/weather';
 import { lerp } from '$shared/lib';
+import { emptyFeatureCollection } from '$shared/map';
 import { cellArrowFeatures } from './arrow-features';
-import { emptyFeatureCollection } from './feature-collection';
 
 const STRIDE = 2; // draw every other cell in each axis so the field is not littered with arrows
 const ARROW_FRACTION = 0.5;

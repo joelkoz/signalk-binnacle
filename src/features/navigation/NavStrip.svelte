@@ -1,6 +1,12 @@
 <script lang="ts">
 import type { CourseGuidance } from '$entities/course';
-import { formatBearingOr, formatDuration, formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
+import {
+  formatBearingOr,
+  formatDuration,
+  formatKnotsOr,
+  formatNmOr,
+  PLACEHOLDER,
+} from '$shared/lib';
 import { steerSide } from '$shared/nav';
 
 interface Props {
@@ -19,18 +25,14 @@ const steer = $derived.by<'L' | 'R' | null>(() => {
 });
 
 // Each readout shows the placeholder when its value is absent, never a misleading zero.
-const dtw = $derived(
-  guidance.distanceToNextMeters != null ? formatNm(guidance.distanceToNextMeters) : PLACEHOLDER,
-);
+const dtw = $derived(formatNmOr(guidance.distanceToNextMeters));
 const btw = $derived(formatBearingOr(guidance.bearingToNextRad));
 const xte = $derived(
-  guidance.crossTrackErrorMeters != null
-    ? formatNm(Math.abs(guidance.crossTrackErrorMeters))
-    : PLACEHOLDER,
+  formatNmOr(
+    guidance.crossTrackErrorMeters == null ? undefined : Math.abs(guidance.crossTrackErrorMeters),
+  ),
 );
-const vmg = $derived(
-  guidance.velocityMadeGoodMps != null ? formatKnots(guidance.velocityMadeGoodMps) : PLACEHOLDER,
-);
+const vmg = $derived(formatKnotsOr(guidance.velocityMadeGoodMps));
 const ttg = $derived(
   guidance.timeToGoSeconds != null ? formatDuration(guidance.timeToGoSeconds) : PLACEHOLDER,
 );

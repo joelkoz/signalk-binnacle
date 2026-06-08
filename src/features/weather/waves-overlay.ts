@@ -1,6 +1,6 @@
 import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
-import { emptyFeatureCollection } from './feature-collection';
+import { emptyFeatureCollection } from '$shared/map';
 import { type CanvasFactory, createFieldOverlay, type FieldOverlay } from './field-overlay';
 import { WEATHER_LAYER_IDS } from './fills';
 import { waveArrowFeatures } from './wave-arrows';
@@ -50,6 +50,9 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
         ctx.map.addSource(ARROW_SOURCE, source);
       }
       if (!ctx.map.getLayer(ARROW_LAYER)) {
+        // The wave field already encodes height by color, so the direction arrows take one flat
+        // per-theme color (recolored in applyTheme) rather than the wind overlay's data-driven,
+        // speed-shaded line-color: the arrows here carry direction only, not a second height scale.
         const layer: LineLayerSpecification = {
           id: ARROW_LAYER,
           type: 'line',

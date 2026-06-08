@@ -75,7 +75,11 @@ export class WorkerCore {
       return;
     }
     if (!message.updates) {
-      // The hello handshake carries the self identifier but no updates.
+      // The hello handshake carries the self identifier but no updates. A Signal K server always
+      // sends hello first on /signalk/v1/stream, so #selfContext is set before any vessels.<self>
+      // delta arrives. If that ordering were ever violated, a self delta would be misrouted into the
+      // AIS bucket under its own urn and only cleared after the AIS TTL; we rely on the hello-first
+      // contract rather than reconciling it.
       if (typeof message.self === 'string') this.#selfContext = message.self;
       return;
     }

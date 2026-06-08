@@ -247,10 +247,6 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
 }
 .stats .num {
   text-align: end;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: var(--text);
 }
 .stats .unit {
   min-inline-size: 1.25rem;
@@ -358,6 +354,8 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
 .card-stats dd {
   margin: 0 0.4rem 0 0;
 }
+/* The mono, tabular readout shared by the active-route strip stats and the saved-card stats. */
+.stats .num,
 .card-stats .num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

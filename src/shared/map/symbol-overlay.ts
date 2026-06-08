@@ -51,11 +51,12 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
     supportsOpacity: true,
     layerIds: [config.layerId],
     add(ctx) {
-      if (!ctx.map.hasImage(config.iconId)) {
-        ctx.map.addImage(config.iconId, config.iconImage(config.defaultColor), {
-          pixelRatio: config.pixelRatio ?? 1,
-        });
-      }
+      setMapImage(
+        ctx.map,
+        config.iconId,
+        config.iconImage(config.defaultColor),
+        config.pixelRatio ?? 1,
+      );
       const source: GeoJSONSourceSpecification = { type: 'geojson', data: config.features() };
       ctx.map.addSource(config.sourceId, source);
       const layer: SymbolLayerSpecification = {

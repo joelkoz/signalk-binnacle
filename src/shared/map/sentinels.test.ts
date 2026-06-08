@@ -3,11 +3,9 @@ import { createFakeMap } from '$shared/testing/fake-map';
 import { beforeIdFor, installSentinels, sentinelId } from './sentinels';
 import { Z_ORDER } from './types';
 
-const fakeMap = createFakeMap;
-
 describe('sentinels', () => {
   it('installs one sentinel per z-band', () => {
-    const map = fakeMap();
+    const map = createFakeMap();
     installSentinels(map as never);
     for (const band of Z_ORDER) {
       expect(map.getLayer(sentinelId(band))).toBeTruthy();
@@ -15,7 +13,7 @@ describe('sentinels', () => {
   });
 
   it('is idempotent', () => {
-    const map = fakeMap();
+    const map = createFakeMap();
     const spy = vi.spyOn(map, 'addLayer');
     installSentinels(map as never);
     installSentinels(map as never);

@@ -6,6 +6,7 @@ import type {
   TideStation,
   TidesStore,
 } from '$entities/tides';
+import { DAY_MS, MINUTE_MS } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
 import {
   fetchCurrentEvents,
@@ -36,8 +37,8 @@ const CURRENT_RADIUS_M = 60_000;
 const CURRENT_TRIES = 6;
 // The station lists are nearly static, so they refresh once a day. After a failed fetch, back off
 // before retrying so a flaky network is not hammered.
-const STATIONS_TTL_MS = 24 * 60 * 60 * 1000;
-const COOLDOWN_MS = 5 * 60 * 1000;
+const STATIONS_TTL_MS = DAY_MS;
+const COOLDOWN_MS = 5 * MINUTE_MS;
 // A backstop on the per-station event caches so a long session of panning cannot grow them forever.
 const MAX_EVENT_ENTRIES = 24;
 // Skip a reload when the view barely moved and a reading is already on screen, so small pans do not
@@ -52,7 +53,16 @@ const defaults: LoaderDeps = {
   now: () => Date.now(),
 };
 
-const dayKey = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
+// The per-station event cache rolls over on the local day, matching the CO-OPS fetch window, whose
+// begin_date is local midnight. A UTC key would roll at a different wall-clock moment, so for the
+// hours around midnight on a boat away from UTC the cache could treat a stale local-day window as
+// fresh, or refetch a still-valid one.
+const dayKey = (ms: number): string => {
+  const d = new Date(ms);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+};
 
 function cachePut<T>(cache: Map<string, T>, key: string, value: T): void {
   if (cache.size >= MAX_EVENT_ENTRIES) {

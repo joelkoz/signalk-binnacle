@@ -60,6 +60,20 @@ All notable changes to Binnacle are documented here. The format follows
 - Deleting a user-imported chart now actually removes it. The layer row, the map overlay, and the
   stored descriptor were all left in place because the delete handler read the chart id after the
   panel had already cleared its selection, so the removal threw and never ran.
+- A chart imported while a dark theme (dusk or night-red) is active now takes the theme immediately,
+  instead of staying in day colors until the next theme change. Overlays registered after the first
+  recolor are now themed at registration.
+- The nearest tide and tidal-current readings no longer briefly go stale around local midnight: the
+  session cache now rolls over on the same local day the NOAA forecast window uses, rather than on
+  the UTC day.
+
+### Internal
+
+- A whole-codebase cleanup pass: named the shared millisecond constants once (MINUTE_MS, HOUR_MS,
+  DAY_MS), added a placeholder-aware nautical-miles readout, deduplicated the base-theme style
+  lookups, removed a dead weather-provider field and an empty re-export shim, tightened the
+  storage and chart-adapter export surface, and aligned the route and wave overlay label font and
+  arrow color with the other overlays. No user-facing behavior change beyond the fixes above.
 
 ## [0.1.3] - 2026-06-08
 

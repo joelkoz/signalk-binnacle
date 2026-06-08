@@ -60,12 +60,6 @@ describe('defaultProviderName', () => {
     expect(defaultProviderName({ b: { name: 'OpenMeteo', isDefault: false } })).toBe('OpenMeteo');
   });
 
-  it('accepts a legacy provider field', () => {
-    expect(defaultProviderName({ a: { provider: 'AccuWeather', isDefault: true } })).toBe(
-      'AccuWeather',
-    );
-  });
-
   it('falls back to the provider id when no name is present', () => {
     expect(defaultProviderName({ 'open-meteo': { isDefault: true } })).toBe('open-meteo');
   });

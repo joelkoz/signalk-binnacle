@@ -906,7 +906,7 @@ onDestroy(() => {
         class="btn btn-pill"
         class:is-on={weatherPanelOpen}
         aria-pressed={weatherPanelOpen}
-        aria-haspopup="dialog"
+        aria-haspopup="true"
         aria-controls={weatherPanelOpen ? 'weather-panel' : undefined}
         onclick={() => (weatherPanelOpen = !weatherPanelOpen)}
       >

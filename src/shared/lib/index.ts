@@ -4,6 +4,7 @@ export { uuidv4 } from './id';
 export { lerp } from './math';
 export { prefersReducedMotion } from './motion';
 export {
+  DAY_MS,
   DEG_TO_RAD,
   degreesToRadians,
   formatBearingOr,
@@ -14,11 +15,13 @@ export {
   formatKnots,
   formatKnotsOr,
   formatNm,
+  formatNmOr,
   formatTcpaMin,
   HOUR_MS,
   headingDegrees,
   kelvinToCelsius,
   knotsToMetersPerSecond,
+  MINUTE_MS,
   metersPerSecondToKnots,
   nauticalMilesToMeters,
   PA_PER_HPA,
