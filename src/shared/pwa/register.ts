@@ -12,10 +12,10 @@ export function registerPwa(onNeedRefresh?: () => void): PwaController {
   const updateSW = registerSW({
     onNeedRefresh: () => onNeedRefresh?.(),
     onRegisterError: (error) => {
-      // A self-signed or otherwise untrusted server certificate makes the browser refuse to register
-      // a service worker, even after the user clicks through the page warning, so offline caching
-      // stays off. That is a certificate-trust issue, not a code fault, so explain it plainly. The
-      // app works fully without the service worker; only offline precaching is unavailable.
+      // An untrusted server certificate makes the browser refuse to register a service worker, even
+      // after the user clicks through the page warning, so offline caching stays off (the app itself
+      // works fully). The match is a heuristic on the browser's non-standard error text; a miss just
+      // falls through to the generic warning below.
       const message = error instanceof Error ? error.message : String(error);
       if (/certificate|ssl/i.test(message)) {
         console.info(

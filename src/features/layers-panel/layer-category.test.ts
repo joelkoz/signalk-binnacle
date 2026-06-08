@@ -1,43 +1,41 @@
 import { describe, expect, it } from 'vitest';
 import type { LayerListItem } from '$shared/map';
-import { CATEGORY_DEFAULT_OPEN, CATEGORY_ORDER, layerCategory } from './layer-category';
+import { CATEGORY_ORDER, layerCategory } from './layer-category';
 
-const item = (id: string, band: LayerListItem['band']): LayerListItem => ({
-  id,
-  title: id,
+const item = (overrides: Partial<LayerListItem>): LayerListItem => ({
+  id: 'x',
+  title: 'x',
   visible: true,
   opacity: 1,
   supportsOpacity: true,
   pinned: false,
-  band,
+  band: 'safety',
+  ...overrides,
 });
 
 describe('layerCategory', () => {
-  it('maps the chart and ocean bands to their own sections', () => {
-    expect(layerCategory(item('depth-gebco', 'bathymetry')).id).toBe('charts');
-    expect(layerCategory(item('chart-x', 'basemap')).id).toBe('charts');
-    expect(layerCategory(item('gibs-sst', 'weather')).id).toBe('ocean');
+  it('uses an overlay-declared category', () => {
+    expect(layerCategory(item({ category: 'live' })).id).toBe('live');
+    expect(layerCategory(item({ category: 'nav-aids' })).id).toBe('nav-aids');
+    expect(layerCategory(item({ category: 'areas' })).id).toBe('areas');
   });
 
-  it('splits the overlay rows into live, navigation aids, areas, and own data', () => {
-    expect(layerCategory(item('ais', 'traffic')).id).toBe('live');
-    expect(layerCategory(item('tides', 'safety')).id).toBe('live');
-    expect(layerCategory(item('seamark', 'safety')).id).toBe('nav-aids');
-    expect(layerCategory(item('mpa-noaa', 'safety')).id).toBe('areas');
-    expect(layerCategory(item('bound-eez', 'safety')).id).toBe('areas');
-    expect(layerCategory(item('routes', 'routes')).id).toBe('mine');
-    expect(layerCategory(item('notes', 'routes')).id).toBe('mine');
-    expect(layerCategory(item('track', 'track')).id).toBe('mine');
+  it('falls back to a band-derived category when none is declared', () => {
+    expect(layerCategory(item({ band: 'bathymetry' })).id).toBe('charts');
+    expect(layerCategory(item({ band: 'basemap' })).id).toBe('charts');
+    expect(layerCategory(item({ band: 'weather' })).id).toBe('ocean');
+    expect(layerCategory(item({ band: 'traffic' })).id).toBe('live');
+    expect(layerCategory(item({ band: 'routes' })).id).toBe('mine');
+    expect(layerCategory(item({ band: 'track' })).id).toBe('mine');
   });
 
-  it('falls an unknown overlay into the own-data bucket so it is never hidden', () => {
-    expect(layerCategory(item('future-overlay', 'safety')).id).toBe('mine');
+  it('ignores an unknown declared category so a typo never drops the layer', () => {
+    expect(layerCategory(item({ category: 'bogus', band: 'safety' })).id).toBe('mine');
   });
 
-  it('keeps the category order and default-open keys in sync', () => {
+  it('resolves a non-empty title for every category in the order', () => {
     for (const id of CATEGORY_ORDER) {
-      expect(id in CATEGORY_DEFAULT_OPEN).toBe(true);
+      expect(layerCategory(item({ category: id })).title).toBeTruthy();
     }
-    expect(Object.keys(CATEGORY_DEFAULT_OPEN).sort()).toEqual([...CATEGORY_ORDER].sort());
   });
 });

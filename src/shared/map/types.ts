@@ -46,6 +46,10 @@ export interface OverlayModule {
   // so a multi-facet chart (the NOAA ENC chart plus its data-quality overlay) reads as one unit.
   // Generic: any future multi-facet source declares the same descriptor.
   readonly group?: { readonly id: string; readonly title: string };
+  // The Layers-panel category this overlay belongs to, so the panel groups it without knowing any
+  // feature id. When absent the panel derives a category from the band. The category vocabulary and
+  // its order live in the panel; an overlay just declares which one it joins.
+  readonly category?: string;
   readonly supportsOpacity: boolean;
   // Initial visibility when there is no saved state. Defaults to visible; streaming depth layers
   // set this false so they start off until the user enables one for their area.

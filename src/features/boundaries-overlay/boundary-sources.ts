@@ -15,11 +15,13 @@ export const BOUNDARY_SOURCES: RasterOverlaySource[] = [
     title: 'Maritime boundaries',
     tiles: [wmsTiles(MARINE_REGIONS_WMS, 'eez_boundaries')],
     attribution: VLIZ_ATTRIBUTION,
+    category: 'areas',
   },
   {
     id: 'bound-12nm',
     title: 'Territorial sea (12 nm)',
     tiles: [wmsTiles(MARINE_REGIONS_WMS, 'eez_12nm')],
     attribution: VLIZ_ATTRIBUTION,
+    category: 'areas',
   },
 ];

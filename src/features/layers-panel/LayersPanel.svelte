@@ -232,8 +232,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
                 {@const indicator = indicatorFor(item.id)}
                 {@const removeId = userChartIds.get(item.id)}
                 {@const prev = cat.rows[j - 1]?.item}
-                <!-- A named group (a multi-facet chart like NOAA ENC) heads its facets with one title
-                     the first time its id is seen within the category. -->
+                <!-- Emit a named group's title once, on its first facet within the category. -->
                 {#if item.group && item.group.id !== prev?.group?.id}
                   <li class="facet-group-label caps-label" aria-hidden="true">
                     {item.group.title}

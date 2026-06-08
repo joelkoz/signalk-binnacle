@@ -30,6 +30,8 @@ export interface RasterOverlaySource {
   // An optional named group: facets that share a group id render under one labeled header in the
   // Layers panel.
   group?: { id: string; title: string };
+  // The Layers-panel category this source declares. See OverlayModule.category.
+  category?: string;
   // Initial visibility when there is no saved state. Defaults to hidden so an overlay starts off
   // until the user enables it for their area.
   defaultVisible?: boolean;
@@ -62,6 +64,7 @@ export function createRasterOverlay(source: RasterOverlaySource, band: ZBand): O
     band,
     parent: source.parent,
     group: source.group,
+    category: source.category,
     supportsOpacity: true,
     defaultVisible: source.defaultVisible ?? false,
     defaultOpacity: source.defaultOpacity ?? 1,

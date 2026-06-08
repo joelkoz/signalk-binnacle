@@ -25,6 +25,8 @@ export interface LayerListItem {
   // The named group this layer is a facet of, surfaced so the panel can render one group header
   // above the group's facets. See OverlayModule.group.
   group?: { id: string; title: string };
+  // The Layers-panel category this layer declares. See OverlayModule.category.
+  category?: string;
 }
 
 export interface LayerManagerOptions {
@@ -285,6 +287,7 @@ export class LayerManager {
             band: module.band,
             parent: module.parent,
             group: module.group,
+            category: module.category,
           },
         ];
       });
