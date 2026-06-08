@@ -12,11 +12,15 @@ export type ZBand =
   | 'vessel'
   | 'overlay-top';
 
+// The weather band sits just above bathymetry and below the track, so ocean fields (sea-surface
+// temperature, sea ice) read as a background layer under the vessel trail and the navigation
+// overlays, and so the Layers panel's single Weather section never splits the Overlays section that
+// would otherwise sit on both sides of it.
 export const Z_ORDER: readonly ZBand[] = [
   'basemap',
   'bathymetry',
-  'track',
   'weather',
+  'track',
   'routes',
   'safety',
   'traffic',

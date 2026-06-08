@@ -24,6 +24,7 @@ export { applyRasterTheme, mapThemePaint } from './map-theme';
 export { registerPmtilesProtocol } from './pmtiles';
 export { type PmtilesMeta, readPmtilesMeta } from './pmtiles-metadata';
 export {
+  arcgisExportTiles,
   createRasterOverlay,
   RASTER_ID_PREFIX,
   type RasterOverlaySource,

@@ -7,19 +7,24 @@ import type { TrackRecorder } from '$entities/track';
 import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
 import { createAisOverlay } from '$features/ais-layer';
+import { BOUNDARY_SOURCES } from '$features/boundaries-overlay';
 import { fetchCharts } from '$features/charts';
 import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
 import { LayersView } from '$features/layers-panel';
 import { COLLISION_OVERLAY_ID, createCollisionOverlay } from '$features/lookout';
+import { MPA_SOURCES } from '$features/mpa-overlays';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
+import { buildOceanSources } from '$features/ocean-conditions';
 import { createRouteEditor, type RouteEditor } from '$features/route-edit';
 import { createRouteOverlay } from '$features/route-layer';
+import { SEAMARK_SOURCES } from '$features/seamark-overlay';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
 import { prefersReducedMotion } from '$shared/lib';
 import {
   chartSourceId,
   createChartOverlay,
+  createRasterOverlay,
   createThemedMap,
   type LayerSettings,
   registerPmtilesProtocol,
@@ -146,6 +151,14 @@ onMount(() => {
       await manager.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
         ...STREAMING_CHART_SOURCES.map((source) => createStreamingChartOverlay(source)),
+        // Ocean fields sit in the weather band, below the live overlays. The regulatory areas,
+        // boundary lines, and seamarks sit in the safety band in that order, bottom to top, so
+        // the seamark navigation aids draw over the reference fills, and the vessel and AIS stay
+        // above them all.
+        ...buildOceanSources().map((source) => createRasterOverlay(source, 'weather')),
+        ...BOUNDARY_SOURCES.map((source) => createRasterOverlay(source, 'safety')),
+        ...MPA_SOURCES.map((source) => createRasterOverlay(source, 'safety')),
+        ...SEAMARK_SOURCES.map((source) => createRasterOverlay(source, 'safety')),
         routeOverlay,
         notesOverlay,
         aisOverlay,

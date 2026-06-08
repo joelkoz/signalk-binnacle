@@ -1,0 +1,37 @@
+import type { RasterOverlaySource } from '$shared/map';
+import { gibsDate } from './gibs-date';
+
+// NASA GIBS daily global ocean fields. Sea-surface temperature reveals current boundaries (the Gulf
+// Stream, eddies, and upwelling); sea ice concentration is go/no-go for high-latitude cruising. Both
+// are GHRSST L4 MUR, multicolor rasters that dim but do not recolor at night, so they default hidden
+// and are best left off at night. They are independent toggles (sea ice matters without SST in polar
+// waters). The product is published at native zoom 7; MapLibre overzooms above that.
+const GIBS_WMTS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
+const gibsTiles = (layer: string, date: string): string =>
+  `${GIBS_WMTS}/${layer}/default/${date}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png`;
+
+// Built as a function so the date is resolved at construction time, not at module load.
+export function buildOceanSources(): RasterOverlaySource[] {
+  const date = gibsDate();
+  return [
+    {
+      id: 'gibs-sst',
+      title: 'Sea-surface temperature',
+      tiles: [gibsTiles('GHRSST_L4_MUR_Sea_Surface_Temperature', date)],
+      minzoom: 0,
+      maxzoom: 7,
+      // A background field, so it defaults translucent and the chart reads through it.
+      defaultOpacity: 0.7,
+      attribution: 'NASA EOSDIS GIBS, GHRSST L4 MUR',
+    },
+    {
+      id: 'gibs-sea-ice',
+      title: 'Sea ice concentration',
+      tiles: [gibsTiles('GHRSST_L4_MUR_Sea_Ice_Concentration', date)],
+      minzoom: 0,
+      maxzoom: 7,
+      defaultOpacity: 0.7,
+      attribution: 'NASA EOSDIS GIBS, GHRSST L4 MUR',
+    },
+  ];
+}

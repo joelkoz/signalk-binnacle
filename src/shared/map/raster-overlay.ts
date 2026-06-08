@@ -43,6 +43,12 @@ export interface RasterOverlaySource {
 export const wmsTiles = (base: string, layers: string, styles = ''): string =>
   `${base}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layers}&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=${styles}`;
 
+// An ArcGIS MapServer export raster tile template: a 256px EPSG:3857 PNG with the {bbox-epsg-3857}
+// token MapLibre substitutes per tile. Some marine services (the NOAA MPA Inventory) serve only this
+// ArcGIS REST export, not WMS. The base is the MapServer URL without a trailing slash.
+export const arcgisExportTiles = (base: string): string =>
+  `${base}/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&dpi=96&format=png32&transparent=true&f=image`;
+
 // Wrap a hosted raster tile service as a themed overlay in the given band. The layer manager sets
 // opacity via setOpacity right after add, and MapLibre defaults raster-opacity to 1, so no inline
 // opacity is set on the layer.
