@@ -14,12 +14,14 @@ import {
   createWindOverlay,
   fetchObservations,
   fetchPointForecasts,
+  GRID_SOURCE_LABEL,
   nearestInTime,
   RAIN_VISIBLE_MM_H,
   readoutAt,
   readoutFromSignalK,
   stepTime,
   type TimeRange,
+  WEATHER_FILL_ID_SET,
   WEATHER_FILL_IDS,
   WEATHER_LAYER_IDS,
   WeatherConditions,
@@ -29,11 +31,11 @@ import {
   weatherLegend,
 } from '$features/weather';
 import {
+  formatBearingOr,
   formatFixed,
+  formatHectopascalsOr,
+  formatKnotsOr,
   HOUR_MS,
-  metersPerSecondToKnots,
-  pascalsToHectopascals,
-  radiansToBearing,
 } from '$shared/lib';
 import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shared/map';
 import type { MapView } from '$shared/settings';
@@ -85,8 +87,6 @@ const MAX_ZOOM = 7;
 const MIN_ZOOM = 1;
 const DEFAULT_ZOOM = 3;
 const STEP_MS = 3 * HOUR_MS;
-// The free fallback source's label, also used to decide readout field gating.
-const GRID_SOURCE = 'Open-Meteo';
 
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
@@ -105,8 +105,8 @@ let readoutTimer: ReturnType<typeof setTimeout> | undefined;
 let tapSeq = 0;
 
 const items = $derived(layersView?.items ?? []);
-const fills = $derived(items.filter((i) => WEATHER_FILL_IDS.includes(i.id)));
-const overlayItems = $derived(items.filter((i) => !WEATHER_FILL_IDS.includes(i.id)));
+const fills = $derived(items.filter((i) => WEATHER_FILL_ID_SET.has(i.id)));
+const overlayItems = $derived(items.filter((i) => !WEATHER_FILL_ID_SET.has(i.id)));
 const anyActive = $derived(items.some((i) => i.visible));
 const wavesActive = $derived(items.some((i) => i.id === WEATHER_LAYER_IDS.waves && i.visible));
 const radarActive = $derived(items.some((i) => i.id === WEATHER_LAYER_IDS.radar && i.visible));
@@ -199,7 +199,7 @@ async function onTap(lng: number, lat: number): Promise<void> {
     }
   }
   if (anyActive && store.grid) {
-    showReadout(readoutAt(store.grid, lng, lat, store.bracket.lo), GRID_SOURCE);
+    showReadout(readoutAt(store.grid, lng, lat, store.bracket.lo), GRID_SOURCE_LABEL);
   } else {
     showReadout(undefined, undefined);
   }
@@ -208,7 +208,8 @@ async function onTap(lng: number, lat: number): Promise<void> {
 // In the readout, show a field when it came from the provider (which returns every point field) or
 // when its layer is on. The grid carries all fields regardless of which is drawn, so for the free
 // source it is gated to what is visualized.
-const showField = (id: string): boolean => (readoutSource === GRID_SOURCE ? layerOn(id) : true);
+const showField = (id: string): boolean =>
+  readoutSource === GRID_SOURCE_LABEL ? layerOn(id) : true;
 
 const NEAR_NOW_MS = 90 * 60 * 1000;
 
@@ -364,10 +365,10 @@ onDestroy(() => {
     {#if readout}
       <div class="readout" role="status" aria-live="polite">
         <span class="readout-line">
-          Wind <b>{fmt(metersPerSecondToKnots(readout.speedMs), 1)}</b> kn from
-          <b>{fmt(radiansToBearing(readout.fromRad), 0)}</b>&deg;
+          Wind <b>{formatKnotsOr(readout.speedMs)}</b> kn from
+          <b>{formatBearingOr(readout.fromRad)}</b>&deg;
           {#if showField(WEATHER_LAYER_IDS.pressure) && readout.pressurePa !== undefined}
-            &middot; <b>{fmt(pascalsToHectopascals(readout.pressurePa), 0)}</b> hPa
+            &middot; <b>{formatHectopascalsOr(readout.pressurePa)}</b> hPa
           {/if}
           {#if showField(WEATHER_LAYER_IDS.waves) && readout.waveHeightM !== undefined}
             &middot; sea <b>{fmt(readout.waveHeightM, 1)}</b> m

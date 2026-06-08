@@ -15,7 +15,7 @@ function ctxFor(map: ReturnType<typeof createFakeMap>): OverlayContext {
 function dangerCollision(): CollisionAssessment {
   const store = new SignalKStore();
   store.applyFrame({
-    self: { 'navigation.position': { latitude: 0, longitude: 0 } },
+    self: new Map<string, unknown>([['navigation.position', { latitude: 0, longitude: 0 }]]),
     ais: new Map([
       [
         'vessels.a',

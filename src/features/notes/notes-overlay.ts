@@ -13,6 +13,7 @@ import {
   type OverlayContext,
   type OverlayModule,
 } from '$shared/map';
+import { str } from '$shared/signalk';
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
@@ -273,7 +274,7 @@ export function createNotesOverlay(
           name: String(props.name ?? 'Point of interest'),
           category: String(props.category) as PoiCategory,
           attribution: firstNonEmpty(props.attribution, props.source),
-          url: firstNonEmpty(props.url),
+          url: str(props.url),
         });
       };
       onClusterClick = (event) => {

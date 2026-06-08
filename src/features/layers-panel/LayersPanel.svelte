@@ -63,18 +63,6 @@ function indicatorFor(id: string): { before: boolean; after: boolean } {
   return { before: rowIndex === dropSlot, after: false };
 }
 
-function slotFromPointer(clientY: number): number {
-  if (!listEl) return 0;
-  const rows = [...listEl.querySelectorAll<HTMLElement>('[data-layer-row]')].filter(
-    (el) => el.dataset.layerRow !== dragId,
-  );
-  for (let i = 0; i < rows.length; i++) {
-    const rect = rows[i].getBoundingClientRect();
-    if (clientY < rect.top + rect.height / 2) return i;
-  }
-  return rows.length;
-}
-
 function handlePointerDown(id: string, event: PointerEvent): void {
   if (event.button !== 0 && event.pointerType === 'mouse') return;
   event.preventDefault();
@@ -82,6 +70,25 @@ function handlePointerDown(id: string, event: PointerEvent): void {
   dropSlot = movableIndex(id);
   const handle = event.currentTarget as HTMLElement;
   handle.setPointerCapture(event.pointerId);
+
+  // The list does not reflow during a drag (the indicator is drawn with CSS, rows do not move until
+  // commit), so measure each non-dragged row's vertical midpoint once here rather than re-querying
+  // the DOM and reading layout on every pointermove. The insertion slot is the first midpoint the
+  // pointer is above, matching view.reorder's contract.
+  const midpoints = listEl
+    ? [...listEl.querySelectorAll<HTMLElement>('[data-layer-row]')]
+        .filter((el) => el.dataset.layerRow !== id)
+        .map((el) => {
+          const rect = el.getBoundingClientRect();
+          return rect.top + rect.height / 2;
+        })
+    : [];
+  const slotFromPointer = (clientY: number): number => {
+    for (let i = 0; i < midpoints.length; i++) {
+      if (clientY < midpoints[i]) return i;
+    }
+    return midpoints.length;
+  };
 
   // One AbortController tears down all three listeners on drop or cancel, so the teardown
   // lives in a single place rather than being repeated per handler.

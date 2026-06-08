@@ -27,10 +27,10 @@ export function userChartToSignalK(source: UserChartSource, url: string): Signal
     type: vector ? 'tileJSON' : 'tilelayer',
     format: vector ? 'mvt' : 'png',
     url,
-    bounds: source.bounds,
-    minzoom: source.minzoom,
-    maxzoom: source.maxzoom,
-    layers: source.layers,
+    ...(source.bounds ? { bounds: source.bounds } : {}),
+    ...(source.minzoom !== undefined ? { minzoom: source.minzoom } : {}),
+    ...(source.maxzoom !== undefined ? { maxzoom: source.maxzoom } : {}),
+    ...(source.layers ? { layers: source.layers } : {}),
   };
 }
 

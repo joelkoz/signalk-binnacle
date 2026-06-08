@@ -5,7 +5,7 @@ import { AisTargets } from './ais-targets.svelte';
 
 function frame(ais: Record<string, Record<string, unknown>>, epoch = 1): SKFrame {
   return {
-    self: {},
+    self: new Map(),
     ais: new Map(Object.entries(ais).map(([ctx, vals]) => [ctx, new Map(Object.entries(vals))])),
     connection: { phase: 'open', attempt: 0 },
     epoch,

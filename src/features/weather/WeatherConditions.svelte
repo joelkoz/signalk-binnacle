@@ -2,13 +2,14 @@
 import { TriangleAlert } from '@lucide/svelte';
 import type { WeatherStore } from '$entities/weather';
 import {
+  formatBearingOr,
   formatFixed,
+  formatHectopascalsOr,
+  formatKnotsOr,
   HOUR_MS,
   kelvinToCelsius,
-  metersPerSecondToKnots,
-  pascalsToHectopascals,
-  radiansToBearing,
 } from '$shared/lib';
+import { GRID_SOURCE_LABEL } from './fills';
 import {
   conditionsFromSignalK,
   fetchObservations,
@@ -40,7 +41,7 @@ let warnings = $state<WeatherWarning[]>([]);
 // A sequence guard so a slow earlier load cannot overwrite a newer one.
 let seq = 0;
 
-const sourceLabel = $derived(providerName ?? 'Open-Meteo');
+const sourceLabel = $derived(providerName ?? GRID_SOURCE_LABEL);
 
 // A position key rounded to about 110 m. The boat's fix jitters every GPS delta, so keying the
 // effects on the rounded string instead of the raw object stops a refetch (and a burst of provider
@@ -138,9 +139,9 @@ function readoutFields(r: NonNullable<ReturnType<typeof readoutAt>>): Partial<Po
   };
 }
 
-const knots = (v: number | undefined) => formatFixed(metersPerSecondToKnots(v), 1);
-const bearing = (v: number | undefined) => formatFixed(radiansToBearing(v), 0);
-const hpa = (v: number | undefined) => formatFixed(pascalsToHectopascals(v), 0);
+const knots = formatKnotsOr;
+const bearing = formatBearingOr;
+const hpa = formatHectopascalsOr;
 const degC = (v: number | undefined) => formatFixed(kelvinToCelsius(v), 0);
 const pct = (v: number | undefined) => formatFixed(v === undefined ? undefined : v * 100, 0);
 

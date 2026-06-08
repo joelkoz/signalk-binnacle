@@ -48,7 +48,7 @@ export function createRadarOverlay(
     const frames = radar?.frames ?? [];
     if (!radar || frames.length === 0) return;
     const path = frames[Math.min(frameIndex, frames.length - 1)].path;
-    const url = frameTiles(radar.host, { time: 0, path });
+    const url = frameTiles(radar.host, path);
 
     const source = ctx.map.getSource(SOURCE_ID) as { setTiles(t: string[]): void } | undefined;
     if (source) {

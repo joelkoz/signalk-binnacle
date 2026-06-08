@@ -44,7 +44,9 @@ describe('vessel overlay', () => {
     const map = createFakeMap();
     await overlay.add(ctxFor(map));
     store.applyFrame({
-      self: { 'navigation.position': { latitude: 36.8, longitude: -121.7 } } as never,
+      self: new Map<string, unknown>([
+        ['navigation.position', { latitude: 36.8, longitude: -121.7 }],
+      ]),
       connection: { phase: 'open', attempt: 0 },
       epoch: 1,
     });

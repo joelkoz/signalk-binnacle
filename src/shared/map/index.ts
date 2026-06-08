@@ -7,7 +7,7 @@ export {
 } from './base-theme';
 export { chartSourceId } from './chart-adapter';
 export { createChartOverlay } from './chart-overlay';
-export type { MapSourceType, SignalKChart } from './chart-types';
+export type { SignalKChart } from './chart-types';
 export { emptyFeatureCollection } from './feature-collection';
 export type { Rgba } from './icon-raster';
 export { rasterIcon } from './icon-raster';
@@ -18,6 +18,7 @@ export type {
   OverlayState,
 } from './layer-manager';
 export { LayerManager } from './layer-manager';
+export { setMapImage } from './map-image';
 export type { MapThemePaint } from './map-theme';
 export { applyRasterTheme, mapThemePaint } from './map-theme';
 export { registerPmtilesProtocol } from './pmtiles';

@@ -32,7 +32,7 @@ describe('WorkerCore', () => {
       }),
     });
     vi.runAllTimers();
-    expect(frames.at(-1)?.self['navigation.speedOverGround']).toBe(4.2);
+    expect(frames.at(-1)?.self.get('navigation.speedOverGround')).toBe(4.2);
   });
 
   it('forwards subscribe messages to the socket', () => {
@@ -67,7 +67,7 @@ describe('WorkerCore', () => {
     });
     vi.runAllTimers();
     const frame = frames.at(-1);
-    expect(frame?.self['navigation.speedOverGround']).toBe(5);
+    expect(frame?.self.get('navigation.speedOverGround')).toBe(5);
     expect(frame?.ais?.get('vessels.other')?.get('navigation.speedOverGround')).toBe(9);
     expect(frame?.ais?.get('vessels.self-urn')).toBeUndefined();
   });
@@ -85,6 +85,6 @@ describe('WorkerCore', () => {
       }),
     });
     vi.runAllTimers();
-    expect(frames.at(-1)?.self['navigation.headingTrue']).toBe(1);
+    expect(frames.at(-1)?.self.get('navigation.headingTrue')).toBe(1);
   });
 });

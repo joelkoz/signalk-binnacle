@@ -61,6 +61,21 @@ export function formatFixed(value: number | null | undefined, digits: number): s
   return value == null ? PLACEHOLDER : value.toFixed(digits);
 }
 
+// Placeholder-aware speed and bearing readouts. Unlike formatKnots (which shows 0.0 for an absent
+// value), these show PLACEHOLDER ("--") so the SOG, COG, BTW, and wind-legend readouts never render
+// a misleading zero. The convert-then-formatFixed pattern is written once here, not at each site.
+export function formatKnotsOr(metersPerSecond: number | null | undefined, digits = 1): string {
+  return formatFixed(metersPerSecondToKnots(metersPerSecond), digits);
+}
+
+export function formatBearingOr(radians: number | null | undefined, digits = 0): string {
+  return formatFixed(radiansToBearing(radians), digits);
+}
+
+export function formatHectopascalsOr(pascals: number | null | undefined, digits = 0): string {
+  return formatFixed(pascalsToHectopascals(pascals), digits);
+}
+
 export function metersToNauticalMiles(value: number | null | undefined): number | undefined {
   return value == null ? undefined : value / METERS_PER_NAUTICAL_MILE;
 }

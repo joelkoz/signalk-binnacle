@@ -1,13 +1,6 @@
 <script lang="ts">
 import type { CourseGuidance } from '$entities/course';
-import {
-  formatFixed,
-  formatKnots,
-  formatNm,
-  formatTcpaMin,
-  PLACEHOLDER,
-  radiansToBearing,
-} from '$shared/lib';
+import { formatBearingOr, formatKnots, formatNm, formatTcpaMin, PLACEHOLDER } from '$shared/lib';
 import { steerSide } from '$shared/nav';
 
 interface Props {
@@ -29,7 +22,7 @@ const steer = $derived.by<'L' | 'R' | null>(() => {
 const dtw = $derived(
   guidance.distanceToNextMeters != null ? formatNm(guidance.distanceToNextMeters) : PLACEHOLDER,
 );
-const btw = $derived(formatFixed(radiansToBearing(guidance.bearingToNextRad), 0));
+const btw = $derived(formatBearingOr(guidance.bearingToNextRad));
 const xte = $derived(
   guidance.crossTrackErrorMeters != null
     ? formatNm(Math.abs(guidance.crossTrackErrorMeters))

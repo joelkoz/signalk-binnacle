@@ -17,6 +17,12 @@ export function isLatLon(value: unknown): value is LatLon {
 // orderings, so a mismatch lives in exactly one tested spot.
 export type LonLat = [number, number];
 
+// A GeoJSON [lon, lat] coordinate pair. Shared by the route and track GeoJSON parsers, which all
+// filter raw coordinate arrays down to numeric pairs before mapping them to LatLon.
+export function isLonLat(value: unknown): value is LonLat {
+  return Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number';
+}
+
 export function lonLatToLatLon([longitude, latitude]: LonLat): LatLon {
   return { latitude, longitude };
 }

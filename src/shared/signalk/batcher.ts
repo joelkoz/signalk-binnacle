@@ -17,11 +17,7 @@ const defaultSchedule: Schedule =
       };
 
 export class FrameBatcher {
-  onFlush?: (
-    self: Record<string, Value>,
-    ais: Map<string, Map<string, Value>>,
-    epoch: number,
-  ) => void;
+  onFlush?: (self: Map<string, Value>, ais: Map<string, Map<string, Value>>, epoch: number) => void;
 
   #self = new Map<string, Value>();
   #ais = new Map<string, Map<string, Value>>();
@@ -56,7 +52,11 @@ export class FrameBatcher {
   #flush(epoch: number): void {
     this.#scheduled = false;
     if (this.#self.size === 0 && this.#ais.size === 0) return;
-    const self = Object.fromEntries(this.#self);
+    // Hand off the accumulated maps directly and start fresh. self mirrors how ais is already
+    // passed: a Map crosses the Comlink boundary by structured clone, so neither needs converting
+    // to a plain object on the hot path. Subsequent puts land in the new maps, not the handed-off
+    // ones.
+    const self = this.#self;
     const ais = this.#ais;
     this.#self = new Map();
     this.#ais = new Map();

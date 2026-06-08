@@ -19,3 +19,11 @@ export const WEATHER_FILL_IDS: string[] = [
   WEATHER_LAYER_IDS.cloud,
   WEATHER_LAYER_IDS.radar,
 ];
+
+// The same fill ids as a Set, for the O(1) membership tests the mini-map runs on every derived
+// recompute. The array form stays the source of truth and feeds the LayerManager's exclusive option.
+export const WEATHER_FILL_ID_SET = new Set(WEATHER_FILL_IDS);
+
+// The free fallback source's display name (Open-Meteo). Shared so the conditions panel's "Here"
+// label and the mini-map's readout-source gating name it once and cannot drift.
+export const GRID_SOURCE_LABEL = 'Open-Meteo';

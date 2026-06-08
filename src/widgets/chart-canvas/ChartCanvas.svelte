@@ -115,7 +115,10 @@ onMount(() => {
     onView: (view) => onViewChange?.(view),
     onUserPan: () => onUserPan?.(),
     onLoad: async ({ map, ctx, manager, recolor, isDestroyed, runTick }) => {
-      const charts = await fetchCharts(serverOrigin(), chartsToken);
+      // The server origin is fixed for the session, so resolve it once and reuse it for the chart
+      // fetch, the overlays built here, and the user-chart registrar closure below.
+      const origin = serverOrigin();
+      const charts = await fetchCharts(origin, chartsToken);
       if (isDestroyed()) return;
 
       // Build every overlay, then register the whole stack in one batch so the layer order is
@@ -123,13 +126,13 @@ onMount(() => {
       // server charts, then streaming bathymetry just above the base, the notes, AIS, and collision
       // live overlays, then the track beneath the vessel so the boat draws on top of its own trail.
       const routeOverlay = createRouteOverlay(routeStore);
-      const notesOverlay = createNotesOverlay(serverOrigin(), chartsToken, onNoteSelect);
+      const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect);
       const aisOverlay = createAisOverlay(aisTargets, store);
       const collisionOverlay = createCollisionOverlay(collision);
       const trackOverlay = createTrackOverlay(recorder, trackSettings, savedTracks);
       const overlay = createVesselOverlay(vessel);
       await manager.registerAll([
-        ...charts.map((chart) => createChartOverlay(chart, serverOrigin())),
+        ...charts.map((chart) => createChartOverlay(chart, origin)),
         ...STREAMING_CHART_SOURCES.map((source) => createStreamingChartOverlay(source)),
         routeOverlay,
         notesOverlay,
@@ -159,7 +162,7 @@ onMount(() => {
       const userChartRegistrar: UserChartRegistrar = {
         register: async (chart) => {
           if (isDestroyed()) return;
-          await manager.register(createChartOverlay(chart, serverOrigin(), 'bathymetry'));
+          await manager.register(createChartOverlay(chart, origin, 'bathymetry'));
           view.refresh();
         },
         unregister: (identifier) => {

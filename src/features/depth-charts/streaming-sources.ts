@@ -24,13 +24,17 @@ export interface StreamingChartSource {
 // request, and the data-quality overlay defaults hidden, so the default view is the chart alone.
 const NOAA_ENC_WMS =
   'https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/NOAAChartDisplay/MapServer/exts/MaritimeChartService/WMSServer';
-const noaaEncTiles = (layers: string): string =>
-  `${NOAA_ENC_WMS}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layers}&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=`;
+
+// A WMS 1.3.0 GetMap raster tile template: 256px EPSG:3857 PNG tiles with the {bbox-epsg-3857}
+// token MapLibre substitutes per tile. Shared by the GEBCO, EMODnet, and NOAA ENC sources so the
+// GetMap query shape lives in one place. (tileSize defaults to 256 in the overlay, so it is omitted
+// below; only BlueTopo's 512 is load-bearing.)
+const wmsTiles = (base: string, layers: string): string =>
+  `${base}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layers}&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=`;
 const noaaEncSource = (id: string, title: string, layers: string): StreamingChartSource => ({
   id,
   title,
-  tiles: [noaaEncTiles(layers)],
-  tileSize: 256,
+  tiles: [wmsTiles(NOAA_ENC_WMS, layers)],
   minzoom: 0,
   maxzoom: 18,
   bounds: [-180, -15, 180, 75],
@@ -45,10 +49,7 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-gebco',
     title: 'GEBCO global bathymetry',
-    tiles: [
-      'https://wms.gebco.net/mapserv?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=GEBCO_LATEST&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=',
-    ],
-    tileSize: 256,
+    tiles: [wmsTiles('https://wms.gebco.net/mapserv', 'GEBCO_LATEST')],
     minzoom: 0,
     // GEBCO is a coarse ~450 m global grid; this cap keeps the WMS rendering crisp rather than
     // upscaling low tiles into a blur. For real inshore detail use BlueTopo, EMODnet, or the ENC.
@@ -58,10 +59,7 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-emodnet',
     title: 'EMODnet bathymetry (Europe)',
-    tiles: [
-      'https://ows.emodnet-bathymetry.eu/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=emodnet:mean_multicolour&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=',
-    ],
-    tileSize: 256,
+    tiles: [wmsTiles('https://ows.emodnet-bathymetry.eu/wms', 'emodnet:mean_multicolour')],
     minzoom: 0,
     maxzoom: 12,
     bounds: [-73.125, 5.625, 45.0, 90.0],

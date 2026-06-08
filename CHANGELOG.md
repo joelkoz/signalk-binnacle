@@ -27,12 +27,20 @@ All notable changes to Binnacle are documented here. The format follows
 - Center, Follow, and Forecast now sit together in the bottom status strip as three matching labeled
   pill buttons, in that order. Follow and Forecast show a clear lit on-state, kept dim enough for
   night-red.
+- A whole-codebase cleanup pass with no change to behavior beyond the fixes below: the Signal K
+  frame pipeline hands the per-frame value map straight to the store instead of rebuilding it each
+  frame, the active-route readouts compute each leg's geometry once per change rather than several
+  times per render, the Layers drag measures row positions once at drag start instead of on every
+  pointer move, and duplicated formatting, geometry, WMS, and map-image helpers were consolidated.
 
 ### Fixed
 
 - The bottom status strip no longer overlaps or wraps unevenly on a phone. It stacks into a clean
   layout: the live readouts above, and the Center, Follow, and Forecast controls on one row below.
 - The Tracks panel's statistics now align in a single value column.
+- The collision danger strip no longer double-announces to screen readers. The app keeps a single
+  concise spoken summary of the danger, and the on-screen contact list is now a silent visual
+  landmark, so assistive technology reads the danger once instead of twice.
 
 ## [0.1.2] - 2026-06-05
 

@@ -5,7 +5,7 @@ import type { SKFrame } from './types';
 
 function frame(self: Record<string, unknown>): SKFrame {
   return {
-    self: self as SKFrame['self'],
+    self: new Map(Object.entries(self)) as SKFrame['self'],
     connection: { phase: 'open', attempt: 0 },
     epoch: 1000,
   };
@@ -29,14 +29,14 @@ describe('SignalKStore', () => {
     // An empty ais object (a self-only worker frame) must not bump the version,
     // or the consumers' version guards would fire every frame.
     store.applyFrame({
-      self: {},
+      self: new Map(),
       ais: aisMap({}),
       connection: { phase: 'open', attempt: 0 },
       epoch: 1000,
     });
     expect(store.aisVersion).toBe(before);
     store.applyFrame({
-      self: {},
+      self: new Map(),
       ais: aisMap({ 'vessels.a': { name: 'A' } }),
       connection: { phase: 'open', attempt: 0 },
       epoch: 1001,
@@ -74,7 +74,7 @@ describe('SignalKStore', () => {
   it('applies ais targets from the frame', () => {
     const store = new SignalKStore();
     store.applyFrame({
-      self: {},
+      self: new Map(),
       ais: aisMap({ 'vessels.a': { 'navigation.speedOverGround': 4 } }),
       connection: { phase: 'open', attempt: 0 },
       epoch: 5,
@@ -86,7 +86,7 @@ describe('SignalKStore', () => {
   it('merges later ais updates and refreshes lastUpdate', () => {
     const store = new SignalKStore();
     const aisFrame = (epoch: number, value: number): SKFrame => ({
-      self: {},
+      self: new Map(),
       ais: aisMap({ 'vessels.a': { 'navigation.speedOverGround': value } }),
       connection: { phase: 'open', attempt: 0 },
       epoch,
@@ -100,13 +100,13 @@ describe('SignalKStore', () => {
   it('prunes targets older than the ttl', () => {
     const store = new SignalKStore();
     store.applyFrame({
-      self: {},
+      self: new Map(),
       ais: aisMap({ 'vessels.a': { name: 'A' }, 'vessels.b': { name: 'B' } }),
       connection: { phase: 'open', attempt: 0 },
       epoch: 1000,
     });
     store.applyFrame({
-      self: {},
+      self: new Map(),
       ais: aisMap({ 'vessels.b': { name: 'B' } }),
       connection: { phase: 'open', attempt: 0 },
       epoch: 400000,

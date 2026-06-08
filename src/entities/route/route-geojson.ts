@@ -1,5 +1,5 @@
 import { rhumbDistanceMeters } from '$shared/nav';
-import { type LonLat, latLonToLonLat, lonLatToLatLon, str } from '$shared/signalk';
+import { isLonLat, type LonLat, latLonToLonLat, lonLatToLatLon, str } from '$shared/signalk';
 import type { Route, Waypoint } from './route-types';
 
 // The Signal K v2 route resource body: a GeoJSON Feature with a LineString, plus name and the
@@ -54,9 +54,9 @@ export function featureToRoute(id: string, raw: unknown): Route | undefined {
     : [];
   const waypoints: Waypoint[] = [];
   geom.coordinates.forEach((coord, i) => {
-    if (Array.isArray(coord) && typeof coord[0] === 'number' && typeof coord[1] === 'number') {
+    if (isLonLat(coord)) {
       const name = str(meta[i]?.name);
-      waypoints.push({ position: lonLatToLatLon([coord[0], coord[1]]), ...(name ? { name } : {}) });
+      waypoints.push({ position: lonLatToLatLon(coord), ...(name ? { name } : {}) });
     }
   });
   if (waypoints.length < 2) return undefined;

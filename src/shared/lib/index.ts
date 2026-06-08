@@ -6,9 +6,12 @@ export { prefersReducedMotion } from './motion';
 export {
   DEG_TO_RAD,
   degreesToRadians,
+  formatBearingOr,
   formatCpaNm,
   formatFixed,
+  formatHectopascalsOr,
   formatKnots,
+  formatKnotsOr,
   formatNm,
   formatTcpaMin,
   HOUR_MS,

@@ -18,8 +18,11 @@ const OPACITY_PROPERTY = {
   raster: 'raster-opacity',
 } as const;
 
-function opacityProperty(layerType: string): string {
-  return OPACITY_PROPERTY[layerType as keyof typeof OPACITY_PROPERTY] ?? 'raster-opacity';
+// The opacity paint property for a layer type, or undefined for a type the chart adapter never
+// emits (only fill, line, and raster are produced). setOpacity skips an undefined so an unexpected
+// type is a clear no-op rather than a wrong property silently applied.
+function opacityProperty(layerType: string): string | undefined {
+  return OPACITY_PROPERTY[layerType as keyof typeof OPACITY_PROPERTY];
 }
 
 // Server charts default to the basemap band; a user-imported chart passes 'bathymetry' so it
@@ -31,6 +34,9 @@ export function createChartOverlay(
 ): OverlayModule {
   const specs = chartToSpecs(chart, serverBase);
   const sourceIds = Object.keys(specs.sources);
+  // A lightweight view of just the fields the lifecycle methods touch, derived once from
+  // specs.layers. add() works from the full specs, while remove, setVisible, setOpacity, applyTheme,
+  // and capToNativeZoom iterate this. It is derived, so it cannot drift from specs.layers.
   const layers = specs.layers.map((layer) => ({
     id: layer.id,
     type: layer.type,
@@ -118,7 +124,8 @@ export function createChartOverlay(
     },
     setOpacity(ctx, opacity) {
       for (const layer of layers) {
-        ctx.map.setPaintProperty(layer.id, opacityProperty(layer.type), opacity);
+        const property = opacityProperty(layer.type);
+        if (property) ctx.map.setPaintProperty(layer.id, property, opacity);
       }
     },
     applyTheme(ctx, paint) {

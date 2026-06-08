@@ -15,7 +15,7 @@ function target(partial: Partial<AisTargetView>): AisTargetView {
 function dangerStore(targetId: string): SignalKStore {
   const store = new SignalKStore();
   store.applyFrame({
-    self: { 'navigation.position': { latitude: 0, longitude: 0 } },
+    self: new Map<string, unknown>([['navigation.position', { latitude: 0, longitude: 0 }]]),
     ais: new Map([
       [
         targetId,
@@ -103,7 +103,7 @@ describe('CollisionAssessment acknowledge', () => {
 
     // A different vessel becomes the worst contact, which re-arms the alert.
     store.applyFrame({
-      self: {},
+      self: new Map(),
       ais: new Map([
         [
           'vessels.b',

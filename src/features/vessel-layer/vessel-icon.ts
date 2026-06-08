@@ -60,9 +60,13 @@ function drawHull(ctx: CanvasRenderingContext2D, color: Rgba): ImageData {
   return ctx.getImageData(0, 0, PX, PX);
 }
 
+// The triangle half-width at row y is y / this divisor, which sets the apex angle: a larger divisor
+// draws a narrower, taller-looking triangle.
+const HALF_WIDTH_DIVISOR = 2.4;
+
 function fallbackTriangle(color: Rgba): ImageData {
   return rasterIcon(PX, color, (x, y, center) => {
-    const halfWidth = y / 2.4;
+    const halfWidth = y / HALF_WIDTH_DIVISOR;
     return y > 6 && Math.abs(x - center) <= halfWidth;
   });
 }

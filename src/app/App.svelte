@@ -60,13 +60,13 @@ import {
   WEATHER_LAYER_IDS,
 } from '$features/weather';
 import {
+  formatBearingOr,
   formatCpaNm,
   formatFixed,
+  formatKnotsOr,
   formatLatitude,
   formatLongitude,
   formatTcpaMin,
-  metersPerSecondToKnots,
-  radiansToBearing,
   uuidv4,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
@@ -791,10 +791,8 @@ onDestroy(() => {
       {#if !net.online}
         <span class="readout offline" role="status" aria-live="polite">Offline</span>
       {/if}
-      <span class="readout"
-        >SOG <b>{formatFixed(metersPerSecondToKnots(vessel.sogMps), 1)}</b> kn</span
-      >
-      <span class="readout">COG <b>{formatFixed(radiansToBearing(vessel.cogRad), 0)}</b>&deg;</span>
+      <span class="readout">SOG <b>{formatKnotsOr(vessel.sogMps)}</b> kn</span>
+      <span class="readout">COG <b>{formatBearingOr(vessel.cogRad)}</b>&deg;</span>
     </div>
     <div class="strip-center">
       <button
@@ -831,7 +829,7 @@ onDestroy(() => {
       </button>
     </div>
     <div class="center-cluster">
-      <span class="readout">Center</span>
+      <span class="readout">View</span>
       <span class="readout"><b>{formatLatitude(mapView?.lat)}</b></span>
       <span class="readout"><b>{formatLongitude(mapView?.lon)}</b></span>
       <span class="readout">z<b>{formatFixed(mapView?.zoom, 1)}</b></span>
@@ -887,17 +885,9 @@ onDestroy(() => {
 .chart-host {
   position: relative;
 }
-.danger-slot {
-  position: absolute;
-  inset-block-end: var(--space-3);
-  inset-inline: var(--space-3);
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  z-index: var(--z-overlay);
-}
 /* The nav strip shares the bottom-center area with the danger strip. The danger strip is later in
    the DOM and the more urgent, so on the rare occasion both show, danger paints over the nav strip. */
+.danger-slot,
 .nav-slot {
   position: absolute;
   inset-block-end: var(--space-3);
@@ -907,6 +897,7 @@ onDestroy(() => {
   pointer-events: none;
   z-index: var(--z-overlay);
 }
+.danger-slot :global(.bottom-strip),
 .nav-slot :global(.bottom-strip) {
   pointer-events: auto;
 }
@@ -932,9 +923,6 @@ onDestroy(() => {
     inset-inline: 0;
     inline-size: auto;
   }
-}
-.danger-slot :global(.bottom-strip) {
-  pointer-events: auto;
 }
 /* A three-column grid: the leading readouts, the Forecast button centered in the flexible middle,
    and the trailing position cluster. Forecast is real grid content, not an absolute overlay, so it

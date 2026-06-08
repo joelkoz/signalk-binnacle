@@ -1,5 +1,10 @@
 export { createCloudOverlay } from './cloud-overlay';
-export { WEATHER_FILL_IDS, WEATHER_LAYER_IDS } from './fills';
+export {
+  GRID_SOURCE_LABEL,
+  WEATHER_FILL_ID_SET,
+  WEATHER_FILL_IDS,
+  WEATHER_LAYER_IDS,
+} from './fills';
 export { type WeatherLegend, weatherLegend } from './legend';
 export { createPrecipOverlay } from './precip-overlay';
 export { createPressureOverlay } from './pressure-overlay';

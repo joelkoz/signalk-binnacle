@@ -25,11 +25,10 @@ export class SignalKStore {
   }
 
   applyFrame(frame: SKFrame): void {
-    for (const [path, value] of Object.entries(frame.self)) {
+    for (const [path, value] of frame.self) {
       this.cell(path).value = value;
     }
     if (frame.ais) {
-      let changed = false;
       for (const [context, incoming] of frame.ais) {
         let target = this.aisTargets.get(context);
         if (!target) {
@@ -38,12 +37,11 @@ export class SignalKStore {
         }
         for (const [path, value] of incoming) target.values.set(path, value);
         target.lastUpdate = frame.epoch;
-        changed = true;
       }
-      // Bump only when a context actually updated. The worker emits an `ais` object
-      // on every frame (empty when only self moved), so an unconditional bump would
-      // fire every frame and defeat the consumers' version guards.
-      if (changed) this.aisVersion += 1;
+      // Bump only when a context actually updated. The worker emits an `ais` Map on every frame
+      // (empty when only self moved), so guarding on size keeps the version stable when nothing
+      // moved and the consumers' version guards still hold.
+      if (frame.ais.size > 0) this.aisVersion += 1;
     }
     this.connection = frame.connection;
   }

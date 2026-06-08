@@ -4,6 +4,7 @@ import { cellArrowFeatures } from './arrow-features';
 
 const MIN_SPEED = 0.5; // m/s; skip near-calm cells so the field is not littered with stubs
 const ARROW_FRACTION = 0.4; // arrow length as a fraction of the grid spacing
+const STRIDE = 1; // draw every cell; wind is sparse enough after the near-calm cull above
 
 // Build a line per grid cell pointing from the cell toward the wind, tagged with speed (m/s) for
 // color. u and v are blended across the two bracketing forecast steps so scrubbing is smooth.
@@ -15,7 +16,7 @@ export function windArrowFeatures(
   const u1 = grid.windU[bracket.hi];
   const v0 = grid.windV[bracket.lo];
   const v1 = grid.windV[bracket.hi];
-  return cellArrowFeatures(grid, 1, ARROW_FRACTION, (i) => {
+  return cellArrowFeatures(grid, STRIDE, ARROW_FRACTION, (i) => {
     const u = lerp(u0[i], u1[i], bracket.frac);
     const v = lerp(v0[i], v1[i], bracket.frac);
     const speed = Math.hypot(u, v);

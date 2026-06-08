@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
-import type { MapThemePaint } from '$shared/map';
-import { rasterizeSvg, setMapImage } from './note-icons';
+import { type MapThemePaint, setMapImage } from '$shared/map';
+import { ICON_PIXEL_RATIO, rasterizeSvg } from './note-icons';
 import { poiIconId } from './poi-categories';
 
 export type NavaidKind = 'lighthouse' | 'light' | 'buoy' | 'daybeacon' | 'generic';
@@ -112,7 +112,7 @@ export async function registerNavaidIcons(map: MapLibreMap, paint: MapThemePaint
     NAVAID_VARIANTS.map(async (cls) => {
       const image = await rasterizeSvg(navaidSvg(cls, paint));
       if (!image) return;
-      setMapImage(map, navaidIconId(cls), image);
+      setMapImage(map, navaidIconId(cls), image, ICON_PIXEL_RATIO);
     }),
   );
 }

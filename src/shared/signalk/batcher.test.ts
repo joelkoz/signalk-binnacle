@@ -18,7 +18,7 @@ afterEach(() => {
 describe('FrameBatcher', () => {
   it('coalesces many puts into one flush, last write wins', () => {
     const batcher = new FrameBatcher();
-    const flushes: Record<string, Value>[] = [];
+    const flushes: Map<string, Value>[] = [];
     batcher.onFlush = (self) => flushes.push(self);
 
     batcher.put('navigation.speedOverGround', 3.1);
@@ -27,12 +27,12 @@ describe('FrameBatcher', () => {
     vi.runAllTimers();
 
     expect(flushes).toHaveLength(1);
-    expect(flushes[0]['navigation.speedOverGround']).toBe(3.3);
+    expect(flushes[0].get('navigation.speedOverGround')).toBe(3.3);
   });
 
   it('schedules a new flush after the previous one drains', () => {
     const batcher = new FrameBatcher();
-    const flushes: Record<string, Value>[] = [];
+    const flushes: Map<string, Value>[] = [];
     batcher.onFlush = (self) => flushes.push(self);
 
     batcher.put('a', 1);
@@ -41,12 +41,12 @@ describe('FrameBatcher', () => {
     vi.runAllTimers();
 
     expect(flushes).toHaveLength(2);
-    expect(flushes[1]).toEqual({ b: 2 });
+    expect(flushes[1]).toEqual(new Map([['b', 2]]));
   });
 
   it('does not flush when nothing was buffered', () => {
     const batcher = new FrameBatcher();
-    const flushes: Record<string, Value>[] = [];
+    const flushes: Map<string, Value>[] = [];
     batcher.onFlush = (self) => flushes.push(self);
     vi.runAllTimers();
     expect(flushes).toHaveLength(0);

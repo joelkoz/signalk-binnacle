@@ -13,9 +13,9 @@ import {
   type SubscribeEntry,
 } from './types';
 
-interface Hello {
-  self?: string;
-}
+// The hello handshake carries the self identifier; the rest of a frame is a Delta. Widen the parse
+// to read that one optional field without a named one-field interface.
+type DeltaOrHello = Delta & { self?: string };
 
 export class WorkerCore {
   #connection?: SkConnection;
@@ -65,9 +65,9 @@ export class WorkerCore {
   }
 
   #ingest(raw: string): void {
-    let message: Delta & Hello;
+    let message: DeltaOrHello;
     try {
-      message = JSON.parse(raw) as Delta & Hello;
+      message = JSON.parse(raw) as DeltaOrHello;
     } catch {
       // A malformed frame indicates a real server or transport fault. Log it in dev
       // and drop it: one bad frame must not tear down the stream.

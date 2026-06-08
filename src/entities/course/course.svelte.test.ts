@@ -6,7 +6,7 @@ import { CourseGuidance } from './course.svelte';
 function storeWith(self: Record<string, unknown>): SignalKStore {
   const store = new SignalKStore();
   store.applyFrame({
-    self,
+    self: new Map(Object.entries(self)),
     ais: new Map(),
     connection: { phase: 'open', attempt: 0 },
     epoch: 1,

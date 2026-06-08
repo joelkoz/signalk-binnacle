@@ -205,11 +205,11 @@ function parseMarine(locs: MarineLoc[], cells: number): MarineFields | undefined
   return { waveHeight, waveDirection, wavePeriod };
 }
 
-// Attach marine fields to a forecast grid. The marine fetch uses the same sampled grid and forecast
-// horizon, so the cell and step indices align positionally with the wind and pressure arrays. The
-// builders guard the cell count (a length mismatch returns undefined and no merge happens); the one
-// residual assumption is that the marine endpoint's cell_selection=sea snapping does not reorder
-// cells relative to the atmospheric request, which holds because both pass the same ordered points.
+// The marine fetch uses the same sampled grid and forecast horizon, so the cell and step indices
+// align positionally with the wind and pressure arrays. The builders guard the cell count (a length
+// mismatch returns undefined and no merge happens); the one residual assumption is that the marine
+// endpoint's cell_selection=sea snapping does not reorder cells relative to the atmospheric request,
+// which holds because both pass the same ordered points.
 export function mergeMarine(grid: WeatherGrid, marine: MarineFields): WeatherGrid {
   return {
     ...grid,

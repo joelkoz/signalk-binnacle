@@ -54,11 +54,11 @@ export interface LeafWrite {
   value: Value;
 }
 
-// One coalesced batch delivered from the worker to the main thread per frame. AIS is a nested
-// Map, the shape the batcher already accumulates; Comlink structured-clones it across the worker
-// boundary, so there is no per-context object to build on either side.
+// One coalesced batch delivered from the worker to the main thread per frame. Both self and AIS are
+// Maps, the shape the batcher already accumulates; Comlink structured-clones them across the worker
+// boundary, so there is no per-path or per-context object to build on either side.
 export interface SKFrame {
-  self: Record<string, Value>;
+  self: Map<string, Value>;
   ais?: Map<string, Map<string, Value>>;
   connection: ConnectionState;
   epoch: number;

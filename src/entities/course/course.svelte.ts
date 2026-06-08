@@ -109,27 +109,32 @@ export class CourseGuidance {
     return this.#info.previousPoint?.position ?? this.#vessel.position;
   }
 
-  get distanceToNextMeters(): number | undefined {
+  // The active-leg readouts are $derived so each leg's geodesy is computed once per dependency
+  // change and shared across readers, not recomputed on every access. Several consumers read more
+  // than one (the nav strip reads cross-track twice, time-to-go reads distance, the arrival effect
+  // reads arrived which reads distance), so without memoization the same rhumb distance and
+  // cross-track ran two or three times per render in the computed-fallback path.
+  distanceToNextMeters: number | undefined = $derived.by(() => {
     if (this.#calc?.distance != null) return this.#calc.distance;
     const pos = this.#vessel.position;
     return pos && this.#next ? rhumbDistanceMeters(pos, this.#next) : undefined;
-  }
+  });
 
-  get bearingToNextRad(): number | undefined {
+  bearingToNextRad: number | undefined = $derived.by(() => {
     if (this.#calc?.bearingTrue != null) return this.#calc.bearingTrue;
     const pos = this.#vessel.position;
     return pos && this.#next ? rhumbBearingRad(pos, this.#next) : undefined;
-  }
+  });
 
-  get crossTrackErrorMeters(): number | undefined {
+  crossTrackErrorMeters: number | undefined = $derived.by(() => {
     if (this.#calc?.crossTrackError != null) return this.#calc.crossTrackError;
     const pos = this.#vessel.position;
     return pos && this.#prev && this.#next
       ? crossTrackErrorMeters(this.#prev, this.#next, pos)
       : undefined;
-  }
+  });
 
-  get velocityMadeGoodMps(): number | undefined {
+  velocityMadeGoodMps: number | undefined = $derived.by(() => {
     if (this.#calc?.velocityMadeGood != null) return this.#calc.velocityMadeGood;
     const pos = this.#vessel.position;
     const sog = this.#vessel.sogMps;
@@ -137,18 +142,18 @@ export class CourseGuidance {
     return pos && this.#next && sog != null && cog != null
       ? vmgMps(pos, this.#next, sog, cog)
       : undefined;
-  }
+  });
 
-  get timeToGoSeconds(): number | undefined {
+  timeToGoSeconds: number | undefined = $derived.by(() => {
     if (this.#calc?.timeToGo != null) return this.#calc.timeToGo;
     const d = this.distanceToNextMeters;
     const sog = this.#vessel.sogMps;
     return d != null && sog != null ? etaSeconds(d, sog) : undefined;
-  }
+  });
 
-  get arrived(): boolean {
+  arrived: boolean = $derived.by(() => {
     const d = this.distanceToNextMeters;
     const circle = this.#info.arrivalCircle ?? DEFAULT_ARRIVAL_CIRCLE_METERS;
     return d != null && d <= circle;
-  }
+  });
 }

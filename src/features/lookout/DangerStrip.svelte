@@ -21,11 +21,10 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
 </script>
 
 {#if contacts.length > 0 && !collision.suppressed}
-  <aside
-    class="bottom-strip bottom-strip--alarm"
-    aria-label="Collision danger"
-    aria-live="assertive"
-  >
+  <!-- No aria-live here: App owns the single assertive collision channel (a concise spoken summary in
+       a persistent role=alert region), so announcing this whole contact list assertively too would
+       double-speak the danger. This stays a labeled visual landmark. -->
+  <aside class="bottom-strip bottom-strip--alarm" aria-label="Collision danger">
     <div class="head">
       <span class="title">Danger</span>
       {#if computedFallback}

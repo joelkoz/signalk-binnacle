@@ -1,5 +1,5 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
-import type { MapThemePaint } from '$shared/map';
+import { type MapThemePaint, setMapImage } from '$shared/map';
 import { POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
 
 // Per-category glyphs. Most are Lucide glyphs (anchor, sailboat, triangle-alert, fuel,
@@ -74,12 +74,9 @@ export async function rasterizeSvg(svg: string): Promise<ImageData | null> {
   }
 }
 
-// Add an image, or replace it in place on a theme change. Shared by the category discs and
-// the navaid symbols so both register at the same 2x scale.
-export function setMapImage(map: MapLibreMap, id: string, image: ImageData): void {
-  if (map.hasImage(id)) map.updateImage(id, image);
-  else map.addImage(id, image, { pixelRatio: 2 });
-}
+// The note and navaid glyphs are rasterized at 2x for retina crispness, so they register with a
+// pixelRatio of 2 (the shared setMapImage defaults to 1). Shared with the navaid symbols.
+export const ICON_PIXEL_RATIO = 2;
 
 // Register (or recolor, on a theme change) the marker icon for every category. Never
 // throws: an icon that fails to rasterize is skipped so it cannot break overlay setup.
@@ -88,7 +85,7 @@ export async function registerPoiIcons(map: MapLibreMap, paint: MapThemePaint): 
     POI_CATEGORIES.map(async (category) => {
       const image = await rasterizeSvg(markerSvg(category, paint));
       if (!image) return;
-      setMapImage(map, poiIconId(category), image);
+      setMapImage(map, poiIconId(category), image, ICON_PIXEL_RATIO);
     }),
   );
 }

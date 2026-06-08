@@ -119,12 +119,9 @@ function measure(item: NormalizedItem): string {
                         >{item.label}<span class="visually-hidden"> (opens in a new tab)</span></a
                       >
                     {:else if item.kind === 'rating'}
-                      {@const filled = Math.round(Number(item.value))}
-                      <span
-                        class="rating"
-                        role="img"
-                        aria-label={`Rating ${Number(item.value)} of 5`}
-                      >
+                      {@const ratingValue = Number(item.value)}
+                      {@const filled = Math.round(ratingValue)}
+                      <span class="rating" role="img" aria-label={`Rating ${ratingValue} of 5`}>
                         {#each STARS as n (n)}
                           <Star
                             size={14}

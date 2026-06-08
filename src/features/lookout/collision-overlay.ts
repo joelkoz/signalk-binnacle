@@ -15,6 +15,11 @@ import {
 const SOURCE_ID = 'binnacle-collision';
 const LAYER_ID = 'binnacle-collision-ring';
 
+// Ring geometry per severity, named so the danger and warning grading is one source. The warning
+// values double as the match fallback for an unknown severity.
+const RING_RADIUS = { danger: 20, warning: 16 } as const;
+const RING_STROKE_WIDTH = { danger: 3, warning: 2 } as const;
+
 // The overlay id. The chart pins this just beneath the vessel so an active alarm can never be hidden;
 // exported so the pinned list references the same constant instead of a literal that could drift.
 export const COLLISION_OVERLAY_ID = 'collision';
@@ -74,9 +79,25 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
         type: 'circle',
         source: SOURCE_ID,
         paint: {
-          'circle-radius': ['match', ['get', 'severity'], 'danger', 20, 'warning', 16, 16],
+          'circle-radius': [
+            'match',
+            ['get', 'severity'],
+            'danger',
+            RING_RADIUS.danger,
+            'warning',
+            RING_RADIUS.warning,
+            RING_RADIUS.warning,
+          ],
           'circle-color': 'rgba(0, 0, 0, 0)',
-          'circle-stroke-width': ['match', ['get', 'severity'], 'danger', 3, 'warning', 2, 2],
+          'circle-stroke-width': [
+            'match',
+            ['get', 'severity'],
+            'danger',
+            RING_STROKE_WIDTH.danger,
+            'warning',
+            RING_STROKE_WIDTH.warning,
+            RING_STROKE_WIDTH.warning,
+          ],
           'circle-stroke-color': strokeColor(mapThemePaint('day')),
         },
       };

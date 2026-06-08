@@ -1,5 +1,5 @@
 import { computeStats, type TrackPoint, toLonLat } from '$entities/track';
-import { deleteResource, fetchKeyedResource, putResource } from '$shared/signalk';
+import { deleteResource, fetchKeyedResource, isLonLat, putResource } from '$shared/signalk';
 import { toGeoJsonFeature } from './track-export';
 
 // A track read back from the Signal K resources API. Points are grouped one array per segment
@@ -51,10 +51,6 @@ function extractGeometry(value: unknown): RawGeometry | undefined {
   }
   if (v.type === 'MultiLineString' || v.type === 'LineString') return v as RawGeometry;
   return undefined;
-}
-
-function isLonLat(coord: unknown): coord is [number, number] {
-  return Array.isArray(coord) && typeof coord[0] === 'number' && typeof coord[1] === 'number';
 }
 
 function lineToPoints(line: unknown): TrackPoint[] {

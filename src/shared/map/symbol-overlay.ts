@@ -4,6 +4,7 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { Rgba } from './icon-raster';
+import { setMapImage } from './map-image';
 import type { MapThemePaint } from './map-theme';
 import type { OverlayContext, OverlayModule, ZBand } from './types';
 
@@ -77,11 +78,7 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
     },
     applyTheme(ctx, paint) {
       const image = config.iconImage(config.paintColor(paint));
-      if (ctx.map.hasImage(config.iconId)) {
-        ctx.map.updateImage(config.iconId, image);
-      } else {
-        ctx.map.addImage(config.iconId, image, { pixelRatio: config.pixelRatio ?? 1 });
-      }
+      setMapImage(ctx.map, config.iconId, image, config.pixelRatio ?? 1);
     },
     setVisible(ctx, visible) {
       ctx.map.setLayoutProperty(config.layerId, 'visibility', visible ? 'visible' : 'none');

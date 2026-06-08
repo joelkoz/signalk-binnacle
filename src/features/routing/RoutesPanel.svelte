@@ -51,6 +51,13 @@ function promptSave(): void {
   const name = promptSaveName('Route');
   if (name !== undefined) onSave(name);
 }
+
+// Precompute each route's formatted distance once per change rather than re-walking every route's
+// waypoints on every panel render inside the each-block.
+const savedCards = $derived(
+  routes.map((route) => ({ route, distanceNm: formatNm(routeDistanceMeters(route.waypoints)) })),
+);
+const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(working.waypoints)) : '');
 </script>
 
 <SlideOver title="Routes" bodyFlex closeLabel="Close routes panel" {onClose} {onBack}>
@@ -72,7 +79,7 @@ function promptSave(): void {
         <dd><span class="num">{working.waypoints.length}</span><span class="unit"></span></dd>
         <dt>Distance</dt>
         <dd>
-          <span class="num">{formatNm(routeDistanceMeters(working.waypoints))}</span>
+          <span class="num">{workingDistanceNm}</span>
           <span class="unit">nm</span>
         </dd>
       </dl>
@@ -103,7 +110,7 @@ function promptSave(): void {
       <p class="empty">No routes yet</p>
     {:else}
       <ul>
-        {#each routes as route (route.id)}
+        {#each savedCards as { route, distanceNm } (route.id)}
           <li class:active={route.id === activeId}>
             <div class="card-head">
               <button
@@ -121,7 +128,7 @@ function promptSave(): void {
             <dl class="card-stats">
               <dt>Distance</dt>
               <dd>
-                <span class="num">{formatNm(routeDistanceMeters(route.waypoints))}</span>
+                <span class="num">{distanceNm}</span>
                 nm
               </dd>
               <dt>Waypoints</dt>

@@ -1,4 +1,4 @@
-import { asKeyedObject, authInit, str } from '$shared/signalk';
+import { fetchKeyedResource, str } from '$shared/signalk';
 import type { PoiType } from './notes-detail';
 import { categoryForSkIcon, type PoiCategory, poiCategoryForType } from './poi-categories';
 
@@ -31,59 +31,57 @@ export type Bbox = [number, number, number, number];
 
 const NOTES_PATH = '/signalk/v2/api/resources/notes';
 
+// Map one keyed resource entry to a NotePoint, or undefined to skip it. An error payload
+// ({state, statusCode, message}) has non-object values or no position, so it falls through here;
+// only real notes with a position become markers.
+function noteFromEntry(id: string, raw: unknown): NotePoint | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const note = raw as {
+    name?: unknown;
+    title?: unknown;
+    url?: unknown;
+    position?: { latitude?: unknown; longitude?: unknown };
+    properties?: {
+      skIcon?: unknown;
+      source?: unknown;
+      attribution?: unknown;
+      crowsNest?: { type?: unknown };
+    };
+  };
+  const lat = note.position?.latitude;
+  const lon = note.position?.longitude;
+  if (typeof lat !== 'number' || typeof lon !== 'number') return undefined;
+  const props = note.properties ?? {};
+  return {
+    id,
+    name: str(note.name) ?? str(note.title) ?? id,
+    position: { latitude: lat, longitude: lon },
+    category:
+      poiCategoryForType(
+        typeof props.crowsNest?.type === 'string' ? (props.crowsNest.type as PoiType) : undefined,
+      ) ?? categoryForSkIcon(str(props.skIcon)),
+    url: str(note.url),
+    source: str(props.source),
+    attribution: str(props.attribution),
+  };
+}
+
 // Fetch notes within the viewport. The `provider` param is intentionally omitted so the
 // server merges every notes provider (the default plus the POI providers); the bbox is a
 // JSON array per the resources API schema. A provider whose results are query-scoped
-// returns nothing without a bbox, so this must always carry one.
+// returns nothing without a bbox, so this must always carry one. An unreachable server
+// coalesces to an empty list so the markers clear rather than throw.
 export async function fetchNotes(
   serverBase: string,
   token: string | undefined,
   bbox: Bbox,
 ): Promise<NotePoint[]> {
   const params = new URLSearchParams({ bbox: JSON.stringify(bbox) });
-  let body: unknown;
-  try {
-    const response = await fetch(`${serverBase}${NOTES_PATH}?${params}`, authInit(token));
-    if (!response.ok) return [];
-    body = await response.json();
-  } catch {
-    return [];
-  }
-  const keyed = asKeyedObject(body);
-  if (!keyed) return [];
-  const out: NotePoint[] = [];
-  for (const [id, raw] of Object.entries(keyed)) {
-    // An error payload ({state, statusCode, message}) has non-object values, which fall
-    // through here; only real notes with a position become markers.
-    if (!raw || typeof raw !== 'object') continue;
-    const note = raw as {
-      name?: unknown;
-      title?: unknown;
-      url?: unknown;
-      position?: { latitude?: unknown; longitude?: unknown };
-      properties?: {
-        skIcon?: unknown;
-        source?: unknown;
-        attribution?: unknown;
-        crowsNest?: { type?: unknown };
-      };
-    };
-    const lat = note.position?.latitude;
-    const lon = note.position?.longitude;
-    if (typeof lat !== 'number' || typeof lon !== 'number') continue;
-    const props = note.properties ?? {};
-    out.push({
-      id,
-      name: str(note.name) ?? str(note.title) ?? id,
-      position: { latitude: lat, longitude: lon },
-      category:
-        poiCategoryForType(
-          typeof props.crowsNest?.type === 'string' ? (props.crowsNest.type as PoiType) : undefined,
-        ) ?? categoryForSkIcon(str(props.skIcon)),
-      url: str(note.url),
-      source: str(props.source),
-      attribution: str(props.attribution),
-    });
-  }
-  return out;
+  const notes = await fetchKeyedResource(
+    serverBase,
+    [`${NOTES_PATH}?${params}`],
+    token,
+    noteFromEntry,
+  );
+  return notes ?? [];
 }

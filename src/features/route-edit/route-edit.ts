@@ -9,7 +9,7 @@ import {
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { Route, Waypoint } from '$entities/route';
 import { mapThemePaint } from '$shared/map';
-import { latLonToLonLat, lonLatToLatLon } from '$shared/signalk';
+import { isLonLat, latLonToLonLat, lonLatToLatLon } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 
 // Terra Draw tags every feature with its mode in properties.mode; the on-chart route is a
@@ -27,12 +27,7 @@ function drawColor(theme: Theme): `#${string}` {
 export function drawFeatureToWaypoints(feature: GeoJSON.Feature): Waypoint[] {
   const geom = feature.geometry;
   if (geom.type !== 'LineString') return [];
-  return geom.coordinates
-    .filter(
-      (c): c is [number, number] =>
-        Array.isArray(c) && typeof c[0] === 'number' && typeof c[1] === 'number',
-    )
-    .map((c) => ({ position: lonLatToLatLon([c[0], c[1]]) }));
+  return geom.coordinates.filter(isLonLat).map((c) => ({ position: lonLatToLatLon(c) }));
 }
 
 // The single waypoints-to-LineString mapper, in the narrower store-feature shape (non-null

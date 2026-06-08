@@ -93,6 +93,11 @@ interface DrawStyle {
 // Below this zoom landuse is tiny zoning detail, not worth its polygon weight.
 const LANDUSE_MIN_ZOOM = 12;
 
+// Boundary lines draw a touch heavier than the other line work so administrative borders read over
+// the roads and transportation lines beneath them.
+const BOUNDARY_LINE_WIDTH = 0.8;
+const FEATURE_LINE_WIDTH = 0.5;
+
 // One ordered list is the single source of both draw order and per-source-layer style,
 // so a styled source-layer can never be left out of the draw order. Drawn back to front:
 // land base, ground cover, water, then line work on top. Water is drawn over land on
@@ -147,7 +152,10 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
         'source-layer': sourceLayer,
         paint: {
           'line-color': color,
-          'line-width': sourceLayer === 'boundaries' || sourceLayer === 'boundary' ? 0.8 : 0.5,
+          'line-width':
+            sourceLayer === 'boundaries' || sourceLayer === 'boundary'
+              ? BOUNDARY_LINE_WIDTH
+              : FEATURE_LINE_WIDTH,
         },
         metadata,
         ...minzoom,

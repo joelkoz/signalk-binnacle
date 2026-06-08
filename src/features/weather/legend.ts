@@ -1,4 +1,4 @@
-import { formatFixed, metersPerSecondToKnots } from '$shared/lib';
+import { formatFixed, formatKnotsOr } from '$shared/lib';
 import type { Theme } from '$shared/ui';
 import { cloudColor } from './cloud-colormap';
 import { type Rgba, rgbaCss } from './color-ramp';
@@ -70,7 +70,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         'Wind (kn)',
         WIND_STOPS,
         (s) => windColor(s, theme),
-        (s) => formatFixed(metersPerSecondToKnots(s), 1),
+        (s) => formatKnotsOr(s, 1),
       );
     case WEATHER_LAYER_IDS.pressure:
       return {

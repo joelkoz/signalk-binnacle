@@ -38,7 +38,7 @@ describe('ais overlay', () => {
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     store.applyFrame({
-      self: {},
+      self: new Map(),
       ais: new Map([
         [
           'vessels.a',
@@ -63,7 +63,7 @@ describe('ais overlay', () => {
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     store.applyFrame({
-      self: {},
+      self: new Map(),
       ais: new Map([
         [
           'vessels.a',
