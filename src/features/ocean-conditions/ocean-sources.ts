@@ -22,7 +22,7 @@ export function buildOceanSources(): RasterOverlaySource[] {
       maxzoom: 7,
       // A background field, so it defaults translucent and the chart reads through it.
       defaultOpacity: 0.7,
-      attribution: 'NASA EOSDIS GIBS, GHRSST L4 MUR',
+      attribution: 'NASA EOSDIS GIBS; GHRSST L4 MUR (JPL PO.DAAC)',
     },
     {
       id: 'gibs-sea-ice',
@@ -31,7 +31,7 @@ export function buildOceanSources(): RasterOverlaySource[] {
       minzoom: 0,
       maxzoom: 7,
       defaultOpacity: 0.7,
-      attribution: 'NASA EOSDIS GIBS, GHRSST L4 MUR',
+      attribution: 'NASA EOSDIS GIBS; GHRSST L4 MUR (JPL PO.DAAC)',
     },
   ];
 }

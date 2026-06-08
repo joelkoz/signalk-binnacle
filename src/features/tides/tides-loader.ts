@@ -6,13 +6,14 @@ import type {
   TideStation,
   TidesStore,
 } from '$entities/tides';
+import { haversineMeters } from '$shared/nav';
 import {
   fetchCurrentEvents,
   fetchCurrentStations,
   fetchTideEvents,
   fetchTideStations,
 } from './coops-client';
-import { haversineMeters, nearestStations } from './station-proximity';
+import { nearestStations } from './station-proximity';
 
 interface LoaderDeps {
   tideStations: () => Promise<TideStation[]>;
@@ -30,8 +31,9 @@ export interface TidesLoader {
 // local feature, so it uses a tighter radius.
 const TIDE_RADIUS_M = 100_000;
 const CURRENT_RADIUS_M = 60_000;
-// How many of the nearest current stations to try before giving up on a current reading.
-const CURRENT_TRIES = 4;
+// How many of the nearest current stations to try before giving up on a current reading. Several
+// of the very nearest are often reference-only points that serve no predictions, so this is generous.
+const CURRENT_TRIES = 6;
 // The station lists are nearly static, so they refresh once a day. After a failed fetch, back off
 // before retrying so a flaky network is not hammered.
 const STATIONS_TTL_MS = 24 * 60 * 60 * 1000;

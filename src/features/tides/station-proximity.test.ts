@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TideStation } from '$entities/tides';
-import { haversineMeters, nearestStations } from './station-proximity';
+import { nearestStations } from './station-proximity';
 
 const station = (id: string, lat: number, lon: number): TideStation => ({
   id,
@@ -10,10 +10,6 @@ const station = (id: string, lat: number, lon: number): TideStation => ({
 });
 
 describe('station-proximity', () => {
-  it('measures about 111 km per degree of latitude', () => {
-    expect(haversineMeters(0, 0, 1, 0)).toBeCloseTo(111195, -2);
-  });
-
   it('returns nothing for an empty station list', () => {
     expect(nearestStations([], 0, 0, 3, 500_000)).toEqual([]);
   });

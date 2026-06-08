@@ -52,6 +52,13 @@ describe('coops-client', () => {
             meanFloodDir: 100,
             meanEbbDir: 280,
           },
+          {
+            Type: 'ebb',
+            Time: '2026-06-08 09:01',
+            Velocity_Major: -31.9,
+            meanFloodDir: 100,
+            meanEbbDir: 280,
+          },
         ],
       },
     });
@@ -61,6 +68,10 @@ describe('coops-client', () => {
     expect(events[0].kind).toBe('flood');
     expect(events[1].kind).toBe('slack');
     expect(events[1].directionDeg).toBeUndefined();
+    // Ebb Velocity_Major is negative on the wire; speed is stored as a magnitude.
+    expect(events[2].kind).toBe('ebb');
+    expect(events[2].velocityMps).toBeCloseTo(0.319);
+    expect(events[2].directionDeg).toBe(280);
   });
 
   it('throws on a non-ok response', async () => {

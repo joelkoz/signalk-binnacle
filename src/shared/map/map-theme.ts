@@ -21,6 +21,9 @@ export interface MapThemePaint {
   warning: string;
   // Point-of-interest (notes) marker fill color.
   note: string;
+  // Tide and tidal-current station marker fill: a teal in day and dusk, distinct from the note
+  // purple so the two marker kinds never read alike; a distinct red at night.
+  tide: string;
   // The glyph drawn on a marker disc: a light contrast in day and dusk, a brighter red
   // at night so it reads on the disc without breaking the pure-red-on-black contract.
   markerGlyph: string;
@@ -69,6 +72,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     danger: '#c8401f',
     warning: '#e0a020',
     note: '#7a3fa0',
+    tide: '#0d8a99',
     markerGlyph: '#ffffff',
     select: '#ffb300',
     navStarboard: '#d8392f',
@@ -94,6 +98,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     danger: '#e0703a',
     warning: '#d9a441',
     note: '#9a6fc0',
+    tide: '#2f9fb0',
     markerGlyph: '#eef3f6',
     select: '#ffc24d',
     navStarboard: '#e0573f',
@@ -119,6 +124,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     danger: '#ff6a5a',
     warning: '#b03a26',
     note: '#9a2a18',
+    tide: '#c24a30',
     markerGlyph: '#ff9a86',
     select: '#ffb39a',
     navStarboard: '#ff6a5a',

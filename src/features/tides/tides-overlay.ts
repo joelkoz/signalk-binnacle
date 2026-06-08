@@ -15,6 +15,7 @@ import {
   formatClockTime,
   formatCurrentRate,
   formatTideHeight,
+  nextCurrentEvent,
   upcomingEvents,
 } from './tides-display';
 
@@ -37,9 +38,7 @@ function tideLabel(reading: TideReading, nowMs: number): string {
 }
 
 function currentLabel(reading: CurrentReading, nowMs: number): string {
-  const next = reading.events
-    .filter((event) => event.timeMs >= nowMs && event.kind !== 'slack')
-    .sort((a, b) => a.timeMs - b.timeMs)[0];
+  const next = nextCurrentEvent(reading.events, nowMs);
   if (!next) return reading.station.name;
   const tag = next.kind === 'flood' ? 'Flood' : 'Ebb';
   return `${reading.station.name}\n${tag} ${formatCurrentRate(next.velocityMps)} ${formatClockTime(next.timeMs)}`;
@@ -98,7 +97,7 @@ export function createTidesOverlay(store: TidesStore): TidesOverlay {
         source: SOURCE_ID,
         paint: {
           'circle-radius': 6,
-          'circle-color': paint.note,
+          'circle-color': paint.tide,
           'circle-stroke-color': paint.background,
           'circle-stroke-width': 2,
         },
@@ -119,7 +118,7 @@ export function createTidesOverlay(store: TidesStore): TidesOverlay {
           'text-max-width': 12,
         },
         paint: {
-          'text-color': paint.note,
+          'text-color': paint.tide,
           'text-halo-color': paint.background,
           'text-halo-width': 1.2,
         },
@@ -145,9 +144,9 @@ export function createTidesOverlay(store: TidesStore): TidesOverlay {
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-opacity', opacity);
     },
     applyTheme(ctx, paint) {
-      ctx.map.setPaintProperty(CIRCLE_LAYER, 'circle-color', paint.note);
+      ctx.map.setPaintProperty(CIRCLE_LAYER, 'circle-color', paint.tide);
       ctx.map.setPaintProperty(CIRCLE_LAYER, 'circle-stroke-color', paint.background);
-      ctx.map.setPaintProperty(LABEL_LAYER, 'text-color', paint.note);
+      ctx.map.setPaintProperty(LABEL_LAYER, 'text-color', paint.tide);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-halo-color', paint.background);
     },
     remove(ctx) {

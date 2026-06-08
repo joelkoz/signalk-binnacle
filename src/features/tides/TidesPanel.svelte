@@ -1,4 +1,5 @@
 <script lang="ts">
+import { onDestroy } from 'svelte';
 import type { TidesStore } from '$entities/tides';
 import { SlideOver } from '$shared/ui';
 import {
@@ -6,6 +7,7 @@ import {
   formatCurrentRate,
   formatTideHeight,
   formatTideHeightFeet,
+  nextCurrentEvent,
   nowFraction,
   tideCurvePoints,
   upcomingEvents,
@@ -21,12 +23,15 @@ const { store, onClose, onBack }: Props = $props();
 
 const tide = $derived(store.tide);
 const current = $derived(store.current);
-// Recompute "now" whenever the readings change, which is when a refresh lands.
-const now = $derived.by(() => {
-  void store.tide;
-  void store.current;
-  return Date.now();
-});
+// A live clock so "next" events and the now-marker stay current while the panel is open, not frozen
+// at the last refresh (a stationary boat may not trigger a reload for hours). Ticks once a minute,
+// which is fine for tide and current events that turn over hours apart.
+let now = $state(Date.now());
+const clock = setInterval(() => {
+  now = Date.now();
+}, 60_000);
+onDestroy(() => clearInterval(clock));
+
 const nextHigh = $derived(
   tide ? upcomingEvents(tide.events, now).find((e) => e.kind === 'high') : undefined,
 );
@@ -35,13 +40,7 @@ const nextLow = $derived(
 );
 const curve = $derived(tide ? tideCurvePoints(tide.events) : []);
 const nowFrac = $derived(tide ? nowFraction(tide.events, now) : undefined);
-const nextCurrent = $derived(
-  current
-    ? current.events
-        .filter((e) => e.timeMs >= now && e.kind !== 'slack')
-        .sort((a, b) => a.timeMs - b.timeMs)[0]
-    : undefined,
-);
+const nextCurrent = $derived(current ? nextCurrentEvent(current.events, now) : undefined);
 // The rate and set as one string, so no stray whitespace creeps in between the rate and the comma.
 const currentRate = $derived(
   nextCurrent
@@ -53,7 +52,8 @@ const CURVE_W = 240;
 const CURVE_H = 60;
 
 function distanceKm(meters: number): string {
-  return `${Math.round(meters / 1000)} km`;
+  const km = meters / 1000;
+  return km < 1 ? '<1 km' : `${Math.round(km)} km`;
 }
 
 // A smooth path through the day's high and low turning points: a quadratic that rounds each corner
@@ -80,7 +80,9 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
   {#if !tide && store.status === 'loading'}
     <p class="status" role="status">Finding nearby tide stations...</p>
   {:else if store.status === 'no-coverage'}
-    <p class="status">No tide station nearby. NOAA tide predictions cover US waters only.</p>
+    <p class="status" role="status">
+      No tide station nearby. NOAA tide predictions cover US waters only.
+    </p>
   {:else if tide}
     <div class="station">
       <span class="name" title={tide.station.name}>{tide.station.name}</span>
@@ -111,12 +113,9 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
     </dl>
 
     {#if curve.length > 1}
-      <svg
-        class="curve"
-        viewBox={`0 0 ${CURVE_W} ${CURVE_H}`}
-        role="img"
-        aria-label="Tide curve for today"
-      >
+      <!-- The curve restates the next-high and next-low numbers in the list above, so it is
+           decorative for assistive technology. -->
+      <svg class="curve" viewBox={`0 0 ${CURVE_W} ${CURVE_H}`} aria-hidden="true">
         <path class="curve-line" d={curvePath(curve)} fill="none" />
         {#if nowFrac !== undefined}
           <line class="now" x1={nowFrac * CURVE_W} y1="0" x2={nowFrac * CURVE_W} y2={CURVE_H} />
@@ -142,10 +141,14 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
     {/if}
 
     {#if store.status === 'error'}
-      <p class="status stale">Showing the last update; the latest refresh did not reach NOAA.</p>
+      <p class="status stale" role="status">
+        Showing the last update; the latest refresh did not reach NOAA.
+      </p>
     {/if}
+
+    <p class="footnote">Heights above MLLW, times in station local time.</p>
   {:else}
-    <p class="status">Pan to a US coast to see tide predictions.</p>
+    <p class="status" role="status">Pan to a US coast to see tide predictions.</p>
   {/if}
 </SlideOver>
 
@@ -209,7 +212,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
 .current {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
   padding-block-start: var(--space-2);
   border-block-start: 1px solid var(--border);
 }
@@ -220,5 +223,10 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
 }
 .status.stale {
   color: var(--warning);
+}
+.footnote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 </style>

@@ -68,7 +68,9 @@ export async function fetchTideEvents(stationId: string): Promise<TideEvent[]> {
 
 export async function fetchCurrentEvents(stationId: string): Promise<CurrentEvent[]> {
   // units=metric returns Velocity_Major in cm/s (not knots, and not m/s), so divide by 100 for SI
-  // m/s. The set is the mean flood or ebb direction; slack has no direction and zero velocity.
+  // m/s. It is signed (flood positive, ebb negative), but speed is a magnitude here: the flood-or-ebb
+  // kind and the set in degrees carry the direction, so store the absolute value. The set is the mean
+  // flood or ebb direction; slack has no direction and zero velocity.
   const url = `${DATAGETTER}?product=currents_predictions&units=metric&time_zone=lst_ldt&format=json&begin_date=${localDateStamp()}&range=${RANGE_HOURS}&interval=MAX_SLACK&station=${stationId}`;
   const data = (await fetchJson(url)) as {
     current_predictions?: {
@@ -88,7 +90,7 @@ export async function fetchCurrentEvents(stationId: string): Promise<CurrentEven
       kind === 'flood' ? c.meanFloodDir : kind === 'ebb' ? c.meanEbbDir : undefined;
     return {
       timeMs: parseLocalTime(c.Time),
-      velocityMps: c.Velocity_Major / 100,
+      velocityMps: Math.abs(c.Velocity_Major) / 100,
       directionDeg,
       kind,
     };

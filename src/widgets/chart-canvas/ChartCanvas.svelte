@@ -157,10 +157,8 @@ onMount(() => {
       await manager.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
         ...STREAMING_CHART_SOURCES.map((source) => createStreamingChartOverlay(source)),
-        // Ocean fields sit in the weather band, below the live overlays. The regulatory areas,
-        // boundary lines, and seamarks sit in the safety band in that order, bottom to top, so
-        // the seamark navigation aids draw over the reference fills, and the vessel and AIS stay
-        // above them all.
+        // Within the safety band, registration order is z, so the seamark navigation aids draw over
+        // the reference area fills and boundary lines beneath them.
         ...buildOceanSources().map((source) => createRasterOverlay(source, 'weather')),
         ...BOUNDARY_SOURCES.map((source) => createRasterOverlay(source, 'safety')),
         ...MPA_SOURCES.map((source) => createRasterOverlay(source, 'safety')),

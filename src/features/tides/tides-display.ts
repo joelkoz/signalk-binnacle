@@ -1,11 +1,11 @@
-import type { TideEvent } from '$entities/tides';
+import type { CurrentEvent, TideEvent } from '$entities/tides';
 import { formatKnots } from '$shared/lib';
 
 // The display edge: SI in, formatted strings out. Tide heights are shown in both meters and feet,
 // current rates in knots, the conventional units a mariner reads.
 const METERS_TO_FEET = 3.280839895;
 
-export function metersToFeet(meters: number): number {
+function metersToFeet(meters: number): number {
   return meters * METERS_TO_FEET;
 }
 
@@ -30,16 +30,23 @@ export function upcomingEvents(events: TideEvent[], nowMs: number): TideEvent[] 
   return events.filter((event) => event.timeMs >= nowMs).sort((a, b) => a.timeMs - b.timeMs);
 }
 
+// The next flood or ebb at or after a reference time (slack is skipped), for the current readout.
+export function nextCurrentEvent(events: CurrentEvent[], nowMs: number): CurrentEvent | undefined {
+  return events
+    .filter((event) => event.timeMs >= nowMs && event.kind !== 'slack')
+    .sort((a, b) => a.timeMs - b.timeMs)[0];
+}
+
 // Normalize the day's high and low turning points to a 0..1 box for an SVG tide curve: x over the
 // span of events, y from the lowest tide (0) to the highest (1).
 export function tideCurvePoints(events: TideEvent[]): Array<{ x: number; y: number }> {
   if (events.length === 0) return [];
   const times = events.map((e) => e.timeMs);
   const heights = events.map((e) => e.heightMeters);
-  const tSpan = Math.max(...times) - Math.min(...times) || 1;
-  const hSpan = Math.max(...heights) - Math.min(...heights) || 1;
   const t0 = Math.min(...times);
   const h0 = Math.min(...heights);
+  const tSpan = Math.max(...times) - t0 || 1;
+  const hSpan = Math.max(...heights) - h0 || 1;
   return events.map((e) => ({ x: (e.timeMs - t0) / tSpan, y: (e.heightMeters - h0) / hSpan }));
 }
 

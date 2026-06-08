@@ -18,10 +18,10 @@ All notable changes to Binnacle are documented here. The format follows
   - OpenSeaMap seamarks: a global overlay of navigation aids (buoys, beacons, lights, and harbors).
   - Marine protected areas: EMODnet protected areas with Natura 2000 nested under them (EU), and the
     NOAA MPA Inventory (US).
-  - Maritime boundaries: EEZ boundaries (200 nm) and the territorial sea (12 nm), so you can see when
-    a passage crosses into another country's waters.
+  - Maritime boundaries: the inter-country jurisdiction lines and the territorial sea (12 nm), so you
+    can see when a passage crosses into another country's waters.
   - Ocean conditions: NASA GIBS sea-surface temperature and sea ice concentration (global, daily),
-    which appear in a new Weather section of the Layers panel and default to translucent.
+    which appear in a new Ocean conditions section of the Layers panel and default to translucent.
 - A review step when importing a chart: after the file or URL is read, you can rename it and check
   its type, zoom range, and size before saving, instead of it saving immediately.
 - URL-based imported charts now register on the Signal K server as a chart resource, so other
