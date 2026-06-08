@@ -173,6 +173,14 @@ const backToMenu = (): void => {
   activePanel = null;
   menuOpen = true;
 };
+// On a phone the note detail and a leading panel both collapse to bottom sheets and would overlap,
+// so at narrow widths opening one closes the other. On a wide screen they dock to opposite edges and
+// coexist, so this exclusion only applies when `narrow` is set (tracked by a matchMedia listener).
+let narrow = $state(false);
+const openPanel = (panel: LeftPanel): void => {
+  activePanel = panel;
+  if (narrow) selectedNote = undefined;
+};
 let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
 
@@ -232,7 +240,7 @@ const menuItems = $derived<MenuItem[]>([
     label: 'Tracks',
     icon: Spline,
     group: 'Navigation',
-    onSelect: () => (activePanel = 'tracks'),
+    onSelect: () => openPanel('tracks'),
   },
   {
     id: 'routes',
@@ -240,7 +248,7 @@ const menuItems = $derived<MenuItem[]>([
     icon: Route,
     group: 'Navigation',
     disabled: !mapCommands,
-    onSelect: () => (activePanel = 'routes'),
+    onSelect: () => openPanel('routes'),
   },
   {
     id: 'layers',
@@ -248,7 +256,7 @@ const menuItems = $derived<MenuItem[]>([
     icon: Layers,
     group: 'Navigation',
     disabled: !layersView,
-    onSelect: () => (activePanel = 'layers'),
+    onSelect: () => openPanel('layers'),
   },
   {
     id: 'mute-alarm',
@@ -271,7 +279,7 @@ const menuItems = $derived<MenuItem[]>([
     label: 'Collision thresholds',
     icon: SlidersHorizontal,
     group: 'Alarms',
-    onSelect: () => (activePanel = 'thresholds'),
+    onSelect: () => openPanel('thresholds'),
   },
 ]);
 
@@ -290,7 +298,10 @@ const collisionAlert = $derived.by(() => {
   const nearest = contacts[0];
   const who = nearest.name || nearest.id;
   const count = contacts.length;
-  return `Collision danger: ${count} ${count === 1 ? 'contact' : 'contacts'}, nearest ${who}, CPA ${formatCpaNm(nearest.cpaMeters)} nautical miles in ${formatTcpaMin(nearest.tcpaSeconds, 1)} minutes.`;
+  // Lead with the worst contact's grade (contacts[0] is severity-then-time sorted), so a
+  // warning-only situation is not announced as full danger.
+  const lead = nearest.severity === 'warning' ? 'Collision warning' : 'Collision danger';
+  return `${lead}: ${count} ${count === 1 ? 'contact' : 'contacts'}, nearest ${who}, CPA ${formatCpaNm(nearest.cpaMeters)} nautical miles in ${formatTcpaMin(nearest.tcpaSeconds, 1)} minutes.`;
 });
 // A muted collision alarm is a safety state, so announce it politely; clearing it on unmute is silent.
 const muteAlert = $derived(alarmMuted.value ? 'Collision alarm muted.' : '');
@@ -555,6 +566,11 @@ function closeNote(): void {
   selectedNote = undefined;
   mapCommands?.clearNoteSelection();
 }
+const selectNote = (selection: NoteSelection | undefined): void => {
+  selectedNote = selection;
+  // Only yield a leading panel when actually opening a note, not when the selection clears.
+  if (narrow && selection) activePanel = null;
+};
 
 // Browsers block audio until a user gesture; prime the audio contexts on the first one so the
 // collision and arrival alarms can sound later on their own.
@@ -619,6 +635,15 @@ onMount(() => {
   // The auth controller owns the focus and cross-tab listeners that pick up an approval.
   auth.watch();
   void auth.probe();
+  // Track the phone breakpoint so the note detail and a leading panel can be made mutually exclusive
+  // at narrow widths, where they would otherwise both bottom-dock and overlap.
+  const narrowQuery = window.matchMedia('(max-width: 600px)');
+  const syncNarrow = (): void => {
+    narrow = narrowQuery.matches;
+  };
+  syncNarrow();
+  narrowQuery.addEventListener('change', syncNarrow);
+  return () => narrowQuery.removeEventListener('change', syncNarrow);
 });
 
 onDestroy(() => {
@@ -650,6 +675,7 @@ onDestroy(() => {
         <button
           type="button"
           class="btn btn-pill btn-warning"
+          aria-pressed="true"
           aria-label="Collision alarm muted, tap to unmute"
           title="Collision alarm muted, tap to unmute"
           onclick={() => alarmMuted.set(false)}
@@ -691,16 +717,14 @@ onDestroy(() => {
       onCommandsReady={(commands) => (mapCommands = commands)}
       onUserChartsReady={(registrar) => (userChartRegistrar = registrar)}
       {onViewChange}
-      onNoteSelect={(selection) => (selectedNote = selection)}
+      onNoteSelect={selectNote}
       onUserPan={() => (following = false)}
     />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
-    <div class="nav-slot">
+    <div class="bottom-stack">
       <NavStrip guidance={courseGuidance} onStop={onStopCourse} />
-    </div>
-    <div class="danger-slot">
       <DangerStrip
         {collision}
         muted={alarmMuted.value}
@@ -792,12 +816,12 @@ onDestroy(() => {
         <span class="readout offline" role="status" aria-live="polite">Offline</span>
       {/if}
       <span class="readout">SOG <b>{formatKnotsOr(vessel.sogMps)}</b> kn</span>
-      <span class="readout">COG <b>{formatBearingOr(vessel.cogRad)}</b>&deg;</span>
+      <span class="readout">COG <b>{formatBearingOr(vessel.cogRad)}</b>&deg;T</span>
     </div>
     <div class="strip-center">
       <button
         type="button"
-        class="btn btn-pill strip-btn"
+        class="btn btn-pill"
         aria-label="Center on boat"
         title="Center on boat"
         onclick={() => mapCommands?.centerOnVessel()}
@@ -807,8 +831,8 @@ onDestroy(() => {
       </button>
       <button
         type="button"
-        class="btn btn-pill strip-btn"
-        class:on={following}
+        class="btn btn-pill"
+        class:is-on={following}
         aria-pressed={following}
         aria-label="Follow boat"
         title={following ? 'Stop following' : 'Follow boat'}
@@ -819,9 +843,11 @@ onDestroy(() => {
       </button>
       <button
         type="button"
-        class="btn btn-pill strip-btn"
-        class:on={weatherPanelOpen}
+        class="btn btn-pill"
+        class:is-on={weatherPanelOpen}
         aria-pressed={weatherPanelOpen}
+        aria-haspopup="dialog"
+        aria-controls={weatherPanelOpen ? 'weather-panel' : undefined}
         onclick={() => (weatherPanelOpen = !weatherPanelOpen)}
       >
         <CloudSun size={16} aria-hidden="true" />
@@ -867,14 +893,25 @@ onDestroy(() => {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  min-inline-size: 0;
 }
 .topbar-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex-shrink: 0;
 }
 .brand {
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* On a phone the brand yields its version string so the muted badge and the Update pill keep room. */
+@media (max-width: 600px) {
+  .version {
+    display: none;
+  }
 }
 .version {
   font-family: var(--font-mono);
@@ -885,20 +922,25 @@ onDestroy(() => {
 .chart-host {
   position: relative;
 }
-/* The nav strip shares the bottom-center area with the danger strip. The danger strip is later in
-   the DOM and the more urgent, so on the rare occasion both show, danger paints over the nav strip. */
-.danger-slot,
-.nav-slot {
+/* The nav strip and the danger strip share the bottom-center area. They stack in one column rather
+   than overlapping, so when a collision danger appears mid-passage the course guidance is not hidden.
+   column-reverse puts the danger strip (last in the DOM, the more urgent) on top, the nav strip below
+   it. Either renders nothing when inactive, so a single strip just centers. */
+.bottom-stack {
   position: absolute;
   inset-block-end: var(--space-3);
   inset-inline: var(--space-3);
   display: flex;
-  justify-content: center;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: var(--space-2);
   pointer-events: none;
-  z-index: var(--z-overlay);
+  /* Above the weather panel (z-panel + 1) so an active collision danger and its Mute and Acknowledge
+     stay reachable while the Forecast mini-map is open. The danger strip is a safety surface, so it
+     sits over every panel; only the menu (z-menu) is higher. */
+  z-index: calc(var(--z-panel) + 2);
 }
-.danger-slot :global(.bottom-strip),
-.nav-slot :global(.bottom-strip) {
+.bottom-stack :global(.bottom-strip) {
   pointer-events: auto;
 }
 .note-panel-slot {
@@ -962,14 +1004,6 @@ onDestroy(() => {
   gap: var(--space-2);
   min-inline-size: 0;
 }
-/* The toggles' on-state (Follow, Forecast) matches the other lit chrome (the menu trigger): accent
-   border, accent text, and a faint accent-tint fill, so an engaged mode reads at a glance in any
-   theme without lifting the brightest pixel. */
-.strip-btn.on {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-tint);
-}
 /* On a phone or small tablet the three labeled pills and the live readouts do not fit one row, so the
    strip stacks into one centered column: the readouts above, and Center, Follow, and Forecast on a
    single row below within thumb reach. The duplicate position cluster drops (the chart and panels still
@@ -1010,5 +1044,10 @@ onDestroy(() => {
   color: var(--text);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+/* The leading SOG and COG are the strip's hero numbers, so they step up a size over their labels and
+   over the trailing position cluster, the instrument-readout gesture. */
+.strip-start .readout b {
+  font-size: var(--text-lg);
 }
 </style>

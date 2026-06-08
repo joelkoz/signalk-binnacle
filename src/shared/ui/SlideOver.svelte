@@ -1,7 +1,14 @@
 <script lang="ts">
 import { ArrowLeft, X } from '@lucide/svelte';
 import type { Snippet } from 'svelte';
+import { fly } from 'svelte/transition';
 import { dialog } from './dialog';
+
+// The panel slides in from the edge it docks to. Gated on the system reduced-motion preference
+// (checked inline so this shell stays self-contained within shared/ui): a zero duration makes the
+// reveal instant, so a helm with reduce-motion set sees no movement.
+const reduceMotion =
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 interface Props {
   // The panel heading, and the default accessible name for the panel landmark.
@@ -40,6 +47,7 @@ const {
   class="slide-over slide-over--dock-{dock}"
   aria-label={ariaLabel ?? title}
   use:dialog={onClose}
+  transition:fly={{ x: dock === 'right' ? 24 : -24, duration: reduceMotion ? 0 : 180, opacity: 0.3 }}
 >
   <header class="panel-header">
     {#if onBack}

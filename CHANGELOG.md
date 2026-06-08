@@ -18,8 +18,22 @@ All notable changes to Binnacle are documented here. The format follows
   so the chart no longer always paints the data-quality triangles and overscale patterns on top.
 - One-tap alarm muting from the danger strip, a muted-alarm badge in the top bar, and a spoken
   collision summary written to a live region for assistive technology.
+- Motion and depth across the interface: the slide-over panels, the app menu, and the weather panel
+  now reveal with a short reduced-motion-aware transition, the theme toggle animates its icon on each
+  cycle, and the panels and menu carry a layered shadow. A more confident day palette and a larger
+  instrument-readout type tier make the hero numbers (SOG, the nav metrics, the conditions) dominate
+  their labels.
 
 ### Changed
+
+- Bearings are now labeled true (123 degrees T) on the COG, BTW, and wind readouts, time-to-go shows
+  hours and minutes past an hour (2h 05m) instead of a bare minute count, and the collision strip and
+  its spoken summary are graded danger versus caution by the worst contact rather than always
+  sounding full danger.
+- The design system was consolidated from a six-lens UI review: one shared lit-toggle, input, slider,
+  and button-row vocabulary replaces the per-component copies, the danger and nav strips now stack
+  instead of overlapping so course guidance survives a close-quarters contact, and the danger strip
+  stays above the weather panel so Mute and Acknowledge are always reachable.
 
 - The app menu is redesigned. Tracks, Routes, and Layers are now edge-docked slide-over panels
   promoted from inline accordions, each with a back-to-menu button so you can move between panels
@@ -41,6 +55,16 @@ All notable changes to Binnacle are documented here. The format follows
 - The collision danger strip no longer double-announces to screen readers. The app keeps a single
   concise spoken summary of the danger, and the on-screen contact list is now a silent visual
   landmark, so assistive technology reads the danger once instead of twice.
+- The animated wind field now honors the system reduced-motion preference, falling back to the static
+  wind arrows instead of running a continuous particle animation.
+- The active-route strip no longer re-reads its whole readout line to a screen reader every second;
+  only the destination name announces, when a waypoint advances.
+- On a phone the note detail and a leading panel no longer overlap as stacked bottom sheets (they are
+  mutually exclusive at narrow widths), the brand drops its version string so the top-bar controls
+  keep room, and the weather "Here" conditions open as a full-width sheet rather than covering the
+  small map.
+- Form inputs theme their placeholder text, the day caution color is darker for contrast and is
+  clearly distinct from the alarm red, and the Forecast control exposes its dialog to assistive tech.
 
 ## [0.1.2] - 2026-06-05
 

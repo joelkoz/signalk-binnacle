@@ -27,11 +27,16 @@
   --text-base: 0.85rem;
   --text-md: 0.9rem;
   --text-lg: 1rem;
+  /* A title tier above the body sizes for panel headings, and a readout tier for the hero mono
+     numbers (SOG, the nav metrics, the conditions values) so a glance lands on the number, not its
+     caps label. The instrument gesture is a big mono number over a small quiet label. */
+  --text-xl: 1.15rem;
+  --text-readout: 1.25rem;
   --z-overlay: 1;
   --z-panel: 2;
   --z-menu: 5;
   --control-size: 2.75rem;
-  --tracking-caps: 0.04em;
+  --tracking-caps: 0.06em;
   --disabled-opacity: 0.45;
   /* One hover and press timing for the whole UI, so interactive feedback feels uniform. */
   --transition-fast: 0.12s ease;
@@ -42,16 +47,25 @@
   --border: #aac3d6;
   --text: #0b2233;
   --text-muted: #3f586b;
-  --accent: #1f6fb2;
+  /* A deep navy-teal, more confident and instrument-like than a default mid-blue, kept dark enough
+     to carry white --accent-contrast on a filled button and to pass text contrast on the surfaces. */
+  --accent: #0d5a86;
   --accent-contrast: #ffffff;
   --select: #ffb300;
   --alarm: #c8401f;
-  /* Caution tier, one step below --alarm: amber by day and dusk, a dimmer red at night that stays
-     in the red band and is told apart from the brighter --alarm by brightness, not hue. */
-  --warning: #c8791f;
+  /* Caution tier, one step below --alarm: a dark amber by day (dark enough to read as text on the
+     light surface and clearly gold rather than red), a lighter amber by dusk, and a dimmer red at
+     night that stays in the red band and is told from the brighter --alarm by brightness, not hue. */
+  --warning: #8a5510;
   /* Floating-card lift; dropped on night-red, where a black shadow on true black is invisible
      and the surface border is the only separation. */
   --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.25);
+  /* A layered elevation for the topmost surfaces (the menu popout, the weather panel, the slide-over
+     panels): a tight contact shadow plus a soft ambient one, so the z-stack reads as real depth. */
+  --shadow-lg: 0 1px 2px rgb(0 0 0 / 0.16), 0 10px 28px rgb(0 0 0 / 0.22);
+  /* A faint top-edge highlight so a large surface catches light like an instrument bezel. White by
+     day and dusk, dropped at night so no non-red pixel appears. Composed after a shadow token. */
+  --edge-light: inset 0 1px 0 rgb(255 255 255 / 0.5);
   /* Accent-tinted card fills for an active/highlighted state. Defined per theme (not a global
      color-mix) so night-red stays red on near-black and never drifts toward blue or green. */
   --accent-tint: color-mix(in srgb, var(--accent) 10%, var(--surface-raised));
@@ -74,6 +88,8 @@
   --alarm: #e0703a;
   --warning: #d9a441;
   --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 30px rgb(0 0 0 / 0.5);
+  --edge-light: inset 0 1px 0 rgb(255 255 255 / 0.05);
   --accent-tint: color-mix(in srgb, var(--accent) 16%, var(--surface-raised));
   --accent-tint-strong: color-mix(in srgb, var(--accent) 26%, var(--surface-raised));
   --alarm-tint: color-mix(in srgb, var(--alarm) 18%, var(--surface-raised));
@@ -98,6 +114,10 @@
      brightness alone, with no blue or green. */
   --warning: #c0563c;
   --shadow-overlay: none;
+  /* No black shadow and no white edge highlight at night: both are invisible or off-contract on true
+     black. The deeper red --border is the only surface separation, by design. */
+  --shadow-lg: none;
+  --edge-light: none;
   /* Red mixed into near-black: a faint warm fill that reads as "active" without lifting the
      brightest pixel and without introducing any non-red hue. */
   --accent-tint: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
@@ -126,7 +146,7 @@ body {
 /* The heading shared by the slide-over and overlay panels, so every panel title reads the same. */
 .panel-title {
   margin: 0;
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: 600;
   color: var(--text);
 }
@@ -217,6 +237,78 @@ body {
 /* A fully rounded variant for the chrome toggles (Update, Forecast) that read as pills. */
 .btn-pill {
   border-radius: var(--radius-pill);
+}
+/* The lit "engaged" state shared by the chrome toggles (the Follow and Forecast strip pills, the
+   weather layer pills, and the menu trigger when its menu is open): accent text and border over the
+   accent tint. One source so every toggle signals "on" the same way. As a class modifier it outranks
+   the base control, and night-red keeps it red-on-near-black through the per-theme accent tokens. */
+.is-on {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+
+/* The bordered input box shared by the chart URL, the rename field, and the threshold number inputs,
+   mirroring the .btn box so every form control reads the same. The placeholder follows the theme
+   because the user-agent default gray is off-hue and low-contrast, especially at night. */
+.input {
+  min-block-size: var(--control-size);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+.input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+/* A row of action buttons under a panel header (New route, Save and Cancel), shared so the panels do
+   not each re-declare the row. */
+.panel-controls {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* The themed range slider shared by the opacity and time-scrub controls: a thin track with a large
+   accent thumb in a full-height touch target, so every slider in the app looks and feels the same. */
+.range {
+  inline-size: 100%;
+  min-block-size: var(--control-size);
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+  margin: 0;
+}
+.range::-webkit-slider-runnable-track {
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.range::-moz-range-track {
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  inline-size: 22px;
+  block-size: 22px;
+  margin-block-start: -8px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--accent);
+}
+.range::-moz-range-thumb {
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--accent);
 }
 
 /* The close button shared by the panels: a transparent icon button that highlights on hover. */
@@ -321,7 +413,7 @@ body {
   inline-size: 22rem;
   max-inline-size: 100%;
   background: var(--surface-overlay);
-  box-shadow: var(--shadow-overlay);
+  box-shadow: var(--shadow-lg), var(--edge-light);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: var(--text-base);
@@ -389,6 +481,11 @@ body {
 .bottom-strip--alarm {
   --strip-accent: var(--alarm);
 }
+/* The caution grade of the danger strip: the warning hue instead of the full alarm, so a
+   warning-only contact does not paint the strip in the strongest red. */
+.bottom-strip--warning {
+  --strip-accent: var(--warning);
+}
 .bottom-strip .head {
   display: flex;
   flex-wrap: wrap;
@@ -445,10 +542,20 @@ body {
 .bottom-strip .ack:active {
   filter: brightness(0.94);
 }
+/* A caution variant of the strip action (the collision Mute), warning-colored so the two safety
+   buttons (Mute and the accent Acknowledge) do not read as twins. The pressed state tints with the
+   alarm token. */
+.bottom-strip .ack--warning {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.bottom-strip .ack--warning[aria-pressed="true"] {
+  background: var(--alarm-tint);
+}
 .bottom-strip .metric b {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-lg);
+  font-size: var(--text-readout);
   font-weight: 600;
   color: var(--text);
 }

@@ -33,10 +33,11 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
 <SlideOver title="Collision thresholds" {onClose} {onBack}>
   <section class="thresholds">
     <div class="group">
-      <span class="group-title danger">Danger</span>
+      <span class="group-title caps-label danger">Danger</span>
       <label class="field">
         <span class="name">CPA</span>
         <input
+          class="input"
           type="number"
           min="0"
           step="0.05"
@@ -49,6 +50,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
       <label class="field">
         <span class="name">TCPA</span>
         <input
+          class="input"
           type="number"
           min="0"
           step="1"
@@ -60,10 +62,11 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
       </label>
     </div>
     <div class="group">
-      <span class="group-title warning">Warning</span>
+      <span class="group-title caps-label warning">Warning</span>
       <label class="field">
         <span class="name">CPA</span>
         <input
+          class="input"
           type="number"
           min="0"
           step="0.05"
@@ -76,6 +79,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
       <label class="field">
         <span class="name">TCPA</span>
         <input
+          class="input"
           type="number"
           min="0"
           step="1"
@@ -108,12 +112,7 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   flex-direction: column;
   gap: var(--space-1);
 }
-.group-title {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-}
+/* The base look is the shared .caps-label; only the per-severity color is overridden here. */
 .group-title.danger {
   color: var(--alarm);
 }
@@ -129,16 +128,11 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
   inline-size: 3rem;
   color: var(--text-muted);
 }
+/* The box comes from the shared .input; only the width (wide enough for "0.50" plus the spinner),
+   the mono numerals, and the spinner accent are local. */
 .field input {
-  inline-size: 5rem;
-  min-block-size: var(--control-size);
-  padding: 0.2rem var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  color: var(--text);
+  inline-size: 5.5rem;
   accent-color: var(--accent);
-  font: inherit;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }

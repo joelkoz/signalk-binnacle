@@ -59,7 +59,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 </script>
 
 <SlideOver title="Tracks" bodyFlex {onClose} {onBack}>
-  <div class="controls">
+  <div class="panel-controls">
     {#if recorder.paused}
       <button type="button" class="btn" onclick={() => recorder.resume()}>
         <Play size={16} aria-hidden="true" />
@@ -170,10 +170,6 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 </SlideOver>
 
 <style>
-.controls {
-  display: flex;
-  gap: 0.35rem;
-}
 .color-mode {
   display: flex;
   gap: 0;
@@ -198,8 +194,10 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   border-end-end-radius: var(--radius-sm);
   border-inline-start: 0;
 }
+/* The active segment uses the accent-tint lit fill, matching how every other toggle in the app
+   (the strip and weather pills, the menu trigger) signals "on". */
 .color-mode button.active {
-  background: var(--surface-raised);
+  background: var(--accent-tint);
   color: var(--accent);
   border-color: var(--accent);
 }

@@ -80,7 +80,7 @@ function dragOver(event: DragEvent): void {
     </span>
     <div class="url-row">
       <input
-        class="url"
+        class="input url"
         type="url"
         placeholder="https://.../chart.pmtiles"
         aria-labelledby="add-chart-url-label"
@@ -93,7 +93,7 @@ function dragOver(event: DragEvent): void {
     </div>
   </div>
 
-  <div class="divider" aria-hidden="true"><span>or</span></div>
+  <div class="divider caps-label" aria-hidden="true"><span>or</span></div>
 
   <div class="field">
     <span class="field-label caps-label" id="add-chart-file-label">
@@ -118,7 +118,7 @@ function dragOver(event: DragEvent): void {
       <span class="drop-secondary" id="add-chart-file-hint">or tap to browse</span>
     </button>
     <input
-      class="native-file"
+      class="visually-hidden"
       bind:this={fileInput}
       type="file"
       accept=".pmtiles"
@@ -159,26 +159,15 @@ function dragOver(event: DragEvent): void {
   display: flex;
   gap: 0.4rem;
 }
+/* The box styling comes from the shared .input; only the flex sizing is local. */
 .url {
   flex: 1;
   min-inline-size: 0;
-  min-block-size: var(--control-size);
-  padding-inline: var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
 }
 .divider {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
 }
 .divider::before,
 .divider::after {
@@ -201,12 +190,19 @@ function dragOver(event: DragEvent): void {
   color: var(--text-muted);
   font: inherit;
   cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 .dropzone:hover:not(:disabled),
 .dropzone.dragging {
   border-color: var(--accent);
   border-style: solid;
   color: var(--accent);
+}
+.dropzone.dragging {
+  background: var(--accent-tint);
 }
 .dropzone:disabled {
   cursor: default;
@@ -218,20 +214,6 @@ function dragOver(event: DragEvent): void {
 }
 .drop-secondary {
   font-size: var(--text-xs);
-}
-/* The native input drives the read via pickFile, but the themed dropzone is the visible control;
-   keep it in the DOM and reachable while removing it from the layout. */
-.native-file {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  padding: 0;
-  margin: -1px;
-  border: 0;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  overflow: hidden;
-  white-space: nowrap;
 }
 .status {
   margin: 0;

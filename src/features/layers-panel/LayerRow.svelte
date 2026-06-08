@@ -67,7 +67,7 @@ const percent = $derived(Math.round(item.opacity * 100));
     <div class="opacity-line">
       <span class="lbl">Opacity</span>
       <input
-        class="opacity"
+        class="opacity range"
         type="range"
         min="0"
         max="1"
@@ -139,39 +139,8 @@ const percent = $derived(Math.round(item.opacity * 100));
   text-align: end;
   color: var(--text-muted);
 }
+/* The slider styling comes from the shared .range; only the flex sizing in the row is local. */
 .opacity {
   flex: 1;
-  min-block-size: var(--control-size);
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent;
-  cursor: pointer;
-  margin: 0;
-}
-.opacity::-webkit-slider-runnable-track {
-  block-size: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--border);
-}
-.opacity::-moz-range-track {
-  block-size: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--border);
-}
-.opacity::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  inline-size: 24px;
-  block-size: 24px;
-  margin-block-start: -9px;
-  border-radius: var(--radius-pill);
-  border: none;
-  background: var(--accent);
-}
-.opacity::-moz-range-thumb {
-  inline-size: 24px;
-  block-size: 24px;
-  border-radius: var(--radius-pill);
-  border: none;
-  background: var(--accent);
 }
 </style>

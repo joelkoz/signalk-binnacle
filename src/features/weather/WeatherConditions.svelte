@@ -178,7 +178,7 @@ function stepLabel(timeMs: number): string {
       <dl class="now">
         <div>
           <dt>Wind</dt>
-          <dd><b>{knots(current.windMs)}</b> kn {bearing(current.fromRad)}&deg;</dd>
+          <dd><b>{knots(current.windMs)}</b> kn {bearing(current.fromRad)}&deg;T</dd>
         </div>
         {#if current.gustMs !== undefined}
           <div>
@@ -206,7 +206,7 @@ function stepLabel(timeMs: number): string {
         {/if}
         {#if current.waveHeightM !== undefined}
           <div>
-            <dt>Sea</dt>
+            <dt>Waves</dt>
             <dd>
               <b>{formatFixed(current.waveHeightM, 1)}</b>
               m
@@ -234,7 +234,7 @@ function stepLabel(timeMs: number): string {
         {#each forecast as step (step.timeMs)}
           <li>
             <span class="f-time">{stepLabel(step.timeMs)}</span>
-            <span class="f-wind"><b>{knots(step.windMs)}</b> kn {bearing(step.fromRad)}&deg;</span>
+            <span class="f-wind"><b>{knots(step.windMs)}</b> kn {bearing(step.fromRad)}&deg;T</span>
             {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}
               <span class="f-rain"><b>{formatFixed(step.precipitationMm, 1)}</b> mm/h</span>
             {/if}
@@ -327,6 +327,11 @@ function stepLabel(timeMs: number): string {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+/* The current-conditions values are the panel's hero numbers, so they step up over their caps labels
+   and the unit text, the instrument-readout gesture. */
+.now b {
+  font-size: var(--text-lg);
+}
 .forecast {
   list-style: none;
   margin: 0;
@@ -353,5 +358,13 @@ function stepLabel(timeMs: number): string {
 .f-rain {
   color: var(--text-muted);
   font-size: var(--text-xs);
+}
+/* On a phone the conditions span the weather panel's width as a bottom sheet rather than a fixed
+   15rem card that would cover most of the small map. */
+@media (max-width: 600px) {
+  .conditions {
+    inline-size: 100%;
+    max-block-size: 45vh;
+  }
 }
 </style>

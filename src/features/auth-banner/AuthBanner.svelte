@@ -13,14 +13,16 @@ const { auth, requestsUrl }: Props = $props();
   <div class="auth-banner" role="status" aria-live="polite">
     Requesting access as <strong>{auth.clientId}</strong>. Approve it in Signal K under Security,
     then Access Requests, and this connects on its own.
-    <a class="action" href={requestsUrl} target="_blank" rel="noopener noreferrer">
+    <a class="btn btn-ghost btn-pill" href={requestsUrl} target="_blank" rel="noopener noreferrer">
       Approve in Signal K
     </a>
   </div>
 {:else if auth.status === 'denied'}
   <div class="auth-banner denied" role="alert">
     Access was denied.
-    <button type="button" onclick={() => auth.requestAccess()}>Request again</button>
+    <button type="button" class="btn btn-ghost btn-pill" onclick={() => auth.requestAccess()}>
+      Request again
+    </button>
   </div>
 {/if}
 
@@ -35,19 +37,12 @@ const { auth, requestsUrl }: Props = $props();
 .auth-banner.denied {
   color: var(--alarm);
 }
-.auth-banner button,
-.auth-banner .action {
+/* The action reuses the shared .btn .btn-ghost .btn-pill vocabulary; only the display is overridden,
+   since this button sits inline within a sentence rather than in a panel button row. */
+.auth-banner .btn {
   display: inline-flex;
-  align-items: center;
-  font: inherit;
   margin-inline-start: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  min-block-size: var(--control-size);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  color: var(--accent);
+  vertical-align: middle;
   text-decoration: none;
-  cursor: pointer;
 }
 </style>

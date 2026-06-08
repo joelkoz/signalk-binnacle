@@ -65,7 +65,7 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
     <p class="error" role="alert">{error}</p>
   {/if}
 
-  <div class="controls">
+  <div class="panel-controls">
     <button type="button" class="btn btn-primary" onclick={onNew} disabled={working !== undefined}>
       <Plus size={16} aria-hidden="true" />
       New route
@@ -86,7 +86,7 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
       <p class="hint">
         Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
       </p>
-      <div class="controls">
+      <div class="panel-controls">
         <button
           type="button"
           class="btn btn-primary"
@@ -126,12 +126,12 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
               {/if}
             </div>
             <dl class="card-stats">
-              <dt>Distance</dt>
+              <dt class="caps-label">Distance</dt>
               <dd>
                 <span class="num">{distanceNm}</span>
                 nm
               </dd>
-              <dt>Waypoints</dt>
+              <dt class="caps-label">Waypoints</dt>
               <dd><span class="num">{route.waypoints.length}</span></dd>
             </dl>
             <div class="actions">
@@ -199,11 +199,8 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
 </SlideOver>
 
 <style>
-.controls {
-  display: flex;
-  gap: 0.35rem;
-}
-.controls .btn-primary {
+/* The row layout comes from the shared .panel-controls; New route and Save take the full width. */
+.panel-controls .btn-primary {
   flex: 1;
 }
 .editing {
@@ -357,11 +354,6 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
   margin: 0;
   font-size: var(--text-sm);
   color: var(--text-muted);
-}
-.card-stats dt {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
 }
 .card-stats dd {
   margin: 0 0.4rem 0 0;

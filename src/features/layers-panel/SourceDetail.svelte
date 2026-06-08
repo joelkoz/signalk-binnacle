@@ -48,6 +48,7 @@ async function doDelete(): Promise<void> {
   <label class="name-field">
     <span class="caps-label">Name</span>
     <input
+      class="input"
       type="text"
       bind:value={name}
       onblur={saveName}
@@ -120,26 +121,20 @@ header h3 {
   flex-direction: column;
   gap: 0.2rem;
 }
-.name-field input {
-  min-block-size: var(--control-size);
-  padding-inline: var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-base);
-}
 dl {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
 }
 dl div {
   display: grid;
   grid-template-columns: 5rem 1fr;
   gap: var(--space-2);
+  padding-block: 0.3rem;
+}
+/* A hairline between spec rows so the detail scans as a table, not a gray block. */
+dl div + div {
+  border-block-start: 1px solid var(--border);
 }
 dt {
   color: var(--text-muted);

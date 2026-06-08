@@ -1,6 +1,7 @@
 <script lang="ts">
 import { ChevronLeft, ChevronRight, Pause, Play, X } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
+import { fly } from 'svelte/transition';
 import { type Bbox, boundsToBbox, type WeatherStore } from '$entities/weather';
 import { LayersView } from '$features/layers-panel';
 import {
@@ -36,6 +37,7 @@ import {
   formatHectopascalsOr,
   formatKnotsOr,
   HOUR_MS,
+  prefersReducedMotion,
 } from '$shared/lib';
 import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shared/map';
 import type { MapView } from '$shared/settings';
@@ -229,7 +231,9 @@ async function providerReadout(lat: number, lon: number): Promise<WeatherReadout
 const fmt = formatFixed;
 
 // Refetch once when waves or radar is turned on, so the new source appears without a pan. Keyed on
-// the rising edge with a plain flag so a failed fetch cannot loop.
+// the rising edge with a plain flag so a failed fetch cannot loop. This creates a $effect, so it MUST
+// be called synchronously during component setup (as below), never inside a branch or callback, or
+// the effect would be created outside the setup phase and Svelte would error.
 function refetchOnEnable(isActive: () => boolean): void {
   let requested = false;
   $effect(() => {
@@ -311,7 +315,13 @@ onDestroy(() => {
 });
 </script>
 
-<section class="weather-panel" aria-label="Weather" use:dialog={onClose}>
+<section
+  class="weather-panel"
+  id="weather-panel"
+  aria-label="Weather"
+  use:dialog={onClose}
+  transition:fly={{ y: 20, duration: prefersReducedMotion() ? 0 : 180, opacity: 0.3 }}
+>
   <header class="panel-head">
     <h2 class="panel-title">Weather</h2>
     <div class="layer-bar" role="group" aria-label="Weather layers">
@@ -319,7 +329,7 @@ onDestroy(() => {
         <button
           type="button"
           class="pill"
-          class:on={item.visible}
+          class:is-on={item.visible}
           aria-pressed={item.visible}
           onclick={() => layersView?.toggle(item.id, !item.visible)}
         >
@@ -333,7 +343,7 @@ onDestroy(() => {
         <button
           type="button"
           class="pill"
-          class:on={item.visible}
+          class:is-on={item.visible}
           aria-pressed={item.visible}
           onclick={() => layersView?.toggle(item.id, !item.visible)}
         >
@@ -344,7 +354,7 @@ onDestroy(() => {
     <button
       type="button"
       class="pill"
-      class:on={conditionsOpen}
+      class:is-on={conditionsOpen}
       aria-pressed={conditionsOpen}
       onclick={() => (conditionsOpen = !conditionsOpen)}
     >
@@ -422,7 +432,7 @@ onDestroy(() => {
           <ChevronRight size={16} aria-hidden="true" />
         </button>
         <input
-          class="track"
+          class="track range"
           type="range"
           min={range.start}
           max={range.end}
@@ -483,7 +493,7 @@ onDestroy(() => {
   background: var(--surface-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-overlay);
+  box-shadow: var(--shadow-lg), var(--edge-light);
   color: var(--text);
   /* One above the edge-docked panels so the weather panel, which can be opened while a panel is up,
      sits cleanly on top instead of relying on DOM order against an equal z-index. */
@@ -510,6 +520,8 @@ onDestroy(() => {
   margin-inline: 0.15rem;
   background: var(--border);
 }
+/* A compact layer toggle, full control-height for touch. Its lit state is the shared .is-on, so it
+   matches the strip and menu toggles. */
 .pill {
   min-block-size: var(--control-size);
   min-inline-size: 3rem;
@@ -521,11 +533,14 @@ onDestroy(() => {
   font: inherit;
   font-size: var(--text-sm);
   cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
-.pill.on {
-  color: var(--accent);
+.pill:hover:not(.is-on) {
   border-color: var(--accent);
-  background: var(--accent-tint);
+  color: var(--text);
 }
 .panel-map {
   position: relative;
@@ -588,10 +603,9 @@ onDestroy(() => {
   align-items: center;
   gap: var(--space-2);
 }
+/* The slider styling comes from the shared .range; only the flex sizing in the row is local. */
 .scrubber .track {
   flex: 1;
-  min-block-size: var(--control-size);
-  accent-color: var(--accent);
 }
 .scrubber .step {
   display: inline-flex;
@@ -672,6 +686,13 @@ onDestroy(() => {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: thin;
+  }
+  /* The "Here" conditions become a full-width bottom sheet instead of a 15rem card covering most of
+     the small map. */
+  .conditions-slot {
+    inset-block: auto;
+    inset-block-end: var(--space-2);
+    inset-inline: var(--space-2);
   }
 }
 </style>

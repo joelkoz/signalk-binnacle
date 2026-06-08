@@ -6,6 +6,7 @@ import type {
   Map as MapLibreMap,
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
+import { prefersReducedMotion } from '$shared/lib';
 import type { OverlayContext, OverlayModule } from '$shared/map';
 import type { Theme } from '$shared/ui';
 import { emptyFeatureCollection } from './feature-collection';
@@ -48,7 +49,10 @@ function sameMatrix(a: number[], b: number[]): boolean {
 // layer when WebGL is unavailable. Rebuilds the wind texture only when the grid or selected time
 // changes; the animation runs in the custom layer's own render loop via triggerRepaint.
 export function createWindOverlay(store: WeatherStore): WindOverlay {
-  const useParticles = supportsWindGl();
+  // The animated particle field is a continuous, self-driving render loop, so a reduced-motion
+  // preference falls back to the static arrow layer (which still conveys wind direction and speed).
+  // This mirrors the camera moves, which also honor prefersReducedMotion.
+  const useParticles = supportsWindGl() && !prefersReducedMotion();
   let theme: Theme = 'day';
   let opacity = 1;
   let visible = false;

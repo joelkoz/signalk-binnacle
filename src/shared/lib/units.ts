@@ -106,3 +106,14 @@ export function formatCpaNm(meters: number, digits = 2): string {
 export function formatTcpaMin(seconds: number, digits = 0): string {
   return (seconds / 60).toFixed(digits);
 }
+
+// A time-to-go readout with its own unit: minutes under an hour ("45 min"), hours and minutes above
+// ("2h 05m"). TTG on a passage routinely exceeds an hour, where a bare minute count ("420 min")
+// reads as nonsense, so the unit is built in rather than appended by the caller.
+export function formatDuration(seconds: number): string {
+  const totalMinutes = Math.round(seconds / 60);
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+}

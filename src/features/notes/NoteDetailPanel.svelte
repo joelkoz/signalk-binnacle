@@ -1,5 +1,7 @@
 <script lang="ts">
 import { ExternalLink, Star, X } from '@lucide/svelte';
+import { fly } from 'svelte/transition';
+import { prefersReducedMotion } from '$shared/lib';
 import { dialog } from '$shared/ui';
 import type { NoteSelection } from './notes-client';
 import type { NormalizedItem, NoteDetail } from './notes-detail';
@@ -64,6 +66,7 @@ function measure(item: NormalizedItem): string {
   class="slide-over slide-over--dock-right"
   aria-label="Point of interest detail"
   use:dialog={onClose}
+  transition:fly={{ x: 24, duration: prefersReducedMotion() ? 0 : 180, opacity: 0.3 }}
 >
   <header>
     <div class="heading">
@@ -75,7 +78,7 @@ function measure(item: NormalizedItem): string {
     </button>
   </header>
 
-  <div class="body">
+  <div class="body panel-body">
     {#if loading}
       <p class="status" role="status">Loading...</p>
     {:else if failed}
@@ -187,13 +190,7 @@ header {
   display: inline-flex;
   color: var(--select);
 }
-.body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-2) var(--space-3);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
+/* The scroll box comes from the shared .panel-body; only the content spacing is local. */
 .body section {
   margin-block-end: var(--space-3);
 }

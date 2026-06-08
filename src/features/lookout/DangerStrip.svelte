@@ -18,20 +18,26 @@ const contacts = $derived(collision.assessment.contacts);
 const top = $derived(contacts.slice(0, MAX_ROWS));
 const overflow = $derived(Math.max(0, contacts.length - MAX_ROWS));
 const computedFallback = $derived(contacts.some((c) => c.source === 'computed'));
+// Grade the strip by the worst contact (contacts[0] is severity-then-time sorted): a warning-only
+// situation reads as caution, not the full alarm, so the strongest red is reserved for real danger.
+const worstIsDanger = $derived(contacts[0]?.severity !== 'warning');
 </script>
 
 {#if contacts.length > 0 && !collision.suppressed}
   <!-- No aria-live here: App owns the single assertive collision channel (a concise spoken summary in
        a persistent role=alert region), so announcing this whole contact list assertively too would
        double-speak the danger. This stays a labeled visual landmark. -->
-  <aside class="bottom-strip bottom-strip--alarm" aria-label="Collision danger">
+  <aside
+    class="bottom-strip {worstIsDanger ? 'bottom-strip--alarm' : 'bottom-strip--warning'}"
+    aria-label={worstIsDanger ? 'Collision danger' : 'Collision warning'}
+  >
     <div class="head">
-      <span class="title">Danger</span>
+      <span class="title">{worstIsDanger ? 'Danger' : 'Caution'}</span>
       {#if computedFallback}
         <span class="note">computing locally</span>
       {/if}
       <div class="actions">
-        <button type="button" class="ack mute" aria-pressed={muted} onclick={onToggleMute}>
+        <button type="button" class="ack ack--warning" aria-pressed={muted} onclick={onToggleMute}>
           {muted ? 'Unmute' : 'Mute'}
         </button>
         <button type="button" class="ack" onclick={() => collision.acknowledge()}>
@@ -66,13 +72,6 @@ const computedFallback = $derived(contacts.some((c) => c.source === 'computed'))
 }
 .actions .ack {
   margin-inline-start: 0;
-}
-.actions .mute {
-  color: var(--warning);
-  border-color: var(--warning);
-}
-.actions .mute[aria-pressed="true"] {
-  background: var(--alarm-tint);
 }
 .list {
   list-style: none;

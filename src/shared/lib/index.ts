@@ -8,6 +8,7 @@ export {
   degreesToRadians,
   formatBearingOr,
   formatCpaNm,
+  formatDuration,
   formatFixed,
   formatHectopascalsOr,
   formatKnots,

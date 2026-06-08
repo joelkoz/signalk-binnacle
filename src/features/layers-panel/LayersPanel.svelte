@@ -156,7 +156,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
             <li class="pinned-row">
               <span class="pin" aria-hidden="true"><Pin size={16} /></span>
               <span class="title" title={item.title}>{item.title}</span>
-              <span class="on-top">On top</span>
+              <span class="on-top caps-label">On top</span>
             </li>
           {/each}
         </ul>
@@ -240,12 +240,6 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
   text-overflow: ellipsis;
   font-size: var(--text-md);
   font-weight: 600;
-}
-.on-top {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-muted);
 }
 .group-label {
   margin-block-start: 0.35rem;

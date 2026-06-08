@@ -9,12 +9,9 @@ const { title, visible, onToggle }: Props = $props();
 </script>
 
 <label class="layer-toggle">
-  <input
-    type="checkbox"
-    checked={visible}
-    aria-label={`Show ${title} on chart`}
-    onchange={(e) => onToggle(e.currentTarget.checked)}
-  >
+  <!-- The accessible name comes from the wrapping label's visible title text, so the on-screen word
+       and the spoken name match exactly (WCAG 2.5.3). The checkbox role and its state carry the rest. -->
+  <input type="checkbox" checked={visible} onchange={(e) => onToggle(e.currentTarget.checked)}>
   <span class="title" {title}>{title}</span>
 </label>
 

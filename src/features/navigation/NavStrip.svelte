@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { CourseGuidance } from '$entities/course';
-import { formatBearingOr, formatKnots, formatNm, formatTcpaMin, PLACEHOLDER } from '$shared/lib';
+import { formatBearingOr, formatDuration, formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import { steerSide } from '$shared/nav';
 
 interface Props {
@@ -32,15 +32,18 @@ const vmg = $derived(
   guidance.velocityMadeGoodMps != null ? formatKnots(guidance.velocityMadeGoodMps) : PLACEHOLDER,
 );
 const ttg = $derived(
-  guidance.timeToGoSeconds != null ? formatTcpaMin(guidance.timeToGoSeconds, 0) : PLACEHOLDER,
+  guidance.timeToGoSeconds != null ? formatDuration(guidance.timeToGoSeconds) : PLACEHOLDER,
 );
 </script>
 
 {#if guidance.active}
-  <aside class="bottom-strip bottom-strip--accent" aria-label="Active route" aria-live="polite">
+  <!-- No aria-live on the strip itself: the metrics tick about once a second, and a live region here
+       would re-read the whole readout line every tick. Only the destination name is a live region, so
+       a screen reader hears the leg change when a waypoint advances, not the numbers churning. -->
+  <aside class="bottom-strip bottom-strip--accent" aria-label="Active route">
     <div class="head">
       <span class="title">To</span>
-      <span class="name">{guidance.nextPointName ?? '--'}</span>
+      <span class="name" aria-live="polite">{guidance.nextPointName ?? '--'}</span>
       {#if guidance.source === 'computed'}
         <span class="note">computing locally</span>
       {/if}
@@ -48,7 +51,7 @@ const ttg = $derived(
     </div>
     <div class="row">
       <span class="metric">DTW <b>{dtw}</b> nm</span>
-      <span class="metric">BTW <b>{btw}</b>&deg;</span>
+      <span class="metric">BTW <b>{btw}</b>&deg;T</span>
       <span class="metric">
         XTE
         {#if steer}
@@ -58,7 +61,7 @@ const ttg = $derived(
         nm
       </span>
       <span class="metric">VMG <b>{vmg}</b> kn</span>
-      <span class="metric">TTG <b>{ttg}</b> min</span>
+      <span class="metric">TTG <b>{ttg}</b></span>
     </div>
   </aside>
 {/if}

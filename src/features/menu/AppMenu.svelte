@@ -1,5 +1,7 @@
 <script lang="ts">
 import { Menu } from '@lucide/svelte';
+import { fly } from 'svelte/transition';
+import { prefersReducedMotion } from '$shared/lib';
 import type { MenuItem } from './menu-item';
 
 interface Props {
@@ -101,7 +103,8 @@ function onPopoutKeydown(event: KeyboardEvent): void {
 <div class="app-menu" bind:this={root}>
   <button
     type="button"
-    class="icon-pill trigger"
+    class="icon-pill"
+    class:is-on={open}
     bind:this={trigger}
     aria-haspopup="true"
     aria-expanded={open}
@@ -121,6 +124,7 @@ function onPopoutKeydown(event: KeyboardEvent): void {
       id="app-menu-popout"
       bind:this={popout}
       onkeydown={onPopoutKeydown}
+      transition:fly={{ y: -8, duration: prefersReducedMotion() ? 0 : 140, opacity: 0.2 }}
     >
       {#if items.length === 0}
         <span class="empty">No options</span>
@@ -180,12 +184,8 @@ function onPopoutKeydown(event: KeyboardEvent): void {
   position: relative;
   display: inline-flex;
 }
-/* The base look is the shared .icon-pill; keep the open state lit without hover, matching its
-   hover treatment, so the trigger reads as active while the menu is open. */
-.trigger[aria-expanded="true"] {
-  border-color: var(--accent);
-  background: var(--accent-tint);
-}
+/* The trigger's open state is the shared .is-on lit chrome (see app.css), so it matches the strip and
+   weather pills. */
 .popout {
   position: absolute;
   inset-block-start: calc(100% + var(--space-2));
@@ -202,12 +202,19 @@ function onPopoutKeydown(event: KeyboardEvent): void {
   background: var(--surface-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-overlay);
+  box-shadow: var(--shadow-lg), var(--edge-light);
+  transform-origin: top left;
 }
 .group {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+}
+/* A hairline between groups so the Navigation and Alarms sections read as distinct clusters. */
+.group + .group {
+  margin-block-start: var(--space-1);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--border);
 }
 .group-label {
   padding-inline: var(--space-2);
@@ -232,11 +239,19 @@ function onPopoutKeydown(event: KeyboardEvent): void {
     background-color var(--transition-fast),
     color var(--transition-fast);
 }
+/* The item icons sit quiet (muted) and light up accent on hover, focus, or a checked toggle, so the
+   row the pointer or roving focus is on reads at a glance without a heavy fill. */
 .item :global(svg) {
   flex-shrink: 0;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
 }
 .item:hover:not(:disabled) {
   background: var(--accent-tint);
+}
+.item:hover:not(:disabled) :global(svg),
+.item:focus-visible :global(svg) {
+  color: var(--accent);
 }
 .item:active:not(:disabled) {
   filter: brightness(0.94);
@@ -244,6 +259,9 @@ function onPopoutKeydown(event: KeyboardEvent): void {
 .item[aria-checked="true"] {
   color: var(--accent);
   background: var(--accent-tint);
+}
+.item[aria-checked="true"] :global(svg) {
+  color: var(--accent);
 }
 .item:disabled {
   color: var(--text-muted);
