@@ -18,18 +18,20 @@ All notable changes to Binnacle are documented here. The format follows
 ### Changed
 
 - Cleaner, consistent layer names: sentence case throughout, plural for collection layers (Track is
-  now Tracks), and a unified "source, type, region" format for the bathymetry and chart overlays
-  (for example "GEBCO bathymetry (global)" and "BlueTopo bathymetry (US)"). The weather "Cloud cover"
-  layer is now "Cloud" to match the other single-word weather layers.
+  now Tracks), and a unified "source, type, region" format for the single-layer bathymetry overlays
+  (for example "GEBCO bathymetry (global)"). The weather "Cloud cover" layer is now "Cloud" to match
+  the other single-word weather layers.
 - A denser, more consistent app menu and Layers panel: list rows use a compact row size while action
   buttons keep the larger touch target, the opacity sliders sit in shorter rows, and the gaps are
   snapped to one spacing scale, so more layers and menu items fit without scrolling.
-- The NOAA ENC chart and its data-quality overlay are now one labeled group in the Layers panel,
-  headed "NOAA ENC (US)" with "Base chart" and "Data quality (ZOC)" listed as facets under it. The
-  facet toggles are aligned in one column, a single drag handle and opacity slider serve the whole
-  group, and the data-quality facet only enables while the base chart is on (turning the base chart
-  off hides it). A generic sub-layer grouping mechanism backs this, so any future multi-facet chart
-  can group its facets the same way.
+- Three depth sources now present as labeled groups in the Layers panel, each with a base facet and a
+  nested survey-quality facet: "NOAA ENC (US)" (Base chart, Data quality (ZOC)), "EMODnet (Europe)"
+  (Bathymetry, Quality index), and "BlueTopo (US)" (Bathymetry, Uncertainty). The quality facets show
+  how reliable each cell is: ZOC zones for the ENC, EMODnet's combined quality index, and BlueTopo's
+  per-cell vertical uncertainty. Within a group the facet toggles are aligned in one column, a single
+  drag handle and opacity slider serve the whole group, and the quality facet only enables while the
+  base facet is on (turning the base off hides it). A generic sub-layer grouping mechanism backs this,
+  so any future multi-facet chart can group its facets the same way.
 
 ### Fixed
 
