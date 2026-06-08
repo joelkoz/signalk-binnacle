@@ -1,6 +1,7 @@
 <script lang="ts">
 import { CloudUpload, Link2 } from '@lucide/svelte';
-import type { UserCharts } from '$entities/user-charts';
+import type { DraftChart, UserCharts } from '$entities/user-charts';
+import { formatBytes } from '$shared/lib';
 
 interface Props {
   userCharts: UserCharts;
@@ -14,6 +15,10 @@ let busy = $state(false);
 let error = $state<string | undefined>();
 let dragging = $state(false);
 let fileInput = $state<HTMLInputElement>();
+// A staged import awaiting review. While set, the form shows the rename-and-review step instead of
+// the import inputs; committing it saves the chart.
+let draft = $state<DraftChart | undefined>();
+let draftName = $state('');
 
 async function run(action: () => Promise<void>): Promise<void> {
   busy = true;
@@ -28,21 +33,50 @@ async function run(action: () => Promise<void>): Promise<void> {
   }
 }
 
-function addUrl(): void {
+// Stage an import by reading its metadata, without saving, so the review step can rename it first.
+async function stage(read: () => Promise<DraftChart>): Promise<void> {
+  busy = true;
+  error = undefined;
+  try {
+    const next = await read();
+    draft = next;
+    draftName = next.source.name;
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Could not read that chart.';
+  } finally {
+    busy = false;
+  }
+}
+
+function stageUrl(): void {
   const trimmed = url.trim();
   if (!trimmed) return;
-  void run(async () => {
-    await userCharts.addUrl(trimmed);
-    url = '';
-  });
+  void stage(() => userCharts.stageUrl(trimmed));
 }
 
 function pickFile(event: Event): void {
   const input = event.currentTarget as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
-  void run(() => userCharts.addFile(file));
+  void stage(() => userCharts.stageFile(file));
   input.value = '';
+}
+
+function saveDraft(): void {
+  const staged = draft;
+  if (!staged) return;
+  void run(async () => {
+    await userCharts.commit(staged, draftName);
+    draft = undefined;
+    draftName = '';
+    url = '';
+  });
+}
+
+function cancelDraft(): void {
+  draft = undefined;
+  draftName = '';
+  error = undefined;
 }
 
 function browse(): void {
@@ -73,69 +107,116 @@ function dragOver(event: DragEvent): void {
 </script>
 
 <div class="add-form">
-  <div class="field">
-    <span class="field-label caps-label" id="add-chart-url-label">
-      <Link2 size={14} aria-hidden="true" />
-      From a URL
-    </span>
-    <div class="url-row">
-      <input
-        class="input url"
-        type="url"
-        placeholder="https://.../chart.pmtiles"
-        aria-labelledby="add-chart-url-label"
-        bind:value={url}
+  {#if draft}
+    <div class="review" role="group" aria-label="Review imported chart">
+      <span class="field-label caps-label">Review and save</span>
+      <label class="name-field">
+        <span class="caps-label">Name</span>
+        <input class="input" type="text" bind:value={draftName} disabled={busy}>
+      </label>
+      <dl class="meta">
+        <div>
+          <dt>Type</dt>
+          <dd>{draft.source.kind === 'vector' ? 'Vector' : 'Raster'}</dd>
+        </div>
+        <div>
+          <dt>Zoom</dt>
+          <dd>
+            {draft.source.minzoom ?? 0}
+            to {draft.source.maxzoom ?? draft.source.minzoom ?? 0}
+          </dd>
+        </div>
+        {#if draft.source.byteSize}
+          <div>
+            <dt>Size</dt>
+            <dd>{formatBytes(draft.source.byteSize)}</dd>
+          </div>
+        {/if}
+      </dl>
+      <div class="panel-controls">
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick={saveDraft}
+          disabled={busy || !draftName.trim()}
+        >
+          Save chart
+        </button>
+        <button type="button" class="btn" onclick={cancelDraft} disabled={busy}>Cancel</button>
+      </div>
+    </div>
+  {:else}
+    <div class="field">
+      <span class="field-label caps-label" id="add-chart-url-label">
+        <Link2 size={14} aria-hidden="true" />
+        From a URL
+      </span>
+      <div class="url-row">
+        <input
+          class="input url"
+          type="url"
+          placeholder="https://.../chart.pmtiles"
+          aria-labelledby="add-chart-url-label"
+          bind:value={url}
+          disabled={busy}
+        >
+        <button
+          type="button"
+          class="btn btn-ghost"
+          onclick={stageUrl}
+          disabled={busy || !url.trim()}
+        >
+          Add
+        </button>
+      </div>
+    </div>
+
+    <div class="divider caps-label" aria-hidden="true"><span>or</span></div>
+
+    <div class="field">
+      <span class="field-label caps-label" id="add-chart-file-label">
+        <CloudUpload size={14} aria-hidden="true" />
+        From a file
+      </span>
+      <button
+        type="button"
+        class="dropzone"
+        class:dragging
+        aria-labelledby="add-chart-file-label"
+        aria-describedby="add-chart-file-hint"
+        onclick={browse}
+        ondragenter={dragOver}
+        ondragover={dragOver}
+        ondragleave={() => (dragging = false)}
+        ondrop={dropFile}
         disabled={busy}
       >
-      <button type="button" class="btn btn-ghost" onclick={addUrl} disabled={busy || !url.trim()}>
-        Add
+        <CloudUpload size={22} aria-hidden="true" />
+        <span class="drop-primary">Drop a .pmtiles file</span>
+        <span class="drop-secondary" id="add-chart-file-hint">or tap to browse</span>
       </button>
+      <input
+        class="visually-hidden"
+        bind:this={fileInput}
+        type="file"
+        accept=".pmtiles"
+        onchange={pickFile}
+        disabled={busy}
+        tabindex="-1"
+        aria-hidden="true"
+      >
     </div>
-  </div>
-
-  <div class="divider caps-label" aria-hidden="true"><span>or</span></div>
-
-  <div class="field">
-    <span class="field-label caps-label" id="add-chart-file-label">
-      <CloudUpload size={14} aria-hidden="true" />
-      From a file
-    </span>
-    <button
-      type="button"
-      class="dropzone"
-      class:dragging
-      aria-labelledby="add-chart-file-label"
-      aria-describedby="add-chart-file-hint"
-      onclick={browse}
-      ondragenter={dragOver}
-      ondragover={dragOver}
-      ondragleave={() => (dragging = false)}
-      ondrop={dropFile}
-      disabled={busy}
-    >
-      <CloudUpload size={22} aria-hidden="true" />
-      <span class="drop-primary">Drop a .pmtiles file</span>
-      <span class="drop-secondary" id="add-chart-file-hint">or tap to browse</span>
-    </button>
-    <input
-      class="visually-hidden"
-      bind:this={fileInput}
-      type="file"
-      accept=".pmtiles"
-      onchange={pickFile}
-      disabled={busy}
-      tabindex="-1"
-      aria-hidden="true"
-    >
-  </div>
+  {/if}
 
   {#if busy}
-    <p class="status">Reading chart...</p>
+    <p class="status">{draft ? 'Saving chart...' : 'Reading chart...'}</p>
   {:else if error}
     <p class="status error">{error}</p>
   {/if}
 
-  <button type="button" class="btn btn-ghost" onclick={onDone} disabled={busy}>Close</button>
+  {#if !draft}
+    <button type="button" class="btn btn-ghost" onclick={onDone} disabled={busy}>Close</button>
+  {/if}
 </div>
 
 <style>
@@ -222,5 +303,38 @@ function dragOver(event: DragEvent): void {
 }
 .status.error {
   color: var(--alarm);
+}
+/* The review-and-rename step shown after an import is staged, before it is saved. */
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.meta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--text-sm);
+}
+.meta div {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  gap: var(--space-2);
+  padding-block: 0.3rem;
+}
+.meta div + div {
+  border-block-start: 1px solid var(--border);
+}
+.meta dt {
+  color: var(--text-muted);
+}
+.meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 </style>

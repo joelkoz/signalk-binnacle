@@ -17,6 +17,13 @@ export interface UserChartSource {
   byteSize?: number;
 }
 
+// A staged import: the resolved descriptor (not yet saved) plus, for a file import, the file to
+// store on commit. Staging reads the PMTiles metadata so the user can review and rename before save.
+export interface DraftChart {
+  source: UserChartSource;
+  file?: File;
+}
+
 // Build the SignalKChart the existing chart overlay renders, with the tile url already resolved:
 // a remote .pmtiles URL, or a pmtiles://blob: URL for a stored file.
 export function userChartToSignalK(source: UserChartSource, url: string): SignalKChart {
@@ -49,8 +56,8 @@ export class UserCharts {
 
   #store: PmtilesStore;
   #persist: (sources: UserChartSource[]) => void;
-  // Fires only when the user imports a chart (addUrl or addFile), never for the persisted set
-  // restored at startup, so the app can fly the map to a freshly imported chart.
+  // Fires only when the user commits an imported chart, never for the persisted set restored at
+  // startup, so the app can fly the map to a freshly imported chart.
   #onAdd?: (source: UserChartSource) => void;
 
   constructor(
@@ -65,36 +72,53 @@ export class UserCharts {
     this.#onAdd = onAdd;
   }
 
-  async addUrl(url: string): Promise<void> {
+  // Read a remote archive's metadata and stage it as a draft, without saving, so the user can review
+  // and rename it before committing.
+  async stageUrl(url: string): Promise<DraftChart> {
     const meta = await readPmtilesMeta(url);
-    this.#add({
-      id: uuidv4(),
-      name: meta.name ?? nameFromUrl(url),
-      kind: meta.kind,
-      origin: { type: 'url', url },
-      bounds: meta.bounds,
-      minzoom: meta.minzoom,
-      maxzoom: meta.maxzoom,
-      layers: meta.vectorLayers,
-    });
+    return {
+      source: {
+        id: uuidv4(),
+        name: meta.name ?? nameFromUrl(url),
+        kind: meta.kind,
+        origin: { type: 'url', url },
+        bounds: meta.bounds,
+        minzoom: meta.minzoom,
+        maxzoom: meta.maxzoom,
+        layers: meta.vectorLayers,
+      },
+    };
   }
 
-  async addFile(file: File): Promise<void> {
+  // Read a file's metadata and stage it as a draft, holding the file to store on commit. The id is
+  // shared by the descriptor and the stored blob so a chart and its file keep one identity.
+  async stageFile(file: File): Promise<DraftChart> {
     const meta = await readPmtilesMeta(file);
-    // One id for both the descriptor and the stored blob, so a chart and its file share an identity.
     const id = uuidv4();
-    await this.#store.put(id, file);
-    this.#add({
-      id,
-      name: meta.name ?? file.name.replace(/\.pmtiles$/i, ''),
-      kind: meta.kind,
-      origin: { type: 'file', storeId: id },
-      bounds: meta.bounds,
-      minzoom: meta.minzoom,
-      maxzoom: meta.maxzoom,
-      layers: meta.vectorLayers,
-      byteSize: meta.byteSize ?? file.size,
-    });
+    return {
+      source: {
+        id,
+        name: meta.name ?? file.name.replace(/\.pmtiles$/i, ''),
+        kind: meta.kind,
+        origin: { type: 'file', storeId: id },
+        bounds: meta.bounds,
+        minzoom: meta.minzoom,
+        maxzoom: meta.maxzoom,
+        layers: meta.vectorLayers,
+        byteSize: meta.byteSize ?? file.size,
+      },
+      file,
+    };
+  }
+
+  // Save a staged draft with the reviewed name. Stores the blob for a file import, then adds the
+  // descriptor (which fires onAdd so the map flies to the new chart).
+  async commit(draft: DraftChart, name: string): Promise<void> {
+    const source: UserChartSource = { ...draft.source, name: name.trim() || draft.source.name };
+    if (draft.file && source.origin.type === 'file') {
+      await this.#store.put(source.origin.storeId, draft.file);
+    }
+    this.#add(source);
   }
 
   rename(id: string, name: string): void {
