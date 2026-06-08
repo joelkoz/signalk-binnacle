@@ -11,7 +11,20 @@ export interface PwaController {
 export function registerPwa(onNeedRefresh?: () => void): PwaController {
   const updateSW = registerSW({
     onNeedRefresh: () => onNeedRefresh?.(),
-    onRegisterError: (error) => console.warn('[pwa] service worker registration failed', error),
+    onRegisterError: (error) => {
+      // A self-signed or otherwise untrusted server certificate makes the browser refuse to register
+      // a service worker, even after the user clicks through the page warning, so offline caching
+      // stays off. That is a certificate-trust issue, not a code fault, so explain it plainly. The
+      // app works fully without the service worker; only offline precaching is unavailable.
+      const message = error instanceof Error ? error.message : String(error);
+      if (/certificate|ssl/i.test(message)) {
+        console.info(
+          '[pwa] Offline caching is off: this browser does not trust the server certificate. Install the Signal K server certificate as a trusted root to enable offline use.',
+        );
+        return;
+      }
+      console.warn('[pwa] service worker registration failed', error);
+    },
   });
   return { update: () => void updateSW(true) };
 }

@@ -98,6 +98,17 @@ To add HTTPS to Signal K, the simplest way is the
 issues the server certificate, and distributes the root to your devices by QR code. The Signal K
 server's built-in SSL settings (Server, then Settings, then SSL) are an alternative.
 
+One more step is required, and it is easy to miss: your browser has to **trust** that certificate,
+not just reach it. A self-signed certificate, including one the signalk-ssl plugin generates, is not
+trusted by default, and browsers refuse to register a service worker from an origin whose certificate
+they do not trust, even after you click through the page's certificate warning. So if you only accept
+the one-time warning, the page loads but offline caching never activates, and the console shows a
+message like "service worker registration failed: an SSL certificate error occurred." To fix it,
+install the certificate authority's root (the QR code or `.pem` the plugin gives you) into your
+browser or operating system trust store and mark it trusted, then reload over HTTPS. Once the
+certificate is trusted, the service worker registers and the base map and chart tiles cache for
+offline use.
+
 ## Development
 
 This project targets Node 22 or newer. Lint and format use the Biome binary, which must be installed

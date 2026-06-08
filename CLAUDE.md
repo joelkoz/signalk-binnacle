@@ -161,6 +161,17 @@ must not be repeatable.
   to navigator.onLine, zero errors), which it does. To activate offline, enable SSL in the Signal K
   server (Server > Settings > SSL). Do not chase "the service worker is not registering" as a code
   bug without first checking `window.isSecureContext`.
+- A SECURE CONTEXT alone is NOT enough: the browser must also TRUST the server's certificate. A
+  self-signed certificate (including one the signalk-ssl plugin generates, issued by a local
+  "SignalK Local CA") is not trusted by default, and browsers refuse to register a service worker
+  from an origin whose certificate they do not trust, even after the user clicks through the page's
+  certificate warning. The symptom is `onRegisterError` firing with a SecurityError whose message is
+  "An SSL certificate error occurred when fetching the script", and offline caching staying off while
+  the page itself loads. The fix is environmental, not code: install the certificate (or its CA root)
+  into the browser or OS trust store and mark it trusted, then reload. register.ts detects this case
+  and logs an actionable info line rather than an alarming warning. Over plain http the serviceWorker
+  API is absent so registerSW no-ops; over https with an untrusted cert the API is present so
+  registration is attempted and fails on the cert, which is a different path from the plain-http one.
 - Never import `@signalk/server-api` in browser or worker code, not even as a type-only import.
   Its entry barrel re-exports `FullSignalK`, which extends Node's `EventEmitter`; bundled into the
   worker with `events` externalized, the base class is `undefined` and the worker dies at load with
