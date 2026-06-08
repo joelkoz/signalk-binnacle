@@ -209,4 +209,43 @@ describe('LayerManager', () => {
     manager.reorder('a', 0);
     expect(manager.layers()[0].id).toBe('vessel');
   });
+
+  it('stacks a sub-layer directly above its parent and exposes the parent id', async () => {
+    const manager = new LayerManager(fakeCtx());
+    await manager.register(fakeOverlay('gebco', 'bathymetry'));
+    await manager.register(fakeOverlay('chart', 'bathymetry'));
+    await manager.register({ ...fakeOverlay('quality', 'bathymetry'), parent: 'chart' });
+    // Top of the map first: the sub-layer sits just above its parent, both above gebco.
+    expect(manager.layers().map((l) => l.id)).toEqual(['quality', 'chart', 'gebco']);
+    expect(manager.layers().find((l) => l.id === 'quality')?.parent).toBe('chart');
+  });
+
+  it('does not reorder a sub-layer (it travels with its parent)', async () => {
+    const manager = new LayerManager(fakeCtx());
+    await manager.register(fakeOverlay('chart', 'bathymetry'));
+    await manager.register({ ...fakeOverlay('quality', 'bathymetry'), parent: 'chart' });
+    await manager.register(fakeOverlay('gebco', 'bathymetry'));
+    manager.reorder('quality', 0);
+    // Unchanged: quality stays pinned above chart regardless of the requested index.
+    expect(manager.layers().map((l) => l.id)).toEqual(['gebco', 'quality', 'chart']);
+  });
+
+  it('reorder indices skip sub-layers so a parent move lands correctly', async () => {
+    const manager = new LayerManager(fakeCtx());
+    await manager.register(fakeOverlay('chart', 'bathymetry'));
+    await manager.register({ ...fakeOverlay('quality', 'bathymetry'), parent: 'chart' });
+    await manager.register(fakeOverlay('gebco', 'bathymetry'));
+    // Top-level order top to bottom is [gebco, chart]; move chart to the top.
+    manager.reorder('chart', 0);
+    expect(manager.layers().map((l) => l.id)).toEqual(['quality', 'chart', 'gebco']);
+  });
+
+  it('turning a parent off hides its sub-layer', async () => {
+    const manager = new LayerManager(fakeCtx());
+    await manager.register(fakeOverlay('chart', 'bathymetry'));
+    await manager.register({ ...fakeOverlay('quality', 'bathymetry'), parent: 'chart' });
+    manager.toggle('quality', true);
+    manager.toggle('chart', false);
+    expect(manager.layers().find((l) => l.id === 'quality')?.visible).toBe(false);
+  });
 });

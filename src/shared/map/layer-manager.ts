@@ -20,6 +20,11 @@ export interface LayerListItem {
   pinned: boolean;
   // The overlay's z-band, used by the panel to group charts and depth apart from live overlays.
   band: ZBand;
+  // The parent overlay id when this is a sub-layer (the panel nests it under its parent).
+  parent?: string;
+  // The named group this layer is a facet of, surfaced so the panel can render one group header
+  // above the group's facets. See OverlayModule.group.
+  group?: { id: string; title: string };
 }
 
 export interface LayerManagerOptions {
@@ -130,6 +135,19 @@ export class LayerManager {
     }
     state.visible = visible;
     module.setVisible(this.#ctx, visible);
+    // Turning a parent off hides its sub-layers, so a facet (the data-quality overlay) never lingers
+    // on the map without the chart it annotates. The panel also disables a sub-layer's toggle while
+    // its parent is off, so this only fires when the parent goes off with a child still on.
+    if (!visible) {
+      for (const [childId, child] of this.#modules) {
+        if (child.parent !== id) continue;
+        const childState = this.#state.get(childId);
+        if (childState?.visible) {
+          childState.visible = false;
+          child.setVisible(this.#ctx, false);
+        }
+      }
+    }
     this.#persist();
   }
 
@@ -146,8 +164,10 @@ export class LayerManager {
   // (index 0 is the top of the map). Pinned layers are never moved or displaced.
   reorder(id: string, toIndex: number): void {
     if (this.#pinned.includes(id) || !this.#modules.has(id)) return;
+    // A sub-layer is never reordered on its own; it stays directly above its parent.
+    if (this.#modules.get(id)?.parent !== undefined) return;
     const topDown = this.#effectiveOrder()
-      .filter((other) => !this.#pinned.includes(other))
+      .filter((other) => !this.#pinned.includes(other) && !this.#isChild(other))
       .reverse();
     const from = topDown.indexOf(id);
     topDown.splice(from, 1);
@@ -167,19 +187,34 @@ export class LayerManager {
     this.#onChange(snapshot);
   }
 
+  #isChild(id: string): boolean {
+    return this.#modules.get(id)?.parent !== undefined;
+  }
+
   // The effective stacking order, bottom to top: pinned overlays on top, the rest by the
   // saved explicit order, with any overlay missing from it slotted in at its band default.
   #effectiveOrder(): string[] {
     const bandRank = (id: string): number =>
       Z_ORDER.indexOf(this.#modules.get(id)?.band ?? 'basemap');
     const nonPinned = [...this.#modules.keys()].filter((id) => !this.#pinned.includes(id));
-    const seq = this.#explicitOrder.filter((id) => nonPinned.includes(id));
-    for (const id of nonPinned) {
+    // Order the top-level overlays only. A sub-layer is not positioned on its own: it is slotted
+    // directly above its parent below, so it never drifts from the chart it annotates and never
+    // becomes its own reorderable row.
+    const topLevel = nonPinned.filter((id) => !this.#isChild(id));
+    const seq = this.#explicitOrder.filter((id) => topLevel.includes(id));
+    for (const id of topLevel) {
       if (seq.includes(id)) continue;
       const rank = bandRank(id);
       let at = seq.findIndex((other) => bandRank(other) > rank);
       if (at < 0) at = seq.length;
       seq.splice(at, 0, id);
+    }
+    for (const id of nonPinned) {
+      const parent = this.#modules.get(id)?.parent;
+      if (parent === undefined) continue;
+      const at = seq.indexOf(parent);
+      if (at >= 0) seq.splice(at + 1, 0, id);
+      else seq.push(id);
     }
     const pinned = this.#pinned.filter((id) => this.#modules.has(id));
     return [...seq, ...pinned];
@@ -248,6 +283,8 @@ export class LayerManager {
             supportsOpacity: module.supportsOpacity,
             pinned: this.#pinned.includes(id),
             band: module.band,
+            parent: module.parent,
+            group: module.group,
           },
         ];
       });

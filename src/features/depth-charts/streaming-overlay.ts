@@ -21,6 +21,8 @@ export function createStreamingChartOverlay(source: StreamingChartSource): Overl
     id: source.id,
     title: source.title,
     band: 'bathymetry',
+    parent: source.parent,
+    group: source.group,
     supportsOpacity: true,
     defaultVisible: false,
     layerIds: [layerId],

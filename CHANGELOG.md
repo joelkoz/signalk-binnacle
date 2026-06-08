@@ -24,6 +24,12 @@ All notable changes to Binnacle are documented here. The format follows
 - A denser, more consistent app menu and Layers panel: list rows use a compact row size while action
   buttons keep the larger touch target, the opacity sliders sit in shorter rows, and the gaps are
   snapped to one spacing scale, so more layers and menu items fit without scrolling.
+- The NOAA ENC chart and its data-quality overlay are now one labeled group in the Layers panel,
+  headed "NOAA ENC (US)" with "Base chart" and "Data quality (ZOC)" listed as facets under it. The
+  facet toggles are aligned in one column, a single drag handle and opacity slider serve the whole
+  group, and the data-quality facet only enables while the base chart is on (turning the base chart
+  off hides it). A generic sub-layer grouping mechanism backs this, so any future multi-facet chart
+  can group its facets the same way.
 
 ### Fixed
 

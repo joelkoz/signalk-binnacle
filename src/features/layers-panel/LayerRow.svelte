@@ -16,6 +16,15 @@ interface Props {
   onHandleKeydown: (event: KeyboardEvent) => void;
   // Present only on a user-imported chart row, which opens a detail (rename, info, delete).
   onManage?: () => void;
+  // Sub-layers of this row (a chart facet, for example NOAA ENC data quality). When present, the row
+  // renders as a facet group: the drag handle becomes a left gutter and the parent and child toggles
+  // stack in one aligned column with the opacity slider last. Each child is a toggle only, disabled
+  // while this row is off, so a facet never renders without the chart it annotates.
+  subLayers?: LayerListItem[];
+  // Set when this row is the top-level facet of a named group (NOAA ENC). The visible group title is
+  // drawn by the panel above the card; here it names the listitem so a screen reader speaks the group
+  // the row belongs to, since the visible title is decorative.
+  groupTitle?: string;
 }
 
 const {
@@ -29,40 +38,38 @@ const {
   onHandlePointerDown,
   onHandleKeydown,
   onManage,
+  subLayers = [],
+  groupTitle,
 }: Props = $props();
 
 const percent = $derived(Math.round(item.opacity * 100));
+// The drag handle moves the whole row, so for a facet group it names the group, otherwise the layer.
+// A normal row carries no group title, so this resolves to the layer title there.
+const handleLabel = $derived(groupTitle ?? item.title);
 </script>
 
-<li
-  class="row"
-  class:dragging
-  class:drop-before={dropBefore}
-  class:drop-after={dropAfter}
-  data-layer-row={item.id}
->
-  <div class="row-main">
-    <button
-      type="button"
-      class="icon-btn handle"
-      aria-label={`Move ${item.title}, position ${index + 1} of ${count}`}
-      aria-keyshortcuts="ArrowUp ArrowDown"
-      onpointerdown={onHandlePointerDown}
-      onkeydown={onHandleKeydown}
-    >
-      <GripVertical size={18} aria-hidden="true" />
+{#snippet dragHandle()}
+  <button
+    type="button"
+    class="icon-btn handle"
+    aria-label={`Move ${handleLabel}, position ${index + 1} of ${count}`}
+    aria-keyshortcuts="ArrowUp ArrowDown"
+    onpointerdown={onHandlePointerDown}
+    onkeydown={onHandleKeydown}
+  >
+    <GripVertical size={18} aria-hidden="true" />
+  </button>
+{/snippet}
+
+{#snippet manageButton()}
+  {#if onManage}
+    <button type="button" class="icon-btn" aria-label={`Manage ${item.title}`} onclick={onManage}>
+      <Settings2 size={18} aria-hidden="true" />
     </button>
-    <LayerToggle
-      title={item.title}
-      visible={item.visible}
-      onToggle={(visible) => view.toggle(item.id, visible)}
-    />
-    {#if onManage}
-      <button type="button" class="icon-btn" aria-label={`Manage ${item.title}`} onclick={onManage}>
-        <Settings2 size={18} aria-hidden="true" />
-      </button>
-    {/if}
-  </div>
+  {/if}
+{/snippet}
+
+{#snippet opacityLine()}
   {#if item.supportsOpacity && item.visible}
     <div class="opacity-line">
       <span class="lbl">Opacity</span>
@@ -78,6 +85,55 @@ const percent = $derived(Math.round(item.opacity * 100));
       >
       <span class="opacity-val">{percent}%</span>
     </div>
+  {/if}
+{/snippet}
+
+<li
+  class="row"
+  class:dragging
+  class:drop-before={dropBefore}
+  class:drop-after={dropAfter}
+  aria-label={groupTitle}
+  data-layer-row={item.id}
+>
+  {#if subLayers.length > 0}
+    <!-- A facet group: one handle moves the whole group, and the parent and child toggles share one
+         aligned column so their checkboxes line up, with the opacity slider last. -->
+    <div class="facet-row">
+      {@render dragHandle()}
+      <div class="facet-stack">
+        <div class="facet-line">
+          <LayerToggle
+            title={item.title}
+            visible={item.visible}
+            onToggle={(visible) => view.toggle(item.id, visible)}
+          />
+          {@render manageButton()}
+        </div>
+        {#each subLayers as sub (sub.id)}
+          <div class="facet-line">
+            <LayerToggle
+              title={sub.title}
+              visible={sub.visible}
+              disabled={!item.visible}
+              onToggle={(visible) => view.toggle(sub.id, visible)}
+            />
+          </div>
+        {/each}
+        {@render opacityLine()}
+      </div>
+    </div>
+  {:else}
+    <div class="row-main">
+      {@render dragHandle()}
+      <LayerToggle
+        title={item.title}
+        visible={item.visible}
+        onToggle={(visible) => view.toggle(item.id, visible)}
+      />
+      {@render manageButton()}
+    </div>
+    {@render opacityLine()}
   {/if}
 </li>
 
@@ -117,7 +173,7 @@ const percent = $derived(Math.round(item.opacity * 100));
 }
 /* The row icon buttons (drag handle, manage) take the denser list-row size so the row tracks the
    toggle height rather than the taller action-control size. */
-.row-main :global(.icon-btn) {
+.row :global(.icon-btn) {
   min-block-size: var(--row-size);
   min-inline-size: var(--row-size);
 }
@@ -126,6 +182,24 @@ const percent = $derived(Math.round(item.opacity * 100));
 .handle {
   cursor: grab;
   touch-action: none;
+}
+/* A facet group: the handle is a left gutter top-aligned with the first facet, and the facets stack
+   to its right in one column so every toggle's checkbox shares the same left edge. */
+.facet-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+.facet-stack {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+}
+.facet-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 .opacity-line {
   display: flex;

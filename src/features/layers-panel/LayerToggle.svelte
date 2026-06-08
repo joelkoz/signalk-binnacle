@@ -3,15 +3,23 @@ interface Props {
   title: string;
   visible: boolean;
   onToggle: (visible: boolean) => void;
+  // A sub-layer toggle is disabled while its parent is off, so a facet cannot be enabled without
+  // the chart it annotates.
+  disabled?: boolean;
 }
 
-const { title, visible, onToggle }: Props = $props();
+const { title, visible, onToggle, disabled = false }: Props = $props();
 </script>
 
-<label class="layer-toggle">
+<label class="layer-toggle" class:disabled>
   <!-- The accessible name comes from the wrapping label's visible title text, so the on-screen word
        and the spoken name match exactly (WCAG 2.5.3). The checkbox role and its state carry the rest. -->
-  <input type="checkbox" checked={visible} onchange={(e) => onToggle(e.currentTarget.checked)}>
+  <input
+    type="checkbox"
+    checked={visible}
+    {disabled}
+    onchange={(e) => onToggle(e.currentTarget.checked)}
+  >
   <span class="title" {title}>{title}</span>
 </label>
 
@@ -25,6 +33,10 @@ const { title, visible, onToggle }: Props = $props();
   min-block-size: var(--row-size);
   font-size: var(--text-md);
   cursor: pointer;
+}
+.layer-toggle.disabled {
+  cursor: default;
+  opacity: var(--disabled-opacity);
 }
 .layer-toggle input[type="checkbox"] {
   inline-size: 1.25rem;

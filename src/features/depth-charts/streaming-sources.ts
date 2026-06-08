@@ -12,6 +12,12 @@ export interface StreamingChartSource {
   // Optional coverage bounds [west, south, east, north] in WGS84 degrees for a regional source.
   bounds?: [number, number, number, number];
   attribution: string;
+  // An optional parent source id: a facet of another chart (the data-quality overlay of the NOAA ENC
+  // chart) nests under it in the Layers panel and only shows when the parent is on.
+  parent?: string;
+  // An optional named group: facets that share a group id render under one labeled group header in
+  // the Layers panel. The NOAA ENC chart and its data-quality overlay share one group.
+  group?: { id: string; title: string };
 }
 
 // The NOAA Maritime Chart Service renders S-52 chart symbology server-side and returns it as
@@ -31,7 +37,12 @@ const NOAA_ENC_WMS =
 // below; only BlueTopo's 512 is load-bearing.)
 const wmsTiles = (base: string, layers: string): string =>
   `${base}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layers}&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true&STYLES=`;
-const noaaEncSource = (id: string, title: string, layers: string): StreamingChartSource => ({
+const noaaEncSource = (
+  id: string,
+  title: string,
+  layers: string,
+  opts: { parent?: string; group?: { id: string; title: string } } = {},
+): StreamingChartSource => ({
   id,
   title,
   tiles: [wmsTiles(NOAA_ENC_WMS, layers)],
@@ -39,7 +50,13 @@ const noaaEncSource = (id: string, title: string, layers: string): StreamingChar
   maxzoom: 18,
   bounds: [-180, -15, 180, 75],
   attribution: 'NOAA Office of Coast Survey, Electronic Navigational Charts (ENC)',
+  ...(opts.parent ? { parent: opts.parent } : {}),
+  ...(opts.group ? { group: opts.group } : {}),
 });
+
+// The two NOAA ENC facets (the chart and its data-quality overlay) share this group, so the Layers
+// panel lists them under one "NOAA ENC (US)" header.
+const NOAA_ENC_GROUP = { id: 'noaa-enc', title: 'NOAA ENC (US)' };
 
 // Live-verified free services (2026-06-02), global first then regional. Every one carries a
 // "not for navigation" constraint, so they are reference overlays, not the primary chart. Two
@@ -65,9 +82,14 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
     bounds: [-73.125, 5.625, 45.0, 90.0],
     attribution: 'EMODnet Bathymetry Consortium (2022): EMODnet Digital Bathymetry (DTM)',
   },
-  // Registration order is z-order, so the chart sits below its data-quality overlay.
-  noaaEncSource('depth-noaa-enc', 'NOAA ENC chart (US)', '0,1,2,3,4,5,6,7,10'),
-  noaaEncSource('depth-noaa-enc-quality', 'NOAA ENC data quality (US)', '8,9'),
+  // Registration order is z-order, so the chart sits below its data-quality overlay. Both facets
+  // declare the same group so the Layers panel lists them under one "NOAA ENC (US)" header.
+  noaaEncSource('depth-noaa-enc', 'Base chart', '0,1,2,3,4,5,6,7,10', { group: NOAA_ENC_GROUP }),
+  // A facet of the chart above, nested under it: the Zones of Confidence and low-accuracy markers.
+  noaaEncSource('depth-noaa-enc-quality', 'Data quality (ZOC)', '8,9', {
+    parent: 'depth-noaa-enc',
+    group: NOAA_ENC_GROUP,
+  }),
   {
     id: 'depth-bluetopo',
     title: 'BlueTopo bathymetry (US)',

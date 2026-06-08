@@ -33,6 +33,15 @@ export interface OverlayModule {
   readonly id: string;
   readonly title: string;
   readonly band: ZBand;
+  // An optional parent overlay id. A sub-layer (for example the NOAA ENC data-quality overlay under
+  // the NOAA ENC chart) nests under its parent in the Layers panel and is only shown when the parent
+  // is on, so a facet never renders without the chart it annotates.
+  readonly parent?: string;
+  // An optional named group this overlay is a facet of. When two or more overlays share a group id,
+  // the Layers panel renders one labeled group header above them and lists each as a facet under it,
+  // so a multi-facet chart (the NOAA ENC chart plus its data-quality overlay) reads as one unit.
+  // Generic: any future multi-facet source declares the same descriptor.
+  readonly group?: { readonly id: string; readonly title: string };
   readonly supportsOpacity: boolean;
   // Initial visibility when there is no saved state. Defaults to visible; streaming depth layers
   // set this false so they start off until the user enables one for their area.

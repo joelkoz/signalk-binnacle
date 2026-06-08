@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Pin } from '@lucide/svelte';
 import type { UserCharts } from '$entities/user-charts';
-import { chartSourceId } from '$shared/map';
+import { chartSourceId, type LayerListItem } from '$shared/map';
 import { SlideOver } from '$shared/ui';
 import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
@@ -19,7 +19,20 @@ interface Props {
 const { view, userCharts, onClose, onBack }: Props = $props();
 
 const pinned = $derived(view.items.filter((item) => item.pinned));
-const movable = $derived(view.items.filter((item) => !item.pinned));
+// Sub-layers (a chart facet, for example the NOAA ENC data quality overlay) are not their own
+// movable rows: they nest under their parent's row, so they are excluded from the reorderable list
+// and grouped by parent id below.
+const movable = $derived(view.items.filter((item) => !item.pinned && !item.parent));
+const childrenByParent = $derived.by(() => {
+  const map = new Map<string, LayerListItem[]>();
+  for (const item of view.items) {
+    if (!item.parent) continue;
+    const list = map.get(item.parent);
+    if (list) list.push(item);
+    else map.set(item.parent, [item]);
+  }
+  return map;
+});
 
 // The overlay id of each user-imported chart maps back to its source id, so its row can open a
 // detail (rename, info, delete) for the right source.
@@ -166,16 +179,25 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
         {#each movable as item, i (item.id)}
           {@const indicator = indicatorFor(item.id)}
           {@const removeId = userChartIds.get(item.id)}
+          {@const prev = movable[i - 1]}
           <!-- Group the movable rows by z-band; a header marks each category change. Reorder still
                  operates on the live order. -->
-          {#if i === 0 || layerGroup(movable[i - 1].band) !== layerGroup(item.band)}
+          {#if i === 0 || layerGroup(prev.band) !== layerGroup(item.band)}
             <li class="group-label caps-label" aria-hidden="true">{layerGroup(item.band)}</li>
+          {/if}
+          <!-- A named group (a multi-facet chart like NOAA ENC) heads its facets with one title the
+               first time its id is seen. Only the chart facet is a top-level row here (its data-quality
+               facet is a parent-linked child), so the title emits once, on the chart row. -->
+          {#if item.group && item.group.id !== prev?.group?.id}
+            <li class="facet-group-label caps-label" aria-hidden="true">{item.group.title}</li>
           {/if}
           <LayerRow
             {item}
             {view}
             index={i}
             count={movable.length}
+            groupTitle={item.group?.title}
+            subLayers={childrenByParent.get(item.id) ?? []}
             dragging={dragId === item.id}
             dropBefore={indicator.before}
             dropAfter={indicator.after}
@@ -247,6 +269,14 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 }
 .group-label:first-child {
   margin-block-start: 0;
+}
+/* A named-group title (a multi-facet chart) sits directly above its facet card and binds to it: the
+   negative end margin cancels the .rows gap so the card hugs its title, while the gap to the card
+   above stays. The leading indent aligns it over the card. */
+.facet-group-label {
+  margin-block-start: var(--space-1);
+  margin-block-end: calc(-1 * var(--space-1));
+  padding-inline: 0.2rem;
 }
 .add-chart-area {
   margin-block-start: var(--space-2);
