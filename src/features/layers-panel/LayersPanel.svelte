@@ -1,22 +1,25 @@
 <script lang="ts">
-import { Pin } from '@lucide/svelte';
+import { ChevronRight, Pin } from '@lucide/svelte';
 import type { UserCharts } from '$entities/user-charts';
 import { chartSourceId, type LayerListItem } from '$shared/map';
+import type { PersistedValue } from '$shared/settings';
 import { SlideOver } from '$shared/ui';
 import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
-import { layerGroup } from './layer-group';
+import { CATEGORY_DEFAULT_OPEN, CATEGORY_ORDER, layerCategory } from './layer-category';
 import type { LayersView } from './layers-view.svelte';
 import SourceDetail from './SourceDetail.svelte';
 
 interface Props {
   view: LayersView;
   userCharts?: UserCharts;
+  // Per-category open/closed state, persisted so the panel reopens the way it was left.
+  categoriesOpen?: PersistedValue<Record<string, boolean>>;
   onClose: () => void;
   onBack?: () => void;
 }
 
-const { view, userCharts, onClose, onBack }: Props = $props();
+const { view, userCharts, categoriesOpen, onClose, onBack }: Props = $props();
 
 const pinned = $derived(view.items.filter((item) => item.pinned));
 // Sub-layers (a chart facet, for example the NOAA ENC data quality overlay) are not their own
@@ -33,6 +36,33 @@ const childrenByParent = $derived.by(() => {
   }
   return map;
 });
+
+// Bucket the movable rows into categories, keeping each row's index in `movable` so the drag handlers
+// (which address rows by their movable index) keep working unchanged. The categories render in
+// CATEGORY_ORDER, which matches the map z-order, so the panel order equals the stack and a collapsed
+// category's rows stay in the DOM (hidden) in their movable position.
+const categories = $derived.by(() => {
+  const byId = new Map<string, { title: string; rows: { item: LayerListItem; i: number }[] }>();
+  movable.forEach((item, i) => {
+    const cat = layerCategory(item);
+    const bucket = byId.get(cat.id);
+    if (bucket) bucket.rows.push({ item, i });
+    else byId.set(cat.id, { title: cat.title, rows: [{ item, i }] });
+  });
+  return CATEGORY_ORDER.flatMap((id) => {
+    const bucket = byId.get(id);
+    return bucket ? [{ id, title: bucket.title, rows: bucket.rows }] : [];
+  });
+});
+
+function isOpen(id: string): boolean {
+  return categoriesOpen?.value[id] ?? CATEGORY_DEFAULT_OPEN[id] ?? true;
+}
+
+function toggleCategory(id: string): void {
+  if (!categoriesOpen) return;
+  categoriesOpen.set({ ...categoriesOpen.value, [id]: !isOpen(id) });
+}
 
 // The overlay id of each user-imported chart maps back to its source id, so its row can open a
 // detail (rename, info, delete) for the right source.
@@ -84,10 +114,10 @@ function handlePointerDown(id: string, event: PointerEvent): void {
   const handle = event.currentTarget as HTMLElement;
   handle.setPointerCapture(event.pointerId);
 
-  // The list does not reflow during a drag (the indicator is drawn with CSS, rows do not move until
-  // commit), so measure each non-dragged row's vertical midpoint once here rather than re-querying
-  // the DOM and reading layout on every pointermove. The insertion slot is the first midpoint the
-  // pointer is above, matching view.reorder's contract.
+  // Measure each non-dragged row's vertical midpoint once. Collapsed-category rows stay in the DOM
+  // (hidden), so they measure as a zero midpoint and never become a drop target, while still holding
+  // their movable index, so the slot the pointer resolves to is a valid movable index. The slot is
+  // the first midpoint the pointer is above, matching view.reorder's contract.
   const midpoints = listEl
     ? [...listEl.querySelectorAll<HTMLElement>('[data-layer-row]')]
         .filter((el) => el.dataset.layerRow !== id)
@@ -176,35 +206,56 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
       {/if}
 
       <ul class="rows" bind:this={listEl}>
-        {#each movable as item, i (item.id)}
-          {@const indicator = indicatorFor(item.id)}
-          {@const removeId = userChartIds.get(item.id)}
-          {@const prev = movable[i - 1]}
-          <!-- Group the movable rows by z-band; a header marks each category change. Reorder still
-                 operates on the live order. -->
-          {#if i === 0 || layerGroup(prev.band) !== layerGroup(item.band)}
-            <li class="group-label caps-label" aria-hidden="true">{layerGroup(item.band)}</li>
-          {/if}
-          <!-- A named group (a multi-facet chart like NOAA ENC) heads its facets with one title the
-               first time its id is seen. Only the chart facet is a top-level row here (its data-quality
-               facet is a parent-linked child), so the title emits once, on the chart row. -->
-          {#if item.group && item.group.id !== prev?.group?.id}
-            <li class="facet-group-label caps-label" aria-hidden="true">{item.group.title}</li>
-          {/if}
-          <LayerRow
-            {item}
-            {view}
-            index={i}
-            count={movable.length}
-            groupTitle={item.group?.title}
-            subLayers={childrenByParent.get(item.id) ?? []}
-            dragging={dragId === item.id}
-            dropBefore={indicator.before}
-            dropAfter={indicator.after}
-            onHandlePointerDown={(e) => handlePointerDown(item.id, e)}
-            onHandleKeydown={(e) => handleKeydown(item.id, e)}
-            onManage={removeId ? () => (manageId = removeId) : undefined}
-          />
+        {#each categories as cat (cat.id)}
+          {@const expanded = isOpen(cat.id)}
+          {@const panelId = `layer-cat-${cat.id}`}
+          <li class="category">
+            <h3 class="category-head">
+              <button
+                type="button"
+                class="category-toggle"
+                aria-expanded={expanded}
+                aria-controls={panelId}
+                onclick={() => toggleCategory(cat.id)}
+              >
+                <ChevronRight
+                  class={expanded ? 'chev chev-open' : 'chev'}
+                  size={16}
+                  aria-hidden="true"
+                />
+                <span class="category-title caps-label">{cat.title}</span>
+                <span class="category-count" aria-hidden="true">{cat.rows.length}</span>
+              </button>
+            </h3>
+            <ul class="category-rows" id={panelId} hidden={!expanded}>
+              {#each cat.rows as { item, i }, j (item.id)}
+                {@const indicator = indicatorFor(item.id)}
+                {@const removeId = userChartIds.get(item.id)}
+                {@const prev = cat.rows[j - 1]?.item}
+                <!-- A named group (a multi-facet chart like NOAA ENC) heads its facets with one title
+                     the first time its id is seen within the category. -->
+                {#if item.group && item.group.id !== prev?.group?.id}
+                  <li class="facet-group-label caps-label" aria-hidden="true">
+                    {item.group.title}
+                  </li>
+                {/if}
+                <LayerRow
+                  {item}
+                  {view}
+                  index={i}
+                  count={movable.length}
+                  groupTitle={item.group?.title}
+                  subLayers={childrenByParent.get(item.id) ?? []}
+                  dragging={dragId === item.id}
+                  dropBefore={indicator.before}
+                  dropAfter={indicator.after}
+                  onHandlePointerDown={(e) => handlePointerDown(item.id, e)}
+                  onHandleKeydown={(e) => handleKeydown(item.id, e)}
+                  onManage={removeId ? () => (manageId = removeId) : undefined}
+                />
+              {/each}
+            </ul>
+          </li>
         {/each}
       </ul>
     {/if}
@@ -263,20 +314,75 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
   font-size: var(--text-md);
   font-weight: 600;
 }
-.group-label {
-  margin-block-start: var(--space-1);
-  padding-inline: 0.2rem;
+.category {
+  list-style: none;
 }
-.group-label:first-child {
-  margin-block-start: 0;
+.category-head {
+  margin: 0;
+}
+/* The whole header is the disclosure control: a chevron that rotates open, the category title, and a
+   count of the rows it holds, sized to a full touch target. */
+.category-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: var(--control-size);
+  padding-inline: var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+.category-toggle:hover {
+  background: var(--accent-tint);
+}
+.category-toggle :global(.chev) {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+.category-toggle :global(.chev-open) {
+  transform: rotate(90deg);
+}
+.category-title {
+  flex: 1;
+  min-inline-size: 0;
+  text-align: start;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.category-count {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.category-rows {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.category-rows[hidden] {
+  display: none;
 }
 /* A named-group title (a multi-facet chart) sits directly above its facet card and binds to it: the
-   negative end margin cancels the .rows gap so the card hugs its title, while the gap to the card
-   above stays. The leading indent aligns it over the card. */
+   negative end margin cancels the .category-rows gap so the card hugs its title, while the gap to the
+   card above stays. The leading indent aligns it over the card. */
 .facet-group-label {
   margin-block-start: var(--space-1);
   margin-block-end: calc(-1 * var(--space-1));
   padding-inline: 0.2rem;
+}
+.facet-group-label:first-child {
+  margin-block-start: 0;
 }
 .add-chart-area {
   margin-block-start: var(--space-2);

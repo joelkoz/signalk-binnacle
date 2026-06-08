@@ -31,6 +31,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- The Layers panel is reorganized into collapsible categories (Traffic and live data, Navigation
+  aids, Areas and boundaries, My routes and tracks, Ocean conditions, and Charts and depth), each
+  with a row count, so a long flat list reads as a few sections. The two most-used categories open by
+  default and the rest collapse to cut clutter; each category remembers whether you left it open or
+  closed. Per-layer toggles, opacity, the facet-group cards, and drag-to-reorder are unchanged.
+- A better default chart order: the US NOAA ENC nautical chart leads, then US BlueTopo bathymetry,
+  then EMODnet (Europe), then GEBCO (global), so the most detailed free coverage is on top. You can
+  still drag any layer to reorder it.
 - Cleaner, consistent layer names: sentence case throughout, plural for collection layers (Track is
   now Tracks), and a unified "source, type, region" format for the single-layer bathymetry overlays
   (for example "GEBCO bathymetry (global)"). The weather "Cloud cover" layer is now "Cloud" to match

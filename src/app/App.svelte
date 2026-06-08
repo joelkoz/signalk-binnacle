@@ -207,6 +207,11 @@ const mapViewStore = createMapView();
 const savedView = isMapView(mapViewStore.value) ? mapViewStore.value : undefined;
 const layerSettings = new PersistedValue<LayerSettings>('binnacle:layers', {});
 const layerOrder = new PersistedValue<string[]>('binnacle:layer-order', []);
+// Which Layers-panel categories the navigator has left open or closed, so the panel reopens that way.
+const layerCategoriesOpen = new PersistedValue<Record<string, boolean>>(
+  'binnacle:layer-categories',
+  {},
+);
 
 // User-imported PMTiles charts: the descriptor list is persisted, the files live in the browser
 // PMTiles store, and the chart-canvas registers an overlay per source.
@@ -782,7 +787,13 @@ onDestroy(() => {
     {/if}
     {#if activePanel === 'layers' && layersView}
       <div class="panel-slot">
-        <LayersPanel view={layersView} {userCharts} onClose={closePanel} onBack={backToMenu} />
+        <LayersPanel
+          view={layersView}
+          {userCharts}
+          categoriesOpen={layerCategoriesOpen}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
       </div>
     {/if}
     {#if activePanel === 'routes'}

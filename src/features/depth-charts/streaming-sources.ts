@@ -57,10 +57,14 @@ const BLUETOPO_GROUP = { id: 'bluetopo', title: 'BlueTopo (US)' };
 const BLUETOPO_BOUNDS: [number, number, number, number] = [-138.0, -53.876, 17.046, 59.55];
 const BLUETOPO_ATTRIBUTION = 'NOAA Office of Coast Survey, BlueTopo / National Bathymetric Source';
 
-// Live-verified free services (2026-06-02), global first then regional. Every one carries a
-// "not for navigation" constraint, so they are reference overlays, not the primary chart. Two
-// traps kept exactly as verified: BlueTopo serves 512px PNG8 tiles, and the NOAA ENC is a full
-// chart-display WMS whose LAYERS list selects S-57 display categories (see noaaEncSource above).
+// Live-verified free services (2026-06-02). Every one carries a "not for navigation" constraint, so
+// they are reference overlays, not the primary chart. Two traps kept exactly as verified: BlueTopo
+// serves 512px PNG8 tiles, and the NOAA ENC is a full chart-display WMS whose LAYERS list selects
+// S-57 display categories (see noaaEncSource above). Registration order is z, bottom to top, so the
+// array runs from the least specific at the bottom to the most relevant on top: GEBCO (global), then
+// EMODnet (EU), then BlueTopo and the NOAA ENC chart (US). The Layers panel reads that reversed, so
+// the default order is the US nautical chart first, then US bathymetry, then EU, then global. Most of
+// the free detail is US, and the navigator can drag any of them to taste.
 export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-gebco',
@@ -95,14 +99,6 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
     parent: 'depth-emodnet',
     group: EMODNET_GROUP,
   },
-  // Registration order is z-order, so the chart sits below its data-quality overlay. Both facets
-  // declare the same group so the Layers panel lists them under one "NOAA ENC (US)" header.
-  noaaEncSource('depth-noaa-enc', 'Base chart', '0,1,2,3,4,5,6,7,10', { group: NOAA_ENC_GROUP }),
-  // A facet of the chart above, nested under it: the Zones of Confidence and low-accuracy markers.
-  noaaEncSource('depth-noaa-enc-quality', 'Data quality (ZOC)', '8,9', {
-    parent: 'depth-noaa-enc',
-    group: NOAA_ENC_GROUP,
-  }),
   {
     id: 'depth-bluetopo',
     title: 'Bathymetry',
@@ -129,4 +125,12 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
     parent: 'depth-bluetopo',
     group: BLUETOPO_GROUP,
   },
+  // Registered last so the US nautical chart sits on top of the bathymetry when several are enabled,
+  // and leads the Charts and depth section. The chart sits below its own data-quality overlay, and
+  // both facets share the "NOAA ENC (US)" group.
+  noaaEncSource('depth-noaa-enc', 'Base chart', '0,1,2,3,4,5,6,7,10', { group: NOAA_ENC_GROUP }),
+  noaaEncSource('depth-noaa-enc-quality', 'Data quality (ZOC)', '8,9', {
+    parent: 'depth-noaa-enc',
+    group: NOAA_ENC_GROUP,
+  }),
 ];
