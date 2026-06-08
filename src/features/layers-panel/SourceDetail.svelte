@@ -32,8 +32,11 @@ function fmtBounds(b: [number, number, number, number] | undefined): string {
 }
 
 async function doDelete(): Promise<void> {
+  // Capture the id before onBack: onBack clears the panel's manageId, which makes the live `source`
+  // prop undefined, so reading source.id afterward would throw and the remove would never run.
+  const { id } = source;
   onBack();
-  await userCharts.remove(source.id);
+  await userCharts.remove(id);
 }
 </script>
 
