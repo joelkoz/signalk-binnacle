@@ -184,8 +184,6 @@ function onPopoutKeydown(event: KeyboardEvent): void {
   position: relative;
   display: inline-flex;
 }
-/* The trigger's open state is the shared .is-on lit chrome (see app.css), so it matches the strip and
-   weather pills. */
 .popout {
   position: absolute;
   inset-block-start: calc(100% + var(--space-2));

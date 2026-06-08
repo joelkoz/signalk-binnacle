@@ -376,7 +376,7 @@ onDestroy(() => {
       <div class="readout" role="status" aria-live="polite">
         <span class="readout-line">
           Wind <b>{formatKnotsOr(readout.speedMs)}</b> kn from
-          <b>{formatBearingOr(readout.fromRad)}</b>&deg;
+          <b>{formatBearingOr(readout.fromRad)}</b>&deg;T
           {#if showField(WEATHER_LAYER_IDS.pressure) && readout.pressurePa !== undefined}
             &middot; <b>{formatHectopascalsOr(readout.pressurePa)}</b> hPa
           {/if}
@@ -541,6 +541,14 @@ onDestroy(() => {
 .pill:hover:not(.is-on) {
   border-color: var(--accent);
   color: var(--text);
+}
+/* A scoped shim for the lit state: the component-scoped .pill base outranks the single global .is-on
+   class, so the shared tokens are reapplied here at scoped specificity. The values stay tokenized, so
+   the lit look is still one source. */
+.pill.is-on {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-tint);
 }
 .panel-map {
   position: relative;

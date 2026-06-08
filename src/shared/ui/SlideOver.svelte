@@ -8,7 +8,8 @@ import { dialog } from './dialog';
 // (checked inline so this shell stays self-contained within shared/ui): a zero duration makes the
 // reveal instant, so a helm with reduce-motion set sees no movement.
 const reduceMotion =
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
 
 interface Props {
   // The panel heading, and the default accessible name for the panel landmark.

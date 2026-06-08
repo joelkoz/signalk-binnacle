@@ -27,9 +27,10 @@
   --text-base: 0.85rem;
   --text-md: 0.9rem;
   --text-lg: 1rem;
-  /* A title tier above the body sizes for panel headings, and a readout tier for the hero mono
-     numbers (SOG, the nav metrics, the conditions values) so a glance lands on the number, not its
-     caps label. The instrument gesture is a big mono number over a small quiet label. */
+  /* A title tier above the body sizes for panel headings, and a readout tier for the largest hero
+     numbers, the nav and danger strip metrics, so a glance lands on the number, not its caps label.
+     The secondary readouts (the strip SOG and COG, the conditions values) step up only to --text-lg.
+     The instrument gesture is a big mono number over a small quiet label. */
   --text-xl: 1.15rem;
   --text-readout: 1.25rem;
   --z-overlay: 1;
@@ -238,15 +239,6 @@ body {
 .btn-pill {
   border-radius: var(--radius-pill);
 }
-/* The lit "engaged" state shared by the chrome toggles (the Follow and Forecast strip pills, the
-   weather layer pills, and the menu trigger when its menu is open): accent text and border over the
-   accent tint. One source so every toggle signals "on" the same way. As a class modifier it outranks
-   the base control, and night-red keeps it red-on-near-black through the per-theme accent tokens. */
-.is-on {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-tint);
-}
 
 /* The bordered input box shared by the chart URL, the rename field, and the threshold number inputs,
    mirroring the .btn box so every form control reads the same. The placeholder follows the theme
@@ -400,6 +392,18 @@ body {
 }
 .icon-pill:active:not(:disabled) {
   filter: brightness(0.94);
+}
+
+/* The lit "engaged" state shared by the chrome toggles (the Follow and Forecast strip pills, the
+   weather layer pills, and the menu trigger when its menu is open): accent text and border over the
+   accent tint. One source so every toggle signals "on" the same way. Placed after the .btn and
+   .icon-pill bases so it wins the same-specificity tie and the lit state takes effect; night-red
+   keeps it red-on-near-black through the per-theme accent tokens. (A Svelte-scoped base outranks
+   this single global class, so the weather pill carries its own scoped .pill.is-on shim.) */
+.is-on {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-tint);
 }
 
 /* The edge-docked slide-over panels (routes, layers, tracks, collision thresholds, and the note
