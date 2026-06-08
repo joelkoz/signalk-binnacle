@@ -57,19 +57,25 @@ export class UserCharts {
   #store: PmtilesStore;
   #persist: (sources: UserChartSource[]) => void;
   // Fires only when the user commits an imported chart, never for the persisted set restored at
-  // startup, so the app can fly the map to a freshly imported chart.
+  // startup, so the app can fly the map to a freshly imported chart and sync a URL chart to the
+  // server.
   #onAdd?: (source: UserChartSource) => void;
+  // Fires when a chart is removed, so the app can also delete its server-registered resource. Runs
+  // before the local descriptor is dropped, so the source is still available to the handler.
+  #onRemove?: (source: UserChartSource) => void;
 
   constructor(
     store: PmtilesStore,
     persisted: UserChartSource[],
     persist: (sources: UserChartSource[]) => void,
     onAdd?: (source: UserChartSource) => void,
+    onRemove?: (source: UserChartSource) => void,
   ) {
     this.#store = store;
     this.sources = persisted;
     this.#persist = persist;
     this.#onAdd = onAdd;
+    this.#onRemove = onRemove;
   }
 
   // Read a remote archive's metadata and stage it as a draft, without saving, so the user can review
@@ -129,6 +135,7 @@ export class UserCharts {
   async remove(id: string): Promise<void> {
     const source = this.sources.find((s) => s.id === id);
     if (!source) return;
+    this.#onRemove?.(source);
     if (source.origin.type === 'file') await this.#store.delete(source.origin.storeId);
     this.sources = this.sources.filter((s) => s.id !== id);
     this.#persist(this.sources);

@@ -86,4 +86,23 @@ describe('UserCharts stage, commit, and remove', () => {
     await charts.remove(charts.sources[0]?.id ?? '');
     expect(snapshots).toEqual([1, 0]);
   });
+
+  it('fires onAdd on commit and onRemove on remove (the server-sync hooks)', async () => {
+    const { store } = fakeStore();
+    const added: string[] = [];
+    const removed: string[] = [];
+    const charts = new UserCharts(
+      store,
+      [],
+      () => {},
+      (source) => added.push(source.id),
+      (source) => removed.push(source.id),
+    );
+    const draft = await charts.stageUrl('https://example.com/x.pmtiles');
+    await charts.commit(draft, 'X');
+    const id = charts.sources[0].id;
+    await charts.remove(id);
+    expect(added).toEqual([id]);
+    expect(removed).toEqual([id]);
+  });
 });

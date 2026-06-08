@@ -132,6 +132,14 @@ function dragOver(event: DragEvent): void {
             <dd>{formatBytes(draft.source.byteSize)}</dd>
           </div>
         {/if}
+        <div>
+          <dt>Stored</dt>
+          <dd>
+            {draft.source.origin.type === 'url'
+              ? 'This device, and shared to the server'
+              : 'This device'}
+          </dd>
+        </div>
       </dl>
       <div class="panel-controls">
         <button

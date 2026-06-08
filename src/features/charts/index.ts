@@ -1,1 +1,1 @@
-export { fetchCharts } from './charts-client';
+export { deleteChart, fetchCharts, putChart } from './charts-client';

@@ -4,6 +4,7 @@ import type { AisTargets } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
 import type { RouteStore } from '$entities/route';
 import type { TrackRecorder } from '$entities/track';
+import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
 import { createAisOverlay } from '$features/ais-layer';
 import { fetchCharts } from '$features/charts';
@@ -42,6 +43,9 @@ interface Props {
   trackSettings: PersistedValue<TrackSettings>;
   // Saved tracks to draw, pulled each frame so show/hide and edits reflect without a remount.
   savedTracks?: SavedTracksSource;
+  // The user's imported charts, so a server chart that is also a local user chart (a URL chart this
+  // device synced to the server) is registered once, from the local descriptor, not twice.
+  userCharts?: UserCharts;
   chartsToken?: string;
   // The view to open at, restored from the last visit; defaults to a world view.
   initialView?: MapView;
@@ -71,6 +75,7 @@ const {
   theme,
   trackSettings,
   savedTracks,
+  userCharts,
   chartsToken,
   initialView,
   savedLayers,
@@ -118,7 +123,14 @@ onMount(() => {
       // The server origin is fixed for the session, so resolve it once and reuse it for the chart
       // fetch, the overlays built here, and the user-chart registrar closure below.
       const origin = serverOrigin();
-      const charts = await fetchCharts(origin, chartsToken);
+      // A URL chart this device synced to the server comes back from the charts API with the same id
+      // as its local user-chart descriptor. Drop those server entries so the chart registers once,
+      // from the local descriptor (the manageable version); other devices, with no local descriptor,
+      // still see it as a server chart.
+      const localChartIds = new Set((userCharts?.sources ?? []).map((source) => source.id));
+      const charts = (await fetchCharts(origin, chartsToken)).filter(
+        (chart) => !localChartIds.has(chart.identifier),
+      );
       if (isDestroyed()) return;
 
       // Build every overlay, then register the whole stack in one batch so the layer order is

@@ -10,6 +10,10 @@ All notable changes to Binnacle are documented here. The format follows
 
 - A review step when importing a chart: after the file or URL is read, you can rename it and check
   its type, zoom range, and size before saving, instead of it saving immediately.
+- URL-based imported charts now register on the Signal K server as a chart resource, so other
+  devices on the same server discover them, and deleting the chart removes the server resource too.
+  The chart stays manageable locally (a synced chart is shown once, not twice). File-based imports
+  stay on the importing device, since a stock server cannot host the file bytes.
 
 ### Changed
 

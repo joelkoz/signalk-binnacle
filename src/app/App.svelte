@@ -22,6 +22,7 @@ import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/
 import { OwnVessel } from '$entities/vessel';
 import { WeatherStore } from '$entities/weather';
 import { AuthBanner } from '$features/auth-banner';
+import { deleteChart, putChart } from '$features/charts';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
 import { AppMenu, type MenuItem } from '$features/menu';
@@ -207,10 +208,20 @@ const userCharts = new UserCharts(
   pmtilesStore,
   userChartsStore.value,
   (sources) => userChartsStore.set(sources),
-  // Fly to a freshly imported chart so the user sees it, even when it covers a different area
-  // than the current view. Charts without known bounds (rare) leave the view unchanged.
+  // Fly to a freshly imported chart so the user sees it, even when it covers a different area than
+  // the current view (charts without known bounds, rare, leave the view unchanged). For a URL chart
+  // also register it as a server resource, best-effort, so other Signal K devices discover it. A
+  // file chart's bytes cannot be hosted on a stock server, so it stays local.
   (source) => {
     if (source.bounds) mapCommands?.fitBounds(source.bounds);
+    if (source.origin.type === 'url') {
+      void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url));
+    }
+  },
+  // On removal, also delete a URL chart's server resource (best-effort); a file chart was never
+  // synced, so there is nothing on the server to remove.
+  (source) => {
+    if (source.origin.type === 'url') void deleteChart(serverOrigin(), chartsToken, source.id);
   },
 );
 let userChartRegistrar = $state<UserChartRegistrar | undefined>();
@@ -703,6 +714,7 @@ onDestroy(() => {
       theme={theme.theme}
       {trackSettings}
       savedTracks={savedSource}
+      {userCharts}
       {chartsToken}
       initialView={savedView}
       savedLayers={layerSettings.value}
