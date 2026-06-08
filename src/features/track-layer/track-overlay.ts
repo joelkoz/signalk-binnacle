@@ -79,7 +79,7 @@ export function createTrackOverlay(
 
   return {
     id: 'track',
-    title: 'Track',
+    title: 'Tracks',
     band: BAND,
     supportsOpacity: true,
     layerIds: [SAVED_LAYER, ACTIVE_LAYER],

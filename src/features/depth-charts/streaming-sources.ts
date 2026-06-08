@@ -48,7 +48,7 @@ const noaaEncSource = (id: string, title: string, layers: string): StreamingChar
 export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-gebco',
-    title: 'GEBCO global bathymetry',
+    title: 'GEBCO bathymetry (global)',
     tiles: [wmsTiles('https://wms.gebco.net/mapserv', 'GEBCO_LATEST')],
     minzoom: 0,
     // GEBCO is a coarse ~450 m global grid; this cap keeps the WMS rendering crisp rather than
@@ -67,10 +67,10 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   },
   // Registration order is z-order, so the chart sits below its data-quality overlay.
   noaaEncSource('depth-noaa-enc', 'NOAA ENC chart (US)', '0,1,2,3,4,5,6,7,10'),
-  noaaEncSource('depth-noaa-enc-quality', 'NOAA ENC data quality', '8,9'),
+  noaaEncSource('depth-noaa-enc-quality', 'NOAA ENC data quality (US)', '8,9'),
   {
     id: 'depth-bluetopo',
-    title: 'NOAA BlueTopo bathymetry (US)',
+    title: 'BlueTopo bathymetry (US)',
     tiles: [
       'https://nowcoast.noaa.gov/geoserver/gwc/service/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=bluetopo:bathymetry&STYLE=&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:{z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png8',
     ],

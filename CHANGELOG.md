@@ -4,6 +4,21 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Cleaner, consistent layer names: sentence case throughout, plural for collection layers (Track is
+  now Tracks), and a unified "source, type, region" format for the bathymetry and chart overlays
+  (for example "GEBCO bathymetry (global)" and "BlueTopo bathymetry (US)"). The weather "Cloud cover"
+  layer is now "Cloud" to match the other single-word weather layers.
+
+### Fixed
+
+- Deleting a user-imported chart now actually removes it. The layer row, the map overlay, and the
+  stored descriptor were all left in place because the delete handler read the chart id after the
+  panel had already cleared its selection, so the removal threw and never ran.
+
 ## [0.1.3] - 2026-06-08
 
 ### Added
