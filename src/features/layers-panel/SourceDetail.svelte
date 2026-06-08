@@ -2,6 +2,7 @@
 import { ArrowLeft, Trash2 } from '@lucide/svelte';
 import type { UserChartSource, UserCharts } from '$entities/user-charts';
 import { formatBytes } from '$shared/lib';
+import ChartSpecList from './ChartSpecList.svelte';
 
 interface Props {
   source: UserChartSource;
@@ -13,6 +14,14 @@ const { source, userCharts, onBack }: Props = $props();
 
 let confirming = $state(false);
 let name = $state('');
+
+const specRows = $derived([
+  { label: 'Type', value: source.kind === 'vector' ? 'Vector' : 'Raster' },
+  { label: 'Source', value: source.origin.type === 'url' ? 'URL' : 'File (offline)' },
+  { label: 'Zoom', value: `${source.minzoom ?? 0} to ${source.maxzoom ?? source.minzoom ?? 0}` },
+  { label: 'Bounds', value: fmtBounds(source.bounds) },
+  ...(source.byteSize ? [{ label: 'Size', value: formatBytes(source.byteSize) }] : []),
+]);
 
 // Seed the editable name from the source, resyncing if it changes underneath. The panel keys
 // this component by source id, so it starts fresh for each chart.
@@ -61,30 +70,7 @@ async function doDelete(): Promise<void> {
     >
   </label>
 
-  <dl>
-    <div>
-      <dt>Type</dt>
-      <dd>{source.kind === 'vector' ? 'Vector' : 'Raster'}</dd>
-    </div>
-    <div>
-      <dt>Source</dt>
-      <dd>{source.origin.type === 'url' ? 'URL' : 'File (offline)'}</dd>
-    </div>
-    <div>
-      <dt>Zoom</dt>
-      <dd>{source.minzoom ?? 0} to {source.maxzoom ?? source.minzoom ?? 0}</dd>
-    </div>
-    <div>
-      <dt>Bounds</dt>
-      <dd>{fmtBounds(source.bounds)}</dd>
-    </div>
-    {#if source.byteSize}
-      <div>
-        <dt>Size</dt>
-        <dd>{formatBytes(source.byteSize)}</dd>
-      </div>
-    {/if}
-  </dl>
+  <ChartSpecList rows={specRows} />
 
   {#if confirming}
     <div class="confirm">
@@ -123,28 +109,6 @@ header h3 {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-}
-dl {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-}
-dl div {
-  display: grid;
-  grid-template-columns: 5rem 1fr;
-  gap: var(--space-2);
-  padding-block: 0.3rem;
-}
-/* A hairline between spec rows so the detail scans as a table, not a gray block. */
-dl div + div {
-  border-block-start: 1px solid var(--border);
-}
-dt {
-  color: var(--text-muted);
-}
-dd {
-  margin: 0;
-  overflow-wrap: anywhere;
 }
 .confirm {
   padding: var(--space-2);

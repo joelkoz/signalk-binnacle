@@ -214,14 +214,17 @@ const userCharts = new UserCharts(
   // file chart's bytes cannot be hosted on a stock server, so it stays local.
   (source) => {
     if (source.bounds) mapCommands?.fitBounds(source.bounds);
-    if (source.origin.type === 'url') {
+    if (source.origin.type === 'url' && chartsToken) {
       void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url));
     }
   },
   // On removal, also delete a URL chart's server resource (best-effort); a file chart was never
-  // synced, so there is nothing on the server to remove.
+  // synced, so there is nothing on the server to remove. Gated on a token, like the register above:
+  // without auth the write only earns a 401, so do not bother issuing it.
   (source) => {
-    if (source.origin.type === 'url') void deleteChart(serverOrigin(), chartsToken, source.id);
+    if (source.origin.type === 'url' && chartsToken) {
+      void deleteChart(serverOrigin(), chartsToken, source.id);
+    }
   },
 );
 let userChartRegistrar = $state<UserChartRegistrar | undefined>();

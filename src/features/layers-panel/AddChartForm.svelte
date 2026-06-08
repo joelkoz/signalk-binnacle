@@ -2,6 +2,7 @@
 import { CloudUpload, Link2 } from '@lucide/svelte';
 import type { DraftChart, UserCharts } from '$entities/user-charts';
 import { formatBytes } from '$shared/lib';
+import ChartSpecList from './ChartSpecList.svelte';
 
 interface Props {
   userCharts: UserCharts;
@@ -20,32 +21,48 @@ let fileInput = $state<HTMLInputElement>();
 let draft = $state<DraftChart | undefined>();
 let draftName = $state('');
 
-async function run(action: () => Promise<void>): Promise<void> {
+const draftRows = $derived(
+  draft
+    ? [
+        { label: 'Type', value: draft.source.kind === 'vector' ? 'Vector' : 'Raster' },
+        {
+          label: 'Zoom',
+          value: `${draft.source.minzoom ?? 0} to ${draft.source.maxzoom ?? draft.source.minzoom ?? 0}`,
+        },
+        ...(draft.source.byteSize
+          ? [{ label: 'Size', value: formatBytes(draft.source.byteSize) }]
+          : []),
+        {
+          label: 'Stored',
+          value:
+            draft.source.origin.type === 'url'
+              ? 'This device, and shared to the server'
+              : 'This device',
+        },
+      ]
+    : [],
+);
+
+// The busy and error envelope shared by the read-to-stage and the commit steps.
+async function withBusy(action: () => Promise<void>, fallbackError: string): Promise<void> {
   busy = true;
   error = undefined;
   try {
     await action();
-    onDone();
   } catch (e) {
-    error = e instanceof Error ? e.message : 'Could not add that chart.';
+    error = e instanceof Error ? e.message : fallbackError;
   } finally {
     busy = false;
   }
 }
 
 // Stage an import by reading its metadata, without saving, so the review step can rename it first.
-async function stage(read: () => Promise<DraftChart>): Promise<void> {
-  busy = true;
-  error = undefined;
-  try {
+function stage(read: () => Promise<DraftChart>): Promise<void> {
+  return withBusy(async () => {
     const next = await read();
     draft = next;
     draftName = next.source.name;
-  } catch (e) {
-    error = e instanceof Error ? e.message : 'Could not read that chart.';
-  } finally {
-    busy = false;
-  }
+  }, 'Could not read that chart.');
 }
 
 function stageUrl(): void {
@@ -65,12 +82,12 @@ function pickFile(event: Event): void {
 function saveDraft(): void {
   const staged = draft;
   if (!staged) return;
-  void run(async () => {
+  void withBusy(async () => {
     await userCharts.commit(staged, draftName);
     draft = undefined;
     draftName = '';
-    url = '';
-  });
+    onDone();
+  }, 'Could not add that chart.');
 }
 
 function cancelDraft(): void {
@@ -114,33 +131,7 @@ function dragOver(event: DragEvent): void {
         <span class="caps-label">Name</span>
         <input class="input" type="text" bind:value={draftName} disabled={busy}>
       </label>
-      <dl class="meta">
-        <div>
-          <dt>Type</dt>
-          <dd>{draft.source.kind === 'vector' ? 'Vector' : 'Raster'}</dd>
-        </div>
-        <div>
-          <dt>Zoom</dt>
-          <dd>
-            {draft.source.minzoom ?? 0}
-            to {draft.source.maxzoom ?? draft.source.minzoom ?? 0}
-          </dd>
-        </div>
-        {#if draft.source.byteSize}
-          <div>
-            <dt>Size</dt>
-            <dd>{formatBytes(draft.source.byteSize)}</dd>
-          </div>
-        {/if}
-        <div>
-          <dt>Stored</dt>
-          <dd>
-            {draft.source.origin.type === 'url'
-              ? 'This device, and shared to the server'
-              : 'This device'}
-          </dd>
-        </div>
-      </dl>
+      <ChartSpecList rows={draftRows} />
       <div class="panel-controls">
         <button
           type="button"
@@ -322,27 +313,5 @@ function dragOver(event: DragEvent): void {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-}
-.meta {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  font-size: var(--text-sm);
-}
-.meta div {
-  display: grid;
-  grid-template-columns: 4rem 1fr;
-  gap: var(--space-2);
-  padding-block: 0.3rem;
-}
-.meta div + div {
-  border-block-start: 1px solid var(--border);
-}
-.meta dt {
-  color: var(--text-muted);
-}
-.meta dd {
-  margin: 0;
-  overflow-wrap: anywhere;
 }
 </style>
