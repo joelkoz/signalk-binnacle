@@ -36,7 +36,11 @@
   --z-overlay: 1;
   --z-panel: 2;
   --z-menu: 5;
+  /* The touch target for action controls (buttons, the strip pills, icon buttons). A denser size
+     for list rows (menu items, layer toggles), still a comfortable tap target, keeps lists compact
+     without shrinking the primary actions. */
   --control-size: 2.75rem;
+  --row-size: 2.5rem;
   --tracking-caps: 0.06em;
   --disabled-opacity: 0.45;
   /* One hover and press timing for the whole UI, so interactive feedback feels uniform. */

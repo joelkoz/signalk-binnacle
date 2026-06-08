@@ -213,17 +213,17 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 .pinned-list {
-  margin-block-end: 0.45rem;
+  margin-block-end: var(--space-1);
 }
 .pinned-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-block-size: var(--control-size);
-  padding: 0.45rem var(--space-2);
+  min-block-size: var(--row-size);
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -242,7 +242,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
   font-weight: 600;
 }
 .group-label {
-  margin-block-start: 0.35rem;
+  margin-block-start: var(--space-1);
   padding-inline: 0.2rem;
 }
 .group-label:first-child {

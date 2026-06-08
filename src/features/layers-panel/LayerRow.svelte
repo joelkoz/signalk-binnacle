@@ -113,7 +113,13 @@ const percent = $derived(Math.round(item.opacity * 100));
 .row-main {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-1);
+}
+/* The row icon buttons (drag handle, manage) take the denser list-row size so the row tracks the
+   toggle height rather than the taller action-control size. */
+.row-main :global(.icon-btn) {
+  min-block-size: var(--row-size);
+  min-inline-size: var(--row-size);
 }
 /* The drag handle is an .icon-btn that keeps the grab cursor and suppresses touch scrolling so a
    drag starts cleanly on a touchscreen. */
@@ -125,7 +131,6 @@ const percent = $derived(Math.round(item.opacity * 100));
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-block-start: 0.1rem;
 }
 .opacity-line .lbl {
   min-inline-size: 3.2rem;
@@ -139,8 +144,10 @@ const percent = $derived(Math.round(item.opacity * 100));
   text-align: end;
   color: var(--text-muted);
 }
-/* The slider styling comes from the shared .range; only the flex sizing in the row is local. */
+/* The slider styling comes from the shared .range; the opacity line is a secondary fine-adjustment
+   control, so it sits in a shorter row than the primary toggle to keep the layer list compact. */
 .opacity {
   flex: 1;
+  min-block-size: 2rem;
 }
 </style>

@@ -6,12 +6,20 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A review step when importing a chart: after the file or URL is read, you can rename it and check
+  its type, zoom range, and size before saving, instead of it saving immediately.
+
 ### Changed
 
 - Cleaner, consistent layer names: sentence case throughout, plural for collection layers (Track is
   now Tracks), and a unified "source, type, region" format for the bathymetry and chart overlays
   (for example "GEBCO bathymetry (global)" and "BlueTopo bathymetry (US)"). The weather "Cloud cover"
   layer is now "Cloud" to match the other single-word weather layers.
+- A denser, more consistent app menu and Layers panel: list rows use a compact row size while action
+  buttons keep the larger touch target, the opacity sliders sit in shorter rows, and the gaps are
+  snapped to one spacing scale, so more layers and menu items fit without scrolling.
 
 ### Fixed
 

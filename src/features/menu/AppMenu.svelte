@@ -222,8 +222,8 @@ function onPopoutKeydown(event: KeyboardEvent): void {
   align-items: center;
   gap: var(--space-2);
   inline-size: 100%;
-  min-block-size: var(--control-size);
-  padding-block: var(--space-2);
+  min-block-size: var(--row-size);
+  padding-block: var(--space-1);
   padding-inline: var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);

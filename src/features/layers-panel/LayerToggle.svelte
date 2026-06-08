@@ -22,7 +22,7 @@ const { title, visible, onToggle }: Props = $props();
   min-inline-size: 0;
   align-items: center;
   gap: var(--space-2);
-  min-block-size: var(--control-size);
+  min-block-size: var(--row-size);
   font-size: var(--text-md);
   cursor: pointer;
 }
