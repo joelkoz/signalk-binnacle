@@ -270,21 +270,70 @@ let applying = false;
 // Handed up by the weather mini-map once it is ready, to push a weather-layer snapshot at runtime.
 let applyWeatherLayers = $state<((settings: LayerSettings) => void) | undefined>();
 
-// Read every portable store into a profile bundle. The layers and order are the persisted overrides,
-// not the live LayerManager state, which keeps capture cheap and matches what a restore writes back.
+// Every portable setting defined once: how to read it into a profile bundle, how to write it back, and
+// how to track it for the dirty check. Adding a setting is one entry here, not a parallel edit to a
+// capture list, an apply list, and a dirty-tracking list that could drift out of step. The layers and
+// order read the persisted overrides, not the live LayerManager state, which keeps capture cheap and
+// matches what a restore writes back.
+const portableSettings: Array<{
+  read: () => Partial<ProfileSettings>;
+  write: (s: ProfileSettings) => void;
+  track: () => void;
+}> = [
+  {
+    read: () => ({ theme: theme.theme }),
+    write: (s) => theme.set(s.theme),
+    track: () => void theme.theme,
+  },
+  {
+    read: () => ({ layers: { ...layerSettings.value } }),
+    write: (s) => layerSettings.set(s.layers),
+    track: () => void layerSettings.value,
+  },
+  {
+    read: () => ({ layerOrder: [...layerOrder.value] }),
+    write: (s) => layerOrder.set(s.layerOrder),
+    track: () => void layerOrder.value,
+  },
+  {
+    read: () => ({ layerCategories: { ...layerCategoriesOpen.value } }),
+    write: (s) => layerCategoriesOpen.set(s.layerCategories),
+    track: () => void layerCategoriesOpen.value,
+  },
+  {
+    read: () => ({ weatherLayers: { ...weatherLayerSettings.value } }),
+    write: (s) => weatherLayerSettings.set(s.weatherLayers),
+    track: () => void weatherLayerSettings.value,
+  },
+  {
+    read: () => ({ thresholds: { ...thresholds.value } }),
+    write: (s) => thresholds.set(s.thresholds),
+    track: () => void thresholds.value,
+  },
+  {
+    read: () => ({ trackSettings: { ...trackSettings.value } }),
+    write: (s) => trackSettings.set(s.trackSettings),
+    track: () => void trackSettings.value,
+  },
+  {
+    read: () => ({ planningSpeedKn: planningSpeedKn.value }),
+    write: (s) => planningSpeedKn.set(s.planningSpeedKn),
+    track: () => void planningSpeedKn.value,
+  },
+  {
+    read: () => ({ alarmMuted: alarmMuted.value }),
+    write: (s) => alarmMuted.set(s.alarmMuted),
+    track: () => void alarmMuted.value,
+  },
+  {
+    read: () => ({ arrivalMuted: arrivalMuted.value }),
+    write: (s) => arrivalMuted.set(s.arrivalMuted),
+    track: () => void arrivalMuted.value,
+  },
+];
+
 function captureProfileSettings(): ProfileSettings {
-  return {
-    theme: theme.theme,
-    layers: { ...layerSettings.value },
-    layerOrder: [...layerOrder.value],
-    layerCategories: { ...layerCategoriesOpen.value },
-    weatherLayers: { ...weatherLayerSettings.value },
-    thresholds: { ...thresholds.value },
-    trackSettings: { ...trackSettings.value },
-    planningSpeedKn: planningSpeedKn.value,
-    alarmMuted: alarmMuted.value,
-    arrivalMuted: arrivalMuted.value,
-  };
+  return Object.assign({}, ...portableSettings.map((p) => p.read())) as ProfileSettings;
 }
 
 // Write every portable store from a profile bundle, then push the layer snapshots to the nav chart and
@@ -292,16 +341,7 @@ function captureProfileSettings(): ProfileSettings {
 // the dirty effect runs (and skips) within the same flush rather than flagging the apply as an edit.
 function applyProfileSettings(s: ProfileSettings): void {
   applying = true;
-  theme.set(s.theme);
-  layerSettings.set(s.layers);
-  layerOrder.set(s.layerOrder);
-  layerCategoriesOpen.set(s.layerCategories);
-  weatherLayerSettings.set(s.weatherLayers);
-  thresholds.set(s.thresholds);
-  trackSettings.set(s.trackSettings);
-  planningSpeedKn.set(s.planningSpeedKn);
-  alarmMuted.set(s.alarmMuted);
-  arrivalMuted.set(s.arrivalMuted);
+  for (const p of portableSettings) p.write(s);
   mapCommands?.applyLayers(s.layers, s.layerOrder);
   applyWeatherLayers?.(s.weatherLayers);
   void tick().then(() => {
@@ -312,16 +352,7 @@ function applyProfileSettings(s: ProfileSettings): void {
 // Mark the active profile edited when any portable setting changes outside of an apply, so the panel
 // and the top-bar switcher can offer to save the change.
 $effect(() => {
-  void theme.theme;
-  void layerSettings.value;
-  void layerOrder.value;
-  void layerCategoriesOpen.value;
-  void weatherLayerSettings.value;
-  void thresholds.value;
-  void trackSettings.value;
-  void planningSpeedKn.value;
-  void alarmMuted.value;
-  void arrivalMuted.value;
+  for (const p of portableSettings) p.track();
   // markDirty owns the "only when a profile is active" guard, so this effect does not read activeId
   // (which would add a needless dependency that re-runs it on every profile switch).
   if (!applying) profileStore.markDirty();
