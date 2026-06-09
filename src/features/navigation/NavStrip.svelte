@@ -9,13 +9,14 @@ import {
   PLACEHOLDER,
 } from '$shared/lib';
 import { steerSide } from '$shared/nav';
+import type { RouteProgress } from './route-progress';
 
 interface Props {
   guidance: CourseGuidance;
   // Whole-route distance and time to go across the legs still ahead, shown as a passage arrival
   // readout when a multi-leg route is active. Undefined for a single leg, where the per-leg numbers
   // already say it.
-  routeProgress?: { distanceToGoMeters: number; timeToGoSeconds?: number };
+  routeProgress?: RouteProgress;
   onStop: () => void;
   // Skip the active waypoint forward (1) or back (-1) along the route.
   onSkip?: (delta: number) => void;

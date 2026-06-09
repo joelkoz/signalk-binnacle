@@ -12,7 +12,7 @@ import {
   Undo2,
 } from '@lucide/svelte';
 import type { TrackRecorder } from '$entities/track';
-import { formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
+import { formatDuration, formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
 import { promptSaveName, SlideOver } from '$shared/ui';
 import type { SavedTrack } from './tracks-client';
@@ -53,13 +53,6 @@ const colorMode = $derived(settings.value.colorMode);
 // Until the track has captured a point, its stats are absent, not zero, so show the placeholder.
 const hasTrack = $derived(recorder.points.length > 0);
 
-function duration(seconds: number): string {
-  const total = Math.max(0, Math.round(seconds));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-}
-
 // Each saved track's distance and duration, formatted once per change. They ride on the SavedTrack as
 // SI metadata saved with the geometry, so the card reads them without re-walking the points; a track
 // saved without them shows the placeholder.
@@ -67,7 +60,8 @@ const savedCards = $derived(
   saved.map((track) => ({
     track,
     distanceNm: track.distanceMeters == null ? PLACEHOLDER : formatNm(track.distanceMeters),
-    durationText: track.durationSeconds == null ? PLACEHOLDER : duration(track.durationSeconds),
+    durationText:
+      track.durationSeconds == null ? PLACEHOLDER : formatDuration(track.durationSeconds),
   })),
 );
 
@@ -168,7 +162,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     </dd>
     <dt>Duration</dt>
     <dd>
-      <span class="num">{hasTrack ? duration(stats.durationSeconds) : PLACEHOLDER}</span>
+      <span class="num">{hasTrack ? formatDuration(stats.durationSeconds) : PLACEHOLDER}</span>
       <span class="unit"></span>
     </dd>
     <dt>Avg</dt>

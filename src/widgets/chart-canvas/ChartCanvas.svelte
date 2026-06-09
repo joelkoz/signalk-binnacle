@@ -32,7 +32,7 @@ import {
   type ThemedMapHandle,
 } from '$shared/map';
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
-import { type SignalKStore, serverOrigin } from '$shared/signalk';
+import { type LatLon, type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 import ChartContextMenu from './ChartContextMenu.svelte';
 import type { MapCommands, UserChartRegistrar } from './commands';
@@ -73,7 +73,7 @@ interface Props {
   // Fired when the user pans the map by hand (a drag), so a follow lock can release.
   onUserPan?: () => void;
   // Set a single "go to here" destination at a chart point the user long-pressed or right-clicked.
-  onGoToHere?: (latitude: number, longitude: number) => void;
+  onGoToHere?: (position: LatLon) => void;
 }
 
 const {
@@ -293,7 +293,7 @@ onDestroy(() => mapHandle?.destroy());
       width={menu.width}
       height={menu.height}
       onGoToHere={() => {
-        onGoToHere?.(menu.lat, menu.lon);
+        onGoToHere?.({ latitude: menu.lat, longitude: menu.lon });
         chartMenu = undefined;
       }}
       onClose={() => {

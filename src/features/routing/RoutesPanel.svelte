@@ -21,6 +21,7 @@ import {
   knotsToMetersPerSecond,
   PLACEHOLDER,
 } from '$shared/lib';
+import { etaSeconds } from '$shared/nav';
 import type { PersistedValue } from '$shared/settings';
 import { promptSaveName, SlideOver } from '$shared/ui';
 
@@ -99,24 +100,26 @@ async function onPickGpx(event: Event): Promise<void> {
 const savedCards = $derived(
   routes.map((route) => ({ route, distanceNm: formatNm(routeDistanceMeters(route.waypoints)) })),
 );
-const workingDistanceMeters = $derived(working ? routeDistanceMeters(working.waypoints) : 0);
-const workingDistanceNm = $derived(working ? formatNm(workingDistanceMeters) : '');
-// Each leg's distance and bearing for the route under edit, plus the cumulative passage time to reach
-// that leg's end waypoint at the planning speed, so the plan reads as a leg table the way a navigator
-// lays out a passage, updating live as waypoints are dragged, inserted, or the speed changes.
 const planSpeedMps = $derived(knotsToMetersPerSecond(Math.max(0, planningSpeed.value || 0)));
+// Each leg's distance, bearing, and the cumulative distance to reach that leg's end waypoint, so the
+// plan reads as a leg table the way a navigator lays out a passage, updating live as waypoints are
+// dragged or inserted. The per-leg passage times are layered on at render so this geometry walk does
+// not re-run when only the planning speed changes.
 const workingLegs = $derived.by(() => {
   let cumulativeMeters = 0;
   return routeLegs(working?.waypoints ?? []).map((leg) => {
     cumulativeMeters += leg.distanceMeters;
-    const cumulativeSeconds = planSpeedMps > 0 ? cumulativeMeters / planSpeedMps : undefined;
-    return { ...leg, cumulativeSeconds };
+    return { ...leg, cumulativeMeters };
   });
 });
+// The whole-route distance is the last leg's cumulative, so the total and the table cannot drift.
+const workingDistanceMeters = $derived(workingLegs.at(-1)?.cumulativeMeters ?? 0);
+const workingDistanceNm = $derived(formatNm(workingDistanceMeters));
 // The whole-passage time at the planning speed, shown alongside the total distance.
-const totalTime = $derived(
-  planSpeedMps > 0 ? formatDuration(workingDistanceMeters / planSpeedMps) : PLACEHOLDER,
-);
+const totalTime = $derived.by(() => {
+  const seconds = etaSeconds(workingDistanceMeters, planSpeedMps);
+  return seconds == null ? PLACEHOLDER : formatDuration(seconds);
+});
 </script>
 
 <SlideOver title="Routes" bodyFlex closeLabel="Close routes panel" {onClose} {onBack}>
@@ -158,6 +161,7 @@ const totalTime = $derived(
       <label class="plan-speed">
         <span>Plan speed</span>
         <input
+          class="input"
           type="number"
           min="0"
           step="0.5"
@@ -170,12 +174,13 @@ const totalTime = $derived(
       {#if workingLegs.length > 0}
         <ol class="legs" aria-label="Legs">
           {#each workingLegs as leg (leg.fromIndex)}
+            {@const seconds = etaSeconds(leg.cumulativeMeters, planSpeedMps)}
             <li>
               <span class="leg-no">{leg.fromIndex + 1}</span>
               <span class="leg-dist">{formatNm(leg.distanceMeters)} nm</span>
               <span class="leg-brg">{formatBearingOr(leg.bearingRad)}&deg;T</span>
               <span class="leg-time">
-                {leg.cumulativeSeconds == null ? PLACEHOLDER : formatDuration(leg.cumulativeSeconds)}
+                {seconds == null ? PLACEHOLDER : formatDuration(seconds)}
               </span>
             </li>
           {/each}
@@ -343,14 +348,9 @@ const totalTime = $derived(
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
+/* The box comes from the shared global .input; only the compact width and the mono readout are local. */
 .plan-speed input {
   inline-size: 4rem;
-  min-block-size: var(--control-size);
-  padding: 0 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }

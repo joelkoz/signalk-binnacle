@@ -54,7 +54,7 @@ function onKeydown(event: KeyboardEvent): void {
 .backdrop {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: var(--z-overlay);
   padding: 0;
   border: 0;
   background: transparent;
@@ -62,7 +62,7 @@ function onKeydown(event: KeyboardEvent): void {
 }
 .menu {
   position: absolute;
-  z-index: 5;
+  z-index: var(--z-menu);
   padding: 0.2rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

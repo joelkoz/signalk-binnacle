@@ -16,7 +16,7 @@ export interface CpaResult {
 
 // Meters per degree at the equator: exact for latitude, and the base for longitude once
 // scaled by cos(latitude). One constant serves both axes; the cos factor is what differs.
-const METERS_PER_DEG = 111_320;
+export const METERS_PER_DEG = 111_320;
 
 // Local east-north projection around the own vessel. Accurate within the few
 // nautical miles that matter for collision; large separations are not the use case.

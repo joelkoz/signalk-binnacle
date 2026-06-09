@@ -6,12 +6,32 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Course planning on the chart. Long-press (touch) or right-click (desktop) a point and choose "Go to
+  here" to navigate straight to it via the Course API, with the destination shown on the nav strip.
+- Route interchange via GPX. Export any saved route to a GPX file other plotters, MFDs, and
+  Freeboard-SK read, and import routes from a GPX file back into Binnacle, closing the round trip.
+- Passage planning in the route editor. A persisted plan speed turns the leg table into a passage
+  plan, showing the cumulative time to reach each waypoint and a whole-route Time alongside the
+  distance, plus a per-leg distance and bearing table that updates live as waypoints are dragged.
+- Track-to-route workflows. Save the current track as a reusable route, reverse a saved route for the
+  return leg, navigate home by retracing the current track, and skip the active route's waypoint
+  forward or back from the nav strip. The nav strip also shows the whole-route distance and arrival
+  time when a multi-leg route is active.
+
 ### Changed
 
 - The Layers panel now leads with "My routes and tracks" above "Traffic and live data". The panel
   order is kept aligned with the map stack so drag-to-reorder lands coherently, so this also raises
   the routes and track layers above AIS and the reference overlays on the chart; the own vessel and
   the collision rings stay pinned on top.
+- The Tracks panel now renders saved tracks as the same elevated cards as the Routes panel, each
+  showing the track's distance and duration, and the current-track stats line was tightened to a
+  label, value, and unit grid that removes the trailing whitespace and aligns the values in a column.
+- The chart pan cursor is now a high-contrast hand (a light halo over a dark line) instead of the
+  desktop theme's hand, so the pan affordance stays visible on the light day chart and the night-red
+  black background.
 
 ### Internal
 
@@ -20,6 +40,13 @@ All notable changes to Binnacle are documented here. The format follows
   hardcodes which map band each draws into (matching the depth-charts sibling). Deduplicated the
   chart zoom-range expression and the tides upcoming-events computation, moved the station-distance
   formatter into the tides display module, and tidied a handful of comments.
+- A /simplify pass over the plotter and UI changes: the saved-item card list moved to one global
+  `.saved` system in `app.css` consumed by both panels, a shared `downloadBlob` helper backs the
+  track and route exporters, the GPX escape and unescape pair moved to one `xml-entities` module, the
+  distance-over-speed time uses the shared `etaSeconds` everywhere, the meters-per-degree constant is
+  shared from `$shared/nav`, the nav-strip `RouteProgress` type has one definition, the plan-speed
+  field uses the shared `.input`, and the whole-route distance derives from the leg table so the total
+  and the per-leg numbers cannot drift.
 
 ## [0.2.1] - 2026-06-09
 

@@ -28,7 +28,7 @@ import { deleteChart, putChart } from '$features/charts';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
 import { AppMenu, type MenuItem } from '$features/menu';
-import { ArrivalAlarm, NavStrip } from '$features/navigation';
+import { ArrivalAlarm, NavStrip, type RouteProgress } from '$features/navigation';
 import {
   createNoteDetailLoader,
   type NoteDetailLoader,
@@ -77,6 +77,7 @@ import {
   uuidv4,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
+import { etaSeconds } from '$shared/nav';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
 import {
   createMapView,
@@ -86,7 +87,7 @@ import {
   type MapView,
   PersistedValue,
 } from '$shared/settings';
-import type { ConnectionPhase, Context } from '$shared/signalk';
+import type { ConnectionPhase, Context, LatLon } from '$shared/signalk';
 import {
   AuthController,
   createSignalKClient,
@@ -133,12 +134,11 @@ const arrivalMuted = new PersistedValue<boolean>('binnacle:arrival-muted', false
 // The speed, in knots, used to turn a planned route's distance into per-waypoint passage times.
 const planningSpeedKn = new PersistedValue<number>('binnacle:planning-speed-kn', 5);
 
-// Whole-route distance-to-go and time-to-go across the legs still ahead, for the passage arrival
-// readout. Only when a multi-leg route is active and more than the current leg remains, so a single
-// "go to" or the final leg leaves it undefined and the strip shows just the per-leg numbers.
-const routeProgress = $derived.by<
-  { distanceToGoMeters: number; timeToGoSeconds?: number } | undefined
->(() => {
+// Whole-route distance still to run across the legs ahead, for the passage arrival readout. Only when
+// a multi-leg route is active and more than the current leg remains, so a single "go to" or the final
+// leg leaves it undefined and the strip shows just the per-leg numbers. Kept separate from the time so
+// the geodesy walk re-runs on a waypoint or route change, not on every SOG tick.
+const routeDistanceToGoMeters = $derived.by<number | undefined>(() => {
   const idx = courseGuidance.activePointIndex;
   const total = courseGuidance.activePointTotal;
   const toNext = courseGuidance.distanceToNextMeters;
@@ -148,10 +148,18 @@ const routeProgress = $derived.by<
   }
   const route = routeStore.routes.find((r) => r.id === id);
   if (!route) return undefined;
-  const distanceToGoMeters = toNext + remainingRouteDistanceMeters(route.waypoints, idx);
+  return toNext + remainingRouteDistanceMeters(route.waypoints, idx);
+});
+
+// Pair the distance with the arrival time at the current SOG, so only this divide re-runs per tick.
+const routeProgress = $derived.by<RouteProgress | undefined>(() => {
+  const distanceToGoMeters = routeDistanceToGoMeters;
+  if (distanceToGoMeters == null) return undefined;
   const sog = vessel.sogMps;
-  const timeToGoSeconds = sog != null && sog > 0 ? distanceToGoMeters / sog : undefined;
-  return { distanceToGoMeters, timeToGoSeconds };
+  return {
+    distanceToGoMeters,
+    timeToGoSeconds: sog == null ? undefined : etaSeconds(distanceToGoMeters, sog),
+  };
 });
 
 // Tides and tidal currents from NOAA CO-OPS (US waters). The store feeds the panel and the nearest
@@ -717,9 +725,9 @@ async function onImportRouteGpx(gpxText: string): Promise<void> {
 // Navigate straight to a point the user picked on the chart (long-press or right-click, then "Go to
 // here"). A single destination replaces any active route on the server, so clear the local active
 // route and mark the goto active, then seed the nav strip from a one-time hydration.
-async function onGoToHere(latitude: number, longitude: number): Promise<void> {
+async function onGoToHere(position: LatLon): Promise<void> {
   clearRouteError();
-  if (!(await setDestination(serverOrigin(), chartsToken, { latitude, longitude }))) {
+  if (!(await setDestination(serverOrigin(), chartsToken, position))) {
     flagRouteError('Could not set the destination. Check the connection.');
     return;
   }

@@ -1,24 +1,6 @@
 import type { Route, Waypoint } from '$entities/route';
 import { uuidv4 } from '$shared/lib';
-
-const XML_UNESCAPES: Record<string, string> = {
-  amp: '&',
-  lt: '<',
-  gt: '>',
-  apos: "'",
-  quot: '"',
-};
-
-function unescapeXml(value: string): string {
-  return value.replace(/&(#x[0-9a-fA-F]+|#[0-9]+|amp|lt|gt|apos|quot);/g, (match, code) => {
-    if (code[0] === '#') {
-      const cp =
-        code[1] === 'x' ? Number.parseInt(code.slice(2), 16) : Number.parseInt(code.slice(1), 10);
-      return Number.isFinite(cp) ? String.fromCodePoint(cp) : match;
-    }
-    return XML_UNESCAPES[code] ?? match;
-  });
-}
+import { unescapeXml } from './xml-entities';
 
 // An optional namespace prefix (gpx:, ns3:, ...) precedes the element name in some exports.
 const RTE = /<(?:\w+:)?rte\b[^>]*>([\s\S]*?)<\/(?:\w+:)?rte>/gi;
