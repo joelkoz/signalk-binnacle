@@ -54,7 +54,7 @@ const sections = $derived(detail?.sections ? orderSections(detail.sections) : un
 const credit = $derived(detail?.attribution ?? selection.attribution);
 const extraSources = $derived((detail?.sources ?? []).filter((s) => s !== credit));
 const sourceUrl = $derived(safeHttpUrl(detail?.url ?? selection.url ?? ''));
-const hasFooter = $derived(Boolean(credit || sourceUrl));
+const hasFooter = $derived(Boolean(credit || extraSources.length || sourceUrl));
 
 function measure(item: NormalizedItem): string {
   return item.unit ? `${item.value} ${item.unit}` : String(item.value);

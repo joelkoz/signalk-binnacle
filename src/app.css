@@ -623,9 +623,6 @@ body {
   padding: 0.6rem var(--space-3);
   border-block-end: 1px solid var(--border);
 }
-.panel-header .panel-title {
-  flex: 1;
-}
 .panel-body {
   flex: 1;
   overflow-y: auto;

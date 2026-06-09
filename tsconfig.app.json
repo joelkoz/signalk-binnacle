@@ -9,6 +9,8 @@
     "allowJs": true,
     "checkJs": true,
     "moduleDetection": "force",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "paths": {
       "$app/*": ["./src/app/*"],
       "$views/*": ["./src/views/*"],

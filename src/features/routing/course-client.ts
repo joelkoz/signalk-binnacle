@@ -1,4 +1,5 @@
 import type { LatLon } from '$shared/geo';
+import { fetchJsonOrUndefined } from '$shared/lib';
 import type { CourseCalculations, CourseInfo } from '$shared/signalk';
 import { authInit, deleteResource, putResource } from '$shared/signalk';
 
@@ -42,14 +43,8 @@ export async function hydrateCourse(
   base: string,
   token: string | undefined,
 ): Promise<{ info?: CourseInfo; calc?: CourseCalculations }> {
-  const read = async <T>(path: string): Promise<T | undefined> => {
-    try {
-      const res = await fetch(`${base}${COURSE}${path}`, authInit(token));
-      return res.ok ? ((await res.json()) as T) : undefined;
-    } catch {
-      return undefined;
-    }
-  };
+  const read = <T>(path: string): Promise<T | undefined> =>
+    fetchJsonOrUndefined<T>(`${base}${COURSE}${path}`, authInit(token));
   const [info, calc] = await Promise.all([
     read<CourseInfo>(''),
     read<CourseCalculations>('/calcValues'),

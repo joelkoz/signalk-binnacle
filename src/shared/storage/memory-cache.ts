@@ -25,16 +25,23 @@ export class MemoryCache<V> {
   }
 
   put(key: string, value: V, now: number): void {
+    this.#insert(key, value, now + this.#ttlMs, now);
+  }
+
+  // Insert with an explicit absolute expiry, for a caller promoting an entry from a longer-lived store
+  // (the weather L2 cache) that already knows when the entry should expire, rather than restarting the
+  // TTL from now. The sweep still uses the real now, so it never wrongly keeps an already-expired entry.
+  putAt(key: string, value: V, expiresAt: number, now: number): void {
+    this.#insert(key, value, expiresAt, now);
+  }
+
+  #insert(key: string, value: V, expires: number, now: number): void {
     for (const [k, entry] of this.#entries) if (entry.expires <= now) this.#entries.delete(k);
-    this.#entries.set(key, { value, expires: now + this.#ttlMs });
+    this.#entries.set(key, { value, expires });
     while (this.#entries.size > this.#maxEntries) {
       const oldest = this.#entries.keys().next().value;
       if (oldest === undefined) break;
       this.#entries.delete(oldest);
     }
-  }
-
-  delete(key: string): void {
-    this.#entries.delete(key);
   }
 }

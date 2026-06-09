@@ -113,10 +113,9 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
         if (mem) return { grid: mem, partial: false, fromNetwork: false };
         const stored = await deps.persist.get(key);
         if (stored && stored.expires > t) {
-          // Promote the L2 hit into L1 with its REMAINING life: passing `expires - GRID_TTL_MS` as
-          // `now` makes the cache recompute `now + GRID_TTL_MS`, which equals the persisted absolute
-          // expiry, so the in-memory copy expires exactly when the persisted entry would.
-          gridCache.put(key, stored.value, stored.expires - GRID_TTL_MS);
+          // Promote the L2 hit into L1 with the persisted absolute expiry, so the in-memory copy
+          // expires exactly when the persisted entry would, rather than restarting the TTL from now.
+          gridCache.putAt(key, stored.value, stored.expires, t);
           return { grid: stored.value, partial: false, fromNetwork: false };
         }
         if (t < gridCooldownUntil) return { grid: undefined, partial: false, fromNetwork: false };

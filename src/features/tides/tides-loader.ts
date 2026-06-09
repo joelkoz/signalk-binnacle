@@ -8,6 +8,7 @@ import type {
 } from '$entities/tides';
 import { DAY_MS, MINUTE_MS } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
+import { MemoryCache } from '$shared/storage';
 import {
   fetchCurrentEvents,
   fetchCurrentStations,
@@ -58,14 +59,6 @@ const realDeps: LoaderDeps = {
 // derive from localYmd), so the cache and the window roll over at the same local-midnight instant.
 const dayKey = (ms: number): string => localYmd(ms, '-');
 
-function cachePut<T>(cache: Map<string, T>, key: string, value: T): void {
-  if (cache.size >= MAX_EVENT_ENTRIES) {
-    const oldest = cache.keys().next().value;
-    if (oldest !== undefined) cache.delete(oldest);
-  }
-  cache.set(key, value);
-}
-
 // A tides loader with its own session caches: the station lists are fetched once a day, and each
 // station's events are kept for the day so panning back to a covered area is instant. It feeds the
 // nearest tide and current readings into the store, or flags no coverage outside US waters.
@@ -74,8 +67,12 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
   let tideList: TideStation[] | undefined;
   let currentList: TideStation[] | undefined;
   let listsAt = 0;
-  const tideEventCache = new Map<string, { events: TideEvent[]; day: string }>();
-  const currentEventCache = new Map<string, { events: CurrentEvent[]; day: string }>();
+  // Bounded per-station caches with the default infinite TTL: the day field invalidates an entry, so
+  // a non-current entry is refetched rather than expired by time. MemoryCache only caps the size.
+  const tideEventCache = new MemoryCache<{ events: TideEvent[]; day: string }>(MAX_EVENT_ENTRIES);
+  const currentEventCache = new MemoryCache<{ events: CurrentEvent[]; day: string }>(
+    MAX_EVENT_ENTRIES,
+  );
   let cooldownUntil = 0;
   let inFlight = false;
   let lastLat: number | undefined;
@@ -109,10 +106,10 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
           store.setNoCoverage();
           return;
         }
-        let tideEntry = tideEventCache.get(nearTide.station.id);
+        let tideEntry = tideEventCache.get(nearTide.station.id, nowMs);
         if (!tideEntry || tideEntry.day !== day) {
           tideEntry = { events: await deps.tideEvents(nearTide.station.id), day };
-          cachePut(tideEventCache, nearTide.station.id, tideEntry);
+          tideEventCache.put(nearTide.station.id, tideEntry, nowMs);
         }
         const tide: TideReading = {
           station: nearTide.station,
@@ -131,10 +128,10 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
           CURRENT_RADIUS_M,
         );
         for (const candidate of nearCurrents) {
-          let currentEntry = currentEventCache.get(candidate.station.id);
+          let currentEntry = currentEventCache.get(candidate.station.id, nowMs);
           if (!currentEntry || currentEntry.day !== day) {
             currentEntry = { events: await deps.currentEvents(candidate.station.id), day };
-            cachePut(currentEventCache, candidate.station.id, currentEntry);
+            currentEventCache.put(candidate.station.id, currentEntry, nowMs);
           }
           if (currentEntry.events.length > 0) {
             current = {
