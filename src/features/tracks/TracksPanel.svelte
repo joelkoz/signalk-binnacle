@@ -60,6 +60,17 @@ function duration(seconds: number): string {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
+// Each saved track's distance and duration, formatted once per change. They ride on the SavedTrack as
+// SI metadata saved with the geometry, so the card reads them without re-walking the points; a track
+// saved without them shows the placeholder.
+const savedCards = $derived(
+  saved.map((track) => ({
+    track,
+    distanceNm: track.distanceMeters == null ? PLACEHOLDER : formatNm(track.distanceMeters),
+    durationText: track.durationSeconds == null ? PLACEHOLDER : duration(track.durationSeconds),
+  })),
+);
+
 function promptSave(): void {
   const name = promptSaveName('Track');
   if (name !== undefined) onSave(name);
@@ -151,13 +162,25 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 
   <dl class="stats">
     <dt>Distance</dt>
-    <dd><span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span> nm</dd>
+    <dd>
+      <span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span>
+      <span class="unit">nm</span>
+    </dd>
     <dt>Duration</dt>
-    <dd><span class="num">{hasTrack ? duration(stats.durationSeconds) : PLACEHOLDER}</span></dd>
+    <dd>
+      <span class="num">{hasTrack ? duration(stats.durationSeconds) : PLACEHOLDER}</span>
+      <span class="unit"></span>
+    </dd>
     <dt>Avg</dt>
-    <dd><span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span> kn</dd>
+    <dd>
+      <span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span>
+      <span class="unit">kn</span>
+    </dd>
     <dt>Max</dt>
-    <dd><span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span> kn</dd>
+    <dd>
+      <span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span>
+      <span class="unit">kn</span>
+    </dd>
   </dl>
 
   <div class="saved">
@@ -166,41 +189,54 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       <p class="empty">None saved yet</p>
     {:else}
       <ul>
-        {#each saved as track (track.id)}
+        {#each savedCards as { track, distanceNm, durationText } (track.id)}
           <li>
-            <span class="name" title={track.name}>{track.name}</span>
-            <button
-              type="button"
-              class="icon-btn"
-              aria-pressed={shown.has(track.id)}
-              aria-label={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
-              title={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
-              onclick={() => onToggleSaved(track.id)}
-            >
-              {#if shown.has(track.id)}
-                <Eye size={18} aria-hidden="true" />
-              {:else}
-                <EyeOff size={18} aria-hidden="true" />
-              {/if}
-            </button>
-            <button
-              type="button"
-              class="icon-btn"
-              aria-label="Export GeoJSON"
-              title="Export GeoJSON"
-              onclick={() => onExport(track)}
-            >
-              <Download size={18} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              class="icon-btn icon-btn--danger"
-              aria-label="Delete track"
-              title="Delete"
-              onclick={() => onDelete(track.id)}
-            >
-              <Trash2 size={18} aria-hidden="true" />
-            </button>
+            <div class="card-head">
+              <span class="name" title={track.name}>{track.name}</span>
+            </div>
+            <dl class="card-stats">
+              <dt class="caps-label">Distance</dt>
+              <dd>
+                <span class="num">{distanceNm}</span>
+                nm
+              </dd>
+              <dt class="caps-label">Duration</dt>
+              <dd><span class="num">{durationText}</span></dd>
+            </dl>
+            <div class="actions">
+              <button
+                type="button"
+                class="icon-btn"
+                aria-pressed={shown.has(track.id)}
+                aria-label={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
+                title={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
+                onclick={() => onToggleSaved(track.id)}
+              >
+                {#if shown.has(track.id)}
+                  <Eye size={18} aria-hidden="true" />
+                {:else}
+                  <EyeOff size={18} aria-hidden="true" />
+                {/if}
+              </button>
+              <button
+                type="button"
+                class="icon-btn"
+                aria-label="Export GeoJSON"
+                title="Export GeoJSON"
+                onclick={() => onExport(track)}
+              >
+                <Download size={18} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="icon-btn icon-btn--danger"
+                aria-label="Delete track"
+                title="Delete"
+                onclick={() => onDelete(track.id)}
+              >
+                <Trash2 size={18} aria-hidden="true" />
+              </button>
+            </div>
           </li>
         {/each}
       </ul>
@@ -232,61 +268,35 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   border-end-start-radius: 0;
   border-inline-start: 0;
 }
-/* Label and value in two columns, with every value left-aligned in a shared second column so the
-   values line up on one left edge regardless of width. The unit follows each value inline. */
+/* The current-track stats: label, value, and unit in three columns, values end-aligned in a shared
+   column so they line up with no trailing whitespace, matching the route-edit stats. The dd is
+   display: contents so its number and unit become direct grid items; Duration's empty unit cell holds
+   the column without nudging the number. */
 .stats {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: baseline;
-  column-gap: var(--space-3);
-  row-gap: var(--space-1);
+  column-gap: var(--space-2);
+  row-gap: 0.3rem;
   margin: 0;
 }
 .stats dt {
   color: var(--text-muted);
 }
 .stats dd {
-  margin: 0;
-  color: var(--text-muted);
+  display: contents;
 }
 .stats .num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--text);
+  text-align: end;
 }
-.saved {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.empty {
-  margin: 0;
+.stats .unit {
+  min-inline-size: 1.25rem;
   color: var(--text-muted);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
 }
-.saved ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.saved li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-/* The action buttons keep their size; the name absorbs all the shrink and ellipsizes. */
-.saved li .icon-btn {
-  flex-shrink: 0;
-}
-.saved .name {
-  flex: 1;
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* The saved-track card list, name, stats, and actions come from the global .saved system in app.css. */
 </style>

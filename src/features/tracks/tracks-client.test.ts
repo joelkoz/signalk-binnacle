@@ -45,7 +45,7 @@ describe('fetchSavedTracks', () => {
               ],
             ],
           },
-          properties: { name: 'Day 1' },
+          properties: { name: 'Day 1', distance: 1234.5, timespan: 3600 },
         },
         err: { state: 'FAILED', statusCode: 404 },
       }),
@@ -56,6 +56,9 @@ describe('fetchSavedTracks', () => {
     expect(tracks[0]).toMatchObject({ id: 't1', name: 'Day 1' });
     expect(tracks[0].points).toHaveLength(2);
     expect(tracks[0].points[0][0]).toMatchObject({ lat: 42.6, lon: -83.5 });
+    // The SI distance and timespan saved with the geometry are carried onto the SavedTrack.
+    expect(tracks[0].distanceMeters).toBe(1234.5);
+    expect(tracks[0].durationSeconds).toBe(3600);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/signalk/v2/api/resources/tracks');
     expect((init as RequestInit).headers).toMatchObject({ Authorization: 'Bearer tok' });
@@ -84,6 +87,9 @@ describe('fetchSavedTracks', () => {
     const tracks = await fetchSavedTracks('http://pi');
     expect(tracks).toHaveLength(1);
     expect(tracks[0].points).toHaveLength(1);
+    // A track saved without distance/timespan metadata carries them as undefined, not zero.
+    expect(tracks[0].distanceMeters).toBeUndefined();
+    expect(tracks[0].durationSeconds).toBeUndefined();
     expect(fetchMock.mock.calls[1][0]).toContain('/signalk/v1/api/resources/tracks');
   });
 

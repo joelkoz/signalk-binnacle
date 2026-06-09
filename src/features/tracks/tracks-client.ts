@@ -9,6 +9,10 @@ export interface SavedTrack {
   id: string;
   name: string;
   points: TrackPoint[][];
+  // SI distance (meters) and timespan (seconds) saved alongside the geometry, when present, so the
+  // panel can show a track's stats without re-walking every point. Absent for tracks saved elsewhere.
+  distanceMeters?: number;
+  durationSeconds?: number;
 }
 
 // One LineString per segment, for the saved tracks the user has chosen to show. Saved tracks
@@ -84,13 +88,30 @@ function trackName(value: unknown, id: string): string {
   return id;
 }
 
+// Read a finite numeric metadata field (distance, timespan) from whichever shape carries properties.
+function trackMetric(value: unknown, key: 'distance' | 'timespan'): number | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const v = value as {
+    properties?: Record<string, unknown>;
+    feature?: { properties?: Record<string, unknown> };
+  };
+  const raw = v.properties?.[key] ?? v.feature?.properties?.[key];
+  return typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+}
+
 // Map one keyed track record to a SavedTrack, or undefined when it carries no drawable line.
 function toSavedTrack(id: string, raw: unknown): SavedTrack | undefined {
   const geom = extractGeometry(raw);
   if (!geom) return undefined;
   const segments = geometryToSegments(geom);
   if (segments.length === 0) return undefined;
-  return { id, name: trackName(raw, id), points: segments };
+  return {
+    id,
+    name: trackName(raw, id),
+    points: segments,
+    distanceMeters: trackMetric(raw, 'distance'),
+    durationSeconds: trackMetric(raw, 'timespan'),
+  };
 }
 
 export async function fetchSavedTracks(base: string, token?: string): Promise<SavedTrack[]> {

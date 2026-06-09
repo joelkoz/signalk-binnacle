@@ -423,7 +423,13 @@ const totalTime = $derived(
 .stats dd {
   display: contents;
 }
+/* The route-edit stats share the mono, tabular, end-aligned readout the saved-card stats use, declared
+   self-contained here since this scoped block does not see the global .card-stats .num rule. */
 .stats .num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
   text-align: end;
 }
 .stats .unit {
@@ -431,37 +437,14 @@ const totalTime = $derived(
   color: var(--text-muted);
   font-size: var(--text-xs);
 }
-.saved {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+/* The card list, name, stats, and actions come from the global .saved system in app.css. Only the
+   active-route accent treatment and the name's locate interactivity are Routes-specific. */
+.saved .name {
+  cursor: pointer;
+  transition: color var(--transition-fast);
 }
-.empty {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-.saved ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.saved li {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.45rem 0.55rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-overlay);
-  transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast);
+.saved .name:hover {
+  color: var(--accent);
 }
 /* The active route is unmistakable: an accent left bar, an accent border, and a faint
    accent-tinted fill, so the navigator sees the live route at a glance in any theme. */
@@ -479,34 +462,6 @@ const totalTime = $derived(
   border-end-start-radius: var(--radius-sm);
   background: var(--accent);
 }
-.card-head {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.saved .name {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  /* Fill the card-head row so the locate target is a full 44px tall, not a 26px sliver. */
-  min-block-size: var(--control-size);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-md);
-  font-weight: 600;
-  text-align: start;
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-.saved .name:hover {
-  color: var(--accent);
-}
 .badge {
   flex-shrink: 0;
   padding: 0.1rem var(--space-2);
@@ -518,43 +473,10 @@ const totalTime = $derived(
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);
 }
-/* The at-a-glance stats line. Mono, tabular numerals echo the NavStrip readouts so a saved
-   card and the active-route strip read as one instrument family. */
-.card-stats {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) 0.8rem;
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-.card-stats dd {
-  margin: 0 0.4rem 0 0;
-}
-/* The mono, tabular readout shared by the active-route strip stats and the saved-card stats. */
-.stats .num,
-.card-stats .num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: var(--text);
-}
 /* On the active card (its background is the accent tint), lift the muted stat labels to the body text
    color so they stay readable, especially in night-red where muted-on-tint is the lowest-contrast
    pairing. This raises contrast with the body color already in use, not a brighter one. */
 .saved li.active .card-stats {
   color: var(--text);
-}
-.saved .actions {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  flex-shrink: 0;
-}
-/* Push the destructive delete to the trailing edge so it is not flush against the safe
-   actions and an accidental tap is less likely. */
-.saved .actions .icon-btn--danger {
-  margin-inline-start: auto;
 }
 </style>

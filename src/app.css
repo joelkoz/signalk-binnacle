@@ -269,6 +269,96 @@ body {
   gap: var(--space-2);
 }
 
+/* The saved-item card list shared by the Routes and Tracks panels: an elevated card per saved item
+   with a name head, an at-a-glance stats line, and a trailing actions row. One source of truth so the
+   two panels render as one card system. Panel-specific accents (the active route) stay scoped. */
+.saved {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.saved .empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.saved ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.saved li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-overlay);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.saved .name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  /* Fill the card-head row so a name (and any locate target it carries) is a full 44px tall. */
+  min-block-size: var(--control-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-align: start;
+}
+/* The at-a-glance stats line. Mono, tabular numerals echo the NavStrip readouts so a saved card and
+   the active-route strip read as one instrument family. */
+.card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) 0.8rem;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.card-stats dd {
+  margin: 0 0.4rem 0 0;
+}
+.card-stats .num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+}
+.saved .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+/* Push the destructive delete to the trailing edge so it is not flush against the safe actions and an
+   accidental tap is less likely. */
+.saved .actions .icon-btn--danger {
+  margin-inline-start: auto;
+}
+
 /* The themed range slider shared by the opacity and time-scrub controls: a thin track with a large
    accent thumb in a full-height touch target, so every slider in the app looks and feels the same. */
 .range {
