@@ -3,6 +3,7 @@ import { headingDegrees } from '$shared/lib';
 import {
   createSymbolOverlay,
   emptyFeatureCollection,
+  mapThemePaint,
   type Rgba,
   type SymbolOverlay,
 } from '$shared/map';
@@ -10,7 +11,9 @@ import { VESSEL_ICON_ID, vesselIconImage } from './vessel-icon';
 
 const SOURCE_ID = 'binnacle-own-vessel';
 const LAYER_ID = 'binnacle-own-vessel-symbol';
-const DEFAULT_COLOR: Rgba = { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff };
+// The transient color shown for the single frame before the first recolor; taken from the day theme
+// so there is one source for the day own-vessel color rather than a literal that could drift.
+const DEFAULT_COLOR: Rgba = mapThemePaint('day').ownVessel;
 
 // The overlay id. The chart pins this on top so a chart or traffic can never hide the boat; exported
 // so the pinned list references the same constant instead of a literal that could drift on a rename.

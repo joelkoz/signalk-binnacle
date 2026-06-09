@@ -45,7 +45,7 @@ const ttg = $derived(
   <aside class="bottom-strip bottom-strip--accent" aria-label="Active route">
     <div class="head">
       <span class="title">To</span>
-      <span class="name" aria-live="polite">{guidance.nextPointName ?? '--'}</span>
+      <span class="name" aria-live="polite">{guidance.nextPointName ?? PLACEHOLDER}</span>
       {#if guidance.source === 'computed'}
         <span class="note">computing locally</span>
       {/if}

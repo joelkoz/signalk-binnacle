@@ -19,7 +19,7 @@ export default defineConfig({
   // Signal K serves the webapp at /<package-name>/, so production assets resolve under /signalk-binnacle/.
   base: process.env.NODE_ENV === 'production' ? '/signalk-binnacle/' : '/',
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.1.0'),
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.2.0'),
   },
   plugins: [
     svelte(),

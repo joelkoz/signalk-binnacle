@@ -63,6 +63,9 @@ export class SkConnection {
 
   disconnect(): void {
     this.#stopped = true;
+    // Reset the backoff so a later reconnect starts from the first delay, not the stale attempt
+    // count of the prior session (onopen also zeroes it, but only once a socket actually opens).
+    this.#attempt = 0;
     if (this.#reconnectTimer) clearTimeout(this.#reconnectTimer);
     // Only emit 'closed' when a socket actually existed, so a disconnect before any connect does
     // not report a close that never had an open. Null the socket after closing so a repeat

@@ -24,11 +24,18 @@ All notable changes to Binnacle are documented here. The format follows
 - Imported-chart storage is reclaimed at startup: a PMTiles blob left behind by a failed save or a
   delete that ran while storage was degraded is now swept once its descriptor is gone, so orphaned
   blobs cannot accumulate on disk.
+- The Points-of-interest layer no longer fetches from the provider or re-clusters while it is toggled
+  off: a hidden layer now does no network or rendering work until it is shown again.
 
 ### Internal
 
 - Bounded two more caches to a fixed size: the note-detail memo, and the persistent weather-grid
   store (now matching its in-memory tier).
+- A whole-codebase cleanup pass (six-lane audit): deduplicated the local-date computation shared by
+  the tides fetch window and its session-cache key, sourced the vessel and AIS default colors from
+  the day theme token, dropped over-broad slice exports, reset the stream reconnect backoff on an
+  explicit disconnect, and tidied several comments, an accessibility region, and a redundant live
+  region. No user-facing behavior change beyond the fixes above.
 
 ## [0.2.0] - 2026-06-08
 

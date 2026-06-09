@@ -13,6 +13,7 @@ import {
   fetchCurrentStations,
   fetchTideEvents,
   fetchTideStations,
+  localYmd,
 } from './coops-client';
 import { nearestStations } from './station-proximity';
 
@@ -53,16 +54,9 @@ const defaults: LoaderDeps = {
   now: () => Date.now(),
 };
 
-// The per-station event cache rolls over on the local day, matching the CO-OPS fetch window, whose
-// begin_date is local midnight. A UTC key would roll at a different wall-clock moment, so for the
-// hours around midnight on a boat away from UTC the cache could treat a stale local-day window as
-// fresh, or refetch a still-valid one.
-const dayKey = (ms: number): string => {
-  const d = new Date(ms);
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${month}-${day}`;
-};
+// The per-station event cache rolls over on the local day, matching the CO-OPS fetch window (both
+// derive from localYmd), so the cache and the window roll over at the same local-midnight instant.
+const dayKey = (ms: number): string => localYmd(ms, '-');
 
 function cachePut<T>(cache: Map<string, T>, key: string, value: T): void {
   if (cache.size >= MAX_EVENT_ENTRIES) {

@@ -1,6 +1,6 @@
 import type { AisTargets } from '$entities/ais';
 import { headingDegrees } from '$shared/lib';
-import { createSymbolOverlay, type Rgba, type SymbolOverlay } from '$shared/map';
+import { createSymbolOverlay, mapThemePaint, type Rgba, type SymbolOverlay } from '$shared/map';
 import type { SignalKStore } from '$shared/signalk';
 import { AIS_ICON_ID, aisIconImage } from './ais-icon';
 
@@ -10,7 +10,9 @@ const STALE_TTL_MS = 360_000;
 // Staleness changes on a minutes scale, so scan for stale targets on this cadence
 // rather than every animation frame.
 const PRUNE_INTERVAL_MS = 5_000;
-const DEFAULT_COLOR: Rgba = { r: 0xe0, g: 0xa0, b: 0x20, a: 0xff };
+// The transient color shown for the single frame before the first recolor; taken from the day theme
+// so there is one source for the day AIS color rather than a literal that could drift.
+const DEFAULT_COLOR: Rgba = mapThemePaint('day').aisTarget;
 
 export function createAisOverlay(targets: AisTargets, store: SignalKStore): SymbolOverlay {
   let lastVersion = -1;

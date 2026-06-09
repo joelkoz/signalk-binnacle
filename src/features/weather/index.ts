@@ -27,7 +27,7 @@ export {
 export { advancePlay, clampTime, stepTime, type TimeRange } from './time-scrub';
 export { default as WeatherConditions } from './WeatherConditions.svelte';
 export { createWavesOverlay } from './waves-overlay';
-export { type ForecastOptions, fetchForecast, fetchMarine, mergeMarine } from './weather-client';
+export type { ForecastOptions } from './weather-client';
 export {
   createWeatherLoader,
   type WeatherLayersWanted,

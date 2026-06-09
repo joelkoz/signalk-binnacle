@@ -368,12 +368,13 @@ onDestroy(() => {
   <div class="panel-map">
     <div class="map" bind:this={container}></div>
     {#if conditionsOpen}
-      <div class="conditions-slot">
+      <div class="conditions-slot" role="region" aria-label="Conditions and forecast">
         <WeatherConditions origin={serverOrigin()} {token} {providerName} {position} {store} />
       </div>
     {/if}
     {#if readout}
-      <div class="readout" role="status" aria-live="polite">
+      <!-- role="status" already implies aria-live="polite", so the explicit attribute is omitted. -->
+      <div class="readout" role="status">
         <span class="readout-line">
           Wind <b>{formatKnotsOr(readout.speedMs)}</b> kn from
           <b>{formatBearingOr(readout.fromRad)}</b>&deg;T

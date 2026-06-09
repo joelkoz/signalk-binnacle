@@ -37,8 +37,9 @@ Signal K server.
 Binnacle ships its full feature set as a Signal K webapp:
 
 - **Charts and layers:** a GPU vector base map, server charts, four streaming bathymetry and ENC
-  sources (each splitting into a base chart and a survey-quality facet), and your own imported
-  PMTiles, in a collapsible, categorized Layers panel with per-layer toggle, fade, and drag-reorder.
+  sources (NOAA ENC, BlueTopo, and EMODnet each add a nested survey-quality facet; GEBCO is global
+  base bathymetry), and your own imported PMTiles, in a collapsible, categorized Layers panel with
+  per-layer toggle, fade, and drag-reorder.
 - **Overlays:** free, key-free OpenSeaMap seamarks, marine protected areas, maritime boundaries, and
   NASA GIBS ocean conditions (sea-surface temperature and sea ice), each with its source attribution.
 - **Routing:** draw and save routes as Signal K resources and follow one with a nav strip

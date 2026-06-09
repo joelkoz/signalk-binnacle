@@ -9,6 +9,7 @@ import type {
 } from 'maplibre-gl';
 import {
   emptyFeatureCollection,
+  type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
@@ -122,6 +123,13 @@ export function createNotesOverlay(
   let lastLng: number | undefined;
   let lastLat: number | undefined;
   let fetching = false;
+  // Whether the layer is shown. A hidden Points-of-interest layer skips its sync entirely (no network
+  // fetch, no re-clustering) and defers the icon re-raster on a theme change until it is shown again.
+  // Starts true to match the layer-manager default; the register-time setVisible corrects it.
+  let visible = true;
+  // The paint to re-raster the icons with, set when the theme changes while hidden so the 18 POI and
+  // navaid SVGs are refreshed lazily on the next show rather than re-rasterized while invisible.
+  let pendingIconPaint: MapThemePaint | undefined;
   let onClick: ((event: MapLayerMouseEvent) => void) | undefined;
   let onClusterClick: ((event: MapLayerMouseEvent) => void) | undefined;
   let onEnter: (() => void) | undefined;
@@ -331,6 +339,9 @@ export function createNotesOverlay(
       await registerNavaidIcons(ctx.map, paint);
     },
     sync(ctx) {
+      // A hidden layer pays nothing: no network fetch, no clustering, no GeoJSON rebuild. The next
+      // show re-syncs from the cache (or fetches) for wherever the map ended up.
+      if (!visible) return;
       const zoom = ctx.map.getZoom();
       const center = ctx.map.getCenter();
       // Idle fast-path: nothing moved since the last sync, so skip the viewport work entirely.
@@ -371,8 +382,14 @@ export function createNotesOverlay(
       setSelected(ctx, undefined);
     },
     applyTheme(ctx, paint) {
-      void registerPoiIcons(ctx.map, paint);
-      void registerNavaidIcons(ctx.map, paint);
+      // The cheap per-layer color updates always run so the layer is correct the instant it shows.
+      // The expensive icon re-raster (18 SVGs) is deferred while hidden and done on the next show.
+      if (visible) {
+        void registerPoiIcons(ctx.map, paint);
+        void registerNavaidIcons(ctx.map, paint);
+      } else {
+        pendingIconPaint = paint;
+      }
       ctx.map.setPaintProperty(LAYER_ID, 'text-color', paint.note);
       ctx.map.setPaintProperty(LAYER_ID, 'text-halo-color', paint.background);
       ctx.map.setPaintProperty(CLUSTER_RING_LAYER, 'circle-stroke-color', paint.markerGlyph);
@@ -380,10 +397,18 @@ export function createNotesOverlay(
       ctx.map.setPaintProperty(CLUSTER_COUNT_LAYER, 'text-halo-color', paint.note);
       ctx.map.setPaintProperty(SELECT_LAYER, 'circle-stroke-color', paint.select);
     },
-    setVisible(ctx, visible) {
-      const value = visible ? 'visible' : 'none';
+    setVisible(ctx, isVisible) {
+      visible = isVisible;
+      const value = isVisible ? 'visible' : 'none';
       for (const id of LAYERS) {
         ctx.map.setLayoutProperty(id, 'visibility', value);
+      }
+      // If the theme changed while hidden, refresh the icons now that the layer is shown again.
+      if (isVisible && pendingIconPaint) {
+        const paint = pendingIconPaint;
+        pendingIconPaint = undefined;
+        void registerPoiIcons(ctx.map, paint);
+        void registerNavaidIcons(ctx.map, paint);
       }
     },
     setOpacity(ctx, opacity) {

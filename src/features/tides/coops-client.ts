@@ -15,13 +15,15 @@ function parseLocalTime(value: string): number {
   return new Date(value.replace(' ', 'T')).getTime();
 }
 
-// Today's local date as YYYYMMDD, the CO-OPS begin_date format. The window starts at local midnight
-// so the tide curve keeps a few hours of context before now.
-function localDateStamp(): string {
-  const d = new Date();
+// A local calendar date as YYYY[sep]MM[sep]DD. The CO-OPS begin_date (no separator) and the tides
+// session-cache rollover key (dashed) both build from this one source, so the fetch window and the
+// cache roll over at the same local-midnight instant. A UTC date would roll at a different wall-clock
+// moment, leaving the cache briefly out of step with the window around local midnight.
+export function localYmd(ms: number, sep = ''): string {
+  const d = new Date(ms);
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}${month}${day}`;
+  return `${d.getFullYear()}${sep}${month}${sep}${day}`;
 }
 
 async function fetchJson(url: string): Promise<unknown> {
@@ -55,7 +57,7 @@ export function fetchCurrentStations(): Promise<TideStation[]> {
 export async function fetchTideEvents(stationId: string): Promise<TideEvent[]> {
   // interval=hilo returns just the high and low turning points; units=metric puts the height in
   // meters, which is already SI.
-  const url = `${DATAGETTER}?product=predictions&interval=hilo&datum=MLLW&units=metric&time_zone=lst_ldt&format=json&begin_date=${localDateStamp()}&range=${RANGE_HOURS}&station=${stationId}`;
+  const url = `${DATAGETTER}?product=predictions&interval=hilo&datum=MLLW&units=metric&time_zone=lst_ldt&format=json&begin_date=${localYmd(Date.now())}&range=${RANGE_HOURS}&station=${stationId}`;
   const data = (await fetchJson(url)) as {
     predictions?: Array<{ t: string; v: string; type: string }>;
   };
@@ -71,7 +73,7 @@ export async function fetchCurrentEvents(stationId: string): Promise<CurrentEven
   // m/s. It is signed (flood positive, ebb negative), but speed is a magnitude here: the flood-or-ebb
   // kind and the set in degrees carry the direction, so store the absolute value. The set is the mean
   // flood or ebb direction; slack has no direction and zero velocity.
-  const url = `${DATAGETTER}?product=currents_predictions&units=metric&time_zone=lst_ldt&format=json&begin_date=${localDateStamp()}&range=${RANGE_HOURS}&interval=MAX_SLACK&station=${stationId}`;
+  const url = `${DATAGETTER}?product=currents_predictions&units=metric&time_zone=lst_ldt&format=json&begin_date=${localYmd(Date.now())}&range=${RANGE_HOURS}&interval=MAX_SLACK&station=${stationId}`;
   const data = (await fetchJson(url)) as {
     current_predictions?: {
       cp?: Array<{
