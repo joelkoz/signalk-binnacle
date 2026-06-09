@@ -1,6 +1,6 @@
 {
   "name": "signalk-binnacle",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "WebGL chart plotter for Signal K",
   "type": "module",
   "license": "Apache-2.0",
@@ -30,8 +30,8 @@
     "screenshots": [
       "./screenshots/01-chart.png",
       "./screenshots/02-routes.png",
-      "./screenshots/03-charts.png",
-      "./screenshots/04-anchorage.png",
+      "./screenshots/03-anchorage.png",
+      "./screenshots/04-profiles.png",
       "./screenshots/05-weather.png"
     ],
     "recommends": [

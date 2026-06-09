@@ -8,18 +8,31 @@
 
 A WebGL chart plotter for [Signal K](https://signalk.org).
 
-> **0.2.1.** A reliability patch. Points of interest no longer flicker (a transient provider response
-> could blank the markers; they are now kept and cached by area), active marine warnings stay put
-> through a transient weather hiccup, an active route re-hydrates its guidance after a stream
-> reconnect instead of freezing on stale values, server charts no longer blank on a transient load
-> failure, and orphaned imported-chart storage is reclaimed. A hidden Points-of-interest layer now
-> does no background work, a base-map console-warning stream is silenced, and a whole-codebase
-> cleanup landed. See the [changelog](CHANGELOG.md) for the full list.
->
 > **It has not been field-tested at any scale.** It has been developed and verified against a single
 > Signal K server, never across a fleet or a range of real-world boats, hardware, and conditions. It
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
+
+## What's new in 0.3.0
+
+Profiles, richer routing, and passage planning:
+
+- **Profiles.** Save named bundles of your settings (theme, which layers are on and their order, the
+  weather layers, the collision thresholds, and the track and planning settings), switch between them
+  in one tap, set a default, export and import them as files, and sync them across devices through a
+  secured server.
+- **Tap to navigate.** Long-press or right-click the chart and choose **Go to here** to navigate
+  straight to a point over the Course API.
+- **GPX import and export.** Move routes between Binnacle and other plotters and MFDs.
+- **Passage planning.** A plan speed turns the route's leg table into per-waypoint and whole-route
+  arrival times.
+- **Track-to-route.** Save the current track as a route, reverse a route for the return leg, navigate
+  home by retracing your track, and skip the active waypoint forward or back from the nav strip.
+- **Fixes.** Importing a malformed GPX no longer aborts the import, the Routes opacity slider now dims
+  the waypoint labels with the rest of the route, and the waypoint-skip buttons are a full touch
+  target.
+
+See the [changelog](CHANGELOG.md) for the full list.
 
 ## What it does
 
@@ -42,16 +55,24 @@ Binnacle ships its full feature set as a Signal K webapp:
   per-layer toggle, fade, and drag-reorder.
 - **Overlays:** free, key-free OpenSeaMap seamarks, marine protected areas, maritime boundaries, and
   NASA GIBS ocean conditions (sea-surface temperature and sea ice), each with its source attribution.
-- **Routing:** draw and save routes as Signal K resources and follow one with a nav strip
-  (cross-track, distance, bearing, velocity made good, and time to go) over the v2 Course API, with
-  an arrival alarm.
+- **Routing:** draw and save routes as Signal K resources, or tap **Go to here** (long-press or
+  right-click the chart) to navigate straight to a point. Follow a route with a nav strip (cross-track,
+  distance, bearing, velocity made good, and time to go) over the v2 Course API, with an arrival alarm
+  and skip-waypoint controls. A plan speed turns the route into a **passage plan** with per-waypoint and
+  whole-route arrival times, and routes **import and export as GPX** to move between Binnacle and other
+  plotters and MFDs.
+- **Profiles:** save named bundles of your settings (theme, which layers are on and their order, the
+  weather layers, the collision thresholds, and the track and planning settings), switch between them
+  in one tap, set a default, export and import them as files, and sync them across devices through the
+  server when you are logged in.
 - **Weather:** a zoom-capped mini-map with animated WebGL wind, pressure isobars, waves,
   precipitation, cloud, and radar, a tap-for-value readout, and a conditions and warnings panel.
 - **Tides:** the nearest NOAA tide station's next high and low with a 48-hour curve, and the nearest
   tidal-current station's next flood or ebb, for US waters.
 - **Lookout:** a collision watch with CPA and TCPA, chart-highlight rings, an audible alarm, and a
   published Signal K notification.
-- **Tracks:** record, save, show, and export your voyage track.
+- **Tracks:** record, save, show, and export your voyage track as GeoJSON, save a track as a reusable
+  route, reverse a route for the return leg, or navigate home by retracing your track.
 - **Points of interest:** Crow's Nest, ActiveCaptain, and other notes as themed markers with a
   structured detail panel.
 - **Themes and offline:** day, dusk, and night-red themes, offline caching, and self-hosted assets.
