@@ -87,8 +87,11 @@ export class ProfileStore {
 
   // Attach the SignalK applicationData adapter and reconcile with the server: merge the remote profiles
   // in by id (the later updatedAt wins), then push the reconciled state back so the server converges
-  // (and an empty server is seeded from this device). Called once the user is authenticated.
+  // (and an empty server is seeded from this device). Idempotent for the success case: once a server is
+  // attached this is a no-op, so a second call (a component remount, a re-auth) does not re-merge, while
+  // a prior failure leaves no server attached so a later call can still retry.
   async syncWithServer(server: AsyncProfileAdapter): Promise<void> {
+    if (this.#server) return;
     let remote: ProfilesState | undefined;
     try {
       remote = await server.load();
@@ -153,6 +156,8 @@ export class ProfileStore {
     this.#persist();
   }
 
+  // Mark which profile is active and clear the dirty flag. This does NOT apply the profile's settings:
+  // the settings live in App's stores, so the caller applies them and then marks the result active.
   setActive(id: string | undefined): void {
     this.activeId = id;
     this.isDirty = false;
@@ -160,7 +165,8 @@ export class ProfileStore {
   }
 
   markDirty(): void {
-    if (this.activeId !== undefined) this.isDirty = true;
+    // Only a live profile can be edited, and only flip the flag once: a no-op write is wasted reactivity.
+    if (this.activeId !== undefined && !this.isDirty) this.isDirty = true;
   }
 
   clearDirty(): void {
@@ -191,10 +197,18 @@ export class ProfileStore {
     this.#pushing = true;
     while (this.#pushPending) {
       this.#pushPending = false;
+      let ok = false;
       try {
-        await this.#server.save(this.#snapshot());
+        ok = await this.#server.save(this.#snapshot());
       } catch {
-        // A failed server write leaves the local cache as the source of truth; the next edit retries.
+        ok = false;
+      }
+      if (!ok) {
+        // A rejected write (a read-only token, or the server refusing writes) will not start
+        // succeeding later this session, so detach and let the local cache stay authoritative
+        // rather than firing a doomed request on every later edit. A new session retries.
+        this.#server = undefined;
+        break;
       }
     }
     this.#pushing = false;

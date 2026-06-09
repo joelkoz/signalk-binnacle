@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Check, Download, Save, SquarePen, Star, Trash2, Upload } from '@lucide/svelte';
 import type { Profile } from '$entities/profile';
-import { promptSaveName, SlideOver } from '$shared/ui';
+import { pickTextFile, promptSaveName, SlideOver } from '$shared/ui';
 
 interface Props {
   profiles: Profile[];
@@ -43,14 +43,9 @@ function promptNew(): void {
   if (name !== undefined) onSaveNew(name);
 }
 
-let fileInput: HTMLInputElement;
-
-async function onPickJson(event: Event): Promise<void> {
-  const input = event.currentTarget as HTMLInputElement;
-  const file = input.files?.[0];
-  // Reset first so picking the same file twice still fires a change event.
-  input.value = '';
-  if (file) onImport(await file.text());
+async function importProfiles(): Promise<void> {
+  const text = await pickTextFile('.json,application/json');
+  if (text !== undefined) onImport(text);
 }
 
 function promptRename(profile: Profile): void {
@@ -67,17 +62,10 @@ function promptRename(profile: Profile): void {
       <Save size={16} aria-hidden="true" />
       Save current as profile
     </button>
-    <button type="button" class="btn" onclick={() => fileInput.click()}>
+    <button type="button" class="btn" onclick={importProfiles}>
       <Upload size={16} aria-hidden="true" />
       Import
     </button>
-    <input
-      bind:this={fileInput}
-      type="file"
-      accept=".json,application/json"
-      class="visually-hidden"
-      onchange={onPickJson}
-    >
   </div>
 
   <div class="saved">
@@ -177,37 +165,12 @@ function promptRename(profile: Profile): void {
 .panel-controls .btn-primary {
   flex: 1;
 }
-/* The card list, name, and actions come from the global .saved system in app.css. Only the
-   active-profile accent treatment and the secondary tags are profile-specific. */
-.saved li.active {
-  border-color: var(--accent);
-  background: var(--accent-tint);
-}
-.saved li.active::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  inline-size: 3px;
-  border-start-start-radius: var(--radius-sm);
-  border-end-start-radius: var(--radius-sm);
-  background: var(--accent);
-}
+/* The card list, name, actions, the active-card accent treatment, and the "Active" badge all come from
+   the shared .saved system in app.css. Only the default tag and the dirty note are profile-specific. */
 /* A quiet caps-label tag marking the default profile, distinct from the filled accent "Active" pill. */
 .tag {
   flex-shrink: 0;
   color: var(--accent);
-}
-.badge {
-  flex-shrink: 0;
-  padding: 0.1rem var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--accent-tint-strong);
-  color: var(--accent);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
 }
 .dirty {
   margin: 0;

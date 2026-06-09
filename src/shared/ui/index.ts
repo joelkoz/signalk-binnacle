@@ -1,4 +1,5 @@
 export { dialog } from './dialog';
+export { pickTextFile } from './file-pick';
 export { promptSaveName } from './prompt';
 export { default as SlideOver } from './SlideOver.svelte';
 export type { Theme } from './theme.svelte';

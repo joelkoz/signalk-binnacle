@@ -358,6 +358,35 @@ body {
 .saved .actions .icon-btn--danger {
   margin-inline-start: auto;
 }
+/* The active card (the route being navigated, the profile in use) is unmistakable: an accent left bar,
+   an accent border, and a faint accent-tinted fill, so it reads at a glance in any theme. Shared by the
+   Routes and Profiles panels. Scoped as .saved so it cannot reach an unrelated .badge elsewhere. */
+.saved li.active {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.saved li.active::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 3px;
+  border-start-start-radius: var(--radius-sm);
+  border-end-start-radius: var(--radius-sm);
+  background: var(--accent);
+}
+/* The filled accent "Active" pill on the active card. */
+.saved .badge {
+  flex-shrink: 0;
+  padding: 0.1rem var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent-tint-strong);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+}
 
 /* The themed range slider shared by the opacity and time-scrub controls: a thin track with a large
    accent thumb in a full-height touch target, so every slider in the app looks and feels the same. */

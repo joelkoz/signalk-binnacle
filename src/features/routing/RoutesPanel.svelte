@@ -23,7 +23,7 @@ import {
 } from '$shared/lib';
 import { etaSeconds } from '$shared/nav';
 import type { PersistedValue } from '$shared/settings';
-import { promptSaveName, SlideOver } from '$shared/ui';
+import { pickTextFile, promptSaveName, SlideOver } from '$shared/ui';
 
 interface Props {
   routes: Route[];
@@ -85,14 +85,9 @@ function promptSave(): void {
   if (name !== undefined) onSave(name);
 }
 
-let fileInput: HTMLInputElement;
-
-async function onPickGpx(event: Event): Promise<void> {
-  const input = event.currentTarget as HTMLInputElement;
-  const file = input.files?.[0];
-  // Reset first so picking the same file twice still fires a change event.
-  input.value = '';
-  if (file) onImportGpx(await file.text());
+async function importGpx(): Promise<void> {
+  const text = await pickTextFile('.gpx,application/gpx+xml');
+  if (text !== undefined) onImportGpx(text);
 }
 
 // Precompute each route's formatted distance once per change rather than re-walking every route's
@@ -151,17 +146,10 @@ $effect(() => {
       <Plus size={16} aria-hidden="true" />
       New route
     </button>
-    <button type="button" class="btn" onclick={() => fileInput.click()}>
+    <button type="button" class="btn" onclick={importGpx}>
       <Upload size={16} aria-hidden="true" />
       Import GPX
     </button>
-    <input
-      bind:this={fileInput}
-      type="file"
-      accept=".gpx,application/gpx+xml"
-      class="visually-hidden"
-      onchange={onPickGpx}
-    >
   </div>
 
   {#if working}
@@ -465,33 +453,7 @@ $effect(() => {
 .saved .name:hover {
   color: var(--accent);
 }
-/* The active route is unmistakable: an accent left bar, an accent border, and a faint
-   accent-tinted fill, so the navigator sees the live route at a glance in any theme. */
-.saved li.active {
-  border-color: var(--accent);
-  background: var(--accent-tint);
-}
-.saved li.active::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  inline-size: 3px;
-  border-start-start-radius: var(--radius-sm);
-  border-end-start-radius: var(--radius-sm);
-  background: var(--accent);
-}
-.badge {
-  flex-shrink: 0;
-  padding: 0.1rem var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--accent-tint-strong);
-  color: var(--accent);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-}
+/* The active-card accent bar, fill, and the "Active" badge are the shared .saved system in app.css. */
 /* On the active card (its background is the accent tint), lift the muted stat labels to the body text
    color so they stay readable, especially in night-red where muted-on-tint is the lowest-contrast
    pairing. This raises contrast with the body color already in use, not a brighter one. */

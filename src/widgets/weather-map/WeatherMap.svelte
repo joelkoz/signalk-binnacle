@@ -300,6 +300,9 @@ onMount(() => {
       const view = new LayersView(manager);
       view.refresh();
       layersView = view;
+      // The weather mini-map has no user-reorder UI, so it carries no stacking order: the empty order
+      // is intentional, not an oversight. The nav chart, which does reorder, applies layers through
+      // MapCommands.applyLayers instead.
       onLayersReady?.((settings) => {
         manager.applySnapshot(settings, []);
         view.refresh();

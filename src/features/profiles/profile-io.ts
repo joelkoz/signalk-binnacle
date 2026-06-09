@@ -1,9 +1,9 @@
 import type { Profile, ProfileSettings } from '$entities/profile';
 import { downloadBlob } from '$shared/lib';
+import { THEMES } from '$shared/ui';
 
-// The three valid themes, mirrored from $shared/ui so a corrupt import cannot smuggle an unknown
-// theme into the store. Kept local so this module has no runtime dependency on the theme controller.
-const THEMES = new Set(['day', 'dusk', 'night-red']);
+// The canonical valid-theme list, so a corrupt import cannot smuggle an unknown theme into the store.
+const VALID_THEMES: readonly string[] = THEMES;
 
 // A validated import: the settings to recreate plus the name to recreate them under. The importer
 // calls store.save(name, settings), so an id and timestamps are deliberately not carried over.
@@ -44,7 +44,7 @@ function isTrackSettings(value: unknown): boolean {
 // optional field, accepted only when it is a string.
 export function isProfileSettings(value: unknown): value is ProfileSettings {
   if (!isPlainObject(value)) return false;
-  if (typeof value.theme !== 'string' || !THEMES.has(value.theme)) return false;
+  if (typeof value.theme !== 'string' || !VALID_THEMES.includes(value.theme)) return false;
   if (!isPlainObject(value.layers)) return false;
   if (!isPlainObject(value.layerCategories)) return false;
   if (!isPlainObject(value.weatherLayers)) return false;

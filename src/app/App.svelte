@@ -321,7 +321,9 @@ $effect(() => {
   void planningSpeedKn.value;
   void alarmMuted.value;
   void arrivalMuted.value;
-  if (!applying && profileStore.activeId !== undefined) profileStore.markDirty();
+  // markDirty owns the "only when a profile is active" guard, so this effect does not read activeId
+  // (which would add a needless dependency that re-runs it on every profile switch).
+  if (!applying) profileStore.markDirty();
 });
 
 // Seed three starter profiles on first run (no stored profiles), so the feature is not empty and
@@ -362,6 +364,17 @@ function onApplyProfile(id: string): void {
   applyProfileSettings(profile.settings);
   profileStore.setActive(id);
 }
+
+// Apply the default profile once on startup, but only when no profile is already active, so a chosen
+// default takes effect on launch without overriding a profile the navigator left active last session.
+let defaultApplied = false;
+$effect(() => {
+  if (defaultApplied) return;
+  defaultApplied = true;
+  if (profileStore.defaultId && profileStore.activeId === undefined) {
+    onApplyProfile(profileStore.defaultId);
+  }
+});
 
 function onSaveNewProfile(name: string): void {
   const profile = profileStore.save(name, captureProfileSettings());

@@ -16,9 +16,10 @@ All notable changes to Binnacle are documented here. The format follows
   Three starter profiles (Coastal day, Night passage, and At anchor) seed on first run. Profiles are
   stored locally, and when you are logged in to a secured SignalK server they also sync through the
   server's applicationData store so they follow you across devices. The sync degrades cleanly: an
-  unsecured server, or one whose token lacks applicationData access, keeps profiles local. You can also
-  export a profile to a JSON file and import profiles from one, to back them up or share them between
-  boats.
+  unsecured server, or a login that cannot use the applicationData store, keeps profiles local, and a
+  login that can read the store but not write it stops after one rejected write rather than retrying on
+  every edit, so it never floods the console. You can also export a profile to a JSON file and import
+  profiles from one, to back them up or share them between boats.
 
 - Course planning on the chart. Long-press (touch) or right-click (desktop) a point and choose "Go to
   here" to navigate straight to it via the Course API, with the destination shown on the nav strip.
@@ -69,6 +70,13 @@ All notable changes to Binnacle are documented here. The format follows
   one `DARK_SCRIM` constant and an `rgbaCss` helper in `$shared/map` instead of three drifting literals,
   and the SlideOver minimize takes one `{ collapsed, onToggle }` object so the state and its toggle are
   always supplied together.
+- A /simplify pass over the profiles feature: the active-card accent edge-bar and "Active" badge moved
+  to the one global `.saved` system in `app.css` consumed by the Routes, Tracks, and Profiles panels, a
+  shared `pickTextFile` helper in `$shared/ui` backs both the route GPX import and the profile JSON
+  import instead of two hidden-input handlers, the profile importer validates the theme against the
+  shared `THEMES` list, and the default profile now auto-applies on a fresh device that has a default
+  but no active profile. The server sync also stops pushing after one rejected write, so a read-only
+  token attaches for reads but does not fire a doomed write on every later edit.
 
 ## [0.2.1] - 2026-06-09
 

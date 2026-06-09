@@ -301,4 +301,22 @@ describe('ProfileStore.syncWithServer', () => {
     await flush();
     expect(server.saved.at(-1)?.profiles.map((p) => p.name)).toContain('New profile');
   });
+
+  it('stops pushing after a rejected write, so a read-only server is not hammered', async () => {
+    const store = new ProfileStore(fakeAdapter());
+    store.save('Coastal', settings());
+    // Reachable for reads (the GET succeeds, so the adapter attaches), but every write is rejected,
+    // as with a read-only or device token whose POST returns 401.
+    const save = vi.fn(async () => false);
+    await store.syncWithServer({
+      load: async () => ({ profiles: [], activeId: undefined, defaultId: undefined }),
+      save,
+    });
+    await flush();
+    expect(save).toHaveBeenCalledTimes(1);
+    // The first failure detached the server, so a later mutation must not fire another doomed write.
+    store.save('Offshore', settings());
+    await flush();
+    expect(save).toHaveBeenCalledTimes(1);
+  });
 });
