@@ -16,7 +16,9 @@ All notable changes to Binnacle are documented here. The format follows
   Three starter profiles (Coastal day, Night passage, and At anchor) seed on first run. Profiles are
   stored locally, and when you are logged in to a secured SignalK server they also sync through the
   server's applicationData store so they follow you across devices. The sync degrades cleanly: an
-  unsecured server, or one whose token lacks applicationData access, keeps profiles local.
+  unsecured server, or one whose token lacks applicationData access, keeps profiles local. You can also
+  export a profile to a JSON file and import profiles from one, to back them up or share them between
+  boats.
 
 - Course planning on the chart. Long-press (touch) or right-click (desktop) a point and choose "Go to
   here" to navigate straight to it via the Course API, with the destination shown on the nav strip.

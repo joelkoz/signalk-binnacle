@@ -1,5 +1,5 @@
 <script lang="ts">
-import { Check, Save, SquarePen, Star, Trash2 } from '@lucide/svelte';
+import { Check, Download, Save, SquarePen, Star, Trash2, Upload } from '@lucide/svelte';
 import type { Profile } from '$entities/profile';
 import { promptSaveName, SlideOver } from '$shared/ui';
 
@@ -14,6 +14,9 @@ interface Props {
   onRename: (id: string, name: string) => void;
   onRemove: (id: string) => void;
   onSetDefault: (id: string) => void;
+  // Download a profile as a JSON file, and import profiles from the text of a JSON file.
+  onExport: (id: string) => void;
+  onImport: (json: string) => void;
   onClose: () => void;
   onBack?: () => void;
 }
@@ -29,6 +32,8 @@ const {
   onRename,
   onRemove,
   onSetDefault,
+  onExport,
+  onImport,
   onClose,
   onBack,
 }: Props = $props();
@@ -36,6 +41,16 @@ const {
 function promptNew(): void {
   const name = promptSaveName('Profile');
   if (name !== undefined) onSaveNew(name);
+}
+
+let fileInput: HTMLInputElement;
+
+async function onPickJson(event: Event): Promise<void> {
+  const input = event.currentTarget as HTMLInputElement;
+  const file = input.files?.[0];
+  // Reset first so picking the same file twice still fires a change event.
+  input.value = '';
+  if (file) onImport(await file.text());
 }
 
 function promptRename(profile: Profile): void {
@@ -52,6 +67,17 @@ function promptRename(profile: Profile): void {
       <Save size={16} aria-hidden="true" />
       Save current as profile
     </button>
+    <button type="button" class="btn" onclick={() => fileInput.click()}>
+      <Upload size={16} aria-hidden="true" />
+      Import
+    </button>
+    <input
+      bind:this={fileInput}
+      type="file"
+      accept=".json,application/json"
+      class="visually-hidden"
+      onchange={onPickJson}
+    >
   </div>
 
   <div class="saved">
@@ -120,6 +146,15 @@ function promptRename(profile: Profile): void {
                   <Star size={18} aria-hidden="true" />
                 </button>
               {/if}
+              <button
+                type="button"
+                class="icon-btn"
+                aria-label="Export profile as a file"
+                title="Export"
+                onclick={() => onExport(profile.id)}
+              >
+                <Download size={18} aria-hidden="true" />
+              </button>
               <button
                 type="button"
                 class="icon-btn icon-btn--danger"

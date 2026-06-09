@@ -42,7 +42,12 @@ import {
   NoteDetailPanel,
   type NoteSelection,
 } from '$features/notes';
-import { ProfileSwitcher, ProfilesPanel } from '$features/profiles';
+import {
+  downloadProfileJson,
+  ProfileSwitcher,
+  ProfilesPanel,
+  parseProfilesJson,
+} from '$features/profiles';
 import {
   activateRoute,
   advancePoint,
@@ -361,6 +366,19 @@ function onApplyProfile(id: string): void {
 function onSaveNewProfile(name: string): void {
   const profile = profileStore.save(name, captureProfileSettings());
   profileStore.setActive(profile.id);
+}
+
+function onExportProfile(id: string): void {
+  const profile = profileStore.profiles.find((p) => p.id === id);
+  if (profile) downloadProfileJson(profile);
+}
+
+// Import each valid profile from the picked JSON as a new saved profile (a fresh id, so an import never
+// overwrites an existing one); malformed entries are dropped by the parser.
+function onImportProfiles(json: string): void {
+  for (const imported of parseProfilesJson(json)) {
+    profileStore.save(imported.name, imported.settings);
+  }
 }
 
 // User-imported PMTiles charts: the descriptor list is persisted, the files live in the browser
@@ -1176,6 +1194,8 @@ onDestroy(() => {
           onRename={(id, name) => profileStore.rename(id, name)}
           onRemove={(id) => profileStore.remove(id)}
           onSetDefault={(id) => profileStore.setDefault(id)}
+          onExport={onExportProfile}
+          onImport={onImportProfiles}
           onClose={closePanel}
           onBack={backToMenu}
         />
