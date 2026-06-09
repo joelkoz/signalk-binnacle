@@ -1,7 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import {
   type GeoJSONStoreFeatures,
-  type SetCursor,
   TerraDraw,
   TerraDrawLineStringMode,
   TerraDrawPointMode,
@@ -9,7 +8,7 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { Route, Waypoint } from '$entities/route';
-import { chartCursorFor, mapThemePaint } from '$shared/map';
+import { mapThemePaint } from '$shared/map';
 import { isLonLat, latLonToLonLat, lonLatToLatLon } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 
@@ -57,27 +56,12 @@ export function createRouteEditor(opts: {
   onChange: (waypoints: Waypoint[]) => void;
 }): RouteEditor {
   const color = drawColor(opts.theme);
-  // Terra Draw's Cursor type is a fixed keyword set, so a draw mode can only ask for keywords like
-  // "crosshair" (drawing) or "move" (dragging a waypoint in select mode), not a custom image, and some
-  // desktop themes draw those white on light water. Map each keyword that has a high-contrast shape to
-  // it; every other cursor (for example the already-readable "pointer"), and the "unset" that clears it
-  // back to the pan hand, passes through unchanged.
-  const adapter = new (class extends TerraDrawMapLibreGLAdapter<MapLibreMap> {
-    setCursor(cursor: Parameters<SetCursor>[0]): void {
-      const themed = chartCursorFor(cursor);
-      if (themed) {
-        opts.map.getCanvas().style.cursor = themed;
-        return;
-      }
-      super.setCursor(cursor);
-    }
-  })({
-    map: opts.map,
-    prefixId: 'binnacle-route-draw',
-    renderBelowLayerId: opts.beforeId,
-  });
   const draw = new TerraDraw({
-    adapter,
+    adapter: new TerraDrawMapLibreGLAdapter({
+      map: opts.map,
+      prefixId: 'binnacle-route-draw',
+      renderBelowLayerId: opts.beforeId,
+    }),
     modes: [
       new TerraDrawPointMode({ styles: { pointColor: color, pointWidth: 6 } }),
       new TerraDrawLineStringMode({

@@ -9,7 +9,6 @@ export { chartSourceId } from './chart-adapter';
 export { createChartOverlay } from './chart-overlay';
 export type { SignalKChart } from './chart-types';
 export { DARK_SCRIM, rgbaCss } from './contrast';
-export { chartCursorFor } from './cursors';
 export { emptyFeatureCollection } from './feature-collection';
 export type { Rgba } from './icon-raster';
 export { rasterIcon, rasterIconColored } from './icon-raster';

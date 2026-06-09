@@ -702,40 +702,6 @@ body {
   white-space: nowrap;
 }
 
-/* The chart cursors. Some desktop cursor themes draw the OS grab, grabbing, and crosshair shapes
-   white, which is hard to see on light water, so define high-contrast replacements (a dark silhouette
-   under a white halo) once as custom properties, used by the MapLibre cursor rules below and read by
-   the route-draw adapter (cursors.ts) so the two share one source. Theme-independent: the dark-on-halo
-   shape reads on both the light day chart and the night-red black background. */
-:root {
-  --cursor-grab:
-    url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2226%22 height=%2226%22 viewBox=%220 0 24 24%22%3E%3Cg fill=%22%23fff%22 stroke=%22%23fff%22 stroke-width=%223%22 stroke-linejoin=%22round%22%3E%3Crect x=%224.6%22 y=%226.5%22 width=%222.6%22 height=%2210%22 rx=%221.3%22/%3E%3Crect x=%227.5%22 y=%224.5%22 width=%222.6%22 height=%2212%22 rx=%221.3%22/%3E%3Crect x=%2210.4%22 y=%224%22 width=%222.6%22 height=%2212.5%22 rx=%221.3%22/%3E%3Crect x=%2213.3%22 y=%226%22 width=%222.6%22 height=%2210.5%22 rx=%221.3%22/%3E%3Crect x=%224.3%22 y=%2211%22 width=%2211.8%22 height=%2210.5%22 rx=%223.2%22/%3E%3Crect x=%222.2%22 y=%2212.5%22 width=%222.6%22 height=%226%22 rx=%221.3%22 transform=%22rotate%28-38 3.5 15.5%29%22/%3E%3C/g%3E%3Cg fill=%22%231a1a1a%22%3E%3Crect x=%224.6%22 y=%226.5%22 width=%222.6%22 height=%2210%22 rx=%221.3%22/%3E%3Crect x=%227.5%22 y=%224.5%22 width=%222.6%22 height=%2212%22 rx=%221.3%22/%3E%3Crect x=%2210.4%22 y=%224%22 width=%222.6%22 height=%2212.5%22 rx=%221.3%22/%3E%3Crect x=%2213.3%22 y=%226%22 width=%222.6%22 height=%2210.5%22 rx=%221.3%22/%3E%3Crect x=%224.3%22 y=%2211%22 width=%2211.8%22 height=%2210.5%22 rx=%223.2%22/%3E%3Crect x=%222.2%22 y=%2212.5%22 width=%222.6%22 height=%226%22 rx=%221.3%22 transform=%22rotate%28-38 3.5 15.5%29%22/%3E%3C/g%3E%3C/svg%3E")
-    13 13,
-    grab;
-  --cursor-grabbing:
-    url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2226%22 height=%2226%22 viewBox=%220 0 24 24%22%3E%3Cg fill=%22%23fff%22 stroke=%22%23fff%22 stroke-width=%223%22 stroke-linejoin=%22round%22%3E%3Crect x=%224.8%22 y=%228.5%22 width=%222.6%22 height=%225.5%22 rx=%221.3%22/%3E%3Crect x=%227.6%22 y=%227.5%22 width=%222.6%22 height=%226%22 rx=%221.3%22/%3E%3Crect x=%2210.4%22 y=%227.7%22 width=%222.6%22 height=%226%22 rx=%221.3%22/%3E%3Crect x=%2213.2%22 y=%228.3%22 width=%222.6%22 height=%225.5%22 rx=%221.3%22/%3E%3Crect x=%224.4%22 y=%2211%22 width=%2211.4%22 height=%2210%22 rx=%223.4%22/%3E%3Crect x=%222.6%22 y=%2211.5%22 width=%222.6%22 height=%225.5%22 rx=%221.3%22 transform=%22rotate%28-30 3.9000000000000004 14.25%29%22/%3E%3C/g%3E%3Cg fill=%22%231a1a1a%22%3E%3Crect x=%224.8%22 y=%228.5%22 width=%222.6%22 height=%225.5%22 rx=%221.3%22/%3E%3Crect x=%227.6%22 y=%227.5%22 width=%222.6%22 height=%226%22 rx=%221.3%22/%3E%3Crect x=%2210.4%22 y=%227.7%22 width=%222.6%22 height=%226%22 rx=%221.3%22/%3E%3Crect x=%2213.2%22 y=%228.3%22 width=%222.6%22 height=%225.5%22 rx=%221.3%22/%3E%3Crect x=%224.4%22 y=%2211%22 width=%2211.4%22 height=%2210%22 rx=%223.4%22/%3E%3Crect x=%222.6%22 y=%2211.5%22 width=%222.6%22 height=%225.5%22 rx=%221.3%22 transform=%22rotate%28-30 3.9000000000000004 14.25%29%22/%3E%3C/g%3E%3C/svg%3E")
-    13 13,
-    grabbing;
-  --cursor-crosshair:
-    url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2226%22 height=%2226%22 viewBox=%220 0 24 24%22%3E%3Cline x1=%2212%22 y1=%222%22 x2=%2212%22 y2=%229%22 stroke=%22%23fff%22 stroke-width=%223.5%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2212%22 y1=%2215%22 x2=%2212%22 y2=%2222%22 stroke=%22%23fff%22 stroke-width=%223.5%22 stroke-linecap=%22round%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%229%22 y2=%2212%22 stroke=%22%23fff%22 stroke-width=%223.5%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2215%22 y1=%2212%22 x2=%2222%22 y2=%2212%22 stroke=%22%23fff%22 stroke-width=%223.5%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2212%22 y1=%222%22 x2=%2212%22 y2=%229%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2212%22 y1=%2215%22 x2=%2212%22 y2=%2222%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22 stroke-linecap=%22round%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%229%22 y2=%2212%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2215%22 y1=%2212%22 x2=%2222%22 y2=%2212%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22 stroke-linecap=%22round%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.4%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%223.5%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.4%22 fill=%22none%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22/%3E%3C/svg%3E")
-    13 13,
-    crosshair;
-}
-/* The .maplibregl-map ancestor raises specificity over MapLibre's own interactive cursor rule. */
-.maplibregl-map .maplibregl-canvas-container.maplibregl-interactive {
-  cursor: var(--cursor-grab);
-}
-.maplibregl-map .maplibregl-canvas-container.maplibregl-interactive:active {
-  cursor: var(--cursor-grabbing);
-}
-/* MapLibre adds .maplibregl-crosshair to the map container during a shift-drag box zoom; override its
-   white crosshair too. The compound .maplibregl-map.maplibregl-crosshair plus the interactive canvas
-   selector outranks the pan-hand rule above, so the crosshair wins while box-zooming. */
-.maplibregl-map.maplibregl-crosshair,
-.maplibregl-map.maplibregl-crosshair .maplibregl-canvas-container.maplibregl-interactive {
-  cursor: var(--cursor-crosshair);
-}
-
 /* Respect a reduced-motion preference: drop transitions and animations app-wide. */
 @media (prefers-reduced-motion: reduce) {
   *,

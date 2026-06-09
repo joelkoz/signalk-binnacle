@@ -32,11 +32,6 @@ All notable changes to Binnacle are documented here. The format follows
 - The Tracks panel now renders saved tracks as the same elevated cards as the Routes panel, each
   showing the track's distance and duration, and the current-track stats line was tightened to a
   label, value, and unit grid that removes the trailing whitespace and aligns the values in a column.
-- The chart cursors are now high-contrast (a dark silhouette under a white halo) instead of the
-  desktop theme's, so they stay visible on the light day chart and the night-red black background:
-  a filled hand for panning, grabbing, and dragging a waypoint, and a crosshair with a center dot
-  while drawing a route or box-zooming. The shapes are defined once as CSS custom properties that both
-  the map styles and the route editor read.
 - At night-red, the base map's pre-colored sprite icons (road and transit shields, aerodrome marks)
   are now hidden along with the POI dots, so the chart stays pure red on black with no stray blue,
   green, or white icons. The text labels stay visible.
@@ -58,11 +53,10 @@ All notable changes to Binnacle are documented here. The format follows
   shared from `$shared/nav`, the nav-strip `RouteProgress` type has one definition, the plan-speed
   field uses the shared `.input`, and the whole-route distance derives from the leg table so the total
   and the per-leg numbers cannot drift.
-- A /simplify pass over the cursor and contrast work: the route, selection-ring, and AIS dark contrast
-  aids share one `DARK_SCRIM` constant and an `rgbaCss` helper in `$shared/map` instead of three
-  drifting literals, the route editor's cursor lookup caches its resolved CSS variable instead of
-  reading it on every pointer move, and the SlideOver minimize takes one `{ collapsed, onToggle }`
-  object so the state and its toggle are always supplied together.
+- A /simplify pass over the contrast work: the route, selection-ring, and AIS dark contrast aids share
+  one `DARK_SCRIM` constant and an `rgbaCss` helper in `$shared/map` instead of three drifting literals,
+  and the SlideOver minimize takes one `{ collapsed, onToggle }` object so the state and its toggle are
+  always supplied together.
 
 ## [0.2.1] - 2026-06-09
 
