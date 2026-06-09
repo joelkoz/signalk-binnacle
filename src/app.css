@@ -398,7 +398,8 @@ body {
 }
 
 /* The close button shared by the panels: a transparent icon button that highlights on hover. */
-.panel-close {
+.panel-close,
+.panel-minimize {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -414,9 +415,15 @@ body {
     background-color var(--transition-fast),
     color var(--transition-fast);
 }
-.panel-close:hover {
+.panel-close:hover,
+.panel-minimize:hover {
   background: var(--surface);
   color: var(--text);
+}
+/* Minimizing collapses the bottom sheet to its header, which only frees space on a phone, so the
+   control and the collapse apply at phone widths only (see the slide-over media query below). */
+.panel-minimize {
+  display: none;
 }
 
 /* The transparent icon-only button shared by the list-row actions (show or hide, edit, activate,
@@ -533,6 +540,16 @@ body {
   .slide-over--dock-left,
   .slide-over--dock-right {
     border-inline: 0;
+  }
+  .panel-minimize {
+    display: inline-flex;
+  }
+  /* Collapse the bottom sheet to its header so the chart underneath is usable while the panel stays
+     open (for example tapping waypoints into a route); the header keeps the expand control. The
+     compound .panel-body selector outranks the base .panel-body--flex display, which is declared later
+     in the file, so the collapse is not defeated by source order. */
+  .panel-body.panel-body--collapsed {
+    display: none;
   }
 }
 /* The slide-over title row and scrolling body, shared by the edge-docked panels so the header and

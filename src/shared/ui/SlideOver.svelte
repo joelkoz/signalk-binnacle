@@ -1,5 +1,5 @@
 <script lang="ts">
-import { ArrowLeft, X } from '@lucide/svelte';
+import { ArrowLeft, ChevronDown, ChevronUp, X } from '@lucide/svelte';
 import type { Snippet } from 'svelte';
 import { fly } from 'svelte/transition';
 import { dialog } from './dialog';
@@ -27,6 +27,11 @@ interface Props {
   backLabel?: string;
   // Optional extra header content, between the title and the close button.
   headerExtra?: Snippet;
+  // When supplied, a minimize control collapses the panel to just its header on a phone, so the panel
+  // does not cover the chart (for example while tapping waypoints into a route). It is a no-op on a
+  // desktop side panel, so the control only shows at phone widths.
+  minimized?: boolean;
+  onToggleMinimize?: () => void;
   children: Snippet;
 }
 
@@ -40,6 +45,8 @@ const {
   onBack,
   backLabel = 'Back to menu',
   headerExtra,
+  minimized = false,
+  onToggleMinimize,
   children,
 }: Props = $props();
 </script>
@@ -64,6 +71,22 @@ const {
     {/if}
     <h2 class="panel-title">{title}</h2>
     {@render headerExtra?.()}
+    {#if onToggleMinimize}
+      <button
+        type="button"
+        class="panel-minimize"
+        aria-label={minimized ? 'Expand panel' : 'Minimize panel'}
+        aria-pressed={minimized}
+        title={minimized ? 'Expand panel' : 'Minimize panel'}
+        onclick={onToggleMinimize}
+      >
+        {#if minimized}
+          <ChevronUp size={18} aria-hidden="true" />
+        {:else}
+          <ChevronDown size={18} aria-hidden="true" />
+        {/if}
+      </button>
+    {/if}
     <button
       type="button"
       class="panel-close"
@@ -74,7 +97,7 @@ const {
       <X size={18} aria-hidden="true" />
     </button>
   </header>
-  <div class="panel-body" class:panel-body--flex={bodyFlex}>
+  <div class="panel-body" class:panel-body--flex={bodyFlex} class:panel-body--collapsed={minimized}>
     {@render children()}
   </div>
 </aside>

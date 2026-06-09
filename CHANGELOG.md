@@ -19,6 +19,9 @@ All notable changes to Binnacle are documented here. The format follows
   return leg, navigate home by retracing the current track, and skip the active route's waypoint
   forward or back from the nav strip. The nav strip also shows the whole-route distance and arrival
   time when a multi-leg route is active.
+- A minimize control on the Routes panel. On a phone the panel is a bottom sheet that covers the chart,
+  so a chevron in the header collapses it to just the header bar while it stays open, freeing the chart
+  to tap waypoints into a route. The control only appears at phone widths.
 
 ### Changed
 

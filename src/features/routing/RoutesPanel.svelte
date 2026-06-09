@@ -120,9 +120,29 @@ const totalTime = $derived.by(() => {
   const seconds = etaSeconds(workingDistanceMeters, planSpeedMps);
   return seconds == null ? PLACEHOLDER : formatDuration(seconds);
 });
+
+// Minimize collapses the panel to its header on a phone, so the chart is usable while waypoints are
+// tapped in. Expand it whenever an edit begins, so the edit controls are visible before the navigator
+// chooses to minimize; the transition check keeps a minimize during editing from springing back open
+// on the next waypoint.
+let minimized = $state(false);
+let wasEditing = false;
+$effect(() => {
+  const editing = working !== undefined;
+  if (editing && !wasEditing) minimized = false;
+  wasEditing = editing;
+});
 </script>
 
-<SlideOver title="Routes" bodyFlex closeLabel="Close routes panel" {onClose} {onBack}>
+<SlideOver
+  title="Routes"
+  bodyFlex
+  closeLabel="Close routes panel"
+  {minimized}
+  onToggleMinimize={() => (minimized = !minimized)}
+  {onClose}
+  {onBack}
+>
   {#if error}
     <p class="error" role="alert">{error}</p>
   {/if}
