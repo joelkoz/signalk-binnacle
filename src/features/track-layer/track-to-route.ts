@@ -1,0 +1,30 @@
+import type { Route, Waypoint } from '$entities/route';
+import type { TrackPoint } from '$entities/track';
+import { uuidv4 } from '$shared/lib';
+import { douglasPeucker } from './simplify';
+
+// Roughly the meters one degree spans, to convert a meter tolerance into the degree space the
+// simplifier works in. Latitude-independent and approximate, which is fine for a route-coarsening
+// tolerance of tens of meters that only decides how many waypoints to keep.
+const METERS_PER_DEGREE = 111_320;
+
+// The default coarsening distance for a track-to-route conversion. A track is recorded at display
+// density (a point every few seconds); a route wants a handful of turning points, so a coarse
+// tolerance drops the straight-line filler and keeps the corners.
+export const DEFAULT_ROUTE_TOLERANCE_M = 100;
+
+// Turn a recorded track into a planned route: coarsen the points with Douglas-Peucker so the route
+// carries its turning points rather than the track's full density, then map each kept point to an
+// unnamed waypoint in travel order. The caller is responsible for only offering this when the track
+// has at least two points, since a route needs at least two waypoints.
+export function trackToRoute(
+  points: readonly TrackPoint[],
+  name: string,
+  toleranceMeters: number = DEFAULT_ROUTE_TOLERANCE_M,
+): Route {
+  const kept = douglasPeucker(points, toleranceMeters / METERS_PER_DEGREE);
+  const waypoints: Waypoint[] = kept.map((p) => ({
+    position: { latitude: p.lat, longitude: p.lon },
+  }));
+  return { id: uuidv4(), name, waypoints };
+}
