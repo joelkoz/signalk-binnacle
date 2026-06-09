@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyBaseIconVisibility,
   applyBaseTheme,
-  applyPoiVisibility,
   baseLayerPaint,
   captureBaseTheme,
   restoreBaseTheme,
@@ -161,26 +161,33 @@ describe('captureBaseTheme and restoreBaseTheme', () => {
   });
 });
 
-describe('applyPoiVisibility', () => {
-  it('hides the POI sprite icons at night-red and shows them otherwise', () => {
+describe('applyBaseIconVisibility', () => {
+  it('hides every base sprite icon at night-red and shows them otherwise', () => {
     const map = fakeStyleMap([
-      { id: 'poi_r1', type: 'symbol', 'source-layer': 'poi' },
-      // A road shield and a place label are symbols too, but not POI, so their icons are left alone.
-      { id: 'road_shield', type: 'symbol', 'source-layer': 'transportation' },
-      { id: 'label_city', type: 'symbol', 'source-layer': 'place' },
+      { id: 'poi_r1', type: 'symbol', 'source-layer': 'poi', layout: { 'icon-image': 'dot' } },
+      // A road shield carries a sprite icon too, so it is hidden at night-red along with the POI dots.
+      {
+        id: 'road_shield',
+        type: 'symbol',
+        'source-layer': 'transportation',
+        layout: { 'icon-image': 'shield' },
+      },
+      // A place label is a symbol with no icon, so its (text-only) layer is left alone.
+      { id: 'label_city', type: 'symbol', 'source-layer': 'place', layout: {} },
     ]);
 
     // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
-    applyPoiVisibility(map as any, mapThemePaint('night-red'));
+    applyBaseIconVisibility(map as any, mapThemePaint('night-red'));
     expect(map.getPaintProperty('poi_r1', 'icon-opacity')).toBe(0);
-    expect(map.getPaintProperty('road_shield', 'icon-opacity')).toBeUndefined();
+    expect(map.getPaintProperty('road_shield', 'icon-opacity')).toBe(0);
     expect(map.getPaintProperty('label_city', 'icon-opacity')).toBeUndefined();
 
     // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
-    applyPoiVisibility(map as any, mapThemePaint('day'));
+    applyBaseIconVisibility(map as any, mapThemePaint('day'));
     expect(map.getPaintProperty('poi_r1', 'icon-opacity')).toBe(1);
+    expect(map.getPaintProperty('road_shield', 'icon-opacity')).toBe(1);
     // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
-    applyPoiVisibility(map as any, mapThemePaint('dusk'));
+    applyBaseIconVisibility(map as any, mapThemePaint('dusk'));
     expect(map.getPaintProperty('poi_r1', 'icon-opacity')).toBe(1);
   });
 });

@@ -17,6 +17,7 @@ interface BaseLayer {
   id: string;
   type: string;
   'source-layer'?: string;
+  layout?: { 'icon-image'?: unknown };
 }
 
 // The base style's layers, or an empty list if the style is not ready. getStyle throws before the
@@ -108,14 +109,19 @@ export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
 // The base style's POI markers are pre-colored sprite icons (the green dots), which no paint recolor
 // can touch. Hide them at night-red so the map holds the red band, and show them on the other
 // themes. The POI name text is unaffected; it recolors with the other labels.
-export function applyPoiVisibility(map: MapLibreMap, paint: MapThemePaint): void {
+// The base style's sprite icons (POI dots, road and transit shields, aerodrome marks) are pre-colored
+// in the published sprite, so the source-layer recolor never reaches them and they keep their original
+// blues, greens, and whites. Binnacle draws its own navigation symbols and does not rely on any base
+// sprite icon, so hide every base icon at night-red to keep the map pure red on black, while leaving
+// the text labels (already recolored) visible. Other themes show the icons normally.
+export function applyBaseIconVisibility(map: MapLibreMap, paint: MapThemePaint): void {
   const opacity = paint.theme === 'night-red' ? 0 : 1;
   for (const layer of baseLayers(map)) {
-    if (layer.type !== 'symbol' || layer['source-layer'] !== 'poi') continue;
+    if (layer.type !== 'symbol' || !layer.layout?.['icon-image']) continue;
     try {
       map.setPaintProperty(layer.id, 'icon-opacity', opacity);
     } catch {
-      // A POI layer without an icon is fine; skip it.
+      // A symbol layer that does not actually paint an icon is fine; skip it.
     }
   }
 }

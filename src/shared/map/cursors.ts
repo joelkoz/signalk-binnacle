@@ -1,6 +1,22 @@
-// The chart route-drawing crosshair. Terra Draw sets a plain "crosshair" keyword cursor inline, which
-// some desktop cursor themes draw white and hard to see on light water. This high-contrast crosshair (a
-// dark cross with a white halo and a center dot) replaces it, matching the pan hand override in app.css.
-// A CSS cursor value: a data-URI image with a centered hotspot, falling back to the crosshair keyword.
-export const CROSSHAIR_CURSOR =
-  'url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2226%22 height=%2226%22 viewBox=%220 0 24 24%22%3E%3Cline x1=%2212%22 y1=%222%22 x2=%2212%22 y2=%229%22 stroke=%22%23fff%22 stroke-width=%223.5%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2212%22 y1=%2215%22 x2=%2212%22 y2=%2222%22 stroke=%22%23fff%22 stroke-width=%223.5%22 stroke-linecap=%22round%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%229%22 y2=%2212%22 stroke=%22%23fff%22 stroke-width=%223.5%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2215%22 y1=%2212%22 x2=%2222%22 y2=%2212%22 stroke=%22%23fff%22 stroke-width=%223.5%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2212%22 y1=%222%22 x2=%2212%22 y2=%229%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2212%22 y1=%2215%22 x2=%2212%22 y2=%2222%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22 stroke-linecap=%22round%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%229%22 y2=%2212%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22 stroke-linecap=%22round%22/%3E%3Cline x1=%2215%22 y1=%2212%22 x2=%2222%22 y2=%2212%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22 stroke-linecap=%22round%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.4%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%223.5%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.4%22 fill=%22none%22 stroke=%22%231a1a1a%22 stroke-width=%221.6%22/%3E%3C/svg%3E") 13 13, crosshair';
+// The chart cursor values live once as CSS custom properties in app.css (--cursor-grab,
+// --cursor-grabbing, --cursor-crosshair), used by the MapLibre cursor rules and read here so the route
+// editor can apply the same high-contrast shapes. Terra Draw only sets keyword cursors inline (it has
+// no way to ask for a custom image), so its adapter maps each keyword to the matching custom property.
+
+const KEYWORD_TO_VAR: Record<string, string> = {
+  crosshair: '--cursor-crosshair',
+  grab: '--cursor-grab',
+  grabbing: '--cursor-grabbing',
+  // A point drag in select mode reports "move"; an open hand reads as "this point is draggable".
+  move: '--cursor-grab',
+};
+
+// The high-contrast cursor value for a Terra Draw cursor keyword, or undefined when the keyword has no
+// custom shape (let the stock adapter set the OS cursor, which for "pointer" already reads clearly).
+// Reads the live CSS variable so the value has a single source; falls back to the keyword if unset.
+export function chartCursorFor(keyword: string): string | undefined {
+  const name = KEYWORD_TO_VAR[keyword];
+  if (!name || typeof document === 'undefined') return undefined;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || keyword;
+}

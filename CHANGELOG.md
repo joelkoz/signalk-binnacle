@@ -31,7 +31,12 @@ All notable changes to Binnacle are documented here. The format follows
   label, value, and unit grid that removes the trailing whitespace and aligns the values in a column.
 - The chart cursors are now high-contrast (a dark silhouette under a white halo) instead of the
   desktop theme's, so they stay visible on the light day chart and the night-red black background:
-  a filled hand for panning and grabbing, and a crosshair with a center dot while drawing a route.
+  a filled hand for panning, grabbing, and dragging a waypoint, and a crosshair with a center dot
+  while drawing a route or box-zooming. The shapes are defined once as CSS custom properties that both
+  the map styles and the route editor read.
+- At night-red, the base map's pre-colored sprite icons (road and transit shields, aerodrome marks)
+  are now hidden along with the POI dots, so the chart stays pure red on black with no stray blue,
+  green, or white icons. The text labels stay visible.
 
 ### Internal
 

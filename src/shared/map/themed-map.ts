@@ -2,8 +2,8 @@ import maplibregl from 'maplibre-gl';
 import type { Theme } from '$shared/ui';
 import { baseStyleUrl } from './base-style';
 import {
+  applyBaseIconVisibility,
   applyBaseTheme,
-  applyPoiVisibility,
   captureBaseTheme,
   restoreBaseTheme,
 } from './base-theme';
@@ -190,7 +190,7 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
       const paint = mapThemePaint(theme);
       if (theme === 'day') restoreBaseTheme(mapInstance, baseColors);
       else applyBaseTheme(mapInstance, paint);
-      applyPoiVisibility(mapInstance, paint);
+      applyBaseIconVisibility(mapInstance, paint);
       manager.applyTheme(paint);
     };
 
