@@ -8,13 +8,13 @@
 
 A WebGL chart plotter for [Signal K](https://signalk.org).
 
-> **0.2.0.** This release adds a Tides panel for US waters (the nearest NOAA station's next high and
-> low, a 48-hour curve, and the nearest tidal-current flood or ebb) and a set of free, key-free chart
-> overlays: OpenSeaMap seamarks, marine protected areas, maritime boundaries, and NASA GIBS ocean
-> conditions (sea-surface temperature and sea ice). The Layers panel is reorganized into collapsible
-> categories with a better default order (US charts on top), imported charts gain a review step and
-> register on the server so other devices discover them, and each depth source splits into a base and
-> a survey-quality facet. See the [changelog](CHANGELOG.md) for the full list.
+> **0.2.1.** A reliability patch. Points of interest no longer flicker (a transient provider response
+> could blank the markers; they are now kept and cached by area), active marine warnings stay put
+> through a transient weather hiccup, an active route re-hydrates its guidance after a stream
+> reconnect instead of freezing on stale values, server charts no longer blank on a transient load
+> failure, and orphaned imported-chart storage is reclaimed. A hidden Points-of-interest layer now
+> does no background work, a base-map console-warning stream is silenced, and a whole-codebase
+> cleanup landed. See the [changelog](CHANGELOG.md) for the full list.
 >
 > **It has not been field-tested at any scale.** It has been developed and verified against a single
 > Signal K server, never across a fleet or a range of real-world boats, hardware, and conditions. It

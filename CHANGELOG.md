@@ -4,7 +4,7 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.1] - 2026-06-09
 
 ### Fixed
 
@@ -26,6 +26,9 @@ All notable changes to Binnacle are documented here. The format follows
   blobs cannot accumulate on disk.
 - The Points-of-interest layer no longer fetches from the provider or re-clusters while it is toggled
   off: a hidden layer now does no network or rendering work until it is shown again.
+- Silenced a stream of "styleimagemissing" console warnings: the base map style references a few
+  sprite icons and landuse patterns its published sprite does not contain, so a transparent
+  placeholder is supplied for each. The map is unaffected; the console stays clean.
 
 ### Internal
 
