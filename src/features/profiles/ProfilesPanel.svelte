@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Check, Download, Save, SquarePen, Star, Trash2, Upload } from '@lucide/svelte';
 import type { Profile } from '$entities/profile';
-import { pickTextFile, promptSaveName, SlideOver } from '$shared/ui';
+import { pickTextFile, promptSaveName, SavedList, SlideOver } from '$shared/ui';
 
 interface Props {
   profiles: Profile[];
@@ -68,96 +68,93 @@ function promptRename(profile: Profile): void {
     </button>
   </div>
 
-  <div class="saved">
-    <span class="caps-label">Saved profiles</span>
-    {#if profiles.length === 0}
-      <p class="empty">No profiles yet</p>
-    {:else}
-      <ul>
-        {#each profiles as profile (profile.id)}
-          {@const isActive = profile.id === activeId}
-          {@const isDefault = profile.id === defaultId}
-          <li class:active={isActive}>
-            <div class="card-head">
-              <span class="name">{profile.name}</span>
-              {#if isDefault}
-                <span class="caps-label tag">Default</span>
-              {/if}
-              {#if isActive}
-                <span class="badge">Active</span>
-              {/if}
-            </div>
-            {#if isActive && isDirty}
-              <p class="dirty caps-label">Unsaved changes</p>
-            {/if}
-            <div class="actions">
-              {#if !isActive}
-                <button
-                  type="button"
-                  class="icon-btn"
-                  aria-label="Apply this profile"
-                  title="Apply"
-                  onclick={() => onApply(profile.id)}
-                >
-                  <Check size={18} aria-hidden="true" />
-                </button>
-              {/if}
-              {#if isActive}
-                <button
-                  type="button"
-                  class="icon-btn"
-                  aria-label="Save changes to this profile"
-                  title="Save changes"
-                  disabled={!isDirty}
-                  onclick={() => onUpdate(profile.id)}
-                >
-                  <Save size={18} aria-hidden="true" />
-                </button>
-              {/if}
-              <button
-                type="button"
-                class="icon-btn"
-                aria-label="Rename profile"
-                title="Rename"
-                onclick={() => promptRename(profile)}
-              >
-                <SquarePen size={18} aria-hidden="true" />
-              </button>
-              {#if !isDefault}
-                <button
-                  type="button"
-                  class="icon-btn"
-                  aria-label="Set as default profile"
-                  title="Set as default"
-                  onclick={() => onSetDefault(profile.id)}
-                >
-                  <Star size={18} aria-hidden="true" />
-                </button>
-              {/if}
-              <button
-                type="button"
-                class="icon-btn"
-                aria-label="Export profile as a file"
-                title="Export"
-                onclick={() => onExport(profile.id)}
-              >
-                <Download size={18} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="icon-btn icon-btn--danger"
-                aria-label="Delete profile"
-                title="Delete"
-                onclick={() => onRemove(profile.id)}
-              >
-                <Trash2 size={18} aria-hidden="true" />
-              </button>
-            </div>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </div>
+  <SavedList
+    heading="Saved profiles"
+    items={profiles}
+    empty="No profiles yet"
+    key={(profile) => profile.id}
+    isActive={(profile) => profile.id === activeId}
+  >
+    {#snippet card(profile)}
+      {@const isActive = profile.id === activeId}
+      {@const isDefault = profile.id === defaultId}
+      <div class="card-head">
+        <span class="name">{profile.name}</span>
+        {#if isDefault}
+          <span class="caps-label tag">Default</span>
+        {/if}
+        {#if isActive}
+          <span class="badge">Active</span>
+        {/if}
+      </div>
+      {#if isActive && isDirty}
+        <p class="dirty caps-label">Unsaved changes</p>
+      {/if}
+      <div class="actions">
+        {#if !isActive}
+          <button
+            type="button"
+            class="icon-btn"
+            aria-label="Apply this profile"
+            title="Apply"
+            onclick={() => onApply(profile.id)}
+          >
+            <Check size={18} aria-hidden="true" />
+          </button>
+        {/if}
+        {#if isActive}
+          <button
+            type="button"
+            class="icon-btn"
+            aria-label="Save changes to this profile"
+            title="Save changes"
+            disabled={!isDirty}
+            onclick={() => onUpdate(profile.id)}
+          >
+            <Save size={18} aria-hidden="true" />
+          </button>
+        {/if}
+        <button
+          type="button"
+          class="icon-btn"
+          aria-label="Rename profile"
+          title="Rename"
+          onclick={() => promptRename(profile)}
+        >
+          <SquarePen size={18} aria-hidden="true" />
+        </button>
+        {#if !isDefault}
+          <button
+            type="button"
+            class="icon-btn"
+            aria-label="Set as default profile"
+            title="Set as default"
+            onclick={() => onSetDefault(profile.id)}
+          >
+            <Star size={18} aria-hidden="true" />
+          </button>
+        {/if}
+        <button
+          type="button"
+          class="icon-btn"
+          aria-label="Export profile as a file"
+          title="Export"
+          onclick={() => onExport(profile.id)}
+        >
+          <Download size={18} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="icon-btn icon-btn--danger"
+          aria-label="Delete profile"
+          title="Delete"
+          onclick={() => onRemove(profile.id)}
+        >
+          <Trash2 size={18} aria-hidden="true" />
+        </button>
+      </div>
+    {/snippet}
+  </SavedList>
 </SlideOver>
 
 <style>

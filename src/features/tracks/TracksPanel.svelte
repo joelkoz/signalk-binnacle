@@ -1,20 +1,9 @@
 <script lang="ts">
-import {
-  Download,
-  Eraser,
-  Eye,
-  EyeOff,
-  Pause,
-  Play,
-  Route,
-  Save,
-  Trash2,
-  Undo2,
-} from '@lucide/svelte';
+import { Download, Eraser, Pause, Play, Route, Save, Trash2, Undo2 } from '@lucide/svelte';
 import type { TrackRecorder } from '$entities/track';
 import { formatDuration, formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
-import { promptSaveName, SlideOver } from '$shared/ui';
+import { promptSaveName, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
 import type { SavedTrack } from './tracks-client';
 
 interface Props {
@@ -177,65 +166,48 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     </dd>
   </dl>
 
-  <div class="saved">
-    <span class="caps-label">Saved tracks</span>
-    {#if saved.length === 0}
-      <p class="empty">None saved yet</p>
-    {:else}
-      <ul>
-        {#each savedCards as { track, distanceNm, durationText } (track.id)}
-          <li>
-            <div class="card-head">
-              <span class="name" title={track.name}>{track.name}</span>
-            </div>
-            <dl class="card-stats">
-              <dt class="caps-label">Distance</dt>
-              <dd>
-                <span class="num">{distanceNm}</span>
-                nm
-              </dd>
-              <dt class="caps-label">Duration</dt>
-              <dd><span class="num">{durationText}</span></dd>
-            </dl>
-            <div class="actions">
-              <button
-                type="button"
-                class="icon-btn"
-                aria-pressed={shown.has(track.id)}
-                aria-label={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
-                title={shown.has(track.id) ? 'Hide on chart' : 'Show on chart'}
-                onclick={() => onToggleSaved(track.id)}
-              >
-                {#if shown.has(track.id)}
-                  <Eye size={18} aria-hidden="true" />
-                {:else}
-                  <EyeOff size={18} aria-hidden="true" />
-                {/if}
-              </button>
-              <button
-                type="button"
-                class="icon-btn"
-                aria-label="Export GeoJSON"
-                title="Export GeoJSON"
-                onclick={() => onExport(track)}
-              >
-                <Download size={18} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="icon-btn icon-btn--danger"
-                aria-label="Delete track"
-                title="Delete"
-                onclick={() => onDelete(track.id)}
-              >
-                <Trash2 size={18} aria-hidden="true" />
-              </button>
-            </div>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </div>
+  <SavedList
+    heading="Saved tracks"
+    items={savedCards}
+    empty="None saved yet"
+    key={({ track }) => track.id}
+  >
+    {#snippet card({ track, distanceNm, durationText })}
+      <div class="card-head">
+        <span class="name" title={track.name}>{track.name}</span>
+      </div>
+      <dl class="card-stats">
+        <dt class="caps-label">Distance</dt>
+        <dd>
+          <span class="num">{distanceNm}</span>
+          nm
+        </dd>
+        <dt class="caps-label">Duration</dt>
+        <dd><span class="num">{durationText}</span></dd>
+      </dl>
+      <div class="actions">
+        <VisibilityToggle shown={shown.has(track.id)} onToggle={() => onToggleSaved(track.id)} />
+        <button
+          type="button"
+          class="icon-btn"
+          aria-label="Export GeoJSON"
+          title="Export GeoJSON"
+          onclick={() => onExport(track)}
+        >
+          <Download size={18} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="icon-btn icon-btn--danger"
+          aria-label="Delete track"
+          title="Delete"
+          onclick={() => onDelete(track.id)}
+        >
+          <Trash2 size={18} aria-hidden="true" />
+        </button>
+      </div>
+    {/snippet}
+  </SavedList>
 </SlideOver>
 
 <style>

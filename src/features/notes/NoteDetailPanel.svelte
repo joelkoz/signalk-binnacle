@@ -1,8 +1,6 @@
 <script lang="ts">
-import { ExternalLink, Star, X } from '@lucide/svelte';
-import { fly } from 'svelte/transition';
-import { prefersReducedMotion } from '$shared/lib';
-import { dialog } from '$shared/ui';
+import { ExternalLink, Star } from '@lucide/svelte';
+import { SlideOver } from '$shared/ui';
 import type { NoteSelection } from './notes-client';
 import type { NormalizedItem, NoteDetail } from './notes-detail';
 import { safeHttpUrl } from './notes-detail';
@@ -56,29 +54,23 @@ const sections = $derived(detail?.sections ? orderSections(detail.sections) : un
 const credit = $derived(detail?.attribution ?? selection.attribution);
 const extraSources = $derived((detail?.sources ?? []).filter((s) => s !== credit));
 const sourceUrl = $derived(safeHttpUrl(detail?.url ?? selection.url ?? ''));
+const hasFooter = $derived(Boolean(credit || sourceUrl));
 
 function measure(item: NormalizedItem): string {
   return item.unit ? `${item.value} ${item.unit}` : String(item.value);
 }
 </script>
 
-<aside
-  class="slide-over slide-over--dock-right"
-  aria-label="Point of interest detail"
-  use:dialog={onClose}
-  transition:fly={{ x: 24, duration: prefersReducedMotion() ? 0 : 180, opacity: 0.3 }}
+<SlideOver
+  dock="right"
+  title={selection.name}
+  subtitle={categoryLabel(selection.category)}
+  ariaLabel="Point of interest detail"
+  closeLabel="Close detail"
+  {onClose}
+  footer={hasFooter ? footer : undefined}
 >
-  <header>
-    <div class="heading">
-      <h2 class="panel-title">{selection.name}</h2>
-      <span class="type">{categoryLabel(selection.category)}</span>
-    </div>
-    <button type="button" class="panel-close" aria-label="Close detail" onclick={onClose}>
-      <X size={18} aria-hidden="true" />
-    </button>
-  </header>
-
-  <div class="body panel-body">
+  <div class="body">
     {#if loading}
       <p class="status" role="status">Loading...</p>
     {:else if failed}
@@ -151,41 +143,24 @@ function measure(item: NormalizedItem): string {
       <p class="status" role="status">No additional detail</p>
     {/if}
   </div>
+</SlideOver>
 
-  {#if credit || sourceUrl}
-    <footer>
-      {#if credit}
-        <span class="credit">{credit}</span>
-      {/if}
-      {#if extraSources.length > 0}
-        <span class="credit">{extraSources.join(', ')}</span>
-      {/if}
-      {#if sourceUrl}
-        <a class="source-link" href={sourceUrl} target="_blank" rel="noopener noreferrer">
-          View source <span class="visually-hidden">(opens in a new tab)</span>
-          <ExternalLink size={13} aria-hidden="true" />
-        </a>
-      {/if}
-    </footer>
+{#snippet footer()}
+  {#if credit}
+    <span class="credit">{credit}</span>
   {/if}
-</aside>
+  {#if extraSources.length > 0}
+    <span class="credit">{extraSources.join(', ')}</span>
+  {/if}
+  {#if sourceUrl}
+    <a class="source-link" href={sourceUrl} target="_blank" rel="noopener noreferrer">
+      View source <span class="visually-hidden">(opens in a new tab)</span>
+      <ExternalLink size={13} aria-hidden="true" />
+    </a>
+  {/if}
+{/snippet}
 
 <style>
-header {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: 0.6rem var(--space-3);
-  border-block-end: 1px solid var(--border);
-}
-.heading {
-  flex: 1;
-  min-inline-size: 0;
-}
-.type {
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
 .rating {
   display: inline-flex;
   color: var(--select);
@@ -270,16 +245,6 @@ dd {
 .status {
   margin-block: var(--space-1);
   color: var(--text-muted);
-}
-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-block-start: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: var(--text-xs);
 }
 .source-link {
   display: inline-flex;

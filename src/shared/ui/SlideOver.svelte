@@ -14,6 +14,8 @@ const reduceMotion =
 interface Props {
   // The panel heading, and the default accessible name for the panel landmark.
   title: string;
+  // A muted second heading line under the title, for panels whose subject needs a qualifier.
+  subtitle?: string;
   ariaLabel?: string;
   dock?: 'left' | 'right';
   // Lay the body out as a gapped column, for panels whose content is a stack of controls.
@@ -27,6 +29,8 @@ interface Props {
   backLabel?: string;
   // Optional extra header content, between the title and the close button.
   headerExtra?: Snippet;
+  // A pinned footer below the scrolling body, for panel-level actions or attribution.
+  footer?: Snippet;
   // When supplied, a minimize control collapses the panel to just its header on a phone, so the panel
   // does not cover the chart (for example while tapping waypoints into a route). It is a no-op on a
   // desktop side panel, so the control only shows at phone widths. One object so the collapsed state
@@ -37,6 +41,7 @@ interface Props {
 
 const {
   title,
+  subtitle,
   ariaLabel,
   dock = 'left',
   bodyFlex = false,
@@ -45,6 +50,7 @@ const {
   onBack,
   backLabel = 'Back to menu',
   headerExtra,
+  footer,
   minimize,
   children,
 }: Props = $props();
@@ -56,7 +62,7 @@ const {
   use:dialog={onClose}
   transition:fly={{ x: dock === 'right' ? 24 : -24, duration: reduceMotion ? 0 : 180, opacity: 0.3 }}
 >
-  <header class="panel-header">
+  <header class="panel-header" class:panel-header--stacked={subtitle}>
     {#if onBack}
       <button
         type="button"
@@ -68,7 +74,12 @@ const {
         <ArrowLeft size={20} aria-hidden="true" />
       </button>
     {/if}
-    <h2 class="panel-title">{title}</h2>
+    <div class="heading">
+      <h2 class="panel-title">{title}</h2>
+      {#if subtitle}
+        <span class="subtitle">{subtitle}</span>
+      {/if}
+    </div>
     {@render headerExtra?.()}
     {#if minimize}
       <button
@@ -103,4 +114,35 @@ const {
   >
     {@render children()}
   </div>
+  {#if footer}
+    <footer class="panel-footer">
+      {@render footer()}
+    </footer>
+  {/if}
 </aside>
+
+<style>
+.heading {
+  flex: 1;
+  min-inline-size: 0;
+}
+.subtitle {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+/* A two-line heading aligns to the top of the header instead of vertical center. */
+.panel-header--stacked {
+  align-items: flex-start;
+}
+.panel-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-block-start: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+</style>

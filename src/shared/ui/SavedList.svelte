@@ -1,0 +1,33 @@
+<script lang="ts" generics="T">
+import type { Snippet } from 'svelte';
+
+interface Props {
+  // The caps-label heading above the list.
+  heading: string;
+  items: T[];
+  // The message shown in place of the list when there are no items.
+  empty: string;
+  ariaLabel?: string;
+  // The stable identity per item, so the keyed each reconciles cards in place across reorders.
+  key: (item: T) => string;
+  // Marks an item's card as the active one (an accent bar, border, and tint), when supplied.
+  isActive?: (item: T) => boolean;
+  // Renders one item's card body. The list owns the wrapper, the panel owns the contents.
+  card: Snippet<[T]>;
+}
+
+const { heading, items, empty, ariaLabel, key, isActive, card }: Props = $props();
+</script>
+
+<div class="saved">
+  <span class="caps-label">{heading}</span>
+  {#if items.length === 0}
+    <p class="empty">{empty}</p>
+  {:else}
+    <ul aria-label={ariaLabel}>
+      {#each items as item (key(item))}
+        <li class:active={isActive?.(item)}>{@render card(item)}</li>
+      {/each}
+    </ul>
+  {/if}
+</div>

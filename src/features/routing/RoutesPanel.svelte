@@ -2,8 +2,6 @@
 import {
   ArrowLeftRight,
   Download,
-  Eye,
-  EyeOff,
   Navigation,
   Plus,
   Save,
@@ -23,7 +21,7 @@ import {
 } from '$shared/lib';
 import { etaSeconds } from '$shared/nav';
 import type { PersistedValue } from '$shared/settings';
-import { pickTextFile, promptSaveName, SlideOver } from '$shared/ui';
+import { pickTextFile, promptSaveName, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
 
 interface Props {
   routes: Route[];
@@ -214,116 +212,103 @@ $effect(() => {
     </div>
   {/if}
 
-  <div class="saved">
-    <span class="caps-label">Saved routes</span>
-    {#if routes.length === 0}
-      <p class="empty">No routes yet</p>
-    {:else}
-      <ul>
-        {#each savedCards as { route, distanceNm } (route.id)}
-          <li class:active={route.id === activeId}>
-            <div class="card-head">
-              <button
-                type="button"
-                class="name"
-                title="Go to this route on the chart"
-                onclick={() => onLocate(route.id)}
-              >
-                {route.name}
-              </button>
-              {#if route.id === activeId}
-                <span class="badge">Active</span>
-              {/if}
-            </div>
-            <dl class="card-stats">
-              <dt class="caps-label">Distance</dt>
-              <dd>
-                <span class="num">{distanceNm}</span>
-                nm
-              </dd>
-              <dt class="caps-label">Waypoints</dt>
-              <dd><span class="num">{route.waypoints.length}</span></dd>
-            </dl>
-            <div class="actions">
-              <button
-                type="button"
-                class="icon-btn"
-                aria-pressed={shownIds.has(route.id)}
-                aria-label={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
-                title={shownIds.has(route.id) ? 'Hide on chart' : 'Show on chart'}
-                onclick={() => onToggleShown(route.id, !shownIds.has(route.id))}
-              >
-                {#if shownIds.has(route.id)}
-                  <Eye size={18} aria-hidden="true" />
-                {:else}
-                  <EyeOff size={18} aria-hidden="true" />
-                {/if}
-              </button>
-              <button
-                type="button"
-                class="icon-btn"
-                aria-label="Edit route"
-                title="Edit"
-                disabled={working !== undefined}
-                onclick={() => onEditRoute(route.id)}
-              >
-                <SquarePen size={18} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="icon-btn"
-                aria-label="Reverse route"
-                title="Save a reversed copy"
-                onclick={() => onReverse(route.id)}
-              >
-                <ArrowLeftRight size={18} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="icon-btn"
-                aria-label="Export route as GPX"
-                title="Export GPX"
-                onclick={() => onExportGpx(route.id)}
-              >
-                <Download size={18} aria-hidden="true" />
-              </button>
-              {#if route.id === activeId}
-                <button
-                  type="button"
-                  class="icon-btn icon-btn--accent"
-                  aria-label="Stop navigation"
-                  title="Stop navigation"
-                  onclick={onStop}
-                >
-                  <Square size={18} aria-hidden="true" />
-                </button>
-              {:else}
-                <button
-                  type="button"
-                  class="icon-btn"
-                  aria-label="Activate route"
-                  title="Activate route"
-                  disabled={working !== undefined}
-                  onclick={() => onActivate(route.id)}
-                >
-                  <Navigation size={18} aria-hidden="true" />
-                </button>
-              {/if}
-              <button
-                type="button"
-                class="icon-btn icon-btn--danger"
-                aria-label="Delete route"
-                title="Delete"
-                onclick={() => onDelete(route.id)}
-              >
-                <Trash2 size={18} aria-hidden="true" />
-              </button>
-            </div>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </div>
+  <SavedList
+    heading="Saved routes"
+    items={savedCards}
+    empty="No routes yet"
+    key={({ route }) => route.id}
+    isActive={({ route }) => route.id === activeId}
+  >
+    {#snippet card({ route, distanceNm })}
+      <div class="card-head">
+        <button
+          type="button"
+          class="name"
+          title="Go to this route on the chart"
+          onclick={() => onLocate(route.id)}
+        >
+          {route.name}
+        </button>
+        {#if route.id === activeId}
+          <span class="badge">Active</span>
+        {/if}
+      </div>
+      <dl class="card-stats">
+        <dt class="caps-label">Distance</dt>
+        <dd>
+          <span class="num">{distanceNm}</span>
+          nm
+        </dd>
+        <dt class="caps-label">Waypoints</dt>
+        <dd><span class="num">{route.waypoints.length}</span></dd>
+      </dl>
+      <div class="actions">
+        <VisibilityToggle
+          shown={shownIds.has(route.id)}
+          onToggle={() => onToggleShown(route.id, !shownIds.has(route.id))}
+        />
+        <button
+          type="button"
+          class="icon-btn"
+          aria-label="Edit route"
+          title="Edit"
+          disabled={working !== undefined}
+          onclick={() => onEditRoute(route.id)}
+        >
+          <SquarePen size={18} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="icon-btn"
+          aria-label="Reverse route"
+          title="Save a reversed copy"
+          onclick={() => onReverse(route.id)}
+        >
+          <ArrowLeftRight size={18} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="icon-btn"
+          aria-label="Export route as GPX"
+          title="Export GPX"
+          onclick={() => onExportGpx(route.id)}
+        >
+          <Download size={18} aria-hidden="true" />
+        </button>
+        {#if route.id === activeId}
+          <button
+            type="button"
+            class="icon-btn icon-btn--accent"
+            aria-label="Stop navigation"
+            title="Stop navigation"
+            onclick={onStop}
+          >
+            <Square size={18} aria-hidden="true" />
+          </button>
+        {:else}
+          <button
+            type="button"
+            class="icon-btn"
+            aria-label="Activate route"
+            title="Activate route"
+            disabled={working !== undefined}
+            onclick={() => onActivate(route.id)}
+          >
+            <Navigation size={18} aria-hidden="true" />
+          </button>
+        {/if}
+        <button
+          type="button"
+          class="icon-btn icon-btn--danger"
+          aria-label="Delete route"
+          title="Delete"
+          onclick={() => onDelete(route.id)}
+        >
+          <Trash2 size={18} aria-hidden="true" />
+        </button>
+      </div>
+    {/snippet}
+  </SavedList>
 </SlideOver>
 
 <style>
@@ -413,20 +398,22 @@ $effect(() => {
   font-size: var(--text-sm);
 }
 /* The route-edit working-plan stats use the global .stat-grid system in app.css. */
-/* The card list, name, stats, and actions come from the global .saved system in app.css. Only the
+/* The card list, wrapper, stats, and actions come from the shared SavedList plus the global .saved
+   system in app.css. The .saved wrapper lives in SavedList, so the ancestor is matched with :global
+   while the .name and .card-stats elements stay scoped to this panel's card snippet. Only the
    active-route accent treatment and the name's locate interactivity are Routes-specific. */
-.saved .name {
+:global(.saved) .name {
   cursor: pointer;
   transition: color var(--transition-fast);
 }
-.saved .name:hover {
+:global(.saved) .name:hover {
   color: var(--accent);
 }
 /* The active-card accent bar, fill, and the "Active" badge are the shared .saved system in app.css. */
 /* On the active card (its background is the accent tint), lift the muted stat labels to the body text
    color so they stay readable, especially in night-red where muted-on-tint is the lowest-contrast
    pairing. This raises contrast with the body color already in use, not a brighter one. */
-.saved li.active .card-stats {
+:global(.saved li.active) .card-stats {
   color: var(--text);
 }
 </style>
