@@ -9,14 +9,16 @@ import {
   Route,
   SlidersHorizontal,
   Spline,
+  UserCog,
   Volume2,
   VolumeX,
   Waves,
 } from '@lucide/svelte';
-import { onDestroy, onMount } from 'svelte';
+import { onDestroy, onMount, tick } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
+import { type ProfileSettings, ProfileStore } from '$entities/profile';
 import { RouteStore, remainingRouteDistanceMeters, reverseRoute } from '$entities/route';
 import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
@@ -35,6 +37,7 @@ import {
   NoteDetailPanel,
   type NoteSelection,
 } from '$features/notes';
+import { ProfileSwitcher, ProfilesPanel } from '$features/profiles';
 import {
   activateRoute,
   advancePoint,
@@ -202,7 +205,7 @@ let layersView = $state<LayersView | undefined>();
 // The edge-docked panels (routes, layers, tracks, collision thresholds) are mutually exclusive: one
 // docks at the leading edge at a time. A single active-panel value enforces that structurally, so
 // opening one closes whatever was open without each opener having to clear the others by hand.
-type LeftPanel = 'routes' | 'layers' | 'tracks' | 'tides' | 'thresholds';
+type LeftPanel = 'routes' | 'layers' | 'tracks' | 'tides' | 'thresholds' | 'profiles';
 let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
 // the menu after it closed on selection.
@@ -246,6 +249,92 @@ const layerCategoriesOpen = new PersistedValue<Record<string, boolean>>(
   'binnacle:layer-categories',
   {},
 );
+
+// Profiles: named bundles of the portable settings (theme, layers, opacity, order, weather layers,
+// thresholds, track and planning settings, alarm mutes) the navigator saves and switches between.
+const profileStore = new ProfileStore();
+// True only while a profile is being applied, so the dirty-tracking effect below does not flag the
+// active profile as edited by its own apply writes. A plain flag, not reactive, read inside the effect.
+let applying = false;
+// Handed up by the weather mini-map once it is ready, to push a weather-layer snapshot at runtime.
+let applyWeatherLayers = $state<((settings: LayerSettings) => void) | undefined>();
+
+// Read every portable store into a profile bundle. The layers and order are the persisted overrides,
+// not the live LayerManager state, which keeps capture cheap and matches what a restore writes back.
+function captureProfileSettings(): ProfileSettings {
+  return {
+    theme: theme.theme,
+    layers: { ...layerSettings.value },
+    layerOrder: [...layerOrder.value],
+    layerCategories: { ...layerCategoriesOpen.value },
+    weatherLayers: { ...weatherLayerSettings.value },
+    thresholds: { ...thresholds.value },
+    trackSettings: { ...trackSettings.value },
+    planningSpeedKn: planningSpeedKn.value,
+    alarmMuted: alarmMuted.value,
+    arrivalMuted: arrivalMuted.value,
+  };
+}
+
+// Write every portable store from a profile bundle, then push the layer snapshots to the nav chart and
+// the weather mini-map so both update live. The applying guard is held until after the next tick, so
+// the dirty effect runs (and skips) within the same flush rather than flagging the apply as an edit.
+function applyProfileSettings(s: ProfileSettings): void {
+  applying = true;
+  theme.set(s.theme);
+  layerSettings.set(s.layers);
+  layerOrder.set(s.layerOrder);
+  layerCategoriesOpen.set(s.layerCategories);
+  weatherLayerSettings.set(s.weatherLayers);
+  thresholds.set(s.thresholds);
+  trackSettings.set(s.trackSettings);
+  planningSpeedKn.set(s.planningSpeedKn);
+  alarmMuted.set(s.alarmMuted);
+  arrivalMuted.set(s.arrivalMuted);
+  mapCommands?.applyLayers(s.layers, s.layerOrder);
+  applyWeatherLayers?.(s.weatherLayers);
+  void tick().then(() => {
+    applying = false;
+  });
+}
+
+// Mark the active profile edited when any portable setting changes outside of an apply, so the panel
+// and the top-bar switcher can offer to save the change.
+$effect(() => {
+  void theme.theme;
+  void layerSettings.value;
+  void layerOrder.value;
+  void layerCategoriesOpen.value;
+  void weatherLayerSettings.value;
+  void thresholds.value;
+  void trackSettings.value;
+  void planningSpeedKn.value;
+  void alarmMuted.value;
+  void arrivalMuted.value;
+  if (!applying && profileStore.activeId !== undefined) profileStore.markDirty();
+});
+
+// Seed three starter profiles on first run (no stored profiles), so the feature is not empty and
+// teaches the concept. They capture the current defaults and vary the theme; the navigator edits them.
+$effect(() => {
+  if (profileStore.profiles.length > 0) return;
+  const base = captureProfileSettings();
+  profileStore.save('Coastal day', { ...base, theme: 'day' });
+  profileStore.save('Night passage', { ...base, theme: 'night-red' });
+  profileStore.save('At anchor', { ...base, theme: 'dusk' });
+});
+
+function onApplyProfile(id: string): void {
+  const profile = profileStore.profiles.find((p) => p.id === id);
+  if (!profile) return;
+  applyProfileSettings(profile.settings);
+  profileStore.setActive(id);
+}
+
+function onSaveNewProfile(name: string): void {
+  const profile = profileStore.save(name, captureProfileSettings());
+  profileStore.setActive(profile.id);
+}
 
 // User-imported PMTiles charts: the descriptor list is persisted, the files live in the browser
 // PMTiles store, and the chart-canvas registers an overlay per source.
@@ -310,6 +399,13 @@ let following = $state(false);
 // group of the two mute toggles and the threshold editor. Center and Follow live on the bottom status
 // strip, not here. Adding an option is a single entry; the menu renders and groups whatever it is given.
 const menuItems = $derived<MenuItem[]>([
+  {
+    id: 'profiles',
+    label: 'Profiles',
+    icon: UserCog,
+    group: 'Navigation',
+    onSelect: () => openPanel('profiles'),
+  },
   {
     id: 'tracks',
     label: 'Tracks',
@@ -904,6 +1000,11 @@ onDestroy(() => {
           Update
         </button>
       {/if}
+      <ProfileSwitcher
+        active={profileStore.active}
+        isDirty={profileStore.isDirty}
+        onClick={() => openPanel('profiles')}
+      />
       <ThemeToggle controller={theme} />
     </span>
   </header>
@@ -1032,6 +1133,27 @@ onDestroy(() => {
         <ThresholdsPanel {thresholds} onClose={closePanel} onBack={backToMenu} />
       </div>
     {/if}
+    {#if activePanel === 'profiles'}
+      <div class="panel-slot">
+        <ProfilesPanel
+          profiles={profileStore.profiles}
+          activeId={profileStore.activeId}
+          defaultId={profileStore.defaultId}
+          isDirty={profileStore.isDirty}
+          onApply={onApplyProfile}
+          onSaveNew={onSaveNewProfile}
+          onUpdate={(id) => {
+            profileStore.update(id, captureProfileSettings());
+            profileStore.clearDirty();
+          }}
+          onRename={(id, name) => profileStore.rename(id, name)}
+          onRemove={(id) => profileStore.remove(id)}
+          onSetDefault={(id) => profileStore.setDefault(id)}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
+      </div>
+    {/if}
     {#if weatherPanelOpen}
       <WeatherMap
         store={weather}
@@ -1042,6 +1164,7 @@ onDestroy(() => {
         onViewChange={(view) => weatherViewStore.set(view)}
         savedLayers={weatherLayerSettings.value}
         onLayersChange={(settings) => weatherLayerSettings.set(settings)}
+        onLayersReady={(apply) => (applyWeatherLayers = apply)}
         token={chartsToken}
         providerName={weatherProviderName}
         position={vessel.position}

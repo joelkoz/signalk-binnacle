@@ -1,5 +1,5 @@
 import type { Route } from '$entities/route';
-import type { SignalKChart } from '$shared/map';
+import type { LayerSettings, SignalKChart } from '$shared/map';
 
 // Imperative map actions the chart exposes to the app shell (e.g. for menu items),
 // handed up once the map is ready.
@@ -19,6 +19,9 @@ export interface MapCommands {
   // route. stopRouteEdit tears the editor down.
   startRouteEdit: (route?: Route) => void;
   stopRouteEdit: () => void;
+  // Apply a full per-layer visibility/opacity snapshot and stacking order to the nav chart at
+  // runtime, so switching a profile updates the chart without a remount.
+  applyLayers: (settings: LayerSettings, order: string[]) => void;
 }
 
 // Register or remove a user-imported chart overlay once the map is ready. The app drives this

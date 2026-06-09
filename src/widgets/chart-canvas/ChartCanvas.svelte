@@ -266,6 +266,10 @@ onMount(() => {
         clearNoteSelection: () => notesOverlay.deselect(ctx),
         startRouteEdit: (route) => routeEditor?.start(route),
         stopRouteEdit: () => routeEditor?.stop(),
+        applyLayers: (settings, order) => {
+          manager.applySnapshot(settings, order);
+          view.refresh();
+        },
       });
 
       runTick([

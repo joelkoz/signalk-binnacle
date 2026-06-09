@@ -248,4 +248,111 @@ describe('LayerManager', () => {
     manager.toggle('chart', false);
     expect(manager.layers().find((l) => l.id === 'quality')?.visible).toBe(false);
   });
+
+  it('applySnapshot drives setVisible and setOpacity for known layers', async () => {
+    const a = fakeOverlay('a');
+    const b = fakeOverlay('b');
+    const manager = new LayerManager(fakeCtx());
+    await manager.register(a);
+    await manager.register(b);
+    a.events.length = 0;
+    b.events.length = 0;
+    manager.applySnapshot(
+      { a: { visible: false, opacity: 0.2 }, b: { visible: true, opacity: 0.5 } },
+      ['a', 'b'],
+    );
+    expect(a.events).toContain('visible:false');
+    expect(a.events).toContain('opacity:0.2');
+    // b was already visible, so only its changed opacity is driven.
+    expect(b.events).toContain('opacity:0.5');
+    expect(b.events).not.toContain('visible:true');
+  });
+
+  it('applySnapshot ignores an unknown layer id without error', async () => {
+    const overlay = fakeOverlay('a');
+    const manager = new LayerManager(fakeCtx());
+    await manager.register(overlay);
+    expect(() =>
+      manager.applySnapshot(
+        { a: { visible: false, opacity: 1 }, ghost: { visible: true, opacity: 1 } },
+        ['a'],
+      ),
+    ).not.toThrow();
+    expect(manager.layers().find((l) => l.id === 'a')?.visible).toBe(false);
+  });
+
+  it('applySnapshot leaves a known id absent from settings unchanged', async () => {
+    const a = fakeOverlay('a');
+    const b = fakeOverlay('b');
+    const manager = new LayerManager(fakeCtx());
+    await manager.register(a);
+    await manager.register(b);
+    b.events.length = 0;
+    manager.applySnapshot({ a: { visible: false, opacity: 1 } }, ['a', 'b']);
+    // b is not in the snapshot, so it is neither re-driven nor changed.
+    expect(b.events).toEqual([]);
+    expect(manager.layers().find((l) => l.id === 'b')?.visible).toBe(true);
+  });
+
+  it('applySnapshot applies the new explicit order', async () => {
+    const manager = new LayerManager(fakeCtx());
+    await manager.register(fakeOverlay('a'));
+    await manager.register(fakeOverlay('b'));
+    await manager.register(fakeOverlay('c'));
+    manager.applySnapshot(
+      {
+        a: { visible: true, opacity: 1 },
+        b: { visible: true, opacity: 1 },
+        c: { visible: true, opacity: 1 },
+      },
+      ['c', 'b', 'a'],
+    );
+    // Bottom-to-top [c, b, a] reads top to bottom as [a, b, c].
+    expect(manager.layers().map((l) => l.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('applySnapshot persists the snapshot exactly once, not per layer', async () => {
+    const changes: Array<Record<string, { visible: boolean; opacity: number }>> = [];
+    const manager = new LayerManager(fakeCtx(), { onChange: (s) => changes.push(s) });
+    await manager.register(fakeOverlay('a'));
+    await manager.register(fakeOverlay('b'));
+    changes.length = 0;
+    manager.applySnapshot(
+      { a: { visible: false, opacity: 0.2 }, b: { visible: false, opacity: 0.3 } },
+      ['a', 'b'],
+    );
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toEqual({
+      a: { visible: false, opacity: 0.2 },
+      b: { visible: false, opacity: 0.3 },
+    });
+  });
+
+  it('applySnapshot fires the order-change callback exactly once', async () => {
+    const orders: string[][] = [];
+    const manager = new LayerManager(fakeCtx(), { onOrderChange: (o) => orders.push(o) });
+    await manager.register(fakeOverlay('a'));
+    await manager.register(fakeOverlay('b'));
+    orders.length = 0;
+    manager.applySnapshot({ a: { visible: true, opacity: 1 }, b: { visible: true, opacity: 1 } }, [
+      'b',
+      'a',
+    ]);
+    expect(orders).toHaveLength(1);
+    expect(orders[0]).toEqual(['b', 'a']);
+  });
+
+  it('applySnapshot does not re-enforce exclusive groups (a saved profile is kept intact)', async () => {
+    const manager = new LayerManager(fakeCtx(), { exclusive: [['a', 'b']] });
+    await manager.register(fakeOverlay('a'));
+    await manager.register(fakeOverlay('b'));
+    // A profile captured both group members visible; applySnapshot honors it verbatim.
+    manager.applySnapshot({ a: { visible: true, opacity: 1 }, b: { visible: true, opacity: 1 } }, [
+      'a',
+      'b',
+    ]);
+    const items = manager.layers();
+    expect(items.find((i) => i.id === 'a')?.visible).toBe(true);
+    expect(items.find((i) => i.id === 'b')?.visible).toBe(true);
+  });
 });

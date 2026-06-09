@@ -184,6 +184,31 @@ export class LayerManager {
     this.#onOrderChange?.([...this.#explicitOrder]);
   }
 
+  // Apply a full settings snapshot and a new explicit stacking order in one pass, for profile
+  // switching. The batch persists and fires the order-change callback exactly once at the end
+  // rather than per layer, so swapping a profile is a single store write and a single restack.
+  // It deliberately does NOT re-run exclusive-group enforcement: the snapshot was a valid state
+  // when it was captured, so re-enforcing here could suppress a layer the saved profile kept on.
+  applySnapshot(settings: LayerSettings, order: string[]): void {
+    for (const [id, module] of this.#modules) {
+      const next = settings[id];
+      const state = this.#state.get(id);
+      if (!next || !state) continue;
+      if (next.visible !== state.visible) {
+        state.visible = next.visible;
+        module.setVisible(this.#ctx, next.visible);
+      }
+      if (next.opacity !== state.opacity) {
+        state.opacity = next.opacity;
+        module.setOpacity?.(this.#ctx, next.opacity);
+      }
+    }
+    this.#explicitOrder = [...order];
+    this.#applyOrder();
+    this.#persist();
+    this.#onOrderChange?.([...this.#explicitOrder]);
+  }
+
   #persist(): void {
     if (!this.#onChange) return;
     const snapshot: LayerSettings = {};

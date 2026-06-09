@@ -57,6 +57,9 @@ interface Props {
   // The panel's own weather-layer visibility, separate from the nav chart's layers.
   savedLayers?: LayerSettings;
   onLayersChange?: (settings: LayerSettings) => void;
+  // Hands up a function that applies a full weather-layer snapshot to the mini-map at runtime, so a
+  // profile switch updates the weather layers without remounting the panel.
+  onLayersReady?: (apply: (settings: LayerSettings) => void) => void;
   // The Signal K auth token and the default weather provider's display name, when one is configured.
   // With a provider, the tap readout prefers it and falls back to the free grid; without one, the
   // grid answers. The area overlays and radar always use the free sources.
@@ -76,6 +79,7 @@ const {
   onViewChange,
   savedLayers,
   onLayersChange,
+  onLayersReady,
   token,
   providerName,
   position,
@@ -296,6 +300,10 @@ onMount(() => {
       const view = new LayersView(manager);
       view.refresh();
       layersView = view;
+      onLayersReady?.((settings) => {
+        manager.applySnapshot(settings, []);
+        view.refresh();
+      });
 
       recolor = recolorFn;
       recolor(theme);

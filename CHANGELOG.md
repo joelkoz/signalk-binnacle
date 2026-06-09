@@ -8,6 +8,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
+- Profiles: named bundles of your settings (theme, which layers are on, their opacity and order, the
+  weather layers, the collision thresholds, the track and planning settings, and the alarm mutes) that
+  you save, switch between, rename, delete, and set a default for. A switcher pill in the top bar shows
+  the active profile and opens a Profiles panel; applying a profile updates the chart live, and tweaking
+  a setting marks the profile as edited so you can save the change or discard it by switching away.
+  Three starter profiles (Coastal day, Night passage, and At anchor) seed on first run. Stored locally
+  for now; cross-device sync over the SignalK server lands in a later step.
+
 - Course planning on the chart. Long-press (touch) or right-click (desktop) a point and choose "Go to
   here" to navigate straight to it via the Course API, with the destination shown on the nav strip.
 - Route interchange via GPX. Export any saved route to a GPX file other plotters, MFDs, and
