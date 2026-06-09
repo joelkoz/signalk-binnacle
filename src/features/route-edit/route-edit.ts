@@ -1,6 +1,7 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import {
   type GeoJSONStoreFeatures,
+  type SetCursor,
   TerraDraw,
   TerraDrawLineStringMode,
   TerraDrawPointMode,
@@ -8,7 +9,7 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { Route, Waypoint } from '$entities/route';
-import { mapThemePaint } from '$shared/map';
+import { CROSSHAIR_CURSOR, mapThemePaint } from '$shared/map';
 import { isLonLat, latLonToLonLat, lonLatToLatLon } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 
@@ -56,12 +57,25 @@ export function createRouteEditor(opts: {
   onChange: (waypoints: Waypoint[]) => void;
 }): RouteEditor {
   const color = drawColor(opts.theme);
+  // Terra Draw's Cursor type is a fixed keyword set, so a draw mode can only ask for "crosshair", not a
+  // custom image. Intercept that one keyword and set the high-contrast crosshair instead, so the
+  // route-drawing cursor stays visible on light water; every other cursor, and the "unset" that clears
+  // it back to the pan hand, passes through unchanged.
+  const adapter = new (class extends TerraDrawMapLibreGLAdapter<MapLibreMap> {
+    setCursor(cursor: Parameters<SetCursor>[0]): void {
+      if (cursor === 'crosshair') {
+        opts.map.getCanvas().style.cursor = CROSSHAIR_CURSOR;
+        return;
+      }
+      super.setCursor(cursor);
+    }
+  })({
+    map: opts.map,
+    prefixId: 'binnacle-route-draw',
+    renderBelowLayerId: opts.beforeId,
+  });
   const draw = new TerraDraw({
-    adapter: new TerraDrawMapLibreGLAdapter({
-      map: opts.map,
-      prefixId: 'binnacle-route-draw',
-      renderBelowLayerId: opts.beforeId,
-    }),
+    adapter,
     modes: [
       new TerraDrawPointMode({ styles: { pointColor: color, pointWidth: 6 } }),
       new TerraDrawLineStringMode({

@@ -8,6 +8,7 @@ export {
 export { chartSourceId } from './chart-adapter';
 export { createChartOverlay } from './chart-overlay';
 export type { SignalKChart } from './chart-types';
+export { CROSSHAIR_CURSOR } from './cursors';
 export { emptyFeatureCollection } from './feature-collection';
 export type { Rgba } from './icon-raster';
 export { rasterIcon } from './icon-raster';

@@ -29,9 +29,9 @@ All notable changes to Binnacle are documented here. The format follows
 - The Tracks panel now renders saved tracks as the same elevated cards as the Routes panel, each
   showing the track's distance and duration, and the current-track stats line was tightened to a
   label, value, and unit grid that removes the trailing whitespace and aligns the values in a column.
-- The chart pan cursor is now a high-contrast hand (a light halo over a dark line) instead of the
-  desktop theme's hand, so the pan affordance stays visible on the light day chart and the night-red
-  black background.
+- The chart cursors are now high-contrast (a dark silhouette under a white halo) instead of the
+  desktop theme's, so they stay visible on the light day chart and the night-red black background:
+  a filled hand for panning and grabbing, and a crosshair with a center dot while drawing a route.
 
 ### Internal
 
