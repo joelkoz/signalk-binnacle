@@ -51,7 +51,12 @@ async function doDelete(): Promise<void> {
 
 <div class="detail">
   <header>
-    <button type="button" class="icon-btn" aria-label="Back to layers" onclick={onBack}>
+    <button
+      type="button"
+      class="icon-btn icon-btn--accent"
+      aria-label="Back to layers"
+      onclick={onBack}
+    >
       <ArrowLeft size={18} aria-hidden="true" />
     </button>
     <h3 class="panel-title">Chart detail</h3>

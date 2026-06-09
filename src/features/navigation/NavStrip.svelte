@@ -131,11 +131,15 @@ const eta = $derived.by(() => {
   font-weight: 600;
   color: var(--accent);
 }
-/* Compact waypoint-skip buttons in the strip head, sitting beside the Stop control. */
+/* Waypoint-skip buttons in the strip head, sitting beside the Stop control. A full 44px touch target
+   so they are usable underway, with the compact icon centered. */
 .skip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  min-block-size: var(--control-size);
+  min-inline-size: var(--control-size);
   padding: 0.2rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
