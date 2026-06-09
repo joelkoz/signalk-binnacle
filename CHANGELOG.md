@@ -13,8 +13,10 @@ All notable changes to Binnacle are documented here. The format follows
   you save, switch between, rename, delete, and set a default for. A switcher pill in the top bar shows
   the active profile and opens a Profiles panel; applying a profile updates the chart live, and tweaking
   a setting marks the profile as edited so you can save the change or discard it by switching away.
-  Three starter profiles (Coastal day, Night passage, and At anchor) seed on first run. Stored locally
-  for now; cross-device sync over the SignalK server lands in a later step.
+  Three starter profiles (Coastal day, Night passage, and At anchor) seed on first run. Profiles are
+  stored locally, and when you are logged in to a secured SignalK server they also sync through the
+  server's applicationData store so they follow you across devices. The sync degrades cleanly: an
+  unsecured server, or one whose token lacks applicationData access, keeps profiles local.
 
 - Course planning on the chart. Long-press (touch) or right-click (desktop) a point and choose "Go to
   here" to navigate straight to it via the Course API, with the destination shown on the nav strip.

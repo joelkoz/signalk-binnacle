@@ -18,7 +18,12 @@ import { onDestroy, onMount, tick } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
-import { type ProfileSettings, ProfileStore } from '$entities/profile';
+import {
+  type Profile,
+  type ProfileSettings,
+  ProfileStore,
+  SignalKProfileAdapter,
+} from '$entities/profile';
 import { RouteStore, remainingRouteDistanceMeters, reverseRoute } from '$entities/route';
 import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
@@ -316,12 +321,34 @@ $effect(() => {
 
 // Seed three starter profiles on first run (no stored profiles), so the feature is not empty and
 // teaches the concept. They capture the current defaults and vary the theme; the navigator edits them.
+// The ids are stable so the same starters seeded on two devices merge to one on sync, not duplicate.
 $effect(() => {
   if (profileStore.profiles.length > 0) return;
   const base = captureProfileSettings();
-  profileStore.save('Coastal day', { ...base, theme: 'day' });
-  profileStore.save('Night passage', { ...base, theme: 'night-red' });
-  profileStore.save('At anchor', { ...base, theme: 'dusk' });
+  const now = Date.now();
+  const starter = (id: string, name: string, settings: ProfileSettings): Profile => ({
+    id,
+    name,
+    settings,
+    createdAt: now,
+    updatedAt: now,
+  });
+  profileStore.seed([
+    starter('binnacle-seed-coastal-day', 'Coastal day', { ...base, theme: 'day' }),
+    starter('binnacle-seed-night-passage', 'Night passage', { ...base, theme: 'night-red' }),
+    starter('binnacle-seed-at-anchor', 'At anchor', { ...base, theme: 'dusk' }),
+  ]);
+});
+
+// Once the user is authenticated to a secured server, sync profiles through the SignalK applicationData
+// API so they follow the user across devices. Runs once; an unsecured server (status 'unsecured', no
+// token) keeps profiles local, since applicationData is disabled without security.
+let profilesSynced = false;
+$effect(() => {
+  if (profilesSynced) return;
+  if (auth.status !== 'authenticated' || !auth.token) return;
+  profilesSynced = true;
+  void profileStore.syncWithServer(new SignalKProfileAdapter(serverOrigin(), auth.token));
 });
 
 function onApplyProfile(id: string): void {

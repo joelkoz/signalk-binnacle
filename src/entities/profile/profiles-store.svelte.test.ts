@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { ProfileSettings, ProfilesState } from './profile-types';
-import { type ProfileAdapter, ProfileStore } from './profiles-store.svelte';
+import type { Profile, ProfileSettings, ProfilesState } from './profile-types';
+import {
+  type AsyncProfileAdapter,
+  type ProfileAdapter,
+  ProfileStore,
+} from './profiles-store.svelte';
 
 // An in-memory adapter so tests never touch localStorage. It can be seeded with stored state and
 // records every save for asserting persistence.
@@ -16,6 +20,32 @@ function fakeAdapter(initial?: ProfilesState): ProfileAdapter & { saved: Profile
     },
   };
 }
+
+// An in-memory async server adapter, recording every push for asserting the single-flight sync.
+function fakeServer(initial?: ProfilesState): AsyncProfileAdapter & { saved: ProfilesState[] } {
+  let state = initial;
+  const saved: ProfilesState[] = [];
+  return {
+    saved,
+    load: async () => state,
+    save: async (next: ProfilesState) => {
+      state = next;
+      saved.push(structuredClone(next));
+      return true;
+    },
+  };
+}
+
+const profile = (id: string, name: string, updatedAt: number): Profile => ({
+  id,
+  name,
+  settings: settings(),
+  createdAt: 1,
+  updatedAt,
+});
+
+// Let the single-flight push runner finish: it is started but not awaited by syncWithServer/#persist.
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const settings = (overrides: Partial<ProfileSettings> = {}): ProfileSettings => ({
   theme: 'day',
@@ -170,5 +200,105 @@ describe('ProfileStore', () => {
 
     const reloaded = new ProfileStore(fakeAdapter(adapter.saved.at(-1)));
     expect(reloaded.profiles.find((x) => x.id === p.id)?.settings.mode).toBe('anchor');
+  });
+});
+
+describe('ProfileStore.seed', () => {
+  it('populates an empty store and persists', () => {
+    const adapter = fakeAdapter();
+    const store = new ProfileStore(adapter);
+    store.seed([profile('s1', 'Coastal day', 1)]);
+    expect(store.profiles.map((p) => p.id)).toEqual(['s1']);
+    expect(adapter.saved.at(-1)?.profiles).toHaveLength(1);
+  });
+
+  it('is a no-op when the store already has profiles', () => {
+    const store = new ProfileStore(fakeAdapter());
+    store.save('Existing', settings());
+    store.seed([profile('s1', 'Seed', 1)]);
+    expect(store.profiles.map((p) => p.name)).toEqual(['Existing']);
+  });
+});
+
+describe('ProfileStore.syncWithServer', () => {
+  it('merges remote profiles by id with the later updatedAt winning, and pushes the result', async () => {
+    const store = new ProfileStore(
+      fakeAdapter({
+        profiles: [profile('p1', 'Local v1', 1)],
+        activeId: undefined,
+        defaultId: undefined,
+      }),
+    );
+    const server = fakeServer({
+      profiles: [profile('p1', 'Remote v2', 5), profile('p2', 'Remote only', 2)],
+      activeId: 'p2',
+      defaultId: 'p2',
+    });
+    await store.syncWithServer(server);
+    const byId = Object.fromEntries(store.profiles.map((p) => [p.id, p.name]));
+    expect(byId).toEqual({ p1: 'Remote v2', p2: 'Remote only' });
+    expect(store.activeId).toBe('p2');
+    expect(store.defaultId).toBe('p2');
+    await flush();
+    expect(
+      server.saved
+        .at(-1)
+        ?.profiles.map((p) => p.id)
+        .sort(),
+    ).toEqual(['p1', 'p2']);
+  });
+
+  it('keeps a newer local profile over an older remote one', async () => {
+    const store = new ProfileStore(
+      fakeAdapter({
+        profiles: [profile('p1', 'Local v3', 10)],
+        activeId: undefined,
+        defaultId: undefined,
+      }),
+    );
+    const server = fakeServer({
+      profiles: [profile('p1', 'Remote v1', 1)],
+      activeId: undefined,
+      defaultId: undefined,
+    });
+    await store.syncWithServer(server);
+    expect(store.profiles.find((p) => p.id === 'p1')?.name).toBe('Local v3');
+  });
+
+  it('degrades to local and does not push when the server is unavailable', async () => {
+    const store = new ProfileStore(fakeAdapter());
+    const p = store.save('Coastal', settings());
+    const save = vi.fn(async () => true);
+    // A rejecting load, and an undefined-returning load, both mean unavailable: stay local, no push,
+    // and a later mutation must not push either (the adapter was never attached).
+    await store.syncWithServer({
+      load: async () => {
+        throw new Error('offline');
+      },
+      save,
+    });
+    await store.syncWithServer({ load: async () => undefined, save });
+    store.save('Another', settings());
+    await flush();
+    expect(store.profiles.map((x) => x.name)).toEqual([p.name, 'Another']);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('seeds a reachable but empty server from the local profiles', async () => {
+    const store = new ProfileStore(fakeAdapter());
+    store.save('Coastal', settings());
+    const server = fakeServer({ profiles: [], activeId: undefined, defaultId: undefined });
+    await store.syncWithServer(server);
+    await flush();
+    expect(server.saved.at(-1)?.profiles.map((p) => p.name)).toEqual(['Coastal']);
+  });
+
+  it('pushes the latest state after a mutation following a sync', async () => {
+    const store = new ProfileStore(fakeAdapter());
+    const server = fakeServer({ profiles: [], activeId: undefined, defaultId: undefined });
+    await store.syncWithServer(server);
+    store.save('New profile', settings());
+    await flush();
+    expect(server.saved.at(-1)?.profiles.map((p) => p.name)).toContain('New profile');
   });
 });
