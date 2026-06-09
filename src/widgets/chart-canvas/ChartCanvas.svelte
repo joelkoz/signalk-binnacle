@@ -34,6 +34,7 @@ import {
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
 import { type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
+import ChartContextMenu from './ChartContextMenu.svelte';
 import type { MapCommands, UserChartRegistrar } from './commands';
 
 interface Props {
@@ -71,6 +72,8 @@ interface Props {
   onNoteSelect?: (selection: NoteSelection | undefined) => void;
   // Fired when the user pans the map by hand (a drag), so a follow lock can release.
   onUserPan?: () => void;
+  // Set a single "go to here" destination at a chart point the user long-pressed or right-clicked.
+  onGoToHere?: (latitude: number, longitude: number) => void;
 }
 
 const {
@@ -98,11 +101,17 @@ const {
   onViewChange,
   onNoteSelect,
   onUserPan,
+  onGoToHere,
 }: Props = $props();
 
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
 let routeEditor: RouteEditor | undefined;
+// The open "go to here" menu, anchored at the press point in chart pixels with the chart size
+// captured for edge clamping, or undefined when closed.
+let chartMenu = $state<
+  { x: number; y: number; lat: number; lon: number; width: number; height: number } | undefined
+>();
 
 // Restyle the on-chart route editor whenever the theme changes (the saved-route overlay recolors
 // through the layer manager; the Terra Draw editing line is restyled here).
@@ -128,7 +137,23 @@ onMount(() => {
     },
     onView: (view) => onViewChange?.(view),
     onUserPan: () => onUserPan?.(),
+    onContextMenu: (point) => {
+      // No "go to here" while drawing or editing a route: Terra Draw owns the chart taps then.
+      if (!onGoToHere || routeStore.working) return;
+      chartMenu = {
+        x: point.x,
+        y: point.y,
+        lat: point.lat,
+        lon: point.lng,
+        width: container.clientWidth,
+        height: container.clientHeight,
+      };
+    },
     onLoad: async ({ map, ctx, manager, recolor, isDestroyed, runTick }) => {
+      // A pan or zoom moves the chart out from under the menu's pixel anchor, so dismiss it on move.
+      map.on('movestart', () => {
+        chartMenu = undefined;
+      });
       // The server origin is fixed for the session, so resolve it once and reuse it for the chart
       // fetch, the overlays built here, and the user-chart registrar closure below.
       const origin = serverOrigin();
@@ -259,10 +284,28 @@ onMount(() => {
 onDestroy(() => mapHandle?.destroy());
 </script>
 
-<div class="chart-canvas" bind:this={container}></div>
+<div class="chart-canvas" bind:this={container}>
+  {#if chartMenu}
+    {@const menu = chartMenu}
+    <ChartContextMenu
+      x={menu.x}
+      y={menu.y}
+      width={menu.width}
+      height={menu.height}
+      onGoToHere={() => {
+        onGoToHere?.(menu.lat, menu.lon);
+        chartMenu = undefined;
+      }}
+      onClose={() => {
+        chartMenu = undefined;
+      }}
+    />
+  {/if}
+</div>
 
 <style>
 .chart-canvas {
+  position: relative;
   inline-size: 100%;
   block-size: 100%;
 }

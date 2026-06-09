@@ -55,6 +55,9 @@ export interface ThemedMapOptions {
   // A hand drag (not a programmatic move or a scroll-zoom), for releasing a follow lock.
   onUserPan?: () => void;
   onClick?: (lngLat: { lng: number; lat: number }) => void;
+  // A right-click (desktop) or long-press (touch) at a chart point, for the "go to here" menu. Carries
+  // the geographic point and the pixel point within the container, so a menu can anchor at the press.
+  onContextMenu?: (point: { lng: number; lat: number; x: number; y: number }) => void;
   onLoad: (api: ThemedMapApi) => void | Promise<void>;
 }
 
@@ -64,6 +67,10 @@ export interface ThemedMapHandle {
 
 const DEFAULT_CENTER: [number, number] = [0, 30];
 const DEFAULT_ZOOM = 2;
+// A touch long-press that holds still this long, and within this pixel slop, stands in for the
+// contextmenu event that touch browsers do not reliably fire.
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_PX = 10;
 
 // The shared MapLibre bootstrap for both map widgets (the navigation chart and the weather mini-map):
 // map creation, a ResizeObserver, the per-frame view-emit coalescer, sentinels, the LayerManager, the
@@ -129,6 +136,47 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
     mapInstance.on('click', (e) => opts.onClick?.({ lng: e.lngLat.lng, lat: e.lngLat.lat }));
   }
 
+  // A right-click or long-press at a point, surfaced for the "go to here" menu. The desktop path is
+  // MapLibre's own contextmenu event; touch browsers do not all fire it, so a still-held finger past
+  // a timeout (cancelled by movement, lift, or a second touch) synthesizes the same emit.
+  let cancelLongPress = () => {};
+  if (opts.onContextMenu) {
+    const emit = opts.onContextMenu;
+    mapInstance.on('contextmenu', (e) => {
+      emit({ lng: e.lngLat.lng, lat: e.lngLat.lat, x: e.point.x, y: e.point.y });
+    });
+    const canvas = mapInstance.getCanvas();
+    let pressTimer = 0;
+    let startX = 0;
+    let startY = 0;
+    cancelLongPress = () => {
+      if (!pressTimer) return;
+      clearTimeout(pressTimer);
+      pressTimer = 0;
+    };
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch') return;
+      cancelLongPress();
+      startX = e.clientX;
+      startY = e.clientY;
+      pressTimer = window.setTimeout(() => {
+        pressTimer = 0;
+        const rect = canvas.getBoundingClientRect();
+        const x = startX - rect.left;
+        const y = startY - rect.top;
+        const at = mapInstance.unproject([x, y]);
+        emit({ lng: at.lng, lat: at.lat, x, y });
+      }, LONG_PRESS_MS);
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if (pressTimer && Math.hypot(e.clientX - startX, e.clientY - startY) > LONG_PRESS_MOVE_PX) {
+        cancelLongPress();
+      }
+    });
+    canvas.addEventListener('pointerup', cancelLongPress);
+    canvas.addEventListener('pointercancel', cancelLongPress);
+  }
+
   mapInstance.on('load', () => {
     emitView();
     const ctx: OverlayContext = { map: mapInstance, beforeIdFor };
@@ -167,6 +215,7 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   return {
     destroy: () => {
       destroyed = true;
+      cancelLongPress();
       cancelAnimationFrame(frame);
       resizeObserver.disconnect();
       mapInstance.remove();

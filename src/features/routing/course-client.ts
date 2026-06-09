@@ -1,4 +1,4 @@
-import type { CourseCalculations, CourseInfo } from '$shared/signalk';
+import type { CourseCalculations, CourseInfo, LatLon } from '$shared/signalk';
 import { authInit, deleteResource, putResource } from '$shared/signalk';
 
 const COURSE = '/signalk/v2/api/vessels/self/navigation/course';
@@ -11,6 +11,16 @@ export function activateRoute(
   reverse = false,
 ): Promise<boolean> {
   return putResource(`${base}${COURSE}/activeRoute`, token, { href, pointIndex, reverse });
+}
+
+// Set a single-point destination ("go to here"): the v2 Course API replaces any active route with a
+// course straight to this position. Mirrors activateRoute but targets a position, not a route href.
+export function setDestination(
+  base: string,
+  token: string | undefined,
+  position: LatLon,
+): Promise<boolean> {
+  return putResource(`${base}${COURSE}/destination`, token, { position });
 }
 
 export function advancePoint(

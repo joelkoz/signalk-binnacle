@@ -46,6 +46,7 @@ import {
   parseGpxRoutes,
   RoutesPanel,
   saveRoute,
+  setDestination,
 } from '$features/routing';
 import { ThemeToggle } from '$features/theme-toggle';
 import { createTidesLoader, TidesPanel } from '$features/tides';
@@ -519,12 +520,18 @@ function clearRouteError(): void {
   routeError = undefined;
 }
 
+// True while a single "go to here" destination is the active course (no saved route is active). It
+// is the goto counterpart to routeStore.activeId, so arrival and reconnect rehydration cover both.
+let gotoActive = $state(false);
+const courseActive = $derived(routeStore.activeId !== undefined || gotoActive);
+
 // Clear the active course on the server and locally. Returns whether the server clear succeeded; the
 // local state is cleared only on success, so a failed stop does not desync from a server that is
 // still navigating (the next course delta would otherwise revive the nav strip).
 async function stopActiveCourse(): Promise<boolean> {
   if (!(await clearCourse(serverOrigin(), chartsToken))) return false;
   routeStore.setActive(undefined);
+  gotoActive = false;
   courseGuidance.clear();
   arrivalAlarm.stop();
   return true;
@@ -604,6 +611,7 @@ async function onActivateRoute(id: string): Promise<void> {
     return;
   }
   routeStore.setActive(id);
+  gotoActive = false;
   routeStore.toggleShown(id, true);
   flyToRouteStart(id);
   // The v2 navigation.course paths are not in the v1 full model, so the stream sends nothing until
@@ -658,6 +666,7 @@ async function onTrackHome(): Promise<void> {
     return;
   }
   routeStore.setActive(route.id);
+  gotoActive = false;
   routeStore.toggleShown(route.id, true);
   const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
   courseGuidance.seed(info, calc);
@@ -703,12 +712,28 @@ async function onImportRouteGpx(gpxText: string): Promise<void> {
   for (const id of saved) routeStore.toggleShown(id, true);
 }
 
+// Navigate straight to a point the user picked on the chart (long-press or right-click, then "Go to
+// here"). A single destination replaces any active route on the server, so clear the local active
+// route and mark the goto active, then seed the nav strip from a one-time hydration.
+async function onGoToHere(latitude: number, longitude: number): Promise<void> {
+  clearRouteError();
+  if (!(await setDestination(serverOrigin(), chartsToken, { latitude, longitude }))) {
+    flagRouteError('Could not set the destination. Check the connection.');
+    return;
+  }
+  routeStore.setActive(undefined);
+  gotoActive = true;
+  const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
+  courseGuidance.seed(info, calc);
+}
+
 // Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
 let arrivedLast = false;
 $effect(() => {
-  const arrived = courseGuidance.arrived && routeStore.activeId !== undefined;
+  const arrived = courseGuidance.arrived && courseActive;
   arrivalAlarm.update(arrived, arrivalMuted.value);
-  if (arrived && !arrivedLast && !courseGuidance.isLastPoint) {
+  // Auto-advance only along a route; a single "go to here" destination has no next point to step to.
+  if (arrived && !arrivedLast && routeStore.activeId !== undefined && !courseGuidance.isLastPoint) {
     // Rising edge, and not yet at the last point: request the next point. The streamed
     // activeRoute.pointIndex stays authoritative, so a server that also auto-advances and this
     // request converge on the same active point. A failed advance is surfaced.
@@ -774,7 +799,7 @@ $effect(() => {
   if (phase === 'open') everOpen = true;
   if (!reconnected) return;
   void refreshRoutes();
-  if (routeStore.activeId !== undefined) {
+  if (courseActive) {
     void hydrateCourse(serverOrigin(), chartsToken).then(({ info, calc }) => {
       courseGuidance.seed(info, calc);
     });
@@ -901,6 +926,7 @@ onDestroy(() => {
       {onViewChange}
       onNoteSelect={selectNote}
       onUserPan={() => (following = false)}
+      {onGoToHere}
     />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
@@ -910,7 +936,7 @@ onDestroy(() => {
         guidance={courseGuidance}
         {routeProgress}
         onStop={onStopCourse}
-        onSkip={onSkipPoint}
+        onSkip={routeStore.activeId !== undefined ? onSkipPoint : undefined}
       />
       <DangerStrip
         {collision}
