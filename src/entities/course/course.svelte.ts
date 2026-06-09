@@ -1,4 +1,5 @@
 import type { OwnVessel } from '$entities/vessel';
+import type { LatLon } from '$shared/geo';
 import {
   crossTrackErrorMeters,
   etaSeconds,
@@ -11,7 +12,6 @@ import type {
   CourseCalculations,
   CourseInfo,
   CoursePoint,
-  LatLon,
   SignalKStore,
 } from '$shared/signalk';
 import { SK_PATHS } from '$shared/signalk';

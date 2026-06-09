@@ -1,5 +1,6 @@
 import { computeStats, type TrackPoint, toLonLat } from '$entities/track';
-import { deleteResource, fetchKeyedResource, isLonLat, putResource } from '$shared/signalk';
+import { isLonLat } from '$shared/geo';
+import { deleteResource, fetchKeyedResource, putResource } from '$shared/signalk';
 import { toGeoJsonFeature } from './track-export';
 
 // A track read back from the Signal K resources API. Points are grouped one array per segment

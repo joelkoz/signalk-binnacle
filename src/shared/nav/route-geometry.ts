@@ -1,5 +1,5 @@
+import type { LatLon } from '$shared/geo';
 import { DEG_TO_RAD } from '$shared/lib';
-import type { LatLon } from '$shared/signalk';
 import { EARTH_RADIUS_M, haversineMeters, normalizeLonDeltaDeg } from './distance';
 
 // Rhumb-line (constant-bearing) distance: the line you actually steer over a short to medium leg.

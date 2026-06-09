@@ -79,6 +79,7 @@ import {
   fetchWeatherProviders,
   WEATHER_LAYER_IDS,
 } from '$features/weather';
+import type { LatLon } from '$shared/geo';
 import {
   formatBearingOr,
   formatCpaNm,
@@ -100,7 +101,7 @@ import {
   type MapView,
   PersistedValue,
 } from '$shared/settings';
-import type { ConnectionPhase, Context, LatLon } from '$shared/signalk';
+import type { ConnectionPhase, Context } from '$shared/signalk';
 import {
   AuthController,
   createSignalKClient,

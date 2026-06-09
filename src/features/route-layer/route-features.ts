@@ -1,5 +1,5 @@
 import type { Route } from '$entities/route';
-import { latLonToLonLat as toLonLat } from '$shared/signalk';
+import { latLonToLonLat as toLonLat } from '$shared/geo';
 
 // One LineString per shown route, flagged active so the overlay can style the active route apart.
 export function routeLineFeatures(

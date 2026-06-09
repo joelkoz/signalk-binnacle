@@ -1,4 +1,5 @@
-import { asNumber, isLatLon, type LatLon, type SignalKStore, SK_PATHS } from '$shared/signalk';
+import { asNumber, isLatLon, type LatLon } from '$shared/geo';
+import { type SignalKStore, SK_PATHS } from '$shared/signalk';
 
 export class OwnVessel {
   #store: SignalKStore;

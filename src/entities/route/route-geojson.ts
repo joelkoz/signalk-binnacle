@@ -1,5 +1,6 @@
+import { isLonLat, type LonLat, latLonToLonLat, lonLatToLatLon } from '$shared/geo';
 import { rhumbBearingRad, rhumbDistanceMeters } from '$shared/nav';
-import { isLonLat, type LonLat, latLonToLonLat, lonLatToLatLon, str } from '$shared/signalk';
+import { str } from '$shared/signalk';
 import type { Route, Waypoint } from './route-types';
 
 // The Signal K v2 route resource body: a GeoJSON Feature with a LineString, plus name and the

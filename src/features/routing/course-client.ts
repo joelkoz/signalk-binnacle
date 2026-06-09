@@ -1,4 +1,5 @@
-import type { CourseCalculations, CourseInfo, LatLon } from '$shared/signalk';
+import type { LatLon } from '$shared/geo';
+import type { CourseCalculations, CourseInfo } from '$shared/signalk';
 import { authInit, deleteResource, putResource } from '$shared/signalk';
 
 const COURSE = '/signalk/v2/api/vessels/self/navigation/course';

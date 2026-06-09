@@ -8,8 +8,8 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { Route, Waypoint } from '$entities/route';
+import { isLonLat, latLonToLonLat, lonLatToLatLon } from '$shared/geo';
 import { mapThemePaint } from '$shared/map';
-import { isLonLat, latLonToLonLat, lonLatToLatLon } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 
 // Terra Draw tags every feature with its mode in properties.mode; the on-chart route is a

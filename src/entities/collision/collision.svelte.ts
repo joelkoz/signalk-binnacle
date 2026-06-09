@@ -1,8 +1,8 @@
 import type { AisTargets, AisTargetView } from '$entities/ais';
 import type { OwnVessel } from '$entities/vessel';
+import type { LatLon } from '$shared/geo';
 import { computeCpa } from '$shared/nav';
 import type { PersistedValue, Thresholds } from '$shared/settings';
-import type { LatLon } from '$shared/signalk';
 
 export type Severity = 'danger' | 'warning' | 'clear';
 export type CpaSource = 'provider' | 'computed';

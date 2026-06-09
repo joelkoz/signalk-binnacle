@@ -22,6 +22,7 @@ import { createSeamarkOverlay, SEAMARK_SOURCES } from '$features/seamark-overlay
 import { createTidesOverlay } from '$features/tides';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
+import type { LatLon } from '$shared/geo';
 import { prefersReducedMotion } from '$shared/lib';
 import {
   chartSourceId,
@@ -32,7 +33,7 @@ import {
   type ThemedMapHandle,
 } from '$shared/map';
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
-import { type LatLon, type SignalKStore, serverOrigin } from '$shared/signalk';
+import { type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 import ChartContextMenu from './ChartContextMenu.svelte';
 import type { MapCommands, UserChartRegistrar } from './commands';

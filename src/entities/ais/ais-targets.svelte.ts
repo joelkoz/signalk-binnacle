@@ -1,5 +1,5 @@
-import type { LatLon, SignalKStore } from '$shared/signalk';
-import { asNumber, isLatLon, SK_PATHS } from '$shared/signalk';
+import { asNumber, isLatLon, type LatLon } from '$shared/geo';
+import { type SignalKStore, SK_PATHS } from '$shared/signalk';
 
 // All angular and speed fields are SI (radians, m/s), like the rest of the store. Consumers
 // convert to a compass bearing or knots at their own display edge.

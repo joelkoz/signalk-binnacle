@@ -1,4 +1,4 @@
-import type { LatLon } from '$shared/signalk';
+import type { LatLon } from '$shared/geo';
 
 // A route waypoint. Position is decimal degrees (the SI exception); name is optional.
 export interface Waypoint {
