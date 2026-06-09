@@ -16,6 +16,7 @@ import {
 import { str } from '$shared/signalk';
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
+import { NotesCache, padBbox } from './notes-cache';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
 import { categoryRank, POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
 
@@ -109,10 +110,14 @@ export function createNotesOverlay(
   token: string | undefined,
   onSelect?: (selection: NoteSelection | undefined) => void,
 ): NotesOverlay {
-  // Refetch only when the viewport key changes (coarse so a small pan does not refetch),
-  // and never while a fetch is in flight. The raw zoom/center are tracked too, for a cheap
-  // idle fast-path that skips the per-frame key build when the map has not moved at all.
-  let lastKey: string | undefined;
+  // A viewport-keyed cache of fetched note sets so panning back, panning a little, or zooming in
+  // reuses a recent fetch instead of re-hitting the network (the data depends only on the bbox, not
+  // the zoom). The raw zoom/center drive a cheap idle fast-path that skips the work when the map has
+  // not moved at all, and a single fetch runs at a time.
+  const cache = new NotesCache();
+  // The exact note array last handed to setData, so a redundant render is skipped and, crucially, a
+  // failed fetch keeps it on screen instead of blanking the markers.
+  let renderedNotes: NotePoint[] | undefined;
   let lastZoom: number | undefined;
   let lastLng: number | undefined;
   let lastLat: number | undefined;
@@ -125,6 +130,22 @@ export function createNotesOverlay(
   function setData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
     const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
     source?.setData(data);
+  }
+
+  // Render a note set, skipping the work when it is the same set already shown. Leaving the source
+  // untouched on a no-op avoids re-clustering the markers every idle frame.
+  function render(ctx: OverlayContext, notes: NotePoint[]): void {
+    if (notes === renderedNotes) return;
+    renderedNotes = notes;
+    setData(ctx, featureCollection(notes));
+  }
+
+  // Clear the shown markers (below the zoom floor) without discarding the cache, so zooming back in
+  // re-renders instantly from a recent fetch.
+  function clearRendered(ctx: OverlayContext): void {
+    if (renderedNotes === undefined) return;
+    renderedNotes = undefined;
+    setData(ctx, EMPTY);
   }
 
   // Highlight the selected marker by drawing a ring at its position; clearing it sets the
@@ -310,29 +331,38 @@ export function createNotesOverlay(
       await registerNavaidIcons(ctx.map, paint);
     },
     sync(ctx) {
-      if (fetching) return;
       const zoom = ctx.map.getZoom();
       const center = ctx.map.getCenter();
-      // Idle fast-path: nothing moved since the last sync, so skip the key build entirely.
+      // Idle fast-path: nothing moved since the last sync, so skip the viewport work entirely.
       if (zoom === lastZoom && center.lng === lastLng && center.lat === lastLat) return;
       lastZoom = zoom;
       lastLng = center.lng;
       lastLat = center.lat;
       if (zoom < MIN_ZOOM) {
-        if (lastKey !== 'lowzoom') {
-          lastKey = 'lowzoom';
-          setData(ctx, EMPTY);
-        }
+        clearRendered(ctx);
         return;
       }
-      const key = `${zoom.toFixed(0)}|${center.lng.toFixed(2)}|${center.lat.toFixed(2)}`;
-      if (key === lastKey) return;
-      lastKey = key;
       const b = ctx.map.getBounds();
-      const bbox: Bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      const viewport: Bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      // A recent fetch whose padded area still covers the viewport serves the markers with no
+      // network. This runs before the in-flight guard, so a cache hit renders even mid-fetch.
+      const cached = cache.get(viewport, Date.now());
+      if (cached) {
+        render(ctx, cached);
+        return;
+      }
+      if (fetching) return;
       fetching = true;
-      fetchNotes(serverBase, token, bbox)
-        .then((notes) => setData(ctx, featureCollection(notes)))
+      // Fetch a padded area so the next small pan or zoom-in reuses this fetch from the cache.
+      const fetchBbox = padBbox(viewport);
+      fetchNotes(serverBase, token, fetchBbox)
+        .then((notes) => {
+          // undefined is a transient failure: keep the markers already shown. An empty array is a
+          // real "no POIs here" answer, so it does clear them.
+          if (!notes) return;
+          cache.put(fetchBbox, notes, Date.now());
+          render(ctx, notes);
+        })
         .finally(() => {
           fetching = false;
         });

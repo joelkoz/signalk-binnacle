@@ -34,7 +34,7 @@ describe('fetchNotes', () => {
       }),
     );
     vi.stubGlobal('fetch', fetchMock);
-    const notes = await fetchNotes('http://pi', 'tok', [-84, 42, -83, 43]);
+    const notes = (await fetchNotes('http://pi', 'tok', [-84, 42, -83, 43])) ?? [];
     expect(notes).toHaveLength(2);
     expect(notes[0]).toMatchObject({
       id: 'a',
@@ -54,13 +54,18 @@ describe('fetchNotes', () => {
     expect((init as RequestInit).headers).toEqual({ Authorization: 'Bearer tok' });
   });
 
-  it('returns an empty list on an error response', async () => {
+  it('returns undefined on an error response so the overlay keeps its markers', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(400, { state: 'FAILED' })));
-    expect(await fetchNotes('http://pi', undefined, [0, 0, 1, 1])).toEqual([]);
+    expect(await fetchNotes('http://pi', undefined, [0, 0, 1, 1])).toBeUndefined();
   });
 
-  it('returns an empty list when the fetch throws', async () => {
+  it('returns undefined when the fetch throws so the overlay keeps its markers', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network')));
+    expect(await fetchNotes('http://pi', undefined, [0, 0, 1, 1])).toBeUndefined();
+  });
+
+  it('returns an empty list for a reachable area with no notes', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {})));
     expect(await fetchNotes('http://pi', undefined, [0, 0, 1, 1])).toEqual([]);
   });
 });

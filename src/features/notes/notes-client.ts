@@ -69,19 +69,15 @@ function noteFromEntry(id: string, raw: unknown): NotePoint | undefined {
 // Fetch notes within the viewport. The `provider` param is intentionally omitted so the
 // server merges every notes provider (the default plus the POI providers); the bbox is a
 // JSON array per the resources API schema. A provider whose results are query-scoped
-// returns nothing without a bbox, so this must always carry one. An unreachable server
-// coalesces to an empty list so the markers clear rather than throw.
-export async function fetchNotes(
+// returns nothing without a bbox, so this must always carry one. A failed or unreachable
+// fetch returns undefined so the overlay keeps the markers already shown rather than blanking
+// them on a transient hiccup (a slow or rate-limited provider); a reachable area with no notes
+// returns [].
+export function fetchNotes(
   serverBase: string,
   token: string | undefined,
   bbox: Bbox,
-): Promise<NotePoint[]> {
+): Promise<NotePoint[] | undefined> {
   const params = new URLSearchParams({ bbox: JSON.stringify(bbox) });
-  const notes = await fetchKeyedResource(
-    serverBase,
-    [`${NOTES_PATH}?${params}`],
-    token,
-    noteFromEntry,
-  );
-  return notes ?? [];
+  return fetchKeyedResource(serverBase, [`${NOTES_PATH}?${params}`], token, noteFromEntry);
 }
