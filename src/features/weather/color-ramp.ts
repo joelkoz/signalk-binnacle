@@ -1,4 +1,16 @@
+import type { Theme } from '$shared/ui';
+
 export type Rgba = [number, number, number, number];
+
+// A value-to-color function for one theme: the day/dusk ramp and the night-red ramp picked by theme.
+export type ThemedColor = (value: number, theme: Theme) => Rgba;
+
+// Build a themed colormap from a day/dusk ramp and a night-red ramp. Night-red swaps to the red band,
+// every other theme uses the day ramp. Centralizes the night-red swap so each colormap is just its two
+// stop tables, not a repeated ternary, keeping the "night-red replaces the ramp" rule in one place.
+export function themedRamp(day: Array<[number, Rgba]>, night: Array<[number, Rgba]>): ThemedColor {
+  return (value, theme) => sampleRamp(theme === 'night-red' ? night : day, value);
+}
 
 // Sample a value against an ascending list of [value, color] stops, linearly interpolating the four
 // RGBA channels between the two bracketing stops. NaN and values at or below the first stop return

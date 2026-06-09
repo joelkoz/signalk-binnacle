@@ -53,6 +53,28 @@ module.exports = {
       from: { path: '^src/shared' },
       to: { path: '^src/(entities|features|widgets|views|app)' },
     },
+    {
+      name: 'no-cross-slice-shared',
+      severity: 'error',
+      comment:
+        'A shared slice may import another shared slice only through its index public API, not its internals.',
+      from: { path: '^src/shared/([^/]+)/' },
+      to: {
+        path: '^src/shared/(?!$1/)[^/]+/.+',
+        pathNot: '^src/shared/[^/]+/index\\.(ts|js)$',
+      },
+    },
+    {
+      name: 'no-cross-slice-entities',
+      severity: 'error',
+      comment:
+        'An entities slice may import another entities slice only through its index public API, not its internals.',
+      from: { path: '^src/entities/([^/]+)/' },
+      to: {
+        path: '^src/entities/(?!$1/)[^/]+/.+',
+        pathNot: '^src/entities/[^/]+/index\\.(ts|js)$',
+      },
+    },
   ],
   options: {
     tsConfig: { fileName: 'tsconfig.json' },

@@ -1,5 +1,4 @@
-import type { Theme } from '$shared/ui';
-import { type Rgba, sampleRamp } from './color-ramp';
+import { type Rgba, themedRamp } from './color-ramp';
 
 // Precipitation stops in mm/h. Day and dusk use a radar-style ramp (light blue, blue, green, yellow,
 // orange, red, violet) rising with intensity; blue is acceptable by day. Night-red: a red band on
@@ -21,6 +20,4 @@ const NIGHT: Array<[number, Rgba]> = [
   [40, [0.82, 0.12, 0.06, 0.72]],
 ];
 
-export function precipColor(mmPerHour: number, theme: Theme): Rgba {
-  return sampleRamp(theme === 'night-red' ? NIGHT : DAY, mmPerHour);
-}
+export const precipColor = themedRamp(DAY, NIGHT);

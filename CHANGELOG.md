@@ -77,6 +77,15 @@ All notable changes to Binnacle are documented here. The format follows
   shared `THEMES` list, and the default profile now auto-applies on a fresh device that has a default
   but no active profile. The server sync also stops pushing after one rejected write, so a read-only
   token attaches for reads but does not fire a doomed write on every later edit.
+- A project-wide modularization pass (six-agent review). The labeled current-item stats grid that the
+  Routes editor and the Tracks panel duplicated verbatim is now one global `.stat-grid` system in
+  `app.css`. A shared `downloadText(filename, text, type)` helper backs the route GPX, track GeoJSON,
+  and profile JSON exporters, so the Blob construction lives in one place. The four weather colormaps
+  (wind, waves, precipitation, and cloud) build on a new `themedRamp(day, night)` factory in
+  `color-ramp.ts`, so the night-red ramp swap is defined once instead of repeated per colormap. Two
+  dependency-cruiser rules, `no-cross-slice-shared` and `no-cross-slice-entities`, now enforce that a
+  shared or entities slice reaches a sibling only through its index public API, matching the existing
+  `no-cross-feature` rule.
 
 ## [0.2.1] - 2026-06-09
 

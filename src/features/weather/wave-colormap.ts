@@ -1,5 +1,5 @@
 import type { Theme } from '$shared/ui';
-import { type Rgba, sampleRamp } from './color-ramp';
+import { type Rgba, themedRamp } from './color-ramp';
 
 // Wave-height stops in meters. Day and dusk: a translucent calm-to-heavy ramp (teal, green, yellow,
 // orange, red, magenta) so the base map reads through. Night-red: a red band on black, brightness
@@ -26,9 +26,7 @@ const ARROW: Record<Theme, string> = {
   'night-red': 'rgba(200, 50, 35, 0.9)',
 };
 
-export function waveColor(heightM: number, theme: Theme): Rgba {
-  return sampleRamp(theme === 'night-red' ? NIGHT : DAY, heightM);
-}
+export const waveColor = themedRamp(DAY, NIGHT);
 
 export function waveArrowColor(theme: Theme): string {
   return ARROW[theme];

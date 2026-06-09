@@ -1,5 +1,5 @@
 import type { Route } from '$entities/route';
-import { downloadBlob } from '$shared/lib';
+import { downloadText } from '$shared/lib';
 import { escapeXml } from './xml-entities';
 
 // Serialize a route as a GPX 1.1 <rte>, the interchange format every other plotter, MFD, and
@@ -23,6 +23,5 @@ ${points}
 
 // Trigger a browser download of the route as a .gpx file, matching the track GeoJSON export.
 export function downloadRouteGpx(route: Route): void {
-  const blob = new Blob([routeToGpx(route)], { type: 'application/gpx+xml' });
-  downloadBlob(`${route.name || 'route'}.gpx`, blob);
+  downloadText(`${route.name || 'route'}.gpx`, routeToGpx(route), 'application/gpx+xml');
 }

@@ -9,3 +9,10 @@ export function downloadBlob(filename: string, blob: Blob): void {
   anchor.click();
   URL.revokeObjectURL(url);
 }
+
+// Trigger a browser download of serialized text (GPX, GeoJSON, JSON) as a named file with the given
+// MIME type. Wraps the Blob construction every text exporter repeated, so the type and filename live in
+// one call. Inert outside a DOM context, via downloadBlob.
+export function downloadText(filename: string, text: string, type: string): void {
+  downloadBlob(filename, new Blob([text], { type }));
+}

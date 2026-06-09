@@ -154,7 +154,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     </button>
   </div>
 
-  <dl class="stats">
+  <dl class="stat-grid">
     <dt>Distance</dt>
     <dd>
       <span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span>
@@ -262,35 +262,6 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   border-end-start-radius: 0;
   border-inline-start: 0;
 }
-/* The current-track stats: label, value, and unit in three columns, values end-aligned in a shared
-   column so they line up with no trailing whitespace, matching the route-edit stats. The dd is
-   display: contents so its number and unit become direct grid items; Duration's empty unit cell holds
-   the column without nudging the number. */
-.stats {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: baseline;
-  column-gap: var(--space-2);
-  row-gap: 0.3rem;
-  margin: 0;
-}
-.stats dt {
-  color: var(--text-muted);
-}
-.stats dd {
-  display: contents;
-}
-.stats .num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: var(--text);
-  text-align: end;
-}
-.stats .unit {
-  min-inline-size: 1.25rem;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
+/* The current-track stats use the global .stat-grid system in app.css. */
 /* The saved-track card list, name, stats, and actions come from the global .saved system in app.css. */
 </style>

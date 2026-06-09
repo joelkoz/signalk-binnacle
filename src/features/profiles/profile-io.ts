@@ -1,5 +1,5 @@
 import type { Profile, ProfileSettings } from '$entities/profile';
-import { downloadBlob } from '$shared/lib';
+import { downloadText } from '$shared/lib';
 import { THEMES } from '$shared/ui';
 
 // The canonical valid-theme list, so a corrupt import cannot smuggle an unknown theme into the store.
@@ -104,8 +104,8 @@ export function parseProfilesJson(text: string): ImportedProfile[] {
 }
 
 // Trigger a browser download of a profile as pretty JSON, matching the route GPX and track GeoJSON
-// exports. downloadBlob is Node-guarded, so this is inert outside a DOM context.
+// exports. downloadText is Node-guarded, so this is inert outside a DOM context.
 export function downloadProfileJson(profile: Profile): void {
-  const blob = new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' });
-  downloadBlob(`${profile.name || 'profile'}.binnacle-profile.json`, blob);
+  const json = JSON.stringify(profile, null, 2);
+  downloadText(`${profile.name || 'profile'}.binnacle-profile.json`, json, 'application/json');
 }

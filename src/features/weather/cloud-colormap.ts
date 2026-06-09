@@ -1,5 +1,4 @@
-import type { Theme } from '$shared/ui';
-import { type Rgba, sampleRamp } from './color-ramp';
+import { type Rgba, themedRamp } from './color-ramp';
 
 // Cloud-cover stops as a 0..1 fraction. Day and dusk dim the chart with a translucent neutral gray
 // rising with cover, like overcast; the gray is mid-tone (not near-white) so it reads clearly over
@@ -18,6 +17,4 @@ const NIGHT: Array<[number, Rgba]> = [
   [1, [0.38, 0.08, 0.06, 0.4]],
 ];
 
-export function cloudColor(fraction: number, theme: Theme): Rgba {
-  return sampleRamp(theme === 'night-red' ? NIGHT : DAY, fraction);
-}
+export const cloudColor = themedRamp(DAY, NIGHT);

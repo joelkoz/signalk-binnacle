@@ -154,7 +154,7 @@ $effect(() => {
 
   {#if working}
     <div class="editing" role="group" aria-label="Route under edit">
-      <dl class="stats">
+      <dl class="stat-grid">
         <dt>Waypoints</dt>
         <dd><span class="num">{working.waypoints.length}</span><span class="unit"></span></dd>
         <dt>Distance</dt>
@@ -412,38 +412,7 @@ $effect(() => {
   color: var(--alarm);
   font-size: var(--text-sm);
 }
-/* One grid for the whole list (label, number, unit) so every number shares a column and
-   every unit shares a column. The dd is display: contents so its number and unit become
-   direct grid items; a row with no unit (Waypoints) leaves a blank unit cell without
-   nudging the number out of the shared column. */
-.stats {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: baseline;
-  column-gap: var(--space-2);
-  row-gap: 0.3rem;
-  margin: 0;
-}
-.stats dt {
-  color: var(--text-muted);
-}
-.stats dd {
-  display: contents;
-}
-/* The route-edit stats share the mono, tabular, end-aligned readout the saved-card stats use, declared
-   self-contained here since this scoped block does not see the global .card-stats .num rule. */
-.stats .num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: var(--text);
-  text-align: end;
-}
-.stats .unit {
-  min-inline-size: 1.25rem;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
+/* The route-edit working-plan stats use the global .stat-grid system in app.css. */
 /* The card list, name, stats, and actions come from the global .saved system in app.css. Only the
    active-route accent treatment and the name's locate interactivity are Routes-specific. */
 .saved .name {
