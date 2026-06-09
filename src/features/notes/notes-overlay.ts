@@ -8,11 +8,13 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import {
+  DARK_SCRIM,
   emptyFeatureCollection,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  rgbaCss,
 } from '$shared/map';
 import { str } from '$shared/signalk';
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
@@ -31,8 +33,8 @@ const SELECT_SOURCE = 'binnacle-notes-selected';
 const SELECT_LAYER = 'binnacle-notes-selected';
 const SELECT_CASING_LAYER = 'binnacle-notes-selected-casing';
 // A fixed dark casing under the amber selection ring, so it holds on light day water; invisible on the
-// dark themes where the ring carries on its own. The same constant-dark contrast aid as the route line.
-const SELECT_CASING_COLOR = 'rgba(0, 0, 0, 0.45)';
+// dark themes where the ring carries on its own. The shared DARK_SCRIM, as the route line uses.
+const SELECT_CASING_COLOR = rgbaCss(DARK_SCRIM);
 // The note layers, bottom to top, in one place for layerIds, setVisible, and remove.
 const LAYERS = [
   SELECT_CASING_LAYER,

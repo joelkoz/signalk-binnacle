@@ -3,7 +3,7 @@
 // editor can apply the same high-contrast shapes. Terra Draw only sets keyword cursors inline (it has
 // no way to ask for a custom image), so its adapter maps each keyword to the matching custom property.
 
-const KEYWORD_TO_VAR: Record<string, string> = {
+const KEYWORD_TO_VAR: Record<string, string | undefined> = {
   crosshair: '--cursor-crosshair',
   grab: '--cursor-grab',
   grabbing: '--cursor-grabbing',
@@ -11,12 +11,21 @@ const KEYWORD_TO_VAR: Record<string, string> = {
   move: '--cursor-grab',
 };
 
+// The resolved variable values are constant for the page lifetime (the cursors are theme-independent),
+// so cache the first read: Terra Draw calls setCursor on every pointer move, and getComputedStyle forces
+// a synchronous style flush each time.
+const resolved = new Map<string, string>();
+
 // The high-contrast cursor value for a Terra Draw cursor keyword, or undefined when the keyword has no
 // custom shape (let the stock adapter set the OS cursor, which for "pointer" already reads clearly).
-// Reads the live CSS variable so the value has a single source; falls back to the keyword if unset.
+// Reads the live CSS variable so the value has a single source.
 export function chartCursorFor(keyword: string): string | undefined {
   const name = KEYWORD_TO_VAR[keyword];
   if (!name || typeof document === 'undefined') return undefined;
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return value || keyword;
+  let value = resolved.get(name);
+  if (value === undefined) {
+    value = getComputedStyle(document.documentElement).getPropertyValue(name).trim() || keyword;
+    resolved.set(name, value);
+  }
+  return value;
 }

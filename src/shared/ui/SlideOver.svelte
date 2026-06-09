@@ -29,9 +29,9 @@ interface Props {
   headerExtra?: Snippet;
   // When supplied, a minimize control collapses the panel to just its header on a phone, so the panel
   // does not cover the chart (for example while tapping waypoints into a route). It is a no-op on a
-  // desktop side panel, so the control only shows at phone widths.
-  minimized?: boolean;
-  onToggleMinimize?: () => void;
+  // desktop side panel, so the control only shows at phone widths. One object so the collapsed state
+  // and its toggle are always supplied together.
+  minimize?: { collapsed: boolean; onToggle: () => void };
   children: Snippet;
 }
 
@@ -45,8 +45,7 @@ const {
   onBack,
   backLabel = 'Back to menu',
   headerExtra,
-  minimized = false,
-  onToggleMinimize,
+  minimize,
   children,
 }: Props = $props();
 </script>
@@ -71,16 +70,16 @@ const {
     {/if}
     <h2 class="panel-title">{title}</h2>
     {@render headerExtra?.()}
-    {#if onToggleMinimize}
+    {#if minimize}
       <button
         type="button"
         class="panel-minimize"
-        aria-label={minimized ? 'Expand panel' : 'Minimize panel'}
-        aria-pressed={minimized}
-        title={minimized ? 'Expand panel' : 'Minimize panel'}
-        onclick={onToggleMinimize}
+        aria-label={minimize.collapsed ? 'Expand panel' : 'Minimize panel'}
+        aria-pressed={minimize.collapsed}
+        title={minimize.collapsed ? 'Expand panel' : 'Minimize panel'}
+        onclick={minimize.onToggle}
       >
-        {#if minimized}
+        {#if minimize.collapsed}
           <ChevronUp size={18} aria-hidden="true" />
         {:else}
           <ChevronDown size={18} aria-hidden="true" />
@@ -97,7 +96,11 @@ const {
       <X size={18} aria-hidden="true" />
     </button>
   </header>
-  <div class="panel-body" class:panel-body--flex={bodyFlex} class:panel-body--collapsed={minimized}>
+  <div
+    class="panel-body"
+    class:panel-body--flex={bodyFlex}
+    class:panel-body--collapsed={minimize?.collapsed}
+  >
     {@render children()}
   </div>
 </aside>

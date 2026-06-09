@@ -1,4 +1,4 @@
-import { type Rgba, rasterIconColored } from '$shared/map';
+import { DARK_SCRIM, type Rgba, rasterIconColored } from '$shared/map';
 
 // Distinct from the AIS source id ('binnacle-ais'): this is the map image id.
 export const AIS_ICON_ID = 'binnacle-ais-icon';
@@ -7,9 +7,9 @@ const SIZE = 28;
 // draws a narrower, taller-looking triangle.
 const HALF_WIDTH_DIVISOR = 2.6;
 // A dark halo just outside the colored stroke, so the thin hollow triangle holds on same-luminance day
-// water. Fixed dark like the route casing: it lifts the marker on the light chart and is invisible on
-// the dark dusk and night-red maps, where the colored stroke carries on its own.
-const HALO: Rgba = { r: 0, g: 0, b: 0, a: 150 };
+// water. The shared DARK_SCRIM, as the route line and selection ring use: it lifts the marker on the
+// light chart and is invisible on the dark dusk and night-red maps, where the stroke carries on its own.
+const HALO = DARK_SCRIM;
 
 // A hollow triangle for AIS targets, distinct from the filled own-vessel icon, colored per theme with
 // a dark halo for contrast.

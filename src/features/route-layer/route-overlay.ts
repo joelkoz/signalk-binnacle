@@ -8,11 +8,13 @@ import type {
 } from 'maplibre-gl';
 import type { RouteStore } from '$entities/route';
 import {
+  DARK_SCRIM,
   emptyFeatureCollection,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  rgbaCss,
 } from '$shared/map';
 import { routeLineFeatures, waypointFeatures } from './route-features';
 
@@ -37,7 +39,7 @@ const LINE_WIDTH: ExpressionSpecification = ['case', ['get', 'active'], 3, 2];
 // dark dusk and night-red maps the near-black casing is invisible, so the line shows on its own. Fixed
 // (not themed) on purpose, like the cursor halo: a constant dark backing that only reads where needed.
 const CASING_WIDTH: ExpressionSpecification = ['case', ['get', 'active'], 5, 4];
-const CASING_COLOR = 'rgba(0, 0, 0, 0.5)';
+const CASING_COLOR = rgbaCss(DARK_SCRIM);
 
 export interface RouteOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;

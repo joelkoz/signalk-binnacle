@@ -138,8 +138,7 @@ $effect(() => {
   title="Routes"
   bodyFlex
   closeLabel="Close routes panel"
-  {minimized}
-  onToggleMinimize={() => (minimized = !minimized)}
+  minimize={{ collapsed: minimized, onToggle: () => (minimized = !minimized) }}
   {onClose}
   {onBack}
 >

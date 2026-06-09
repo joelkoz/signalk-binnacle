@@ -58,6 +58,11 @@ All notable changes to Binnacle are documented here. The format follows
   shared from `$shared/nav`, the nav-strip `RouteProgress` type has one definition, the plan-speed
   field uses the shared `.input`, and the whole-route distance derives from the leg table so the total
   and the per-leg numbers cannot drift.
+- A /simplify pass over the cursor and contrast work: the route, selection-ring, and AIS dark contrast
+  aids share one `DARK_SCRIM` constant and an `rgbaCss` helper in `$shared/map` instead of three
+  drifting literals, the route editor's cursor lookup caches its resolved CSS variable instead of
+  reading it on every pointer move, and the SlideOver minimize takes one `{ collapsed, onToggle }`
+  object so the state and its toggle are always supplied together.
 
 ## [0.2.1] - 2026-06-09
 

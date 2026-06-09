@@ -546,8 +546,8 @@ body {
   }
   /* Collapse the bottom sheet to its header so the chart underneath is usable while the panel stays
      open (for example tapping waypoints into a route); the header keeps the expand control. The
-     compound .panel-body selector outranks the base .panel-body--flex display, which is declared later
-     in the file, so the collapse is not defeated by source order. */
+     compound .panel-body selector outranks the single-class .panel-body--flex display on specificity,
+     so the collapse wins regardless of source order. */
   .panel-body.panel-body--collapsed {
     display: none;
   }
