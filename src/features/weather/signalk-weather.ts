@@ -1,3 +1,4 @@
+import { fetchJsonOrUndefined } from '$shared/lib';
 import { asKeyedObject, authInit } from '$shared/signalk';
 import type { WeatherReadout } from './weather-readout';
 
@@ -75,13 +76,13 @@ export async function fetchWeatherProviders(
   token?: string,
   fetchFn: Fetch = defaultFetch,
 ): Promise<Record<string, WeatherProviderInfo> | undefined> {
-  try {
-    const res = await fetchFn(`${origin}${WEATHER_BASE}/_providers`, authInit(token));
-    if (!res.ok) return undefined;
-    return asKeyedObject(await res.json()) as Record<string, WeatherProviderInfo> | undefined;
-  } catch {
-    return undefined;
-  }
+  const body = await fetchJsonOrUndefined<unknown>(
+    `${origin}${WEATHER_BASE}/_providers`,
+    authInit(token),
+    fetchFn,
+  );
+  if (body === undefined) return undefined;
+  return asKeyedObject(body) as Record<string, WeatherProviderInfo> | undefined;
 }
 
 // The display name of the default provider, or undefined when none is configured. Drives the "use
@@ -138,14 +139,13 @@ export async function fetchWeatherWarnings(
   token?: string,
   fetchFn: Fetch = defaultFetch,
 ): Promise<WeatherWarning[] | undefined> {
-  try {
-    const res = await fetchFn(pointUrl(origin, 'warnings', lat, lon), authInit(token));
-    if (!res.ok) return undefined;
-    const body = await res.json();
-    return Array.isArray(body) ? (body as WeatherWarning[]) : undefined;
-  } catch {
-    return undefined;
-  }
+  const body = await fetchJsonOrUndefined<unknown>(
+    pointUrl(origin, 'warnings', lat, lon),
+    authInit(token),
+    fetchFn,
+  );
+  if (body === undefined) return undefined;
+  return Array.isArray(body) ? (body as WeatherWarning[]) : undefined;
 }
 
 // Some endpoints return a single object, some an array; normalize to an array either way.
@@ -154,16 +154,11 @@ async function fetchWeatherList(
   token: string | undefined,
   fetchFn: Fetch,
 ): Promise<SignalKWeatherData[] | undefined> {
-  try {
-    const res = await fetchFn(url, authInit(token));
-    if (!res.ok) return undefined;
-    const body = await res.json();
-    if (Array.isArray(body)) return body as SignalKWeatherData[];
-    if (body && typeof body === 'object') return [body as SignalKWeatherData];
-    return undefined;
-  } catch {
-    return undefined;
-  }
+  const body = await fetchJsonOrUndefined<unknown>(url, authInit(token), fetchFn);
+  if (body === undefined) return undefined;
+  if (Array.isArray(body)) return body as SignalKWeatherData[];
+  if (body && typeof body === 'object') return [body as SignalKWeatherData];
+  return undefined;
 }
 
 // A normalized point reading for the conditions panel, richer than WeatherReadout (it carries air

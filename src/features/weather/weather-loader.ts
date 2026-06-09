@@ -1,6 +1,6 @@
 import type { Bbox, RadarData, WeatherGrid, WeatherStore } from '$entities/weather';
 import { HOUR_MS, MINUTE_MS } from '$shared/lib';
-import { createExpiringStore, type ExpiringStore } from '$shared/storage';
+import { createExpiringStore, type ExpiringStore, MemoryCache } from '$shared/storage';
 import { fetchRadar } from './rainviewer-client';
 import { type ForecastOptions, fetchForecast, fetchMarine, mergeMarine } from './weather-client';
 
@@ -72,7 +72,7 @@ const realDeps: LoaderDeps = {
 // Constructed in App and passed down so it is swappable in tests (deps and clock are injectable).
 export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): WeatherLoader {
   const deps = { ...realDeps, ...overrides };
-  const gridCache = new Map<string, { grid: WeatherGrid; expires: number }>();
+  const gridCache = new MemoryCache<WeatherGrid>(MAX_GRID_ENTRIES, GRID_TTL_MS);
   let radarCache: { data: RadarData; expires: number } | undefined;
   // After a grid fetch fails (Open-Meteo rate-limiting returns 429 or 502 with no body), hold off on
   // the next network attempt so panning and resizing do not retry-storm and deepen the rate limit.
@@ -101,17 +101,6 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
       const t = deps.now();
       const key = weatherCacheKey(bbox, opts, want.waves);
 
-      // Keep a grid in the bounded in-memory cache: drop expired entries, then cap the size.
-      const rememberInMemory = (grid: WeatherGrid, expires: number): void => {
-        for (const [k, entry] of gridCache) if (entry.expires <= t) gridCache.delete(k);
-        gridCache.set(key, { grid, expires });
-        while (gridCache.size > MAX_GRID_ENTRIES) {
-          const oldest = gridCache.keys().next().value;
-          if (oldest === undefined) break;
-          gridCache.delete(oldest);
-        }
-      };
-
       // Resolve the grid from the in-memory cache, then the persistent (IndexedDB) cache, then the
       // network. `fromNetwork` distinguishes a fresh fetch (which is cached and which arms the
       // cooldown on failure) from a cache hit or a cooldown skip.
@@ -120,11 +109,14 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
         partial: boolean;
         fromNetwork: boolean;
       }> => {
-        const mem = gridCache.get(key);
-        if (mem && mem.expires > t) return { grid: mem.grid, partial: false, fromNetwork: false };
+        const mem = gridCache.get(key, t);
+        if (mem) return { grid: mem, partial: false, fromNetwork: false };
         const stored = await deps.persist.get(key);
         if (stored && stored.expires > t) {
-          rememberInMemory(stored.value, stored.expires);
+          // Promote the L2 hit into L1 with its REMAINING life: passing `expires - GRID_TTL_MS` as
+          // `now` makes the cache recompute `now + GRID_TTL_MS`, which equals the persisted absolute
+          // expiry, so the in-memory copy expires exactly when the persisted entry would.
+          gridCache.put(key, stored.value, stored.expires - GRID_TTL_MS);
           return { grid: stored.value, partial: false, fromNetwork: false };
         }
         if (t < gridCooldownUntil) return { grid: undefined, partial: false, fromNetwork: false };
@@ -150,10 +142,11 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
           // retries marine) and back off so the rate-limited endpoint is not re-hit on the next pan.
           gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;
         } else if (fromNetwork) {
-          const expires = t + GRID_TTL_MS;
-          rememberInMemory(grid, expires);
+          // The cache computes its own expiry as `t + GRID_TTL_MS`; persist stores the same absolute
+          // value so the two tiers expire together.
+          gridCache.put(key, grid, t);
           // Persist for reloads and offline; the put never throws (it degrades to memory).
-          await deps.persist.put(key, grid, expires);
+          await deps.persist.put(key, grid, t + GRID_TTL_MS);
           void deps.persist.prune(t);
         }
       } else {

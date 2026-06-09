@@ -1,6 +1,7 @@
 export { formatBytes } from './bytes';
 export { formatLatitude, formatLongitude, PLACEHOLDER } from './coords';
 export { downloadBlob, downloadText } from './download';
+export { fetchJsonOrUndefined } from './fetch-json';
 export { uuidv4 } from './id';
 export { lerp } from './math';
 export { prefersReducedMotion } from './motion';
