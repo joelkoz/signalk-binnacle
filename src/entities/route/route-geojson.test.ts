@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { rhumbDistanceMeters } from '$shared/nav';
-import { featureToRoute, routeDistanceMeters, routeToFeature } from './route-geojson';
+import {
+  featureToRoute,
+  remainingRouteDistanceMeters,
+  routeDistanceMeters,
+  routeToFeature,
+} from './route-geojson';
 import type { Route } from './route-types';
 
 const ROUTE: Route = {
@@ -12,6 +17,23 @@ const ROUTE: Route = {
     { position: { latitude: 0, longitude: 2 } },
   ],
 };
+
+describe('remainingRouteDistanceMeters', () => {
+  it('sums the legs from the given index onward', () => {
+    // The three-waypoint route is two legs; from index 0 that is the whole route.
+    expect(remainingRouteDistanceMeters(ROUTE.waypoints, 0)).toBeCloseTo(
+      routeDistanceMeters(ROUTE.waypoints),
+      3,
+    );
+    // From the last leg's start, only the final leg remains.
+    expect(remainingRouteDistanceMeters(ROUTE.waypoints, 1)).toBeCloseTo(
+      rhumbDistanceMeters(ROUTE.waypoints[1].position, ROUTE.waypoints[2].position),
+      3,
+    );
+    // From the last waypoint, nothing remains.
+    expect(remainingRouteDistanceMeters(ROUTE.waypoints, 2)).toBe(0);
+  });
+});
 
 describe('routeToFeature', () => {
   it('emits a LineString with [lon, lat] coordinates and the SI distance', () => {

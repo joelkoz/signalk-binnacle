@@ -1,6 +1,7 @@
 export {
   featureToRoute,
   type RouteResourceBody,
+  remainingRouteDistanceMeters,
   routeDistanceMeters,
   routeToFeature,
 } from './route-geojson';

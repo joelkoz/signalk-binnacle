@@ -17,7 +17,7 @@ import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
-import { RouteStore, reverseRoute } from '$entities/route';
+import { RouteStore, remainingRouteDistanceMeters, reverseRoute } from '$entities/route';
 import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
@@ -127,6 +127,27 @@ const routeStore = new RouteStore();
 const courseGuidance = new CourseGuidance(store, vessel);
 const arrivalAlarm = new ArrivalAlarm();
 const arrivalMuted = new PersistedValue<boolean>('binnacle:arrival-muted', false);
+
+// Whole-route distance-to-go and time-to-go across the legs still ahead, for the passage arrival
+// readout. Only when a multi-leg route is active and more than the current leg remains, so a single
+// "go to" or the final leg leaves it undefined and the strip shows just the per-leg numbers.
+const routeProgress = $derived.by<
+  { distanceToGoMeters: number; timeToGoSeconds?: number } | undefined
+>(() => {
+  const idx = courseGuidance.activePointIndex;
+  const total = courseGuidance.activePointTotal;
+  const toNext = courseGuidance.distanceToNextMeters;
+  const id = routeStore.activeId;
+  if (id == null || idx == null || total == null || toNext == null || total - idx <= 1) {
+    return undefined;
+  }
+  const route = routeStore.routes.find((r) => r.id === id);
+  if (!route) return undefined;
+  const distanceToGoMeters = toNext + remainingRouteDistanceMeters(route.waypoints, idx);
+  const sog = vessel.sogMps;
+  const timeToGoSeconds = sog != null && sog > 0 ? distanceToGoMeters / sog : undefined;
+  return { distanceToGoMeters, timeToGoSeconds };
+});
 
 // Tides and tidal currents from NOAA CO-OPS (US waters). The store feeds the panel and the nearest
 // station markers; the loader caches the station lists and predictions for the session.
@@ -857,7 +878,12 @@ onDestroy(() => {
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
     <div class="bottom-stack">
-      <NavStrip guidance={courseGuidance} onStop={onStopCourse} onSkip={onSkipPoint} />
+      <NavStrip
+        guidance={courseGuidance}
+        {routeProgress}
+        onStop={onStopCourse}
+        onSkip={onSkipPoint}
+      />
       <DangerStrip
         {collision}
         muted={alarmMuted.value}

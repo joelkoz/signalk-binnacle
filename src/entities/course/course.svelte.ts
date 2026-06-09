@@ -88,6 +88,16 @@ export class CourseGuidance {
     return route.pointIndex >= route.pointTotal - 1;
   }
 
+  // The active route's destination index and total point count, when a route (not a single "go to")
+  // is active, so a consumer can sum the legs still ahead for a whole-route distance and ETA.
+  get activePointIndex(): number | undefined {
+    return this.#info.activeRoute?.pointIndex ?? undefined;
+  }
+
+  get activePointTotal(): number | undefined {
+    return this.#info.activeRoute?.pointTotal ?? undefined;
+  }
+
   // 'server' when the provider supplied a usable cross-track error, otherwise 'computed'. The
   // cross-track error is the marker calcValue: a provider that publishes calcValues at all
   // publishes it, so its presence is the cleanest single test for a populated calcValues block.

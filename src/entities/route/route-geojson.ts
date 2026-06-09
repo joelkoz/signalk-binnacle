@@ -71,3 +71,17 @@ export function routeDistanceMeters(waypoints: readonly Waypoint[]): number {
   }
   return total;
 }
+
+// The rhumb distance of the legs still ahead, starting at fromIndex (the active destination
+// waypoint). The whole-route distance-to-go is this plus the boat's distance to that next waypoint,
+// so a passage planner can show total remaining distance and arrival time, not just the next leg.
+export function remainingRouteDistanceMeters(
+  waypoints: readonly Waypoint[],
+  fromIndex: number,
+): number {
+  let total = 0;
+  for (let i = Math.max(0, fromIndex); i < waypoints.length - 1; i += 1) {
+    total += rhumbDistanceMeters(waypoints[i].position, waypoints[i + 1].position);
+  }
+  return total;
+}

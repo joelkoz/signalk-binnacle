@@ -12,12 +12,16 @@ import { steerSide } from '$shared/nav';
 
 interface Props {
   guidance: CourseGuidance;
+  // Whole-route distance and time to go across the legs still ahead, shown as a passage arrival
+  // readout when a multi-leg route is active. Undefined for a single leg, where the per-leg numbers
+  // already say it.
+  routeProgress?: { distanceToGoMeters: number; timeToGoSeconds?: number };
   onStop: () => void;
   // Skip the active waypoint forward (1) or back (-1) along the route.
   onSkip?: (delta: number) => void;
 }
 
-const { guidance, onStop, onSkip }: Props = $props();
+const { guidance, routeProgress, onStop, onSkip }: Props = $props();
 
 // The side to steer toward to return to the track, as a port (L) or starboard (R) marker. The
 // cross-track sign convention lives in steerSide; absent or zero error yields no marker.
@@ -39,6 +43,19 @@ const vmg = $derived(formatKnotsOr(guidance.velocityMadeGoodMps));
 const ttg = $derived(
   guidance.timeToGoSeconds != null ? formatDuration(guidance.timeToGoSeconds) : PLACEHOLDER,
 );
+// Whole-route distance still to run, and the arrival clock time (now plus the route time-to-go),
+// recomputed each render so the clock stays current as the strip ticks.
+const routeDtg = $derived(
+  routeProgress ? formatNmOr(routeProgress.distanceToGoMeters) : PLACEHOLDER,
+);
+const eta = $derived.by(() => {
+  const ttgSeconds = routeProgress?.timeToGoSeconds;
+  if (ttgSeconds == null) return PLACEHOLDER;
+  return new Date(Date.now() + ttgSeconds * 1000).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+});
 </script>
 
 {#if guidance.active}
@@ -87,6 +104,10 @@ const ttg = $derived(
       </span>
       <span class="metric">VMG <b>{vmg}</b> kn</span>
       <span class="metric">TTG <b>{ttg}</b></span>
+      {#if routeProgress}
+        <span class="metric">RTE <b>{routeDtg}</b> nm</span>
+        <span class="metric">ETA <b>{eta}</b></span>
+      {/if}
     </div>
   </aside>
 {/if}
