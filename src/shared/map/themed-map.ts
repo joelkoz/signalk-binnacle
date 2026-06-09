@@ -94,6 +94,16 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   let destroyed = false;
   let frame = 0;
 
+  // The OpenFreeMap "liberty" base style references a handful of sprite icons and landuse
+  // fill-patterns (for example "office", "gate", "brownfield", "reservoir") that its published
+  // sprite does not actually contain, so MapLibre logs a "styleimagemissing" warning for each on
+  // load. Supply a 1x1 transparent placeholder so the console stays clean and the affected icon or
+  // pattern renders nothing, which matches how the theme already flattens those landuse fills.
+  mapInstance.on('styleimagemissing', (event) => {
+    if (mapInstance.hasImage(event.id)) return;
+    mapInstance.addImage(event.id, { width: 1, height: 1, data: new Uint8Array(4) });
+  });
+
   // The container resizes when side panels open or the viewport changes without a window resize, so
   // observe it and let MapLibre re-fit rather than sit at a stale size.
   const resizeObserver = new ResizeObserver(() => mapInstance.resize());
