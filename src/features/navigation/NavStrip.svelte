@@ -1,4 +1,5 @@
 <script lang="ts">
+import { SkipBack, SkipForward } from '@lucide/svelte';
 import type { CourseGuidance } from '$entities/course';
 import {
   formatBearingOr,
@@ -12,9 +13,11 @@ import { steerSide } from '$shared/nav';
 interface Props {
   guidance: CourseGuidance;
   onStop: () => void;
+  // Skip the active waypoint forward (1) or back (-1) along the route.
+  onSkip?: (delta: number) => void;
 }
 
-const { guidance, onStop }: Props = $props();
+const { guidance, onStop, onSkip }: Props = $props();
 
 // The side to steer toward to return to the track, as a port (L) or starboard (R) marker. The
 // cross-track sign convention lives in steerSide; absent or zero error yields no marker.
@@ -48,6 +51,26 @@ const ttg = $derived(
       <span class="name" aria-live="polite">{guidance.nextPointName ?? PLACEHOLDER}</span>
       {#if guidance.source === 'computed'}
         <span class="note">computing locally</span>
+      {/if}
+      {#if onSkip}
+        <button
+          type="button"
+          class="skip"
+          aria-label="Previous waypoint"
+          title="Previous waypoint"
+          onclick={() => onSkip(-1)}
+        >
+          <SkipBack size={15} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="skip"
+          aria-label="Next waypoint"
+          title="Next waypoint"
+          onclick={() => onSkip(1)}
+        >
+          <SkipForward size={15} aria-hidden="true" />
+        </button>
       {/if}
       <button type="button" class="ack" onclick={onStop}>Stop</button>
     </div>
@@ -85,5 +108,21 @@ const ttg = $derived(
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--accent);
+}
+/* Compact waypoint-skip buttons in the strip head, sitting beside the Stop control. */
+.skip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.skip:hover {
+  border-color: var(--accent);
+  background: var(--accent-tint);
 }
 </style>

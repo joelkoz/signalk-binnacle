@@ -1,5 +1,16 @@
 <script lang="ts">
-import { Download, Eraser, Eye, EyeOff, Pause, Play, Save, Trash2 } from '@lucide/svelte';
+import {
+  Download,
+  Eraser,
+  Eye,
+  EyeOff,
+  Pause,
+  Play,
+  Route,
+  Save,
+  Trash2,
+  Undo2,
+} from '@lucide/svelte';
 import type { TrackRecorder } from '$entities/track';
 import { formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
@@ -12,6 +23,9 @@ interface Props {
   saved: SavedTrack[];
   shown: ReadonlySet<string>;
   onSave: (name: string) => void;
+  // Save the current track as a reusable route, and navigate back along it (retrace home).
+  onSaveAsRoute: (name: string) => void;
+  onTrackHome: () => void;
   onDelete: (id: string) => void;
   onToggleSaved: (id: string) => void;
   onExport: (track: SavedTrack) => void;
@@ -25,6 +39,8 @@ const {
   saved,
   shown,
   onSave,
+  onSaveAsRoute,
+  onTrackHome,
   onDelete,
   onToggleSaved,
   onExport,
@@ -47,6 +63,11 @@ function duration(seconds: number): string {
 function promptSave(): void {
   const name = promptSaveName('Track');
   if (name !== undefined) onSave(name);
+}
+
+function promptSaveAsRoute(): void {
+  const name = promptSaveName('Route');
+  if (name !== undefined) onSaveAsRoute(name);
 }
 
 function confirmClear(): void {
@@ -109,6 +130,22 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       onclick={() => setColorMode('solid')}
     >
       Solid
+    </button>
+  </div>
+
+  <div class="panel-controls">
+    <button
+      type="button"
+      class="btn"
+      onclick={promptSaveAsRoute}
+      disabled={recorder.points.length < 2}
+    >
+      <Route size={16} aria-hidden="true" />
+      Save as route
+    </button>
+    <button type="button" class="btn" onclick={onTrackHome} disabled={recorder.points.length < 2}>
+      <Undo2 size={16} aria-hidden="true" />
+      Navigate home
     </button>
   </div>
 

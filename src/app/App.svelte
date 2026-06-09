@@ -47,7 +47,7 @@ import {
 } from '$features/routing';
 import { ThemeToggle } from '$features/theme-toggle';
 import { createTidesLoader, TidesPanel } from '$features/tides';
-import type { SavedTracksSource } from '$features/track-layer';
+import { type SavedTracksSource, trackToRoute } from '$features/track-layer';
 import {
   deleteTrack,
   downloadGeoJson,
@@ -597,6 +597,49 @@ async function onStopCourse(): Promise<void> {
   }
 }
 
+// Skip the active route's waypoint forward (1) or back (-1). Best-effort: the streamed pointIndex
+// stays authoritative, so the strip self-corrects even if the server rejects a step past a route end.
+function onSkipPoint(delta: number): void {
+  void advancePoint(serverOrigin(), chartsToken, delta);
+}
+
+// Save the current track as a reusable route, without stopping or clearing the recording, so a
+// sailed passage becomes a plan that can be followed again.
+async function onSaveTrackAsRoute(name: string): Promise<void> {
+  clearRouteError();
+  if (recorder.points.length < 2) return;
+  const route = trackToRoute(recorder.points, name);
+  if (!(await saveRoute(serverOrigin(), chartsToken, route))) {
+    flagRouteError('Could not save the track as a route.');
+    return;
+  }
+  await refreshRoutes();
+  routeStore.toggleShown(route.id, true);
+}
+
+// Navigate back along the current track: build a route from it, reverse the geometry so it runs from
+// the boat's current position back to the start, then activate it forward. The boat retraces its own
+// proven-safe water back out of a channel or anchorage.
+async function onTrackHome(): Promise<void> {
+  clearRouteError();
+  if (recorder.points.length < 2) return;
+  const route = trackToRoute(recorder.points, 'Track home');
+  route.waypoints.reverse();
+  if (!(await saveRoute(serverOrigin(), chartsToken, route))) {
+    flagRouteError('Could not build the route home.');
+    return;
+  }
+  await refreshRoutes();
+  if (!(await activateRoute(serverOrigin(), chartsToken, `/resources/routes/${route.id}`))) {
+    flagRouteError('Could not start navigating home.');
+    return;
+  }
+  routeStore.setActive(route.id);
+  routeStore.toggleShown(route.id, true);
+  const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
+  courseGuidance.seed(info, calc);
+}
+
 // Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
 let arrivedLast = false;
 $effect(() => {
@@ -800,7 +843,7 @@ onDestroy(() => {
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
     <div class="bottom-stack">
-      <NavStrip guidance={courseGuidance} onStop={onStopCourse} />
+      <NavStrip guidance={courseGuidance} onStop={onStopCourse} onSkip={onSkipPoint} />
       <DangerStrip
         {collision}
         muted={alarmMuted.value}
@@ -861,6 +904,8 @@ onDestroy(() => {
           saved={savedTracks}
           shown={shownSaved}
           onSave={onSaveTrack}
+          onSaveAsRoute={onSaveTrackAsRoute}
+          {onTrackHome}
           onDelete={onDeleteSavedTrack}
           {onToggleSaved}
           onExport={onExportSavedTrack}
