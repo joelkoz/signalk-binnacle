@@ -11,10 +11,10 @@ export interface LayerCategory {
 // and the registration order in ChartCanvas) so the panel reads the same as the stack and a
 // drag-to-reorder lands where the navigator drops it.
 const CATEGORIES = [
+  { id: 'mine', title: 'My routes and tracks', defaultOpen: true },
   { id: 'live', title: 'Traffic and live data', defaultOpen: true },
   { id: 'nav-aids', title: 'Navigation aids', defaultOpen: false },
   { id: 'areas', title: 'Areas and boundaries', defaultOpen: false },
-  { id: 'mine', title: 'My routes and tracks', defaultOpen: true },
   { id: 'ocean', title: 'Ocean conditions', defaultOpen: false },
   { id: 'charts', title: 'Charts and depth', defaultOpen: false },
 ] as const;

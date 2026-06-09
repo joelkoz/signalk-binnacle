@@ -147,9 +147,10 @@ onMount(() => {
       if (isDestroyed()) return;
 
       // Build every overlay, then register the whole stack in one batch so the layer order is
-      // applied once instead of restacking after each. Registration order is the z-order intent:
-      // server charts, then streaming bathymetry just above the base, the notes, AIS, and collision
-      // live overlays, then the track beneath the vessel so the boat draws on top of its own trail.
+      // applied once instead of restacking after each. The inter-band order comes from Z_ORDER (own
+      // vessel and collision pinned on top, then the navigator's routes and track, then AIS and the
+      // safety overlays, the ocean fields, and the charts at the base); the order below sets only the
+      // order within a band.
       const routeOverlay = createRouteOverlay(routeStore);
       const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect);
       const aisOverlay = createAisOverlay(aisTargets, store);

@@ -4,6 +4,15 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The Layers panel now leads with "My routes and tracks" above "Traffic and live data". The panel
+  order is kept aligned with the map stack so drag-to-reorder lands coherently, so this also raises
+  the routes and track layers above AIS and the reference overlays on the chart; the own vessel and
+  the collision rings stay pinned on top.
+
 ## [0.2.1] - 2026-06-09
 
 ### Fixed

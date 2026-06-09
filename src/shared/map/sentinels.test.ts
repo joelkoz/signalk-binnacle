@@ -21,7 +21,11 @@ describe('sentinels', () => {
   });
 
   it('beforeIdFor returns the next band sentinel', () => {
-    expect(beforeIdFor('traffic')).toBe(sentinelId('vessel'));
+    // Derive each band's expected anchor from Z_ORDER (the band above it), so the test does not pin
+    // a specific pair and survives a band reorder.
+    for (let i = 0; i < Z_ORDER.length - 1; i++) {
+      expect(beforeIdFor(Z_ORDER[i])).toBe(sentinelId(Z_ORDER[i + 1]));
+    }
   });
 
   it('beforeIdFor returns undefined for the top band', () => {

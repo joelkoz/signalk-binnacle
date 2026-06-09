@@ -12,18 +12,21 @@ export type ZBand =
   | 'vessel'
   | 'overlay-top';
 
-// The weather band sits just above bathymetry and below the track, so ocean fields (sea-surface
-// temperature, sea ice) read as a background layer under the vessel trail and the navigation
-// overlays, and so the Layers panel's single Weather section never splits the Overlays section that
-// would otherwise sit on both sides of it.
+// Bottom-to-top band order. Two arrangements are deliberate. The weather band sits just above
+// bathymetry and below every live overlay, so ocean fields (sea-surface temperature, sea ice) read
+// as a background layer and the Layers panel's single Ocean section never splits the overlay
+// sections. And the track and routes bands sit ABOVE safety and traffic, so the navigator's own
+// routes and tracks draw over the AIS and reference overlays (still below the pinned own-vessel and
+// collision rings), which also lets the Layers panel lead with "My routes and tracks" above "Traffic
+// and live data" while staying aligned with the stack so drag-to-reorder lands coherently.
 export const Z_ORDER: readonly ZBand[] = [
   'basemap',
   'bathymetry',
   'weather',
-  'track',
-  'routes',
   'safety',
   'traffic',
+  'track',
+  'routes',
   'vessel',
   'overlay-top',
 ] as const;
