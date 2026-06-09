@@ -1,6 +1,7 @@
 <script lang="ts">
 import {
   ArrowLeftRight,
+  Download,
   Eye,
   EyeOff,
   Navigation,
@@ -36,6 +37,8 @@ interface Props {
   onStop: () => void;
   // Save a reversed copy of the route, for the return leg.
   onReverse: (id: string) => void;
+  // Download the route as a GPX file for another plotter or MFD.
+  onExportGpx: (id: string) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
   onBack?: () => void;
@@ -56,6 +59,7 @@ const {
   onActivate,
   onStop,
   onReverse,
+  onExportGpx,
   onDelete,
   onClose,
   onBack,
@@ -195,6 +199,15 @@ const workingLegs = $derived(working ? routeLegs(working.waypoints) : []);
                 onclick={() => onReverse(route.id)}
               >
                 <ArrowLeftRight size={18} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="icon-btn"
+                aria-label="Export route as GPX"
+                title="Export GPX"
+                onclick={() => onExportGpx(route.id)}
+              >
+                <Download size={18} aria-hidden="true" />
               </button>
               {#if route.id === activeId}
                 <button

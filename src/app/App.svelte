@@ -40,6 +40,7 @@ import {
   advancePoint,
   clearCourse,
   deleteRoute,
+  downloadRouteGpx,
   fetchRoutes,
   hydrateCourse,
   RoutesPanel,
@@ -675,6 +676,12 @@ async function onReverseRoute(id: string): Promise<void> {
   routeStore.toggleShown(reversed.id, true);
 }
 
+// Download a saved route as a GPX file so it can be opened in another plotter, MFD, or Freeboard-SK.
+function onExportRouteGpx(id: string): void {
+  const route = routeStore.routes.find((r) => r.id === id);
+  if (route) downloadRouteGpx(route);
+}
+
 // Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
 let arrivedLast = false;
 $effect(() => {
@@ -923,6 +930,7 @@ onDestroy(() => {
           onActivate={onActivateRoute}
           onStop={onStopCourse}
           onReverse={onReverseRoute}
+          onExportGpx={onExportRouteGpx}
           onDelete={onDeleteRoute}
           onClose={() => {
             onCancelRouteEdit();
