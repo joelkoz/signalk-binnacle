@@ -1,6 +1,6 @@
 <script lang="ts">
 import { ArrowLeft, Trash2 } from '@lucide/svelte';
-import type { UserChartSource, UserCharts } from '$entities/user-charts';
+import { type UserChartSource, type UserCharts, zoomRange } from '$entities/user-charts';
 import { formatBytes } from '$shared/lib';
 import ChartSpecList from './ChartSpecList.svelte';
 
@@ -18,7 +18,7 @@ let name = $state('');
 const specRows = $derived([
   { label: 'Type', value: source.kind === 'vector' ? 'Vector' : 'Raster' },
   { label: 'Source', value: source.origin.type === 'url' ? 'URL' : 'File (offline)' },
-  { label: 'Zoom', value: `${source.minzoom ?? 0} to ${source.maxzoom ?? source.minzoom ?? 0}` },
+  { label: 'Zoom', value: zoomRange(source) },
   { label: 'Bounds', value: fmtBounds(source.bounds) },
   ...(source.byteSize ? [{ label: 'Size', value: formatBytes(source.byteSize) }] : []),
 ]);

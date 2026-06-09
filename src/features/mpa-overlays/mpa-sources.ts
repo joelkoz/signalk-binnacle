@@ -1,4 +1,10 @@
-import { arcgisExportTiles, type RasterOverlaySource, wmsTiles } from '$shared/map';
+import {
+  arcgisExportTiles,
+  createRasterOverlay,
+  type OverlayModule,
+  type RasterOverlaySource,
+  wmsTiles,
+} from '$shared/map';
 
 // Marine protected and regulated areas, so a cruiser sees no-anchor and protected zones before
 // dropping the hook. EMODnet Human Activities covers EU seas (marine protected areas, with Natura
@@ -36,3 +42,9 @@ export const MPA_SOURCES: RasterOverlaySource[] = [
     category: 'areas',
   },
 ];
+
+// The protected-area overlays draw in the safety band; the band lives in the slice so the composing
+// widget does not hardcode it, matching depth-charts' createStreamingChartOverlay.
+export function createMpaOverlay(source: RasterOverlaySource): OverlayModule {
+  return createRasterOverlay(source, 'safety');
+}

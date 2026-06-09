@@ -1,4 +1,9 @@
-import { type RasterOverlaySource, wmsTiles } from '$shared/map';
+import {
+  createRasterOverlay,
+  type OverlayModule,
+  type RasterOverlaySource,
+  wmsTiles,
+} from '$shared/map';
 
 // Maritime jurisdiction lines from Marine Regions (VLIZ), so a cruiser knows when a passage crosses
 // into another country's waters: the maritime boundaries (the treaty and median lines between
@@ -25,3 +30,9 @@ export const BOUNDARY_SOURCES: RasterOverlaySource[] = [
     category: 'areas',
   },
 ];
+
+// The boundary lines draw in the safety band; the band lives in the slice so the composing widget
+// does not hardcode it, matching depth-charts' createStreamingChartOverlay.
+export function createBoundaryOverlay(source: RasterOverlaySource): OverlayModule {
+  return createRasterOverlay(source, 'safety');
+}

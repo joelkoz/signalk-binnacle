@@ -1,1 +1,1 @@
-export { MPA_SOURCES } from './mpa-sources';
+export { createMpaOverlay, MPA_SOURCES } from './mpa-sources';

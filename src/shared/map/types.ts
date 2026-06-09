@@ -17,8 +17,8 @@ export type ZBand =
 // as a background layer and the Layers panel's single Ocean section never splits the overlay
 // sections. And the track and routes bands sit ABOVE safety and traffic, so the navigator's own
 // routes and tracks draw over the AIS and reference overlays (still below the pinned own-vessel and
-// collision rings), which also lets the Layers panel lead with "My routes and tracks" above "Traffic
-// and live data" while staying aligned with the stack so drag-to-reorder lands coherently.
+// collision rings), and the Layers panel can lead with "My routes and tracks" above "Traffic and
+// live data".
 export const Z_ORDER: readonly ZBand[] = [
   'basemap',
   'bathymetry',
@@ -54,8 +54,8 @@ export interface OverlayModule {
   // its order live in the panel; an overlay just declares which one it joins.
   readonly category?: string;
   readonly supportsOpacity: boolean;
-  // Initial visibility when there is no saved state. Defaults to visible; streaming depth layers
-  // set this false so they start off until the user enables one for their area.
+  // Initial visibility when there is no saved state. Defaults to visible; the reference and depth
+  // overlays set this false so they start off until the navigator enables one for their area.
   readonly defaultVisible?: boolean;
   // Initial opacity when there is no saved state. Defaults to 1; the translucent weather fields set
   // this below 1 so the chart reads through them.

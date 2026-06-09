@@ -41,6 +41,12 @@ export function userChartToSignalK(source: UserChartSource, url: string): Signal
   };
 }
 
+// The chart's zoom span as a "min to max" string for the spec readouts, with sensible fallbacks when
+// a bound is missing (a chart may declare only a min). Shared by the import-review and detail panels.
+export function zoomRange(source: UserChartSource): string {
+  return `${source.minzoom ?? 0} to ${source.maxzoom ?? source.minzoom ?? 0}`;
+}
+
 function nameFromUrl(url: string): string {
   try {
     const path = new URL(url).pathname;

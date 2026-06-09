@@ -1,1 +1,1 @@
-export { buildOceanSources } from './ocean-sources';
+export { buildOceanSources, createOceanOverlay } from './ocean-sources';

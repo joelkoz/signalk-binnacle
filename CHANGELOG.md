@@ -13,6 +13,14 @@ All notable changes to Binnacle are documented here. The format follows
   the routes and track layers above AIS and the reference overlays on the chart; the own vessel and
   the collision rings stay pinned on top.
 
+### Internal
+
+- A /simplify pass over the last day's changes: each new overlay slice (seamarks, protected areas,
+  boundaries, ocean conditions) now exposes a band-owning factory, so the chart widget no longer
+  hardcodes which map band each draws into (matching the depth-charts sibling). Deduplicated the
+  chart zoom-range expression and the tides upcoming-events computation, moved the station-distance
+  formatter into the tides display module, and tidied a handful of comments.
+
 ## [0.2.1] - 2026-06-09
 
 ### Fixed

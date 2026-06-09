@@ -1,1 +1,1 @@
-export { BOUNDARY_SOURCES } from './boundary-sources';
+export { BOUNDARY_SOURCES, createBoundaryOverlay } from './boundary-sources';

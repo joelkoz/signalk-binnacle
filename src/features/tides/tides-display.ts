@@ -21,6 +21,12 @@ export function formatCurrentRate(mps: number): string {
   return `${formatKnots(mps)} kn`;
 }
 
+// The distance to the nearest station for the proximity readout, in kilometers with a "<1 km" floor.
+export function formatStationDistance(meters: number): string {
+  const km = meters / 1000;
+  return km < 1 ? '<1 km' : `${Math.round(km)} km`;
+}
+
 export function formatClockTime(timeMs: number): string {
   return new Date(timeMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }

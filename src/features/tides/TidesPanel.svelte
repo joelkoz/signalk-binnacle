@@ -5,6 +5,7 @@ import { SlideOver } from '$shared/ui';
 import {
   formatClockTime,
   formatCurrentRate,
+  formatStationDistance,
   formatTideHeight,
   formatTideHeightFeet,
   nextCurrentEvent,
@@ -32,12 +33,11 @@ const clock = setInterval(() => {
 }, 60_000);
 onDestroy(() => clearInterval(clock));
 
-const nextHigh = $derived(
-  tide ? upcomingEvents(tide.events, now).find((e) => e.kind === 'high') : undefined,
-);
-const nextLow = $derived(
-  tide ? upcomingEvents(tide.events, now).find((e) => e.kind === 'low') : undefined,
-);
+// The upcoming high and low events, computed once, so next-high and next-low each scan the same
+// sorted list rather than re-filtering and re-sorting the events twice per recompute.
+const upcoming = $derived(tide ? upcomingEvents(tide.events, now) : []);
+const nextHigh = $derived(upcoming.find((e) => e.kind === 'high'));
+const nextLow = $derived(upcoming.find((e) => e.kind === 'low'));
 const curve = $derived(tide ? tideCurvePoints(tide.events) : []);
 const nowFrac = $derived(tide ? nowFraction(tide.events, now) : undefined);
 const nextCurrent = $derived(current ? nextCurrentEvent(current.events, now) : undefined);
@@ -50,11 +50,6 @@ const currentRate = $derived(
 
 const CURVE_W = 240;
 const CURVE_H = 60;
-
-function distanceKm(meters: number): string {
-  const km = meters / 1000;
-  return km < 1 ? '<1 km' : `${Math.round(km)} km`;
-}
 
 // A smooth path through the day's high and low turning points: a quadratic that rounds each corner
 // so the rise and fall read as a tide curve rather than a sawtooth.
@@ -86,7 +81,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
   {:else if tide}
     <div class="station">
       <span class="name" title={tide.station.name}>{tide.station.name}</span>
-      <span class="dist caps-label">{distanceKm(tide.distanceMeters)} away</span>
+      <span class="dist caps-label">{formatStationDistance(tide.distanceMeters)} away</span>
     </div>
 
     <dl class="stats">

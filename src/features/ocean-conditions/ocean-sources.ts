@@ -1,4 +1,4 @@
-import type { RasterOverlaySource } from '$shared/map';
+import { createRasterOverlay, type OverlayModule, type RasterOverlaySource } from '$shared/map';
 import { gibsDate } from './gibs-date';
 
 // NASA GIBS daily global ocean fields. Sea-surface temperature reveals current boundaries (the Gulf
@@ -34,4 +34,10 @@ export function buildOceanSources(): RasterOverlaySource[] {
       attribution: 'NASA EOSDIS GIBS; GHRSST L4 MUR (JPL PO.DAAC)',
     },
   ];
+}
+
+// The ocean fields draw in the weather band (a background layer under the live overlays); the band
+// lives in the slice so the composing widget does not hardcode it.
+export function createOceanOverlay(source: RasterOverlaySource): OverlayModule {
+  return createRasterOverlay(source, 'weather');
 }

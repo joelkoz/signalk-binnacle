@@ -46,7 +46,7 @@ const MAX_EVENT_ENTRIES = 24;
 // flicker the panel or rerun the nearest-station search.
 const SKIP_RADIUS_M = 3000;
 
-const defaults: LoaderDeps = {
+const realDeps: LoaderDeps = {
   tideStations: fetchTideStations,
   currentStations: fetchCurrentStations,
   tideEvents: fetchTideEvents,
@@ -70,7 +70,7 @@ function cachePut<T>(cache: Map<string, T>, key: string, value: T): void {
 // station's events are kept for the day so panning back to a covered area is instant. It feeds the
 // nearest tide and current readings into the store, or flags no coverage outside US waters.
 export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoader {
-  const deps = { ...defaults, ...overrides };
+  const deps = { ...realDeps, ...overrides };
   let tideList: TideStation[] | undefined;
   let currentList: TideStation[] | undefined;
   let listsAt = 0;

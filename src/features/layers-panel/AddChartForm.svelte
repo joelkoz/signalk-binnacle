@@ -1,6 +1,6 @@
 <script lang="ts">
 import { CloudUpload, Link2 } from '@lucide/svelte';
-import type { DraftChart, UserCharts } from '$entities/user-charts';
+import { type DraftChart, type UserCharts, zoomRange } from '$entities/user-charts';
 import { formatBytes } from '$shared/lib';
 import ChartSpecList from './ChartSpecList.svelte';
 
@@ -25,10 +25,7 @@ const draftRows = $derived(
   draft
     ? [
         { label: 'Type', value: draft.source.kind === 'vector' ? 'Vector' : 'Raster' },
-        {
-          label: 'Zoom',
-          value: `${draft.source.minzoom ?? 0} to ${draft.source.maxzoom ?? draft.source.minzoom ?? 0}`,
-        },
+        { label: 'Zoom', value: zoomRange(draft.source) },
         ...(draft.source.byteSize
           ? [{ label: 'Size', value: formatBytes(draft.source.byteSize) }]
           : []),

@@ -34,8 +34,8 @@ const noaaEncSource = (
   maxzoom: 18,
   bounds: [-180, -15, 180, 75],
   attribution: 'NOAA Office of Coast Survey, Electronic Navigational Charts (ENC)',
-  ...(opts.parent ? { parent: opts.parent } : {}),
-  ...(opts.group ? { group: opts.group } : {}),
+  parent: opts.parent,
+  group: opts.group,
 });
 
 // The two NOAA ENC facets (the chart and its data-quality overlay) share this group, so the Layers

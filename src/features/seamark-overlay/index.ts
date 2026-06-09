@@ -1,1 +1,1 @@
-export { SEAMARK_SOURCES } from './seamark-sources';
+export { createSeamarkOverlay, SEAMARK_SOURCES } from './seamark-sources';
