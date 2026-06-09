@@ -1,4 +1,4 @@
-import { rhumbDistanceMeters } from '$shared/nav';
+import { rhumbBearingRad, rhumbDistanceMeters } from '$shared/nav';
 import { isLonLat, type LonLat, latLonToLonLat, lonLatToLatLon, str } from '$shared/signalk';
 import type { Route, Waypoint } from './route-types';
 
@@ -84,4 +84,24 @@ export function remainingRouteDistanceMeters(
     total += rhumbDistanceMeters(waypoints[i].position, waypoints[i + 1].position);
   }
   return total;
+}
+
+// One leg of a route: its zero-based start-waypoint index, rhumb distance, and rhumb (steered)
+// bearing, for a leg-by-leg readout of a plan the way a navigator reads a passage on paper.
+export interface RouteLeg {
+  fromIndex: number;
+  distanceMeters: number;
+  bearingRad: number;
+}
+
+export function routeLegs(waypoints: readonly Waypoint[]): RouteLeg[] {
+  const legs: RouteLeg[] = [];
+  for (let i = 1; i < waypoints.length; i += 1) {
+    legs.push({
+      fromIndex: i - 1,
+      distanceMeters: rhumbDistanceMeters(waypoints[i - 1].position, waypoints[i].position),
+      bearingRad: rhumbBearingRad(waypoints[i - 1].position, waypoints[i].position),
+    });
+  }
+  return legs;
 }

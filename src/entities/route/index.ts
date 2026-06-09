@@ -1,8 +1,10 @@
 export {
   featureToRoute,
+  type RouteLeg,
   type RouteResourceBody,
   remainingRouteDistanceMeters,
   routeDistanceMeters,
+  routeLegs,
   routeToFeature,
 } from './route-geojson';
 export { reverseRoute } from './route-ops';

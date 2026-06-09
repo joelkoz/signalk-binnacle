@@ -11,8 +11,8 @@ import {
   Trash2,
   X,
 } from '@lucide/svelte';
-import { type Route, routeDistanceMeters } from '$entities/route';
-import { formatNm } from '$shared/lib';
+import { type Route, routeDistanceMeters, routeLegs } from '$entities/route';
+import { formatBearingOr, formatNm } from '$shared/lib';
 import { promptSaveName, SlideOver } from '$shared/ui';
 
 interface Props {
@@ -72,6 +72,9 @@ const savedCards = $derived(
   routes.map((route) => ({ route, distanceNm: formatNm(routeDistanceMeters(route.waypoints)) })),
 );
 const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(working.waypoints)) : '');
+// Each leg's distance and bearing for the route under edit, so the plan reads as a leg table the way
+// a navigator lays out a passage, updating live as waypoints are dragged or inserted.
+const workingLegs = $derived(working ? routeLegs(working.waypoints) : []);
 </script>
 
 <SlideOver title="Routes" bodyFlex closeLabel="Close routes panel" {onClose} {onBack}>
@@ -97,6 +100,17 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
           <span class="unit">nm</span>
         </dd>
       </dl>
+      {#if workingLegs.length > 0}
+        <ol class="legs" aria-label="Legs">
+          {#each workingLegs as leg (leg.fromIndex)}
+            <li>
+              <span class="leg-no">{leg.fromIndex + 1}</span>
+              <span class="leg-dist">{formatNm(leg.distanceMeters)} nm</span>
+              <span class="leg-brg">{formatBearingOr(leg.bearingRad)}&deg;T</span>
+            </li>
+          {/each}
+        </ol>
+      {/if}
       <p class="hint">
         Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
       </p>
@@ -241,6 +255,39 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
   margin: 0;
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+/* The leg-by-leg readout for the route under edit: a scrolling list of leg number, distance, and
+   bearing, mono and tabular so the columns line up. */
+.legs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-block-size: 9rem;
+  overflow-y: auto;
+  font-size: var(--text-sm);
+}
+.legs li {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr auto;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+.leg-no {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.leg-dist {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.leg-brg {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
 }
 .error {
   margin: 0;

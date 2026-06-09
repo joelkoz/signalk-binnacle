@@ -4,6 +4,7 @@ import {
   featureToRoute,
   remainingRouteDistanceMeters,
   routeDistanceMeters,
+  routeLegs,
   routeToFeature,
 } from './route-geojson';
 import type { Route } from './route-types';
@@ -32,6 +33,25 @@ describe('remainingRouteDistanceMeters', () => {
     );
     // From the last waypoint, nothing remains.
     expect(remainingRouteDistanceMeters(ROUTE.waypoints, 2)).toBe(0);
+  });
+});
+
+describe('routeLegs', () => {
+  it('returns one leg per consecutive pair, with distance and bearing', () => {
+    const legs = routeLegs(ROUTE.waypoints);
+    expect(legs).toHaveLength(2);
+    expect(legs[0].fromIndex).toBe(0);
+    expect(legs[1].fromIndex).toBe(1);
+    // Both legs run due east along the equator, so the rhumb bearing is 90 degrees (pi/2).
+    expect(legs[0].bearingRad).toBeCloseTo(Math.PI / 2, 3);
+    expect(legs[0].distanceMeters).toBeCloseTo(
+      rhumbDistanceMeters(ROUTE.waypoints[0].position, ROUTE.waypoints[1].position),
+      3,
+    );
+  });
+
+  it('is empty for a single waypoint', () => {
+    expect(routeLegs([ROUTE.waypoints[0]])).toEqual([]);
   });
 });
 
