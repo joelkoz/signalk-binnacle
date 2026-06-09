@@ -43,7 +43,10 @@ Read it before doing architectural work.
   not the control-flow template syntax). It is enabled via `html.experimentalFullSupportEnabled`.
   Re-verify it round-trips Svelte files cleanly whenever `{#if}`, `{#each}`, or other control
   flow is added (Phase 6 onward); if it ever mangles a `.svelte` file, exclude `.svelte` from
-  Biome and rely on `svelte-check` for correctness.
+  Biome and rely on `svelte-check` for correctness. Because Biome cannot see a `{#snippet}`
+  parameter used in the template body, `noUnusedFunctionParameters` is turned off for `.svelte`
+  files in `biome.json`; the real backstop is `noUnusedLocals` and `noUnusedParameters` in
+  `tsconfig.app.json`, which svelte-check enforces (it does see template usage).
 - Type-check: `svelte-check --tsconfig ./tsconfig.app.json` (the leaf app config, not the
   solution-style root `tsconfig.json`, which is for `tsc -b` and dependency-cruiser path
   resolution only).
@@ -111,9 +114,11 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   and passed down as props, not global singletons, so they are swappable in tests.
 - Boundaries are machine-enforced and fail the build: path aliases plus a dependency-cruiser gate
   (`no-circular`, the per-layer `entities-go-down-only`, `features-go-down-only`,
-  `widgets-go-down-only`, and `views-go-down-only` rules, `shared-imports-nothing-above`, and the
-  cross-feature `no-cross-feature` rule). dependency-cruiser is the single boundary enforcer,
-  because Biome has no import-boundary rule equivalent to `eslint-plugin-boundaries`.
+  `widgets-go-down-only`, and `views-go-down-only` rules, `shared-imports-nothing-above`, the
+  cross-feature `no-cross-feature` rule, and the `no-cross-slice-shared` and `no-cross-slice-entities`
+  rules that hold a `shared` or `entities` slice to reaching a sibling only through its `index`).
+  dependency-cruiser is the single boundary enforcer, because Biome has no import-boundary rule
+  equivalent to `eslint-plugin-boundaries`.
 
 This is a hard rule. Architectural feedback that came at the cost of redoing significant work
 must not be repeatable.

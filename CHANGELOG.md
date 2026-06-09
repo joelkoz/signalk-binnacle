@@ -52,6 +52,16 @@ All notable changes to Binnacle are documented here. The format follows
   so they keep their bright color but no longer sit low-contrast against the light day water. The
   casing is invisible on the dark dusk and night-red maps, where the bright shape reads on its own.
 
+### Fixed
+
+- Importing a GPX route no longer aborts on a malformed numeric character entity: a code point outside
+  the Unicode range now stays literal instead of throwing an uncaught error that ended the whole import.
+- The Routes opacity slider now dims the waypoint labels along with the route line and markers, the way
+  the tides and notes overlays already did.
+- The active-route strip's previous and next waypoint buttons are now a full 44px touch target, so they
+  are usable underway.
+- The precipitation legend now reads up to 40 mm/h, matching the range the precipitation field paints.
+
 ### Internal
 
 - A /simplify pass over the last day's changes: each new overlay slice (seamarks, protected areas,
@@ -86,6 +96,18 @@ All notable changes to Binnacle are documented here. The format follows
   dependency-cruiser rules, `no-cross-slice-shared` and `no-cross-slice-entities`, now enforce that a
   shared or entities slice reaches a sibling only through its index public API, matching the existing
   `no-cross-feature` rule.
+- The deferred modularization items. A shared `fetchJsonOrUndefined` helper backs the free-API weather
+  clients and the course REST hydration; a shared `MemoryCache` backs the weather grid cache and the
+  tides per-station caches; the `SlideOver` shell gained a subtitle and a footer so the last hand-rolled
+  panel (the note detail) folds into it; a shared `SavedList` and `VisibilityToggle` back the Routes,
+  Tracks, and Profiles cards; the coordinate guards moved to a `shared/geo` slice so geometry no longer
+  imports the SignalK transport slice for a type; and the portable profile settings are a single
+  declarative registry typed so a forgotten setting fails the build.
+- A six-agent whole-repo cleanup. Correctness fixes (the GPX entity guard, the route label opacity, a
+  marine-merge step-count guard, a deferred object-URL revoke, and a wind-arrow bounds guard), a round
+  of dead index re-export trimming, the four repeated course hydrate-and-seed sites folded into one
+  helper, and assorted comment and legend fixes. A claimed isobar marching-squares table swap was
+  refuted on cross-verification and left unchanged.
 
 ## [0.2.1] - 2026-06-09
 
