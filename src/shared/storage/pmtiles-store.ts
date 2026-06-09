@@ -9,6 +9,8 @@ export interface PmtilesStore {
   put(id: string, blob: Blob): Promise<void>;
   get(id: string): Promise<Blob | undefined>;
   delete(id: string): Promise<void>;
+  // Every stored blob id, so a startup reconcile can reclaim blobs whose descriptor is gone.
+  keys(): Promise<string[]>;
 }
 
 const DB_NAME = 'binnacle-pmtiles';
@@ -24,6 +26,7 @@ function memoryStore(): PmtilesStore {
     delete: async (id) => {
       blobs.delete(id);
     },
+    keys: async () => [...blobs.keys()],
   };
 }
 
@@ -51,6 +54,11 @@ export function createPmtilesStore(
       idb.write(
         () => run('readwrite', (s) => s.delete(id)),
         () => memory.delete(id),
+      ),
+    keys: () =>
+      idb.read<string[]>(
+        async () => (await run<IDBValidKey[]>('readonly', (s) => s.getAllKeys())).map(String),
+        () => memory.keys(),
       ),
   };
 }

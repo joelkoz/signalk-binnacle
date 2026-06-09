@@ -145,6 +145,22 @@ export class UserCharts {
     return this.#store.get(storeId);
   }
 
+  // Delete any stored blob with no file-origin descriptor referencing it. Two rare paths can orphan
+  // a blob: a commit whose descriptor persist failed (storage full or private mode), and a delete
+  // that landed only in the degrade-to-memory fallback while IndexedDB was down. The caller runs
+  // this once at startup, and only when the descriptor set was actually loaded from storage, so a
+  // missing or unreadable set can never delete a valid chart's blob.
+  async reconcile(): Promise<void> {
+    const referenced = new Set<string>();
+    for (const source of this.sources) {
+      if (source.origin.type === 'file') referenced.add(source.origin.storeId);
+    }
+    const stored = await this.#store.keys();
+    for (const id of stored) {
+      if (!referenced.has(id)) await this.#store.delete(id);
+    }
+  }
+
   #add(source: UserChartSource): void {
     this.sources = [...this.sources, source];
     this.#persist(this.sources);

@@ -172,6 +172,10 @@ export interface NoteDetailLoader {
   load(id: string): Promise<NoteDetail | undefined>;
 }
 
+// The most note details to keep memoized, so a long session of tapping markers cannot grow the
+// cache without bound. Details are small and reopening is the common case, so the cap is generous.
+const MAX_DETAIL_ENTRIES = 64;
+
 // Memoizes detail by id so reopening a marker is instant; a failed fetch is not cached, so it
 // stays retryable. An in-flight load is shared rather than duplicated.
 export function createNoteDetailLoader(base: string, token: string | undefined): NoteDetailLoader {
@@ -185,7 +189,13 @@ export function createNoteDetailLoader(base: string, token: string | undefined):
       if (pending) return pending;
       const promise = fetchNoteDetail(base, token, id)
         .then((detail) => {
-          if (detail) cache.set(id, detail);
+          if (detail) {
+            if (cache.size >= MAX_DETAIL_ENTRIES) {
+              const oldest = cache.keys().next().value;
+              if (oldest !== undefined) cache.delete(oldest);
+            }
+            cache.set(id, detail);
+          }
           return detail;
         })
         .finally(() => {

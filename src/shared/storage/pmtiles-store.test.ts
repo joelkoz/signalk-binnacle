@@ -29,6 +29,15 @@ describe('createPmtilesStore', () => {
     expect((await store.get('region-b'))?.size).toBe(25);
   });
 
+  it('lists stored keys and drops a deleted one', async () => {
+    const store = createPmtilesStore(undefined);
+    await store.put('a', blob(1));
+    await store.put('b', blob(2));
+    expect((await store.keys()).sort()).toEqual(['a', 'b']);
+    await store.delete('a');
+    expect(await store.keys()).toEqual(['b']);
+  });
+
   it('round-trips a blob byte-for-byte through put then get', async () => {
     const store = createPmtilesStore(undefined);
     const original = new Blob([new Uint8Array([1, 2, 3, 4, 5])]);

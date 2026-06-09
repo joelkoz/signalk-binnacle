@@ -28,6 +28,7 @@ function fakeStore(): { store: PmtilesStore; blobs: Map<string, Blob> } {
       delete: async (id) => {
         blobs.delete(id);
       },
+      keys: async () => [...blobs.keys()],
     },
   };
 }
@@ -104,5 +105,27 @@ describe('UserCharts stage, commit, and remove', () => {
     await charts.remove(id);
     expect(added).toEqual([id]);
     expect(removed).toEqual([id]);
+  });
+
+  it('reconcile deletes orphaned blobs and keeps referenced and URL charts', async () => {
+    const { store, blobs } = fakeStore();
+    blobs.set('referenced', new Blob(['a']));
+    blobs.set('orphan', new Blob(['b']));
+    const charts = new UserCharts(
+      store,
+      [
+        { id: 'c1', name: 'Kept', kind: 'vector', origin: { type: 'file', storeId: 'referenced' } },
+        {
+          id: 'c2',
+          name: 'Url',
+          kind: 'vector',
+          origin: { type: 'url', url: 'https://x/y.pmtiles' },
+        },
+      ],
+      () => {},
+    );
+    await charts.reconcile();
+    expect(blobs.has('referenced')).toBe(true);
+    expect(blobs.has('orphan')).toBe(false);
   });
 });

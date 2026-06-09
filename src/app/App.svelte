@@ -240,6 +240,10 @@ const userCharts = new UserCharts(
     }
   },
 );
+// Reclaim any orphaned PMTiles blob (a leftover from a failed-persist import or a degraded delete)
+// once at startup, but only when the descriptor set was actually read from storage: a missing or
+// unreadable set must never delete a valid chart's blob.
+if (userChartsStore.fromStorage) void userCharts.reconcile();
 let userChartRegistrar = $state<UserChartRegistrar | undefined>();
 const registeredUserCharts = new Map<string, string | undefined>();
 
@@ -646,6 +650,29 @@ $effect(() => {
   if (auth.status !== 'authenticated' && auth.status !== 'unsecured') return;
   streamConnected = true;
   void connectStream(auth.token ?? undefined);
+});
+
+// On a stream reconnect, re-hydrate what the resubscribe cannot redeliver. The v2 navigation.course
+// paths are not in the v1 full model, so under subscribe=none the server sends no cached course
+// value on resubscribe, only the next change: without this an active course would freeze on its
+// pre-drop geometry (and the arrival alarm and auto-advance would run on stale values) until the
+// course next changed. Self-vessel paths are in the v1 model and recover on their own; routes are
+// REST resources, so refresh them too. The first open is handled by connectStream; only a later
+// open (a genuine reconnect) re-hydrates.
+let everOpen = false;
+let lastConnectionPhase: ConnectionPhase | undefined;
+$effect(() => {
+  const phase = store.connection.phase;
+  const reconnected = phase === 'open' && lastConnectionPhase !== 'open' && everOpen;
+  lastConnectionPhase = phase;
+  if (phase === 'open') everOpen = true;
+  if (!reconnected) return;
+  void refreshRoutes();
+  if (routeStore.activeId !== undefined) {
+    void hydrateCourse(serverOrigin(), chartsToken).then(({ info, calc }) => {
+      courseGuidance.seed(info, calc);
+    });
+  }
 });
 
 async function connectStream(token: string | undefined): Promise<void> {

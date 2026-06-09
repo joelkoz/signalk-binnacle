@@ -18,7 +18,7 @@ describe('fetchCharts', () => {
         }),
       ),
     );
-    const charts = await fetchCharts('http://pi.local');
+    const charts = (await fetchCharts('http://pi.local')) ?? [];
     expect(charts).toHaveLength(2);
     expect(charts.map((c) => c.identifier).sort()).toEqual(['enc', 'noaa']);
   });
@@ -31,27 +31,33 @@ describe('fetchCharts', () => {
         jsonResponse({ noaa: { identifier: 'noaa', name: 'NOAA', type: 'tilelayer' } }),
       );
     vi.stubGlobal('fetch', fetchMock);
-    const charts = await fetchCharts('http://pi.local');
+    const charts = (await fetchCharts('http://pi.local')) ?? [];
     expect(charts).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('returns an empty array when both endpoints fail', async () => {
+  it('returns undefined when both endpoints fail so a caller keeps its charts', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() => jsonResponse({}, false, 500)),
     );
-    const charts = await fetchCharts('http://pi.local');
-    expect(charts).toEqual([]);
+    expect(await fetchCharts('http://pi.local')).toBeUndefined();
   });
 
-  it('tolerates a fetch rejection', async () => {
+  it('returns undefined on a fetch rejection so a caller keeps its charts', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() => Promise.reject(new Error('offline'))),
     );
-    const charts = await fetchCharts('http://pi.local');
-    expect(charts).toEqual([]);
+    expect(await fetchCharts('http://pi.local')).toBeUndefined();
+  });
+
+  it('returns an empty array for a reachable server with no charts', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => jsonResponse({})),
+    );
+    expect(await fetchCharts('http://pi.local')).toEqual([]);
   });
 
   it('sends the auth token as a Bearer header when given', async () => {

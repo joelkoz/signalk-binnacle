@@ -4,6 +4,32 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Points of interest (Crow's Nest and ActiveCaptain) no longer flicker. A slow or rate-limited
+  provider response made the markers vanish and reappear, because a failed fetch was treated as
+  "no POIs" and cleared them. A failed fetch now keeps the markers on screen, and the overlay
+  caches fetched sets by area, so panning back, panning a little, or zooming in reuses a recent
+  fetch instead of re-hitting the network.
+- Active marine warnings (gale, storm, and small-craft advisories) no longer flicker off the
+  conditions panel when a weather-provider request transiently fails: the last warnings are kept
+  until a real update replaces them.
+- An active route's guidance (the nav strip, arrival circle, and auto-advance) no longer freezes on
+  stale values after a stream reconnect. The v2 course data is re-hydrated on reconnect, since
+  resubscribing cannot redeliver it under subscribe=none, and the route list is refreshed too.
+- Server charts no longer blank on a transient failure at map load: the fetch now distinguishes a
+  failed request from a reachable server with no charts, matching routes and points of interest.
+- Imported-chart storage is reclaimed at startup: a PMTiles blob left behind by a failed save or a
+  delete that ran while storage was degraded is now swept once its descriptor is gone, so orphaned
+  blobs cannot accumulate on disk.
+
+### Internal
+
+- Bounded two more caches to a fixed size: the note-detail memo, and the persistent weather-grid
+  store (now matching its in-memory tier).
+
 ## [0.2.0] - 2026-06-08
 
 ### Added

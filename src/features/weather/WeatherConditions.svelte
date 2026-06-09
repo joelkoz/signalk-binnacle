@@ -101,7 +101,11 @@ async function loadProvider(lat: number, lon: number): Promise<void> {
   forecast = series
     ? series.map(conditionsFromSignalK).slice(0, FORECAST_STEPS)
     : freeForecast(lat, lon);
-  warnings = warns ?? [];
+  // fetchWeatherWarnings returns undefined on a transient failure and [] only when the provider
+  // genuinely reports none. Warnings have no free fallback, so keep the last set on a failure: a
+  // slow or rate-limited provider must not flicker an active gale or small-craft advisory off the
+  // panel. A real empty result clears them.
+  if (warns) warnings = warns;
   loading = false;
 }
 

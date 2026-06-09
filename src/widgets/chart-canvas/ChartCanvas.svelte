@@ -138,7 +138,10 @@ onMount(() => {
       // from the local descriptor (the manageable version); other devices, with no local descriptor,
       // still see it as a server chart.
       const localChartIds = new Set((userCharts?.sources ?? []).map((source) => source.id));
-      const charts = (await fetchCharts(origin, chartsToken)).filter(
+      // undefined is a transient failure; there are no server charts registered yet to keep, so this
+      // session shows none (a reachable-empty server is the same []). Charts are registered once at
+      // load, so a reconnect does not currently re-fetch them.
+      const charts = ((await fetchCharts(origin, chartsToken)) ?? []).filter(
         (chart) => !localChartIds.has(chart.identifier),
       );
       if (isDestroyed()) return;
