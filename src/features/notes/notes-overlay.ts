@@ -53,12 +53,11 @@ const MIN_ZOOM = 9;
 const CLUSTER_MAX_ZOOM = 11;
 const CLUSTER_RADIUS = 44;
 
-// The first of the given values that coerces to a non-empty string, or undefined if none do. Used
-// to pick a marker's attribution (credit, then source) and its url from the feature properties.
+// The first of the given values that is a non-empty string, or undefined if none is. Used to pick a
+// marker's attribution (credit, then source) and its url from the feature properties.
 function firstNonEmpty(...values: unknown[]): string | undefined {
   for (const value of values) {
-    const s = String(value ?? '');
-    if (s) return s;
+    if (typeof value === 'string' && value) return value;
   }
   return undefined;
 }

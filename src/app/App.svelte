@@ -793,6 +793,14 @@ function onCancelRouteEdit(): void {
   routeStore.setWorking(undefined);
 }
 
+// Seed the course cells once from a REST GET, then the stream keeps them live. The v2
+// navigation.course paths are not in the v1 full model, so under subscribe=none the stream sends
+// nothing until the next change; this makes the nav strip show values immediately on activation.
+async function hydrateAndSeedCourse(): Promise<void> {
+  const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
+  courseGuidance.seed(info, calc);
+}
+
 async function onDeleteRoute(id: string): Promise<void> {
   clearRouteError();
   // Stop navigating before deleting the active route, so the server is not left navigating a route
@@ -819,11 +827,7 @@ async function onActivateRoute(id: string): Promise<void> {
   gotoActive = false;
   routeStore.toggleShown(id, true);
   flyToRouteStart(id);
-  // The v2 navigation.course paths are not in the v1 full model, so the stream sends nothing until
-  // the next change. Seed the cells once from a REST GET so the nav strip shows values immediately,
-  // then the stream keeps them live.
-  const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
-  courseGuidance.seed(info, calc);
+  await hydrateAndSeedCourse();
 }
 
 async function onStopCourse(): Promise<void> {
@@ -873,8 +877,7 @@ async function onTrackHome(): Promise<void> {
   routeStore.setActive(route.id);
   gotoActive = false;
   routeStore.toggleShown(route.id, true);
-  const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
-  courseGuidance.seed(info, calc);
+  await hydrateAndSeedCourse();
 }
 
 // Save a reversed copy of a route (the return leg), shown on the chart, leaving the original intact.
@@ -928,8 +931,7 @@ async function onGoToHere(position: LatLon): Promise<void> {
   }
   routeStore.setActive(undefined);
   gotoActive = true;
-  const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
-  courseGuidance.seed(info, calc);
+  await hydrateAndSeedCourse();
 }
 
 // Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
@@ -1004,11 +1006,7 @@ $effect(() => {
   if (phase === 'open') everOpen = true;
   if (!reconnected) return;
   void refreshRoutes();
-  if (courseActive) {
-    void hydrateCourse(serverOrigin(), chartsToken).then(({ info, calc }) => {
-      courseGuidance.seed(info, calc);
-    });
-  }
+  if (courseActive) void hydrateAndSeedCourse();
 });
 
 async function connectStream(token: string | undefined): Promise<void> {

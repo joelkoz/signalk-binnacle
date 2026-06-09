@@ -1,6 +1,1 @@
-export {
-  createRouteEditor,
-  drawFeatureToWaypoints,
-  type RouteEditor,
-  routeToStoreFeature,
-} from './route-edit';
+export { createRouteEditor, type RouteEditor } from './route-edit';

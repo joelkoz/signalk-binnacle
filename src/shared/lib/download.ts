@@ -7,7 +7,9 @@ export function downloadBlob(filename: string, blob: Blob): void {
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
-  URL.revokeObjectURL(url);
+  // Revoke on the next tick, not synchronously: some browsers cancel an in-flight download if the
+  // object URL is revoked before the navigation to it has committed.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 // Trigger a browser download of serialized text (GPX, GeoJSON, JSON) as a named file with the given

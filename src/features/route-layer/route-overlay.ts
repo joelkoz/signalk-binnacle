@@ -156,6 +156,9 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
       ctx.map.setPaintProperty(LINE_CASING_LAYER, 'line-opacity', opacity);
       ctx.map.setPaintProperty(LINE_LAYER, 'line-opacity', opacity);
       ctx.map.setPaintProperty(WPT_LAYER, 'circle-opacity', opacity);
+      // Dim the waypoint labels with the rest, so the opacity slider fades the whole route, matching
+      // the tides and notes overlays.
+      ctx.map.setPaintProperty(WPT_LABEL_LAYER, 'text-opacity', opacity);
     },
     applyTheme(ctx, next) {
       paint = next;

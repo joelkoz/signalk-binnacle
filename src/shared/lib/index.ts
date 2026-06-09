@@ -24,9 +24,6 @@ export {
   kelvinToCelsius,
   knotsToMetersPerSecond,
   MINUTE_MS,
-  metersPerSecondToKnots,
   nauticalMilesToMeters,
   PA_PER_HPA,
-  pascalsToHectopascals,
-  radiansToBearing,
 } from './units';

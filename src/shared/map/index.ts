@@ -1,10 +1,4 @@
 export { baseStyleUrl } from './base-style';
-export {
-  applyBaseTheme,
-  type BaseSnapshot,
-  captureBaseTheme,
-  restoreBaseTheme,
-} from './base-theme';
 export { chartSourceId } from './chart-adapter';
 export { createChartOverlay } from './chart-overlay';
 export type { SignalKChart } from './chart-types';
@@ -31,7 +25,7 @@ export {
   type RasterOverlaySource,
   wmsTiles,
 } from './raster-overlay';
-export { beforeIdFor, installSentinels, sentinelId } from './sentinels';
+export { beforeIdFor } from './sentinels';
 export type { SymbolOverlay, SymbolOverlayConfig } from './symbol-overlay';
 export { createSymbolOverlay } from './symbol-overlay';
 export {

@@ -12,10 +12,12 @@ export function windArrowFeatures(
   grid: WeatherGrid,
   bracket: TimeBracket,
 ): GeoJSON.FeatureCollection {
-  const u0 = grid.windU[bracket.lo];
-  const u1 = grid.windU[bracket.hi];
-  const v0 = grid.windV[bracket.lo];
-  const v1 = grid.windV[bracket.hi];
+  // Fall back to an empty step if a bracket index is out of range, so a foreign bracket yields NaN
+  // (no arrow) rather than throwing, matching the other field builders.
+  const u0 = grid.windU[bracket.lo] ?? [];
+  const u1 = grid.windU[bracket.hi] ?? [];
+  const v0 = grid.windV[bracket.lo] ?? [];
+  const v1 = grid.windV[bracket.hi] ?? [];
   return cellArrowFeatures(grid, STRIDE, ARROW_FRACTION, (i) => {
     const u = lerp(u0[i], u1[i], bracket.frac);
     const v = lerp(v0[i], v1[i], bracket.frac);

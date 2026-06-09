@@ -29,7 +29,7 @@ export interface WeatherLegend {
 
 const WIND_STOPS = [0, 5, 10, 15, 20, 26]; // m/s
 const WAVE_STOPS = [0.5, 1, 2, 4, 6, 9]; // m
-const PRECIP_STOPS = [0.2, 1, 2.5, 10, 25]; // mm/h
+const PRECIP_STOPS = [0.2, 1, 2.5, 10, 25, 40]; // mm/h, tops out where the precip colormap does
 const CLOUD_STOPS = [0.25, 0.5, 0.75, 1]; // fraction
 
 // Render a colormap stop opaque so the legend ramp is visible even where the field itself is

@@ -26,7 +26,10 @@ export function unescapeXml(value: string): string {
     if (code[0] === '#') {
       const cp =
         code[1] === 'x' ? Number.parseInt(code.slice(2), 16) : Number.parseInt(code.slice(1), 10);
-      return Number.isFinite(cp) ? String.fromCodePoint(cp) : match;
+      // Guard the Unicode range: String.fromCodePoint throws RangeError for a code point above
+      // U+10FFFF or below 0, so an out-of-range numeric entity in an imported GPX file stays literal
+      // rather than throwing an uncaught error that aborts the whole import.
+      return cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : match;
     }
     return XML_UNESCAPES[code] ?? match;
   });

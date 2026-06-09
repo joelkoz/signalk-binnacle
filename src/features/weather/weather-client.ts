@@ -206,11 +206,15 @@ function parseMarine(locs: MarineLoc[], cells: number): MarineFields | undefined
 }
 
 // The marine fetch uses the same sampled grid and forecast horizon, so the cell and step indices
-// align positionally with the wind and pressure arrays. The builders guard the cell count (a length
-// mismatch returns undefined and no merge happens); the one residual assumption is that the marine
+// align positionally with the wind and pressure arrays. The residual assumption is that the marine
 // endpoint's cell_selection=sea snapping does not reorder cells relative to the atmospheric request,
 // which holds because both pass the same ordered points.
 export function mergeMarine(grid: WeatherGrid, marine: MarineFields): WeatherGrid {
+  // The wave arrays are indexed by the base grid's time bracket, so a marine response with a
+  // different step count than the atmospheric grid would index out of range. Skip the merge on a
+  // step-count mismatch (the field builders then fall back to no wave layer), mirroring the
+  // cell-count guard in parseMarine.
+  if (marine.waveHeight.length !== grid.windU.length) return grid;
   return {
     ...grid,
     waveHeight: marine.waveHeight,

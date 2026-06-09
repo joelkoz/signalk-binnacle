@@ -106,9 +106,6 @@ export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
   }
 }
 
-// The base style's POI markers are pre-colored sprite icons (the green dots), which no paint recolor
-// can touch. Hide them at night-red so the map holds the red band, and show them on the other
-// themes. The POI name text is unaffected; it recolors with the other labels.
 // The base style's sprite icons (POI dots, road and transit shields, aerodrome marks) are pre-colored
 // in the published sprite, so the source-layer recolor never reaches them and they keep their original
 // blues, greens, and whites. Binnacle draws its own navigation symbols and does not rely on any base

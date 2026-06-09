@@ -4,7 +4,6 @@ export { haversineMeters } from './distance';
 export {
   crossTrackErrorMeters,
   etaSeconds,
-  greatCircleBearingRad,
   rhumbBearingRad,
   rhumbDistanceMeters,
   steerSide,
