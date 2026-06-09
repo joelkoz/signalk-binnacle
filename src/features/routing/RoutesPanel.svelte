@@ -1,5 +1,16 @@
 <script lang="ts">
-import { Eye, EyeOff, Navigation, Plus, Save, Square, SquarePen, Trash2, X } from '@lucide/svelte';
+import {
+  ArrowLeftRight,
+  Eye,
+  EyeOff,
+  Navigation,
+  Plus,
+  Save,
+  Square,
+  SquarePen,
+  Trash2,
+  X,
+} from '@lucide/svelte';
 import { type Route, routeDistanceMeters } from '$entities/route';
 import { formatNm } from '$shared/lib';
 import { promptSaveName, SlideOver } from '$shared/ui';
@@ -23,6 +34,8 @@ interface Props {
   onLocate: (id: string) => void;
   onActivate: (id: string) => void;
   onStop: () => void;
+  // Save a reversed copy of the route, for the return leg.
+  onReverse: (id: string) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
   onBack?: () => void;
@@ -42,6 +55,7 @@ const {
   onLocate,
   onActivate,
   onStop,
+  onReverse,
   onDelete,
   onClose,
   onBack,
@@ -158,6 +172,15 @@ const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(workin
                 onclick={() => onEditRoute(route.id)}
               >
                 <SquarePen size={18} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="icon-btn"
+                aria-label="Reverse route"
+                title="Save a reversed copy"
+                onclick={() => onReverse(route.id)}
+              >
+                <ArrowLeftRight size={18} aria-hidden="true" />
               </button>
               {#if route.id === activeId}
                 <button

@@ -17,7 +17,7 @@ import { onDestroy, onMount } from 'svelte';
 import { AisTargets } from '$entities/ais';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
-import { RouteStore } from '$entities/route';
+import { RouteStore, reverseRoute } from '$entities/route';
 import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
@@ -640,6 +640,20 @@ async function onTrackHome(): Promise<void> {
   courseGuidance.seed(info, calc);
 }
 
+// Save a reversed copy of a route (the return leg), shown on the chart, leaving the original intact.
+async function onReverseRoute(id: string): Promise<void> {
+  clearRouteError();
+  const route = routeStore.routes.find((r) => r.id === id);
+  if (!route) return;
+  const reversed = reverseRoute(route);
+  if (!(await saveRoute(serverOrigin(), chartsToken, reversed))) {
+    flagRouteError('Could not reverse the route.');
+    return;
+  }
+  await refreshRoutes();
+  routeStore.toggleShown(reversed.id, true);
+}
+
 // Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
 let arrivedLast = false;
 $effect(() => {
@@ -882,6 +896,7 @@ onDestroy(() => {
           onLocate={flyToRouteStart}
           onActivate={onActivateRoute}
           onStop={onStopCourse}
+          onReverse={onReverseRoute}
           onDelete={onDeleteRoute}
           onClose={() => {
             onCancelRouteEdit();
