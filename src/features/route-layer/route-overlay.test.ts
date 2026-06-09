@@ -31,6 +31,7 @@ describe('route overlay', () => {
     overlay.add(ctxFor(map));
     overlay.sync(ctxFor(map));
     expect(overlay.band).toBe('routes');
+    expect(map.getLayer('binnacle-route-line-casing')).toBeTruthy();
     expect(map.getLayer('binnacle-route-line')).toBeTruthy();
     expect(map.getLayer('binnacle-route-waypoint')).toBeTruthy();
     expect(map.getLayer('binnacle-route-waypoint-label')).toBeTruthy();

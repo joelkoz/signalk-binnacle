@@ -21,6 +21,7 @@ describe('notes overlay', () => {
     expect(map.layers.has('binnacle-notes-cluster-icon')).toBe(true);
     expect(map.layers.has('binnacle-notes-cluster-count')).toBe(true);
     expect(map.layers.has('binnacle-notes-selected')).toBe(true);
+    expect(map.layers.has('binnacle-notes-selected-casing')).toBe(true);
   });
 
   it('exposes deselect to clear the selection ring', () => {

@@ -29,8 +29,13 @@ const CLUSTER_ICON_LAYER = 'binnacle-notes-cluster-icon';
 const CLUSTER_COUNT_LAYER = 'binnacle-notes-cluster-count';
 const SELECT_SOURCE = 'binnacle-notes-selected';
 const SELECT_LAYER = 'binnacle-notes-selected';
+const SELECT_CASING_LAYER = 'binnacle-notes-selected-casing';
+// A fixed dark casing under the amber selection ring, so it holds on light day water; invisible on the
+// dark themes where the ring carries on its own. The same constant-dark contrast aid as the route line.
+const SELECT_CASING_COLOR = 'rgba(0, 0, 0, 0.45)';
 // The note layers, bottom to top, in one place for layerIds, setVisible, and remove.
 const LAYERS = [
+  SELECT_CASING_LAYER,
   SELECT_LAYER,
   CLUSTER_RING_LAYER,
   CLUSTER_ICON_LAYER,
@@ -193,7 +198,21 @@ export function createNotesOverlay(
       ctx.map.addSource(SOURCE_ID, source);
       ctx.map.addSource(SELECT_SOURCE, { type: 'geojson', data: EMPTY });
 
-      // Selection ring sits below the markers so the icon draws on top of it.
+      // Selection ring sits below the markers so the icon draws on top of it; a dark casing ring below
+      // it (a wider stroke at the same radius) gives the amber ring contrast on light day water.
+      const selectCasing: CircleLayerSpecification = {
+        id: SELECT_CASING_LAYER,
+        type: 'circle',
+        source: SELECT_SOURCE,
+        minzoom: MIN_ZOOM,
+        paint: {
+          'circle-radius': 15,
+          'circle-color': 'rgba(0,0,0,0)',
+          'circle-stroke-color': SELECT_CASING_COLOR,
+          'circle-stroke-width': 5,
+        },
+      };
+      ctx.map.addLayer(selectCasing, before);
       const selectLayer: CircleLayerSpecification = {
         id: SELECT_LAYER,
         type: 'circle',
@@ -417,6 +436,7 @@ export function createNotesOverlay(
       ctx.map.setPaintProperty(CLUSTER_ICON_LAYER, 'icon-opacity', opacity);
       ctx.map.setPaintProperty(CLUSTER_RING_LAYER, 'circle-stroke-opacity', opacity * 0.9);
       ctx.map.setPaintProperty(CLUSTER_COUNT_LAYER, 'text-opacity', opacity);
+      ctx.map.setPaintProperty(SELECT_CASING_LAYER, 'circle-stroke-opacity', opacity);
       ctx.map.setPaintProperty(SELECT_LAYER, 'circle-stroke-opacity', opacity);
     },
     remove(ctx) {

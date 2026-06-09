@@ -17,12 +17,13 @@ import {
 import { routeLineFeatures, waypointFeatures } from './route-features';
 
 const LINE_SRC = 'binnacle-route-lines';
+const LINE_CASING_LAYER = 'binnacle-route-line-casing';
 const LINE_LAYER = 'binnacle-route-line';
 const WPT_SRC = 'binnacle-route-waypoints';
 const WPT_LAYER = 'binnacle-route-waypoint';
 const WPT_LABEL_LAYER = 'binnacle-route-waypoint-label';
 const BAND = 'routes';
-const LAYERS = [LINE_LAYER, WPT_LAYER, WPT_LABEL_LAYER];
+const LAYERS = [LINE_CASING_LAYER, LINE_LAYER, WPT_LAYER, WPT_LABEL_LAYER];
 
 // The active route draws in the selection accent and a touch heavier, every other shown route in
 // the note color, so the route being followed stands apart from the planned ones.
@@ -31,6 +32,12 @@ function lineColor(paint: MapThemePaint): ExpressionSpecification {
 }
 
 const LINE_WIDTH: ExpressionSpecification = ['case', ['get', 'active'], 3, 2];
+// A solid dark casing under the route line, two pixels wider, so the line keeps its bright color but
+// gains contrast on light day water (where the amber select is close in luminance to the water). On the
+// dark dusk and night-red maps the near-black casing is invisible, so the line shows on its own. Fixed
+// (not themed) on purpose, like the cursor halo: a constant dark backing that only reads where needed.
+const CASING_WIDTH: ExpressionSpecification = ['case', ['get', 'active'], 5, 4];
+const CASING_COLOR = 'rgba(0, 0, 0, 0.5)';
 
 export interface RouteOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -64,6 +71,18 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
           data: emptyFeatureCollection(),
         };
         ctx.map.addSource(WPT_SRC, source);
+      }
+      // The casing is added first so it sits below the line; a solid (not dashed) backing reads as a
+      // continuous dark line with the bright dashes on top, which is what lifts it off light water.
+      if (!ctx.map.getLayer(LINE_CASING_LAYER)) {
+        const layer: LineLayerSpecification = {
+          id: LINE_CASING_LAYER,
+          type: 'line',
+          source: LINE_SRC,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': CASING_COLOR, 'line-width': CASING_WIDTH },
+        };
+        ctx.map.addLayer(layer, before);
       }
       if (!ctx.map.getLayer(LINE_LAYER)) {
         const layer: LineLayerSpecification = {
@@ -131,6 +150,8 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
       }
     },
     setOpacity(ctx, opacity) {
+      // The casing carries its own alpha in CASING_COLOR, so scale it by the layer opacity too.
+      ctx.map.setPaintProperty(LINE_CASING_LAYER, 'line-opacity', opacity);
       ctx.map.setPaintProperty(LINE_LAYER, 'line-opacity', opacity);
       ctx.map.setPaintProperty(WPT_LAYER, 'circle-opacity', opacity);
     },

@@ -11,7 +11,7 @@ export type { SignalKChart } from './chart-types';
 export { chartCursorFor } from './cursors';
 export { emptyFeatureCollection } from './feature-collection';
 export type { Rgba } from './icon-raster';
-export { rasterIcon } from './icon-raster';
+export { rasterIcon, rasterIconColored } from './icon-raster';
 export type {
   LayerListItem,
   LayerManagerOptions,

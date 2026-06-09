@@ -37,6 +37,9 @@ All notable changes to Binnacle are documented here. The format follows
 - At night-red, the base map's pre-colored sprite icons (road and transit shields, aerodrome marks)
   are now hidden along with the POI dots, so the chart stays pure red on black with no stray blue,
   green, or white icons. The text labels stay visible.
+- The route line, the note selection ring, and the AIS target triangles gained a dark casing or halo,
+  so they keep their bright color but no longer sit low-contrast against the light day water. The
+  casing is invisible on the dark dusk and night-red maps, where the bright shape reads on its own.
 
 ### Internal
 
