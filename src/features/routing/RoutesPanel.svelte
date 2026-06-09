@@ -10,6 +10,7 @@ import {
   Square,
   SquarePen,
   Trash2,
+  Upload,
   X,
 } from '@lucide/svelte';
 import { type Route, routeDistanceMeters, routeLegs } from '$entities/route';
@@ -39,6 +40,8 @@ interface Props {
   onReverse: (id: string) => void;
   // Download the route as a GPX file for another plotter or MFD.
   onExportGpx: (id: string) => void;
+  // Import routes from the text of a GPX file the user picked.
+  onImportGpx: (gpxText: string) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
   onBack?: () => void;
@@ -60,6 +63,7 @@ const {
   onStop,
   onReverse,
   onExportGpx,
+  onImportGpx,
   onDelete,
   onClose,
   onBack,
@@ -68,6 +72,16 @@ const {
 function promptSave(): void {
   const name = promptSaveName('Route');
   if (name !== undefined) onSave(name);
+}
+
+let fileInput: HTMLInputElement;
+
+async function onPickGpx(event: Event): Promise<void> {
+  const input = event.currentTarget as HTMLInputElement;
+  const file = input.files?.[0];
+  // Reset first so picking the same file twice still fires a change event.
+  input.value = '';
+  if (file) onImportGpx(await file.text());
 }
 
 // Precompute each route's formatted distance once per change rather than re-walking every route's
@@ -91,6 +105,17 @@ const workingLegs = $derived(working ? routeLegs(working.waypoints) : []);
       <Plus size={16} aria-hidden="true" />
       New route
     </button>
+    <button type="button" class="btn" onclick={() => fileInput.click()}>
+      <Upload size={16} aria-hidden="true" />
+      Import GPX
+    </button>
+    <input
+      bind:this={fileInput}
+      type="file"
+      accept=".gpx,application/gpx+xml"
+      class="visually-hidden"
+      onchange={onPickGpx}
+    >
   </div>
 
   {#if working}

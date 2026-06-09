@@ -43,6 +43,7 @@ import {
   downloadRouteGpx,
   fetchRoutes,
   hydrateCourse,
+  parseGpxRoutes,
   RoutesPanel,
   saveRoute,
 } from '$features/routing';
@@ -682,6 +683,26 @@ function onExportRouteGpx(id: string): void {
   if (route) downloadRouteGpx(route);
 }
 
+// Parse a picked GPX file, save each route it carries to the server, and show them on the chart.
+async function onImportRouteGpx(gpxText: string): Promise<void> {
+  clearRouteError();
+  const parsed = parseGpxRoutes(gpxText);
+  if (parsed.length === 0) {
+    flagRouteError('No routes found in that GPX file.');
+    return;
+  }
+  const saved = [];
+  for (const route of parsed) {
+    if (await saveRoute(serverOrigin(), chartsToken, route)) saved.push(route.id);
+  }
+  if (saved.length === 0) {
+    flagRouteError('Could not save the imported route.');
+    return;
+  }
+  await refreshRoutes();
+  for (const id of saved) routeStore.toggleShown(id, true);
+}
+
 // Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
 let arrivedLast = false;
 $effect(() => {
@@ -931,6 +952,7 @@ onDestroy(() => {
           onStop={onStopCourse}
           onReverse={onReverseRoute}
           onExportGpx={onExportRouteGpx}
+          onImportGpx={onImportRouteGpx}
           onDelete={onDeleteRoute}
           onClose={() => {
             onCancelRouteEdit();
