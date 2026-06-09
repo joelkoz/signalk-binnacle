@@ -14,7 +14,14 @@ import {
   X,
 } from '@lucide/svelte';
 import { type Route, routeDistanceMeters, routeLegs } from '$entities/route';
-import { formatBearingOr, formatNm } from '$shared/lib';
+import {
+  formatBearingOr,
+  formatDuration,
+  formatNm,
+  knotsToMetersPerSecond,
+  PLACEHOLDER,
+} from '$shared/lib';
+import type { PersistedValue } from '$shared/settings';
 import { promptSaveName, SlideOver } from '$shared/ui';
 
 interface Props {
@@ -42,6 +49,8 @@ interface Props {
   onExportGpx: (id: string) => void;
   // Import routes from the text of a GPX file the user picked.
   onImportGpx: (gpxText: string) => void;
+  // The planning speed (knots), persisted, that turns leg distances into per-waypoint passage times.
+  planningSpeed: PersistedValue<number>;
   onDelete: (id: string) => void;
   onClose: () => void;
   onBack?: () => void;
@@ -64,6 +73,7 @@ const {
   onReverse,
   onExportGpx,
   onImportGpx,
+  planningSpeed,
   onDelete,
   onClose,
   onBack,
@@ -89,10 +99,24 @@ async function onPickGpx(event: Event): Promise<void> {
 const savedCards = $derived(
   routes.map((route) => ({ route, distanceNm: formatNm(routeDistanceMeters(route.waypoints)) })),
 );
-const workingDistanceNm = $derived(working ? formatNm(routeDistanceMeters(working.waypoints)) : '');
-// Each leg's distance and bearing for the route under edit, so the plan reads as a leg table the way
-// a navigator lays out a passage, updating live as waypoints are dragged or inserted.
-const workingLegs = $derived(working ? routeLegs(working.waypoints) : []);
+const workingDistanceMeters = $derived(working ? routeDistanceMeters(working.waypoints) : 0);
+const workingDistanceNm = $derived(working ? formatNm(workingDistanceMeters) : '');
+// Each leg's distance and bearing for the route under edit, plus the cumulative passage time to reach
+// that leg's end waypoint at the planning speed, so the plan reads as a leg table the way a navigator
+// lays out a passage, updating live as waypoints are dragged, inserted, or the speed changes.
+const planSpeedMps = $derived(knotsToMetersPerSecond(Math.max(0, planningSpeed.value || 0)));
+const workingLegs = $derived.by(() => {
+  let cumulativeMeters = 0;
+  return routeLegs(working?.waypoints ?? []).map((leg) => {
+    cumulativeMeters += leg.distanceMeters;
+    const cumulativeSeconds = planSpeedMps > 0 ? cumulativeMeters / planSpeedMps : undefined;
+    return { ...leg, cumulativeSeconds };
+  });
+});
+// The whole-passage time at the planning speed, shown alongside the total distance.
+const totalTime = $derived(
+  planSpeedMps > 0 ? formatDuration(workingDistanceMeters / planSpeedMps) : PLACEHOLDER,
+);
 </script>
 
 <SlideOver title="Routes" bodyFlex closeLabel="Close routes panel" {onClose} {onBack}>
@@ -128,7 +152,21 @@ const workingLegs = $derived(working ? routeLegs(working.waypoints) : []);
           <span class="num">{workingDistanceNm}</span>
           <span class="unit">nm</span>
         </dd>
+        <dt>Time</dt>
+        <dd><span class="num">{totalTime}</span><span class="unit"></span></dd>
       </dl>
+      <label class="plan-speed">
+        <span>Plan speed</span>
+        <input
+          type="number"
+          min="0"
+          step="0.5"
+          inputmode="decimal"
+          value={planningSpeed.value}
+          oninput={(e) => planningSpeed.set(Math.max(0, e.currentTarget.valueAsNumber || 0))}
+        >
+        <span class="unit">kn</span>
+      </label>
       {#if workingLegs.length > 0}
         <ol class="legs" aria-label="Legs">
           {#each workingLegs as leg (leg.fromIndex)}
@@ -136,6 +174,9 @@ const workingLegs = $derived(working ? routeLegs(working.waypoints) : []);
               <span class="leg-no">{leg.fromIndex + 1}</span>
               <span class="leg-dist">{formatNm(leg.distanceMeters)} nm</span>
               <span class="leg-brg">{formatBearingOr(leg.bearingRad)}&deg;T</span>
+              <span class="leg-time">
+                {leg.cumulativeSeconds == null ? PLACEHOLDER : formatDuration(leg.cumulativeSeconds)}
+              </span>
             </li>
           {/each}
         </ol>
@@ -294,8 +335,31 @@ const workingLegs = $derived(working ? routeLegs(working.waypoints) : []);
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
-/* The leg-by-leg readout for the route under edit: a scrolling list of leg number, distance, and
-   bearing, mono and tabular so the columns line up. */
+/* The planning-speed control above the leg table: a label, a compact number input, and a unit. */
+.plan-speed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.plan-speed input {
+  inline-size: 4rem;
+  min-block-size: var(--control-size);
+  padding: 0 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.plan-speed .unit {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+/* The leg-by-leg readout for the route under edit: a scrolling list of leg number, distance, bearing,
+   and the cumulative passage time to reach that waypoint, mono and tabular so the columns line up. */
 .legs {
   list-style: none;
   margin: 0;
@@ -309,7 +373,7 @@ const workingLegs = $derived(working ? routeLegs(working.waypoints) : []);
 }
 .legs li {
   display: grid;
-  grid-template-columns: 1.5rem 1fr auto;
+  grid-template-columns: 1.5rem 1fr auto auto;
   gap: var(--space-2);
   align-items: baseline;
 }
@@ -326,6 +390,12 @@ const workingLegs = $derived(working ? routeLegs(working.waypoints) : []);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
+}
+.leg-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  text-align: end;
 }
 .error {
   margin: 0;

@@ -130,6 +130,8 @@ const routeStore = new RouteStore();
 const courseGuidance = new CourseGuidance(store, vessel);
 const arrivalAlarm = new ArrivalAlarm();
 const arrivalMuted = new PersistedValue<boolean>('binnacle:arrival-muted', false);
+// The speed, in knots, used to turn a planned route's distance into per-waypoint passage times.
+const planningSpeedKn = new PersistedValue<number>('binnacle:planning-speed-kn', 5);
 
 // Whole-route distance-to-go and time-to-go across the legs still ahead, for the passage arrival
 // readout. Only when a multi-leg route is active and more than the current leg remains, so a single
@@ -979,6 +981,7 @@ onDestroy(() => {
           onReverse={onReverseRoute}
           onExportGpx={onExportRouteGpx}
           onImportGpx={onImportRouteGpx}
+          planningSpeed={planningSpeedKn}
           onDelete={onDeleteRoute}
           onClose={() => {
             onCancelRouteEdit();

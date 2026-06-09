@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { activateRoute, advancePoint, clearCourse } from './course-client';
+import { activateRoute, advancePoint, clearCourse, setDestination } from './course-client';
 
 afterEach(() => vi.restoreAllMocks());
 const ok = { ok: true, json: async () => ({}) } as Response;
@@ -15,6 +15,17 @@ it('activateRoute PUTs the href, pointIndex, and reverse', async () => {
     href: '/resources/routes/abc',
     pointIndex: 0,
     reverse: false,
+  });
+});
+
+it('setDestination PUTs the position to the destination endpoint', async () => {
+  const f = vi.spyOn(globalThis, 'fetch').mockResolvedValue(ok);
+  expect(await setDestination('http://pi', 'tok', { latitude: 42.5, longitude: -83.1 })).toBe(true);
+  expect(f.mock.calls[0][0]).toBe(`http://pi${COURSE}/destination`);
+  const init = f.mock.calls[0][1] as RequestInit;
+  expect(init.method).toBe('PUT');
+  expect(JSON.parse(init.body as string)).toEqual({
+    position: { latitude: 42.5, longitude: -83.1 },
   });
 });
 
