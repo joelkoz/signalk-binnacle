@@ -4,6 +4,7 @@ import {
   crossTrackErrorMeters,
   etaSeconds,
   rhumbBearingRad,
+  rhumbCrossTrackErrorMeters,
   rhumbDistanceMeters,
   steerSide,
   vmgMps,
@@ -50,6 +51,42 @@ describe('crossTrackErrorMeters', () => {
     );
     // A point south of an eastbound leg is to starboard (positive).
     expect(crossTrackErrorMeters(from, to, { latitude: -0.01, longitude: 0.5 })).toBeGreaterThan(0);
+  });
+});
+
+describe('rhumbCrossTrackErrorMeters', () => {
+  const from = { latitude: 0, longitude: 0 };
+  const to = { latitude: 0, longitude: 1 }; // leg runs due east
+
+  it('is zero when the point is on the leg', () => {
+    expect(
+      Math.abs(rhumbCrossTrackErrorMeters(from, to, { latitude: 0, longitude: 0.5 })),
+    ).toBeLessThan(1);
+  });
+
+  it('is positive to starboard and negative to port of an eastbound leg', () => {
+    // A point south of an eastbound leg is to starboard (positive); north is to port (negative).
+    expect(
+      rhumbCrossTrackErrorMeters(from, to, { latitude: -0.01, longitude: 0.5 }),
+    ).toBeGreaterThan(0);
+    expect(rhumbCrossTrackErrorMeters(from, to, { latitude: 0.01, longitude: 0.5 })).toBeLessThan(
+      0,
+    );
+  });
+
+  it('shares the starboard-positive sign convention with the great-circle cross-track', () => {
+    const point = { latitude: -0.01, longitude: 0.5 };
+    const rhumb = rhumbCrossTrackErrorMeters(from, to, point);
+    const greatCircle = crossTrackErrorMeters(from, to, point);
+    expect(Math.sign(rhumb)).toBe(Math.sign(greatCircle));
+  });
+
+  it('has a sane magnitude for a small offset', () => {
+    // 0.01 degrees of latitude off an eastbound leg is about 1.85 km (one nautical mile per minute,
+    // and 0.01 degrees is 0.6 minutes).
+    const d = Math.abs(rhumbCrossTrackErrorMeters(from, to, { latitude: -0.01, longitude: 0.5 }));
+    expect(d).toBeGreaterThan(NM * 0.5);
+    expect(d).toBeLessThan(NM * 0.7);
   });
 });
 

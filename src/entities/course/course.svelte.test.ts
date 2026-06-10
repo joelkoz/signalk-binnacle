@@ -39,6 +39,29 @@ describe('CourseGuidance', () => {
     expect(g.distanceToNextMeters).toBe(1852);
   });
 
+  it("exposes the server's estimatedTimeOfArrival when present and undefined otherwise", () => {
+    const withEta = storeWith({
+      'navigation.position': { latitude: 0, longitude: 0 },
+      'navigation.course.nextPoint': { position: { latitude: 0, longitude: 1 }, name: 'B' },
+      'navigation.course.calcValues': {
+        crossTrackError: 0,
+        estimatedTimeOfArrival: '2026-06-10T18:30:00Z',
+      },
+    });
+    expect(new CourseGuidance(withEta, new OwnVessel(withEta)).estimatedTimeOfArrivalIso).toBe(
+      '2026-06-10T18:30:00Z',
+    );
+
+    const computed = storeWith({
+      'navigation.position': { latitude: 0, longitude: 0 },
+      'navigation.course.nextPoint': { position: { latitude: 0, longitude: 1 } },
+      'navigation.course.previousPoint': { position: { latitude: 0, longitude: 0 } },
+    });
+    expect(
+      new CourseGuidance(computed, new OwnVessel(computed)).estimatedTimeOfArrivalIso,
+    ).toBeUndefined();
+  });
+
   it('seeds the leg from a hydration snapshot and clear wipes every course cell', () => {
     const store = storeWith({ 'navigation.position': { latitude: 0, longitude: 0 } });
     const g = new CourseGuidance(store, new OwnVessel(store));

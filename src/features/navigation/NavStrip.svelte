@@ -40,6 +40,12 @@ const xte = $derived(
     guidance.crossTrackErrorMeters == null ? undefined : Math.abs(guidance.crossTrackErrorMeters),
   ),
 );
+// Skip is only possible within the route's extent: no previous at the first point, no next at the
+// last. The control reflects what the route allows, so a tap at an end is disabled rather than firing
+// a best-effort request the server will reject.
+const canSkipBack = $derived(guidance.activePointIndex != null && guidance.activePointIndex > 0);
+const canSkipForward = $derived(!guidance.isLastPoint);
+
 const vmg = $derived(formatKnotsOr(guidance.velocityMadeGoodMps));
 const ttg = $derived(
   guidance.timeToGoSeconds != null ? formatDuration(guidance.timeToGoSeconds) : PLACEHOLDER,
@@ -50,7 +56,18 @@ const routeDtg = $derived(
   routeProgress ? formatNmOr(routeProgress.distanceToGoMeters) : PLACEHOLDER,
 );
 const eta = $derived.by(() => {
-  const ttgSeconds = routeProgress?.timeToGoSeconds;
+  if (!routeProgress) return PLACEHOLDER;
+  // Prefer the server's estimatedTimeOfArrival (an ISO-8601 instant) when a provider supplies it,
+  // since it reflects the server's own time model. Guard against an unparseable string and fall
+  // back to a local clock estimate (now plus the route time-to-go) when the server value is absent.
+  const iso = guidance.estimatedTimeOfArrivalIso;
+  if (iso) {
+    const at = new Date(iso);
+    if (!Number.isNaN(at.getTime())) {
+      return at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+  const ttgSeconds = routeProgress.timeToGoSeconds;
   if (ttgSeconds == null) return PLACEHOLDER;
   return new Date(Date.now() + ttgSeconds * 1000).toLocaleTimeString([], {
     hour: '2-digit',
@@ -71,24 +88,28 @@ const eta = $derived.by(() => {
         <span class="note">computing locally</span>
       {/if}
       {#if onSkip}
-        <button
-          type="button"
-          class="skip"
-          aria-label="Previous waypoint"
-          title="Previous waypoint"
-          onclick={() => onSkip(-1)}
-        >
-          <SkipBack size={15} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="skip"
-          aria-label="Next waypoint"
-          title="Next waypoint"
-          onclick={() => onSkip(1)}
-        >
-          <SkipForward size={15} aria-hidden="true" />
-        </button>
+        <div class="skip-group">
+          <button
+            type="button"
+            class="skip"
+            aria-label="Previous waypoint"
+            title="Previous waypoint"
+            disabled={!canSkipBack}
+            onclick={() => onSkip(-1)}
+          >
+            <SkipBack size={15} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="skip"
+            aria-label="Next waypoint"
+            title="Next waypoint"
+            disabled={!canSkipForward}
+            onclick={() => onSkip(1)}
+          >
+            <SkipForward size={15} aria-hidden="true" />
+          </button>
+        </div>
       {/if}
       <button type="button" class="ack" onclick={onStop}>Stop</button>
     </div>
@@ -131,8 +152,17 @@ const eta = $derived.by(() => {
   font-weight: 600;
   color: var(--accent);
 }
-/* Waypoint-skip buttons in the strip head, sitting beside the Stop control. A full 44px touch target
-   so they are usable underway, with the compact icon centered. */
+/* The waypoint-skip pair keeps a guaranteed gutter before the Stop control, so the destructive Stop
+   does not sit flush against the skip buttons where a mis-tap on a rolling deck could end navigation
+   while reaching for "next waypoint". */
+.skip-group {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--space-1);
+  margin-inline-end: var(--space-3);
+}
+/* Waypoint-skip buttons in the strip head. A full 44px touch target so they are usable underway, with
+   the compact icon centered. */
 .skip {
   display: inline-flex;
   align-items: center;
@@ -147,8 +177,13 @@ const eta = $derived.by(() => {
   color: var(--accent);
   cursor: pointer;
 }
-.skip:hover {
+.skip:hover:not(:disabled) {
   border-color: var(--accent);
   background: var(--accent-tint);
+}
+.skip:disabled {
+  color: var(--text-muted);
+  opacity: 0.4;
+  cursor: default;
 }
 </style>

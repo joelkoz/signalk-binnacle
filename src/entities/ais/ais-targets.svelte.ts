@@ -1,6 +1,35 @@
 import { asNumber, isLatLon, type LatLon } from '$shared/geo';
 import { type SignalKStore, SK_PATHS } from '$shared/signalk';
 
+// The Signal K spec types closestApproach.timeTo as an ISO-8601 duration string (e.g. "PT1M30S"),
+// but some providers publish a raw number of seconds. Parse both: a number passes through, a
+// string is converted to signed seconds (a negative or zero TCPA means the contact is opening or
+// past), and anything unparseable yields undefined so a bad value reads as "no TCPA" rather than 0.
+const ISO_DURATION =
+  /^(-)?P(?:(\d+(?:\.\d+)?)Y)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)W)?(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/;
+
+export function parseIso8601DurationSeconds(value: unknown): number | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+  const m = ISO_DURATION.exec(value.trim());
+  if (!m) return undefined;
+  const [, sign, years, months, weeks, days, hours, minutes, seconds] = m;
+  // A bare "P" or "PT" with no components is not a valid duration.
+  if (![years, months, weeks, days, hours, minutes, seconds].some((p) => p != null)) {
+    return undefined;
+  }
+  const n = (p: string | undefined) => (p == null ? 0 : Number.parseFloat(p));
+  const total =
+    n(years) * 31_536_000 +
+    n(months) * 2_592_000 +
+    n(weeks) * 604_800 +
+    n(days) * 86_400 +
+    n(hours) * 3600 +
+    n(minutes) * 60 +
+    n(seconds);
+  return sign === '-' ? -total : total;
+}
+
 // All angular and speed fields are SI (radians, m/s), like the rest of the store. Consumers
 // convert to a compass bearing or knots at their own display edge.
 export interface AisTargetView {
@@ -51,7 +80,7 @@ export class AisTargets {
         sogMps: asNumber(target.values.get(SK_PATHS.speedOverGround)),
         shipTypeId: this.#numField(target.values.get(SK_PATHS.aisShipType), 'id'),
         cpaMeters: this.#numField(approach, 'distance'),
-        tcpaSeconds: this.#numField(approach, 'timeTo'),
+        tcpaSeconds: this.#timeToSeconds(approach),
       });
     }
     this.#cache = out;
@@ -62,6 +91,13 @@ export class AisTargets {
   #numField(value: unknown, key: string): number | undefined {
     if (typeof value === 'object' && value !== null) {
       return asNumber((value as Record<string, unknown>)[key]);
+    }
+    return undefined;
+  }
+
+  #timeToSeconds(approach: unknown): number | undefined {
+    if (typeof approach === 'object' && approach !== null) {
+      return parseIso8601DurationSeconds((approach as Record<string, unknown>).timeTo);
     }
     return undefined;
   }

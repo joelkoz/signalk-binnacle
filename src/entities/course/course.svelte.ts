@@ -1,9 +1,9 @@
 import type { OwnVessel } from '$entities/vessel';
 import type { LatLon } from '$shared/geo';
 import {
-  crossTrackErrorMeters,
   etaSeconds,
   rhumbBearingRad,
+  rhumbCrossTrackErrorMeters,
   rhumbDistanceMeters,
   vmgMps,
 } from '$shared/nav';
@@ -109,6 +109,14 @@ export class CourseGuidance {
     return this.#info.nextPoint?.name;
   }
 
+  // The server's estimated time of arrival as an ISO-8601 instant, preferred over a client clock
+  // estimate when a provider populates calcValues. Only meaningful when source is 'server'; when the
+  // values are computed client-side it is undefined and the consumer falls back to now plus its own
+  // time-to-go.
+  get estimatedTimeOfArrivalIso(): string | undefined {
+    return this.#calc?.estimatedTimeOfArrival ?? undefined;
+  }
+
   get #next(): LatLon | undefined {
     return this.#info.nextPoint?.position;
   }
@@ -147,7 +155,7 @@ export class CourseGuidance {
     if (this.#calc?.crossTrackError != null) return this.#calc.crossTrackError;
     const pos = this.#freshPos;
     return pos && this.#prev && this.#next
-      ? crossTrackErrorMeters(this.#prev, this.#next, pos)
+      ? rhumbCrossTrackErrorMeters(this.#prev, this.#next, pos)
       : undefined;
   });
 

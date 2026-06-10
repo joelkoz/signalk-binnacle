@@ -44,6 +44,22 @@ export function crossTrackErrorMeters(from: LatLon, to: LatLon, position: LatLon
   return Math.asin(ratio) * EARTH_RADIUS_M;
 }
 
+// Signed cross-track distance (meters) of `position` from the rhumb-line (constant-bearing) leg
+// from -> to, the line a helmsman actually steers. This is the rhumb-geometry sibling of
+// crossTrackErrorMeters, kept consistent with rhumbDistanceMeters and rhumbBearingRad so the
+// computed fallback (distance, bearing, XTE, and VMG) shares one geometry, matching how the server
+// publishes a single internally-consistent calcMethod. Over the short to medium legs Binnacle
+// follows, the rhumb leg is near-straight, so the perpendicular offset is approximated as
+// d13 * sin(theta13 - theta12) using rhumb bearings: the along-leg component is dropped and only
+// the across-leg projection is kept. Positive is to starboard of the leg, matching
+// crossTrackErrorMeters and the server's convention, so steerSide reads the same sign.
+export function rhumbCrossTrackErrorMeters(from: LatLon, to: LatLon, position: LatLon): number {
+  const d13 = rhumbDistanceMeters(from, position);
+  const theta13 = rhumbBearingRad(from, position);
+  const theta12 = rhumbBearingRad(from, to);
+  return d13 * Math.sin(theta13 - theta12);
+}
+
 // Velocity made good toward the mark: the boat's velocity vector projected onto the bearing to the
 // mark. Positive closes the mark, negative opens it. SOG m/s, COG radians clockwise from north.
 export function vmgMps(position: LatLon, mark: LatLon, sogMps: number, cogRad: number): number {

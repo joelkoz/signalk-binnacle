@@ -5,6 +5,7 @@ export {
   crossTrackErrorMeters,
   etaSeconds,
   rhumbBearingRad,
+  rhumbCrossTrackErrorMeters,
   rhumbDistanceMeters,
   steerSide,
   vmgMps,
