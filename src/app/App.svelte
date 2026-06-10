@@ -1,5 +1,6 @@
 <script lang="ts">
 import {
+  Anchor,
   Bell,
   BellOff,
   CloudSun,
@@ -16,6 +17,7 @@ import {
 } from '@lucide/svelte';
 import { onDestroy, onMount, tick } from 'svelte';
 import { AisTargets } from '$entities/ais';
+import { AnchorWatch } from '$entities/anchor';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
 import {
@@ -30,6 +32,15 @@ import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
 import { OwnVessel } from '$entities/vessel';
 import { WeatherStore } from '$entities/weather';
+import {
+  AnchorAlarm,
+  AnchorPanel,
+  AnchorStrip,
+  dropAnchorOnServer,
+  putServerAnchorPosition,
+  raiseServerAnchor,
+  setServerRadius,
+} from '$features/anchor-watch';
 import { AuthBanner } from '$features/auth-banner';
 import { deleteChart, putChart } from '$features/charts';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
@@ -149,6 +160,11 @@ const collisionNotifier = new CollisionNotifier(
     void client.publish({ context: SELF_CONTEXT, updates: [{ values: [{ path, value }] }] }),
 );
 
+// The anchor watch: server-driven when the anchoralarm plugin answers, client-side otherwise. The
+// drag alarm mirrors the collision split: an audible tone here, the strip and live region below.
+const anchor = new AnchorWatch(store, vessel);
+const anchorAlarm = new AnchorAlarm();
+
 // Track recording: client-side from navigation.position, persisted whole-voyage in IndexedDB.
 const trackSettings = createTrackSettings();
 const recorder = new TrackRecorder(trackSettings, createTrackStore<TrackPoint>());
@@ -231,7 +247,7 @@ let layersView = $state<LayersView | undefined>();
 // The edge-docked panels (routes, layers, tracks, collision thresholds) are mutually exclusive: one
 // docks at the leading edge at a time. A single active-panel value enforces that structurally, so
 // opening one closes whatever was open without each opener having to clear the others by hand.
-type LeftPanel = 'routes' | 'layers' | 'tracks' | 'tides' | 'thresholds' | 'profiles';
+type LeftPanel = 'routes' | 'layers' | 'tracks' | 'tides' | 'anchor' | 'thresholds' | 'profiles';
 let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
 // the menu after it closed on selection.
@@ -497,6 +513,13 @@ const menuItems = $derived<MenuItem[]>([
     onSelect: () => openPanel('layers'),
   },
   {
+    id: 'anchor',
+    label: 'Anchor watch',
+    icon: Anchor,
+    group: 'Alarms',
+    onSelect: () => openPanel('anchor'),
+  },
+  {
     id: 'mute-alarm',
     label: 'Mute alarm',
     icon: collisionMute.active ? VolumeX : Volume2,
@@ -558,6 +581,89 @@ const muteRemainingMin = $derived(Math.max(1, Math.ceil(collisionMute.remainingM
 $effect(() => {
   collisionNotifier.update(collision.assessment);
 });
+
+// One anchor-watch pass per position fix (the method dedupes by fix epoch, so the extra re-runs a
+// radius edit or a notification triggers are harmless): client-mode drag detection, plus the
+// local bookkeeping a server watch needs.
+$effect(() => {
+  anchor.updateFix();
+});
+
+// Sound the anchor-drag alarm. The acknowledge semantics live in the watch: client mode clears the
+// latch outright, server mode silences the current grade until it changes or clears.
+$effect(() => {
+  anchorAlarm.update(anchor.dragging, anchor.acknowledged);
+});
+
+// The anchor channel of the assertive live region, separate from the collision channel so a drag
+// alarm is announced even while a collision alert holds the other region.
+const anchorAlert = $derived.by(() => {
+  if (!anchor.dragging || anchor.acknowledged) return '';
+  const distance = anchor.distanceMeters;
+  const radius = anchor.radiusMeters;
+  const where = distance == null ? '' : ` ${Math.round(distance)} meters from the anchor`;
+  const limit = radius == null ? '' : `, watch radius ${Math.round(radius)} meters`;
+  return `Anchor alarm: the boat is dragging${where}${limit}.`;
+});
+
+// An anchor error shown in the panel until the next anchor action (the boat-error persistence
+// rationale on routeError applies here too).
+let anchorError = $state<string | undefined>();
+
+async function onDropAnchor(): Promise<void> {
+  anchorError = undefined;
+  const position = vessel.position;
+  if (!position) return;
+  const radius = anchor.preferredRadiusMeters;
+  // The server drop doubles as the plugin detection: when the anchoralarm plugin answers, it owns
+  // the watch (and keeps alarming with the browser closed) and the stream reflects it back. Any
+  // failure degrades to the client-side watch; the panel's mode line says which one is running.
+  if (await dropAnchorOnServer(serverOrigin(), chartsToken, radius)) return;
+  anchor.dropLocal(position, radius);
+}
+
+// Route an anchor action by mode. In server mode the plugin call must succeed; a failure is
+// surfaced, never papered over with a local-only change that would desync from a server that is
+// still watching. Otherwise the local fallback runs.
+async function anchorAction(
+  serverCall: () => Promise<boolean>,
+  action: string,
+  local: () => void,
+): Promise<void> {
+  anchorError = undefined;
+  if (anchor.mode !== 'server') {
+    local();
+    return;
+  }
+  if (!(await serverCall())) {
+    anchorError = `Could not ${action} on the server. Check the connection.`;
+  }
+}
+
+function onRaiseAnchor(): Promise<void> {
+  return anchorAction(
+    () => raiseServerAnchor(serverOrigin(), chartsToken),
+    'raise the anchor',
+    () => anchor.raiseLocal(),
+  );
+}
+
+function onSetAnchorRadius(meters: number): Promise<void> {
+  anchor.rememberRadius(meters);
+  return anchorAction(
+    () => setServerRadius(serverOrigin(), chartsToken, meters),
+    'set the radius',
+    () => anchor.setRadiusLocal(meters),
+  );
+}
+
+function onAnchorMoved(position: LatLon): Promise<void> {
+  return anchorAction(
+    () => putServerAnchorPosition(serverOrigin(), chartsToken, position),
+    'move the anchor',
+    () => anchor.movePositionLocal(position),
+  );
+}
 
 // Record the track from the vessel position (about 1 Hz); the recorder thins by the
 // configured interval and min-distance. SOG is stored raw in m/s (SI).
@@ -948,6 +1054,7 @@ const selectNote = (selection: NoteSelection | undefined): void => {
 const primeAudio = () => {
   lookoutAlarm.prime();
   arrivalAlarm.prime();
+  anchorAlarm.prime();
 };
 
 const CONNECTION_LABELS: Record<ConnectionPhase, string> = {
@@ -1029,6 +1136,10 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.courseActiveRoute, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.courseArrivalCircle, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.courseCalcValues, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.depthBelowTransducer, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.anchorPosition, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.anchorMaxRadius, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.anchorNotification, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.position, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.courseOverGroundTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.speedOverGround, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
@@ -1069,6 +1180,7 @@ onDestroy(() => {
   }
   window.removeEventListener('pointerdown', primeAudio);
   lookoutAlarm.stop();
+  anchorAlarm.stop();
   auth.stop();
   net.dispose();
   clock.dispose();
@@ -1079,6 +1191,9 @@ onDestroy(() => {
 <main class="binnacle-shell">
   <div class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true">
     {collisionAlert}
+  </div>
+  <div class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true">
+    {anchorAlert}
   </div>
   <div class="visually-hidden" aria-live="polite" aria-atomic="true">{muteAlert}</div>
   <header class="topbar">
@@ -1118,6 +1233,7 @@ onDestroy(() => {
       {store}
       {vessel}
       {aisTargets}
+      {anchor}
       {collision}
       {recorder}
       {routeStore}
@@ -1143,6 +1259,7 @@ onDestroy(() => {
       onNoteSelect={selectNote}
       onUserPan={() => (following = false)}
       {onGoToHere}
+      onAnchorMoved={(position) => void onAnchorMoved(position)}
     />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
@@ -1157,6 +1274,7 @@ onDestroy(() => {
         onStop={onStopCourse}
         onSkip={routeStore.activeId !== undefined ? onSkipPoint : undefined}
       />
+      <AnchorStrip {anchor} onRaise={() => void onRaiseAnchor()} />
       <DangerStrip
         {collision}
         muted={collisionMute.active}
@@ -1236,6 +1354,20 @@ onDestroy(() => {
         <TidesPanel store={tidesStore} onClose={closePanel} onBack={backToMenu} />
       </div>
     {/if}
+    {#if activePanel === 'anchor'}
+      <div class="panel-slot">
+        <AnchorPanel
+          {anchor}
+          {vessel}
+          error={anchorError}
+          onDrop={() => void onDropAnchor()}
+          onRaise={() => void onRaiseAnchor()}
+          onSetRadius={(meters) => void onSetAnchorRadius(meters)}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
+      </div>
+    {/if}
     {#if activePanel === 'thresholds'}
       <div class="panel-slot">
         <ThresholdsPanel {thresholds} onClose={closePanel} onBack={backToMenu} />
@@ -1296,6 +1428,19 @@ onDestroy(() => {
       {#if store.connection.phase === 'open'}
         <span class="readout lookout" title="AIS targets the lookout is tracking">
           AIS <b>{aisCount}</b>
+        </span>
+      {/if}
+      {#if anchor.watching}
+        <span
+          class="readout anchor-chip"
+          class:anchor-chip--alarm={anchor.dragging}
+          role="status"
+          title="Anchor watch: distance from the anchor over the watch radius"
+        >
+          Anchor <b>{formatFixed(anchor.distanceMeters, 0)}</b>/<b
+            >{formatFixed(anchor.radiusMeters, 0)}</b
+          >
+          m
         </span>
       {/if}
       <span class="readout"
@@ -1558,6 +1703,18 @@ onDestroy(() => {
    hero SOG and COG. On a phone it drops with the rest of the secondary readouts. */
 .lookout {
   color: var(--text-muted);
+}
+/* The anchor chip confirms the watch is live (distance over radius) as quiet chrome, and turns to
+   the alarm color while the boat is dragging so the state reads even with the strip dismissed. */
+.anchor-chip {
+  color: var(--text-muted);
+}
+.anchor-chip--alarm {
+  color: var(--alarm);
+  font-weight: 600;
+}
+.anchor-chip--alarm b {
+  color: var(--alarm);
 }
 /* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
 .readout {

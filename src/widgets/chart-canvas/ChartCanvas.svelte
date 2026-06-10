@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
+import type { AnchorWatch } from '$entities/anchor';
 import type { CollisionAssessment } from '$entities/collision';
 import type { RouteStore } from '$entities/route';
 import type { TidesStore } from '$entities/tides';
@@ -8,6 +9,7 @@ import type { TrackRecorder } from '$entities/track';
 import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
 import { createAisOverlay } from '$features/ais-layer';
+import { createAnchorOverlay } from '$features/anchor-watch';
 import { BOUNDARY_SOURCES, createBoundaryOverlay } from '$features/boundaries-overlay';
 import { fetchCharts } from '$features/charts';
 import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
@@ -42,6 +44,8 @@ interface Props {
   store: SignalKStore;
   vessel: OwnVessel;
   aisTargets: AisTargets;
+  // The anchor watch, drawn as the swing circle, rode line, and draggable drop-point marker.
+  anchor: AnchorWatch;
   collision: CollisionAssessment;
   recorder: TrackRecorder;
   // The route store, drawn by the route overlay and edited on the chart via Terra Draw.
@@ -75,12 +79,15 @@ interface Props {
   onUserPan?: () => void;
   // Set a single "go to here" destination at a chart point the user long-pressed or right-clicked.
   onGoToHere?: (position: LatLon) => void;
+  // Commit a drag-to-adjust of the anchor marker (the app PUTs it server-side or moves it locally).
+  onAnchorMoved?: (position: LatLon) => void;
 }
 
 const {
   store,
   vessel,
   aisTargets,
+  anchor,
   collision,
   recorder,
   routeStore,
@@ -103,6 +110,7 @@ const {
   onNoteSelect,
   onUserPan,
   onGoToHere,
+  onAnchorMoved,
 }: Props = $props();
 
 let container: HTMLDivElement;
@@ -176,6 +184,7 @@ onMount(() => {
       // vessel and collision pinned on top, then the navigator's routes and track, then AIS and the
       // safety overlays, the ocean fields, and the charts at the base); the order below sets only the
       // order within a band.
+      const anchorOverlay = createAnchorOverlay(anchor, vessel, onAnchorMoved);
       const routeOverlay = createRouteOverlay(routeStore);
       const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect);
       const aisOverlay = createAisOverlay(aisTargets, store);
@@ -193,6 +202,7 @@ onMount(() => {
         ...MPA_SOURCES.map((source) => createMpaOverlay(source)),
         ...SEAMARK_SOURCES.map((source) => createSeamarkOverlay(source)),
         tidesOverlay,
+        anchorOverlay,
         routeOverlay,
         notesOverlay,
         aisOverlay,
@@ -277,6 +287,7 @@ onMount(() => {
 
       runTick([
         tidesOverlay,
+        anchorOverlay,
         routeOverlay,
         notesOverlay,
         aisOverlay,
