@@ -1,6 +1,6 @@
 export { default as AnchorPanel } from './AnchorPanel.svelte';
 export { default as AnchorStrip } from './AnchorStrip.svelte';
-export { ANCHOR_TONE, AnchorAlarm } from './anchor-alarm';
+export { ANCHOR_TONE } from './anchor-alarm';
 export {
   dropAnchorOnServer,
   putServerAnchorPosition,

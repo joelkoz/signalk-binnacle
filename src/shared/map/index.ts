@@ -16,6 +16,7 @@ export { LayerManager } from './layer-manager';
 export { setMapImage } from './map-image';
 export type { MapThemePaint } from './map-theme';
 export { applyRasterTheme, mapThemePaint } from './map-theme';
+export { removeLayersAndSources, setLayersVisibility } from './overlay-helpers';
 export { registerPmtilesProtocol } from './pmtiles';
 export { type PmtilesMeta, readPmtilesMeta } from './pmtiles-metadata';
 export {

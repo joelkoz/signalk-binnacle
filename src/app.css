@@ -731,6 +731,28 @@ body {
 .bottom-strip .ack--warning[aria-pressed="true"] {
   background: var(--alarm-tint);
 }
+/* The trailing action cluster shared by the alarm and tool strips. The shared .ack pill carries its
+   own auto margin for single-action strips, so the cluster neutralizes it and owns the push; the
+   safety strips widen the gap locally so paired safety buttons do not read as twins. */
+.bottom-strip .actions {
+  margin-inline-start: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.bottom-strip .actions .ack {
+  margin-inline-start: 0;
+}
+/* Acknowledged: the alarm is silenced and the operator has it in hand, so the strip dims but keeps
+   its readouts on screen while the condition persists. */
+.bottom-strip.is-ack {
+  opacity: 0.62;
+}
+.bottom-strip .ack-tag {
+  margin-inline-start: auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
 .bottom-strip .metric b {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

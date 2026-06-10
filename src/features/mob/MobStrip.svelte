@@ -44,19 +44,3 @@ const { mob, onSteer, onCancel }: Props = $props();
     </div>
   </aside>
 {/if}
-
-<style>
-.actions {
-  margin-inline-start: auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.actions .ack {
-  margin-inline-start: 0;
-}
-.ack-tag {
-  font-weight: 600;
-  white-space: nowrap;
-}
-</style>

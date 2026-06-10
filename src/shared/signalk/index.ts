@@ -28,4 +28,4 @@ export type {
   SubscribeEntry,
   SubscribePolicy,
 } from './types';
-export { SELF_CONTEXT } from './types';
+export { ALARM_NOTIFICATION_STATES, SELF_CONTEXT } from './types';

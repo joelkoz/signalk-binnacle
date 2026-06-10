@@ -3,7 +3,7 @@ import { asNumber, isLatLon, type LatLon } from '$shared/geo';
 import { isFiniteNumber } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
 import { PersistedValue } from '$shared/settings';
-import { type SignalKStore, SK_PATHS } from '$shared/signalk';
+import { ALARM_NOTIFICATION_STATES, type SignalKStore, SK_PATHS } from '$shared/signalk';
 import { DEFAULT_RADIUS_M, MIN_RADIUS_M } from './anchor-geometry';
 import { DragDetector } from './drag-detector';
 
@@ -20,10 +20,6 @@ export interface LocalAnchor {
   radiusMeters: number;
   dragging: boolean;
 }
-
-// The plugin's notification states that mean the vessel is dragging. 'normal' and the quieter
-// advisory grades do not sound.
-const ALARM_STATES = new Set(['alarm', 'emergency']);
 
 function validLocal(value: LocalAnchor | null): LocalAnchor | null {
   if (!value || typeof value !== 'object') return null;
@@ -91,7 +87,7 @@ export class AnchorWatch {
 
   #serverDragging = $derived.by<boolean>(() => {
     const state = this.#notificationState;
-    return state !== undefined && ALARM_STATES.has(state);
+    return state !== undefined && ALARM_NOTIFICATION_STATES.has(state);
   });
 
   get mode(): AnchorMode {

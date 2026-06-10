@@ -6,12 +6,15 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { MeasureStore } from '$entities/measure';
+import type { LatLon } from '$shared/geo';
 import { formatMetersOrNm } from '$shared/lib';
 import {
   emptyFeatureCollection,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
+  setLayersVisibility,
 } from '$shared/map';
 
 const SRC = 'binnacle-measure';
@@ -54,7 +57,7 @@ export interface MeasureOverlay extends OverlayModule {
 // labeled at the last point. Renders nothing while no measurement is in progress.
 export function createMeasureOverlay(measure: MeasureStore): MeasureOverlay {
   let paint = mapThemePaint('day');
-  let lastPoints: readonly unknown[] | undefined;
+  let lastPoints: readonly LatLon[] | undefined;
 
   return {
     id: MEASURE_OVERLAY_ID,
@@ -133,10 +136,7 @@ export function createMeasureOverlay(measure: MeasureStore): MeasureOverlay {
       (ctx.map.getSource(SRC) as GeoJSONSource | undefined)?.setData(features(measure));
     },
     setVisible(ctx, visible) {
-      const value = visible ? 'visible' : 'none';
-      for (const id of LAYERS) {
-        ctx.map.setLayoutProperty(id, 'visibility', value);
-      }
+      setLayersVisibility(ctx.map, LAYERS, visible);
     },
     applyTheme(ctx, next) {
       paint = next;
@@ -147,10 +147,7 @@ export function createMeasureOverlay(measure: MeasureStore): MeasureOverlay {
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-halo-color', paint.background);
     },
     remove(ctx) {
-      for (const id of LAYERS) {
-        if (ctx.map.getLayer(id)) ctx.map.removeLayer(id);
-      }
-      if (ctx.map.getSource(SRC)) ctx.map.removeSource(SRC);
+      removeLayersAndSources(ctx.map, LAYERS, [SRC]);
     },
   };
 }

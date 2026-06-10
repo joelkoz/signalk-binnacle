@@ -55,15 +55,3 @@ const { measure }: Props = $props();
     {/if}
   </aside>
 {/if}
-
-<style>
-.actions {
-  margin-inline-start: auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.actions .ack {
-  margin-inline-start: 0;
-}
-</style>

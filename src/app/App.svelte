@@ -5,7 +5,6 @@ import {
   BellOff,
   CloudSun,
   Layers,
-  LifeBuoy,
   LocateFixed,
   Navigation,
   Radar,
@@ -39,7 +38,7 @@ import { OwnVessel } from '$entities/vessel';
 import { WeatherStore } from '$entities/weather';
 import { AisListPanel } from '$features/ais-list';
 import {
-  AnchorAlarm,
+  ANCHOR_TONE,
   AnchorPanel,
   AnchorStrip,
   dropAnchorOnServer,
@@ -59,8 +58,14 @@ import {
 } from '$features/lookout';
 import { MeasureStrip } from '$features/measure';
 import { AppMenu, type MenuItem } from '$features/menu';
-import { MobAlarm, MobStrip, mobClearNotification, mobNotification } from '$features/mob';
-import { ArrivalAlarm, NavStrip, type RouteProgress } from '$features/navigation';
+import {
+  MOB_TONE,
+  MobButton,
+  MobStrip,
+  mobClearNotification,
+  mobNotification,
+} from '$features/mob';
+import { ARRIVAL_TONE, NavStrip, type RouteProgress } from '$features/navigation';
 import {
   createNoteDetailLoader,
   type NoteDetailLoader,
@@ -105,6 +110,7 @@ import {
   fetchWeatherProviders,
   WEATHER_LAYER_IDS,
 } from '$features/weather';
+import { GatedAlarm } from '$shared/audio';
 import type { LatLon } from '$shared/geo';
 import {
   Clock,
@@ -171,12 +177,12 @@ const collisionNotifier = new CollisionNotifier(
 // The anchor watch: server-driven when the anchoralarm plugin answers, client-side otherwise. The
 // drag alarm mirrors the collision split: an audible tone here, the strip and live region below.
 const anchor = new AnchorWatch(store, vessel);
-const anchorAlarm = new AnchorAlarm();
+const anchorAlarm = new GatedAlarm(ANCHOR_TONE);
 
 // Man overboard: one tap on the strip button marks the spot, publishes the boat-wide alarm, and
 // raises the recovery strip; a remote station's notifications.mob raises it here too.
 const mob = new MobStore(store, vessel, clock);
-const mobAlarm = new MobAlarm();
+const mobAlarm = new GatedAlarm(MOB_TONE);
 
 // The measure tool: armed from the menu, fed by chart taps, read by its overlay and strip.
 const measure = new MeasureStore();
@@ -190,7 +196,7 @@ const routeStore = new RouteStore();
 // Active-navigation guidance: prefers the server Course API and computes the derived values
 // client-side when the calcValues provider is absent. The arrival alarm sounds at the waypoint.
 const courseGuidance = new CourseGuidance(store, vessel);
-const arrivalAlarm = new ArrivalAlarm();
+const arrivalAlarm = new GatedAlarm(ARRIVAL_TONE);
 const arrivalMuted = new PersistedValue<boolean>('binnacle:arrival-muted', false);
 // The speed, in knots, used to turn a planned route's distance into per-waypoint passage times.
 const planningSpeedKn = new PersistedValue<number>('binnacle:planning-speed-kn', 5);
@@ -630,7 +636,7 @@ $effect(() => {
 // Sound the anchor-drag alarm. The acknowledge semantics live in the watch: client mode clears the
 // latch outright, server mode silences the current grade until it changes or clears.
 $effect(() => {
-  anchorAlarm.update(anchor.dragging, anchor.acknowledged);
+  anchorAlarm.update(anchor.dragging && !anchor.acknowledged);
 });
 
 // The anchor channel of the assertive live region, separate from the collision channel so a drag
@@ -646,7 +652,7 @@ const anchorAlert = $derived.by(() => {
 
 // Sound the man-overboard alarm while a mark is active and unacknowledged.
 $effect(() => {
-  mobAlarm.update(mob.active, mob.acknowledged);
+  mobAlarm.update(mob.active && !mob.acknowledged);
 });
 
 // The MOB channel of the assertive live region, the most urgent announcement in the app.
@@ -671,42 +677,6 @@ function onMobTrigger(): void {
   if (!mark) return;
   publishMobValue(mobNotification(mark.position));
   mapCommands?.flyTo(mark.position.latitude, mark.position.longitude);
-}
-
-// The MOB button must never trigger on a stray tap, so marking takes two: the button pops out a
-// confirm, and only the confirm marks. The window self-dismisses so a half-press cannot leave a
-// live trigger armed on screen.
-let mobConfirming = $state(false);
-let mobConfirmTimer: ReturnType<typeof setTimeout> | undefined;
-const MOB_CONFIRM_MS = 6000;
-
-function dismissMobConfirm(): void {
-  if (mobConfirmTimer) clearTimeout(mobConfirmTimer);
-  mobConfirmTimer = undefined;
-  mobConfirming = false;
-}
-
-// While a mark exists the button flies to it instead of re-marking, so a press cannot move the
-// spot away from the person in the water; with no mark yet (including a remote alarm that carried
-// none), it opens the confirm pop-out, and a second press dismisses it.
-function onMobButton(): void {
-  const mark = mob.position;
-  if (mark) {
-    dismissMobConfirm();
-    mapCommands?.flyTo(mark.latitude, mark.longitude);
-    return;
-  }
-  if (mobConfirming) {
-    dismissMobConfirm();
-    return;
-  }
-  mobConfirming = true;
-  mobConfirmTimer = setTimeout(dismissMobConfirm, MOB_CONFIRM_MS);
-}
-
-function onMobConfirm(): void {
-  dismissMobConfirm();
-  onMobTrigger();
 }
 
 function onMobCancel(): void {
@@ -1132,7 +1102,7 @@ let arrivalBannerTimer: ReturnType<typeof setTimeout> | undefined;
 let arrivedLast = false;
 $effect(() => {
   const arrived = courseGuidance.arrived && courseActive;
-  arrivalAlarm.update(arrived, arrivalMuted.value);
+  arrivalAlarm.update(arrived && !arrivalMuted.value);
   if (arrived && !arrivedLast) {
     // Rising edge: show the arrival banner for the point just reached, before any auto-advance moves
     // the name on. A single "go to here" has no name, so fall back to a generic label.
@@ -1290,7 +1260,6 @@ onMount(() => {
 onDestroy(() => {
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   if (arrivalBannerTimer) clearTimeout(arrivalBannerTimer);
-  if (mobConfirmTimer) clearTimeout(mobConfirmTimer);
   // Revoke any object URLs still held for file-backed user charts so they do not leak on teardown.
   for (const blobUrl of registeredUserCharts.values()) {
     if (blobUrl) URL.revokeObjectURL(blobUrl);
@@ -1322,30 +1291,12 @@ onDestroy(() => {
       <AppMenu items={menuItems} open={menuOpen} onOpenChange={(next) => (menuOpen = next)} />
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>
-    <span class="mob-slot">
-      <button
-        type="button"
-        class="btn btn-pill mob-btn"
-        class:is-on={mob.active}
-        aria-pressed={mob.active}
-        aria-expanded={mob.active ? undefined : mobConfirming}
-        aria-label={mob.active ? 'Fly to the man overboard mark' : 'Mark man overboard here'}
-        title={mob.active
-          ? 'Fly to the MOB mark'
-          : 'Mark man overboard at the boat position (asks to confirm)'}
-        disabled={!mob.active && !vessel.position}
-        onclick={onMobButton}
-      >
-        <LifeBuoy size={16} aria-hidden="true" />
-        MOB
-      </button>
-      {#if mobConfirming}
-        <button type="button" class="btn mob-confirm" onclick={onMobConfirm}>
-          <LifeBuoy size={18} aria-hidden="true" />
-          Confirm man overboard
-        </button>
-      {/if}
-    </span>
+    <MobButton
+      {mob}
+      hasFix={!!vessel.position}
+      onTrigger={onMobTrigger}
+      onLocate={(position) => mapCommands?.flyTo(position.latitude, position.longitude)}
+    />
     <span class="topbar-actions">
       {#if collisionMute.active}
         <button
@@ -1887,41 +1838,6 @@ onDestroy(() => {
 }
 .anchor-chip--alarm b {
   color: var(--alarm);
-}
-/* The MOB button reads as the emergency control it is: alarm-colored at rest, alarm-tinted while a
-   mark is active (when it becomes fly-to-mark instead of re-marking). Marking takes a second tap on
-   the confirm pop-out anchored above it, so a stray tap on the strip can never raise the alarm. */
-.mob-slot {
-  position: relative;
-  display: inline-flex;
-}
-.mob-btn {
-  color: var(--alarm);
-  border-color: var(--alarm);
-  font-weight: 600;
-}
-.mob-btn.is-on {
-  background: var(--alarm-tint);
-}
-/* The confirm is deliberately big (a panicked, gloved tap must land) and unmistakably the alarm
-   surface, dropped below the top-bar button so it cannot be hit by the tap that opened it. */
-.mob-confirm {
-  position: absolute;
-  inset-block-start: calc(100% + var(--space-2));
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  padding: var(--space-3) var(--space-4);
-  font-weight: 700;
-  color: var(--alarm);
-  border-color: var(--alarm);
-  background: var(--alarm-tint);
-  box-shadow: var(--shadow-overlay);
-  z-index: var(--z-overlay);
-}
-.mob-confirm:hover:not(:disabled) {
-  border-color: var(--alarm);
-  background: var(--alarm-tint);
 }
 /* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
 .readout {

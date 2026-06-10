@@ -19,6 +19,8 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
+  setLayersVisibility,
 } from '$shared/map';
 import { geodesicCircleRing } from '$shared/nav';
 
@@ -252,10 +254,7 @@ export function createAnchorOverlay(
       );
     },
     setVisible(ctx, visible) {
-      const value = visible ? 'visible' : 'none';
-      for (const id of LAYERS) {
-        ctx.map.setLayoutProperty(id, 'visibility', value);
-      }
+      setLayersVisibility(ctx.map, LAYERS, visible);
     },
     setOpacity(ctx, next) {
       opacity = next;
@@ -274,12 +273,7 @@ export function createAnchorOverlay(
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-stroke-color', paint.markerGlyph);
     },
     remove(ctx) {
-      for (const id of LAYERS) {
-        if (ctx.map.getLayer(id)) ctx.map.removeLayer(id);
-      }
-      for (const src of [SHAPE_SRC, POINT_SRC]) {
-        if (ctx.map.getSource(src)) ctx.map.removeSource(src);
-      }
+      removeLayersAndSources(ctx.map, LAYERS, [SHAPE_SRC, POINT_SRC]);
     },
   };
 }

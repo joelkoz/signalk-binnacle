@@ -13,6 +13,8 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
+  setLayersVisibility,
 } from '$shared/map';
 
 const SRC = 'binnacle-mob';
@@ -137,10 +139,7 @@ export function createMobOverlay(mob: MobStore, vessel: OwnVessel): MobOverlay {
       (ctx.map.getSource(SRC) as GeoJSONSource | undefined)?.setData(features(mark, boat));
     },
     setVisible(ctx, visible) {
-      const value = visible ? 'visible' : 'none';
-      for (const id of LAYERS) {
-        ctx.map.setLayoutProperty(id, 'visibility', value);
-      }
+      setLayersVisibility(ctx.map, LAYERS, visible);
     },
     applyTheme(ctx, next) {
       paint = next;
@@ -151,10 +150,7 @@ export function createMobOverlay(mob: MobStore, vessel: OwnVessel): MobOverlay {
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-halo-color', paint.background);
     },
     remove(ctx) {
-      for (const id of LAYERS) {
-        if (ctx.map.getLayer(id)) ctx.map.removeLayer(id);
-      }
-      if (ctx.map.getSource(SRC)) ctx.map.removeSource(SRC);
+      removeLayersAndSources(ctx.map, LAYERS, [SRC]);
     },
   };
 }

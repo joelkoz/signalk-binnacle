@@ -11,6 +11,10 @@ export type Value = unknown;
 // reveals its MMSI URN. Single source of truth for the transport layer's routing.
 export const SELF_CONTEXT = 'vessels.self';
 
+// Notification states that mean an alarm is actively raised. 'normal' and the advisory grades do
+// not sound; shared by every consumer that grades a notifications.* cell (anchor drag, MOB).
+export const ALARM_NOTIFICATION_STATES: ReadonlySet<string> = new Set(['alarm', 'emergency']);
+
 export interface PathValue {
   path: Path;
   value: Value;

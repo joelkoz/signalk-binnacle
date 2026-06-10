@@ -77,27 +77,10 @@ const acknowledged = $derived(collision.suppressed && !collision.escalating);
 {/if}
 
 <style>
-/* The two strip actions sit together at the trailing edge. The shared .ack carries its own auto
-   margin, so it is neutralized here and the wrapper owns the push instead. A wide gutter and the
-   warning-colored Mute keep the two safety buttons from reading as twins, so a wrong tap in a
-   seaway is less likely. */
-.actions {
-  margin-inline-start: auto;
-  display: flex;
+/* A wide gutter between Mute and Acknowledge (over the shared .actions gap), so the two safety
+   buttons do not read as twins and a wrong tap in a seaway is less likely. */
+.bottom-strip .actions {
   gap: var(--space-4);
-}
-.actions .ack {
-  margin-inline-start: 0;
-}
-/* Acknowledged: the alarm is silenced and the operator has the contact in hand, so the strip dims
-   but keeps its CPA and TCPA on screen while the target is still closing. */
-.is-ack {
-  opacity: 0.62;
-}
-.ack-tag {
-  margin-inline-start: auto;
-  font-weight: 600;
-  white-space: nowrap;
 }
 .list {
   list-style: none;

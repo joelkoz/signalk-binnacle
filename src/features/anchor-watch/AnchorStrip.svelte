@@ -39,22 +39,9 @@ const { anchor, onRaise }: Props = $props();
 {/if}
 
 <style>
-.actions {
-  margin-inline-start: auto;
-  display: flex;
+/* A wide gutter between Acknowledge and Raise (over the shared .actions gap), so the two safety
+   buttons do not read as twins. */
+.bottom-strip .actions {
   gap: var(--space-4);
-}
-.actions .ack {
-  margin-inline-start: 0;
-}
-/* Acknowledged: the alarm is silenced and the navigator has it in hand, so the strip dims but keeps
-   the distance on screen while the server still reports the drag. */
-.is-ack {
-  opacity: 0.62;
-}
-.ack-tag {
-  margin-inline-start: auto;
-  font-weight: 600;
-  white-space: nowrap;
 }
 </style>

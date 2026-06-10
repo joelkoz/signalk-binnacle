@@ -1,5 +1,6 @@
+export { default as MobButton } from './MobButton.svelte';
 export { default as MobStrip } from './MobStrip.svelte';
-export { MOB_TONE, MobAlarm } from './mob-alarm';
+export { MOB_TONE } from './mob-alarm';
 export { formatElapsed } from './mob-format';
 export { mobClearNotification, mobNotification } from './mob-notification';
 export { createMobOverlay, MOB_OVERLAY_ID } from './mob-overlay';

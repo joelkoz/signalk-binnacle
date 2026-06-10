@@ -1,26 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Severity } from '$entities/collision';
-import type { AlarmControl, AlarmTone } from '$shared/audio';
+import { createFakeAlarmControl } from '$shared/testing/fake-alarm';
 import { LookoutAlarm } from './lookout-alarm';
-
-class FakeAlarm implements AlarmControl {
-  events: string[] = [];
-  prime(): void {
-    this.events.push('prime');
-  }
-  start(_tone: AlarmTone): void {
-    this.events.push('start');
-  }
-  stop(): void {
-    this.events.push('stop');
-  }
-}
 
 describe('LookoutAlarm', () => {
   it('sounds for an active, unacknowledged, unmuted danger', () => {
-    const fake = new FakeAlarm();
-    new LookoutAlarm(fake).update('danger', false, false);
-    expect(fake.events).toEqual(['start']);
+    const { control, events } = createFakeAlarmControl();
+    new LookoutAlarm(control).update('danger', false, false);
+    expect(events).toEqual(['start']);
   });
 
   it('stays silent when acknowledged, muted, or not a danger', () => {
@@ -31,10 +18,18 @@ describe('LookoutAlarm', () => {
       ['clear', false, false],
     ];
     for (const [worst, suppressed, muted] of cases) {
-      const fake = new FakeAlarm();
-      new LookoutAlarm(fake).update(worst, suppressed, muted);
-      expect(fake.events).toEqual(['stop']);
+      const { control, events } = createFakeAlarmControl();
+      new LookoutAlarm(control).update(worst, suppressed, muted);
+      expect(events).toEqual([]);
     }
+  });
+
+  it('silences a sounding alarm once it is acknowledged or muted', () => {
+    const { control, events } = createFakeAlarmControl();
+    const alarm = new LookoutAlarm(control);
+    alarm.update('danger', false, false);
+    alarm.update('danger', true, false);
+    expect(events).toEqual(['start', 'stop']);
   });
 
   it('sounds despite mute or acknowledge when escalating past the inner ring', () => {
@@ -45,27 +40,27 @@ describe('LookoutAlarm', () => {
       [true, false],
       [true, true],
     ] as Array<[boolean, boolean]>) {
-      const fake = new FakeAlarm();
-      new LookoutAlarm(fake).update('danger', suppressed, muted, true);
-      expect(fake.events).toEqual(['start']);
+      const { control, events } = createFakeAlarmControl();
+      new LookoutAlarm(control).update('danger', suppressed, muted, true);
+      expect(events).toEqual(['start']);
     }
   });
 
   it('does not sound a non-danger even when escalating', () => {
-    const fake = new FakeAlarm();
-    new LookoutAlarm(fake).update('warning', false, false, true);
-    expect(fake.events).toEqual(['stop']);
+    const { control, events } = createFakeAlarmControl();
+    new LookoutAlarm(control).update('warning', false, false, true);
+    expect(events).toEqual([]);
   });
 
   it('forwards prime to the alarm', () => {
-    const fake = new FakeAlarm();
-    new LookoutAlarm(fake).prime();
-    expect(fake.events).toEqual(['prime']);
+    const { control, events } = createFakeAlarmControl();
+    new LookoutAlarm(control).prime();
+    expect(events).toEqual(['prime']);
   });
 
   it('stop() silences the alarm', () => {
-    const fake = new FakeAlarm();
-    new LookoutAlarm(fake).stop();
-    expect(fake.events).toEqual(['stop']);
+    const { control, events } = createFakeAlarmControl();
+    new LookoutAlarm(control).stop();
+    expect(events).toEqual(['stop']);
   });
 });
