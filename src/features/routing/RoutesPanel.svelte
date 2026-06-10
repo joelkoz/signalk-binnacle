@@ -21,7 +21,14 @@ import {
 } from '$shared/lib';
 import { etaSeconds } from '$shared/nav';
 import type { PersistedValue } from '$shared/settings';
-import { pickTextFile, promptSaveName, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
+import {
+  focusOnMount,
+  pickTextFile,
+  promptSaveName,
+  SavedList,
+  SlideOver,
+  VisibilityToggle,
+} from '$shared/ui';
 
 interface Props {
   routes: Route[];
@@ -259,7 +266,12 @@ $effect(() => {
             <button type="button" class="btn btn-danger" onclick={() => confirmDelete(route.id)}>
               Delete
             </button>
-            <button type="button" class="btn" onclick={() => (confirmingDelete = undefined)}>
+            <button
+              type="button"
+              class="btn"
+              use:focusOnMount
+              onclick={() => (confirmingDelete = undefined)}
+            >
               Cancel
             </button>
           </div>

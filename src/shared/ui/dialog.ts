@@ -14,13 +14,18 @@ function onKeydown(event: KeyboardEvent): void {
   openDialogs[openDialogs.length - 1]?.();
 }
 
-export const dialog: Action<HTMLElement, () => void> = (_node, onClose) => {
+export const dialog: Action<HTMLElement, () => void> = (node, onClose) => {
   let close = onClose;
   const restoreTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const entry = (): void => close();
 
   openDialogs.push(entry);
   if (openDialogs.length === 1) window.addEventListener('keydown', onKeydown);
+
+  // Move focus into the panel on open so a keyboard or screen-reader user lands inside it, not back on
+  // the trigger that opened it. The panel carries tabindex="-1" to receive focus; this is a no-op if
+  // the node is not focusable. restoreTo was captured above, so closing still returns focus correctly.
+  node.focus({ preventScroll: true });
 
   return {
     update(next: () => void): void {

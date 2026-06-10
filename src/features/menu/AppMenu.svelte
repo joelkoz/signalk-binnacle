@@ -61,7 +61,9 @@ function closeMenu(restoreFocus = false): void {
 function select(item: MenuItem): void {
   if (item.disabled) return;
   item.onSelect();
-  closeMenu(true);
+  // A toggle (a menuitemcheckbox, the mutes) flips in place and the menu stays open, matching the
+  // role contract; a plain action dismisses the menu and restores focus to the trigger.
+  if (item.pressed === undefined) closeMenu(true);
 }
 
 // Close when a pointer goes down outside the menu (focus follows the pointer), or on Escape (focus

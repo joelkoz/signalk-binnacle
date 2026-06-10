@@ -59,6 +59,7 @@ const {
 <aside
   class="slide-over slide-over--dock-{dock}"
   aria-label={ariaLabel ?? title}
+  tabindex="-1"
   use:dialog={onClose}
   transition:fly={{ x: dock === 'right' ? 24 : -24, duration: reduceMotion ? 0 : 180, opacity: 0.3 }}
 >

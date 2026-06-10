@@ -2,6 +2,7 @@
 import { ArrowLeft, Trash2 } from '@lucide/svelte';
 import { type UserChartSource, type UserCharts, zoomRange } from '$entities/user-charts';
 import { formatBytes } from '$shared/lib';
+import { focusOnMount } from '$shared/ui';
 import ChartSpecList from './ChartSpecList.svelte';
 
 interface Props {
@@ -81,7 +82,9 @@ async function doDelete(): Promise<void> {
     <div class="confirm">
       <p>Delete this chart?{source.byteSize ? ` Frees ${formatBytes(source.byteSize)}.` : ''}</p>
       <div class="actions">
-        <button type="button" class="btn" onclick={() => (confirming = false)}>Cancel</button>
+        <button type="button" class="btn" use:focusOnMount onclick={() => (confirming = false)}>
+          Cancel
+        </button>
         <button type="button" class="btn btn-danger" onclick={doDelete}>Delete</button>
       </div>
     </div>

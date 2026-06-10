@@ -6,6 +6,7 @@ import {
   formatDuration,
   formatKnotsOr,
   formatNmOr,
+  nauticalMilesToMeters,
   PLACEHOLDER,
 } from '$shared/lib';
 import { steerSide } from '$shared/nav';
@@ -30,6 +31,19 @@ const steer = $derived.by<'L' | 'R' | null>(() => {
   const side = steerSide(guidance.crossTrackErrorMeters ?? Number.NaN);
   if (side === null) return null;
   return side === 'port' ? 'L' : 'R';
+});
+
+// A course-deviation-indicator needle: fly toward the needle, like an aviation CDI. Full-scale
+// deflection at 0.2 nm off track, pegged beyond. The needle sits on the steer-to side, so a glance
+// reads both the side and how far off without reading the number, and it flags caution when pegged.
+const CDI_FULL_SCALE_M = nauticalMilesToMeters(0.2);
+const cdi = $derived.by<{ pos: number; pegged: boolean } | null>(() => {
+  const xte = guidance.crossTrackErrorMeters;
+  if (xte == null) return null;
+  const side = steerSide(xte);
+  if (side === null) return { pos: 0, pegged: false };
+  const mag = Math.min(1, Math.abs(xte) / CDI_FULL_SCALE_M);
+  return { pos: side === 'starboard' ? mag : -mag, pegged: Math.abs(xte) >= CDI_FULL_SCALE_M };
 });
 
 // Each readout shows the placeholder when its value is absent, never a misleading zero.
@@ -118,6 +132,16 @@ const eta = $derived.by(() => {
       <span class="metric">BTW <b>{btw}</b>&deg;T</span>
       <span class="metric">
         XTE
+        {#if cdi}
+          <span class="cdi" aria-hidden="true">
+            <span class="cdi-center"></span>
+            <span
+              class="cdi-needle"
+              class:pegged={cdi.pegged}
+              style="inset-inline-start: calc(50% + {cdi.pos * 45}%)"
+            ></span>
+          </span>
+        {/if}
         {#if steer}
           <span class="steer">{steer}</span>
         {/if}
@@ -151,6 +175,34 @@ const eta = $derived.by(() => {
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--accent);
+}
+/* The compact CDI track: a horizontal scale with a center mark and a needle that deflects to the
+   steer-to side, proportional to the cross-track error up to full scale. */
+.cdi {
+  position: relative;
+  display: inline-block;
+  inline-size: 3.5rem;
+  block-size: 0.75rem;
+  margin-inline: var(--space-1);
+  vertical-align: middle;
+  border-block: 1px solid var(--border);
+}
+.cdi-center {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  inline-size: 1px;
+  background: var(--text-muted);
+}
+.cdi-needle {
+  position: absolute;
+  inset-block: -1px;
+  inline-size: 2px;
+  margin-inline-start: -1px;
+  background: var(--accent);
+}
+.cdi-needle.pegged {
+  background: var(--warning);
 }
 /* The waypoint-skip pair keeps a guaranteed gutter before the Stop control, so the destructive Stop
    does not sit flush against the skip buttons where a mis-tap on a rolling deck could end navigation

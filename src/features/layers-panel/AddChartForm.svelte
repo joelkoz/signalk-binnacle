@@ -2,6 +2,7 @@
 import { CloudUpload, Link2 } from '@lucide/svelte';
 import { type DraftChart, type UserCharts, zoomRange } from '$entities/user-charts';
 import { formatBytes } from '$shared/lib';
+import { focusOnMount } from '$shared/ui';
 import ChartSpecList from './ChartSpecList.svelte';
 
 interface Props {
@@ -126,7 +127,7 @@ function dragOver(event: DragEvent): void {
       <span class="field-label caps-label">Review and save</span>
       <label class="name-field">
         <span class="caps-label">Name</span>
-        <input class="input" type="text" bind:value={draftName} disabled={busy}>
+        <input class="input" type="text" use:focusOnMount bind:value={draftName} disabled={busy}>
       </label>
       <ChartSpecList rows={draftRows} />
       <div class="panel-controls">
@@ -207,7 +208,7 @@ function dragOver(event: DragEvent): void {
   {#if busy}
     <p class="status">{draft ? 'Saving chart...' : 'Reading chart...'}</p>
   {:else if error}
-    <p class="status error">{error}</p>
+    <p class="status error" role="alert">{error}</p>
   {/if}
 
   {#if !draft}

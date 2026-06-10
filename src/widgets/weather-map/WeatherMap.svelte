@@ -101,6 +101,21 @@ let recolor: ((next: Theme) => void) | undefined;
 let layersView = $state<LayersView | undefined>();
 
 let conditionsOpen = $state(false);
+// Surface the loader's status so opening the panel offline or during a rate-limit is honest rather
+// than a blank or stale map with no explanation. A refetch over an existing grid stays quiet (the old
+// forecast is still shown); only a first-load wait, a hard failure, or a stale fallback show a note.
+const statusNote = $derived.by<string>(() => {
+  switch (store.status) {
+    case 'loading':
+      return store.grid ? '' : 'Loading forecast';
+    case 'error':
+      return 'Weather unavailable: offline or rate limited';
+    case 'stale':
+      return 'Showing last forecast';
+    default:
+      return '';
+  }
+});
 let playing = $state(false);
 let playTimer: ReturnType<typeof setInterval> | undefined;
 let fetchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -330,6 +345,7 @@ onDestroy(() => {
   class="weather-panel"
   id="weather-panel"
   aria-label="Weather"
+  tabindex="-1"
   use:dialog={onClose}
   transition:fly={{ y: 20, duration: prefersReducedMotion() ? 0 : 180, opacity: 0.3 }}
 >
@@ -366,7 +382,8 @@ onDestroy(() => {
       type="button"
       class="pill"
       class:is-on={conditionsOpen}
-      aria-pressed={conditionsOpen}
+      aria-expanded={conditionsOpen}
+      aria-controls={conditionsOpen ? 'weather-conditions' : undefined}
       onclick={() => (conditionsOpen = !conditionsOpen)}
     >
       Here
@@ -378,8 +395,16 @@ onDestroy(() => {
 
   <div class="panel-map">
     <div class="map" bind:this={container}></div>
+    {#if statusNote}
+      <div class="status-note" role="status">{statusNote}</div>
+    {/if}
     {#if conditionsOpen}
-      <div class="conditions-slot" role="region" aria-label="Conditions and forecast">
+      <div
+        class="conditions-slot"
+        id="weather-conditions"
+        role="region"
+        aria-label="Conditions and forecast"
+      >
         <WeatherConditions origin={serverOrigin()} {token} {providerName} {position} {store} />
       </div>
     {/if}
@@ -572,6 +597,25 @@ onDestroy(() => {
 .map {
   position: absolute;
   inset: 0;
+}
+/* A small status note centered at the top of the map, so an offline open, a rate-limited fetch, or a
+   stale fallback is explained rather than reading as a blank or silently outdated map. It sits clear
+   of the tap readout (top-left) so the two never overlap. */
+.status-note {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: fit-content;
+  max-inline-size: calc(100% - var(--space-4));
+  padding: 0.3rem 0.6rem;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
 }
 .readout {
   position: absolute;

@@ -953,19 +953,33 @@ async function onGoToHere(position: LatLon): Promise<void> {
   await hydrateAndSeedCourse();
 }
 
+// A brief on-screen arrival cue paired with the tone, for a helm that has the volume low. role=status
+// (polite) so a screen reader hears it too, distinct from the assertive collision channel. Cleared
+// after a few seconds.
+let arrivalBanner = $state<string | undefined>();
+let arrivalBannerTimer: ReturnType<typeof setTimeout> | undefined;
+
 // Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
 let arrivedLast = false;
 $effect(() => {
   const arrived = courseGuidance.arrived && courseActive;
   arrivalAlarm.update(arrived, arrivalMuted.value);
-  // Auto-advance only along a route; a single "go to here" destination has no next point to step to.
-  if (arrived && !arrivedLast && routeStore.activeId !== undefined && !courseGuidance.isLastPoint) {
-    // Rising edge, and not yet at the last point: request the next point. The streamed
-    // activeRoute.pointIndex stays authoritative, so a server that also auto-advances and this
-    // request converge on the same active point. A failed advance is surfaced.
-    void advancePoint(serverOrigin(), chartsToken, 1).then((ok) => {
-      if (!ok) flagRouteError('Could not advance to the next waypoint.');
-    });
+  if (arrived && !arrivedLast) {
+    // Rising edge: show the arrival banner for the point just reached, before any auto-advance moves
+    // the name on. A single "go to here" has no name, so fall back to a generic label.
+    arrivalBanner = courseGuidance.nextPointName ?? 'destination';
+    if (arrivalBannerTimer) clearTimeout(arrivalBannerTimer);
+    arrivalBannerTimer = setTimeout(() => {
+      arrivalBanner = undefined;
+    }, 8000);
+    // Auto-advance only along a route; a single "go to here" destination has no next point to step to.
+    if (routeStore.activeId !== undefined && !courseGuidance.isLastPoint) {
+      // The streamed activeRoute.pointIndex stays authoritative, so a server that also auto-advances
+      // and this request converge on the same active point. A failed advance is surfaced.
+      void advancePoint(serverOrigin(), chartsToken, 1).then((ok) => {
+        if (!ok) flagRouteError('Could not advance to the next waypoint.');
+      });
+    }
   }
   arrivedLast = arrived;
 });
@@ -1003,6 +1017,25 @@ const connectionDown = $derived(
 // The own fix has aged out: the footer dashes SOG and COG and shows a calm "No GPS fix" note rather
 // than presenting a frozen speed and course as if they were live.
 const fixStale = $derived(vessel.positionStale);
+
+// When the OS reports the network is back, reconnect the stream at once rather than waiting out the
+// remaining backoff (up to 30 s). Only on the rising edge of online, and only while the stream is
+// actually down, so a healthy connection is never dropped and reopened needlessly.
+let wasOnline = net.online;
+$effect(() => {
+  const online = net.online;
+  const down = connectionDown;
+  if (online && !wasOnline && down) void client.reconnect();
+  wasOnline = online;
+});
+
+// The count of AIS targets the lookout is tracking, so a quiet footer chip confirms the watch is live
+// and receiving traffic, rather than leaving the navigator to wonder whether an empty danger strip
+// means "all clear" or "not working". Shown only once the stream is open.
+const aisCount = $derived.by<number>(() => {
+  void aisTargets.version;
+  return aisTargets.list().length;
+});
 
 const accessRequestsUrl = `${serverOrigin()}/admin/#/security/access/requests`;
 
@@ -1083,6 +1116,7 @@ onMount(() => {
 
 onDestroy(() => {
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
+  if (arrivalBannerTimer) clearTimeout(arrivalBannerTimer);
   // Revoke any object URLs still held for file-backed user charts so they do not leak on teardown.
   for (const blobUrl of registeredUserCharts.values()) {
     if (blobUrl) URL.revokeObjectURL(blobUrl);
@@ -1167,6 +1201,9 @@ onDestroy(() => {
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
+    {#if arrivalBanner}
+      <div class="arrival-banner" role="status">Arrived at {arrivalBanner}</div>
+    {/if}
     <div class="bottom-stack">
       <NavStrip
         guidance={courseGuidance}
@@ -1310,6 +1347,11 @@ onDestroy(() => {
       {#if fixStale}
         <span class="readout fix-lost" role="status" aria-live="polite">No GPS fix</span>
       {/if}
+      {#if store.connection.phase === 'open'}
+        <span class="readout lookout" title="AIS targets the lookout is tracking">
+          AIS <b>{aisCount}</b>
+        </span>
+      {/if}
       <span class="readout"
         >SOG <b>{formatKnotsOr(fixStale ? undefined : vessel.sogMps)}</b> kn</span
       >
@@ -1344,7 +1386,7 @@ onDestroy(() => {
         type="button"
         class="btn btn-pill"
         class:is-on={weatherPanelOpen}
-        aria-pressed={weatherPanelOpen}
+        aria-expanded={weatherPanelOpen}
         aria-haspopup="true"
         aria-controls={weatherPanelOpen ? 'weather-panel' : undefined}
         onclick={() => (weatherPanelOpen = !weatherPanelOpen)}
@@ -1379,6 +1421,25 @@ onDestroy(() => {
   position: absolute;
   inset-block-start: 0;
   inset-inline: 0;
+  z-index: var(--z-overlay);
+}
+/* A brief arrival toast, centered at the top of the chart, paired with the arrival tone so a quiet
+   helm still gets the cue. It uses the accent treatment, not an alarm color, since arrival is a
+   waypoint event, not a danger. */
+.arrival-banner {
+  position: absolute;
+  inset-block-start: var(--space-3);
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: fit-content;
+  max-inline-size: calc(100% - var(--space-6));
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent-tint);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text);
+  font-weight: 600;
   z-index: var(--z-overlay);
 }
 .topbar {
@@ -1546,6 +1607,11 @@ onDestroy(() => {
 .fix-lost {
   color: var(--warning);
   font-weight: 600;
+}
+/* The lookout chip is muted chrome: it confirms the AIS watch is live without competing with the
+   hero SOG and COG. On a phone it drops with the rest of the secondary readouts. */
+.lookout {
+  color: var(--text-muted);
 }
 /* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
 .readout {

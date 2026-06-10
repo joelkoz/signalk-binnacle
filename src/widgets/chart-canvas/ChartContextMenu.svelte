@@ -1,5 +1,6 @@
 <script lang="ts">
 import { Navigation } from '@lucide/svelte';
+import { focusOnMount } from '$shared/ui';
 
 interface Props {
   // The press point in chart pixels, and the chart's pixel size, so the menu clamps inside the
@@ -44,7 +45,7 @@ function onKeydown(event: KeyboardEvent): void {
   aria-label="Chart actions"
   style="left: {left}px; top: {top}px; transform: translate(-50%, {above ? '-100%' : '0'});"
 >
-  <button type="button" role="menuitem" class="item" onclick={onGoToHere}>
+  <button type="button" role="menuitem" class="item" use:focusOnMount onclick={onGoToHere}>
     <Navigation size={16} aria-hidden="true" />
     Go to here
   </button>
