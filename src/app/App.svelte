@@ -33,7 +33,13 @@ import { WeatherStore } from '$entities/weather';
 import { AuthBanner } from '$features/auth-banner';
 import { deleteChart, putChart } from '$features/charts';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
-import { CollisionNotifier, DangerStrip, LookoutAlarm, ThresholdsPanel } from '$features/lookout';
+import {
+  CollisionMute,
+  CollisionNotifier,
+  DangerStrip,
+  LookoutAlarm,
+  ThresholdsPanel,
+} from '$features/lookout';
 import { AppMenu, type MenuItem } from '$features/menu';
 import { ArrivalAlarm, NavStrip, type RouteProgress } from '$features/navigation';
 import {
@@ -131,7 +137,11 @@ const net = new OnlineStatus();
 const thresholds = createThresholds();
 const collision = new CollisionAssessment(vessel, aisTargets, thresholds);
 const lookoutAlarm = new LookoutAlarm();
-const alarmMuted = new PersistedValue<boolean>('binnacle:alarm-muted', false);
+// The collision mute is session-only with a bounded auto-expiring window (see CollisionMute): a mute
+// set in a crowded anchorage must never carry silently into the next passage or across a reload, and
+// a close, imminent contact escalates past it. Deliberately not a PersistedValue and not part of a
+// profile bundle.
+const collisionMute = new CollisionMute(clock);
 // So other Signal K clients and devices see the same collision alert.
 const collisionNotifier = new CollisionNotifier(
   (path, value) =>
@@ -322,11 +332,6 @@ const portableSettings = {
     read: () => ({ planningSpeedKn: planningSpeedKn.value }),
     write: (s) => planningSpeedKn.set(s.planningSpeedKn),
     track: () => void planningSpeedKn.value,
-  },
-  alarmMuted: {
-    read: () => ({ alarmMuted: alarmMuted.value }),
-    write: (s) => alarmMuted.set(s.alarmMuted),
-    track: () => void alarmMuted.value,
   },
   arrivalMuted: {
     read: () => ({ arrivalMuted: arrivalMuted.value }),
@@ -545,10 +550,10 @@ const menuItems = $derived<MenuItem[]>([
   {
     id: 'mute-alarm',
     label: 'Mute alarm',
-    icon: alarmMuted.value ? VolumeX : Volume2,
+    icon: collisionMute.active ? VolumeX : Volume2,
     group: 'Alarms',
-    pressed: alarmMuted.value,
-    onSelect: () => alarmMuted.set(!alarmMuted.value),
+    pressed: collisionMute.active,
+    onSelect: () => collisionMute.toggle(),
   },
   {
     id: 'mute-arrival',
@@ -567,9 +572,16 @@ const menuItems = $derived<MenuItem[]>([
   },
 ]);
 
-// Sound the collision alarm whenever the assessment, acknowledgement, or mute changes.
+// Sound the collision alarm whenever the assessment, acknowledgement, mute, or escalation changes.
+// Escalation past the inner ring overrides both acknowledge and mute, so a close, imminent contact
+// always sounds.
 $effect(() => {
-  lookoutAlarm.update(collision.assessment.worst, collision.suppressed, alarmMuted.value);
+  lookoutAlarm.update(
+    collision.assessment.worst,
+    collision.suppressed,
+    collisionMute.active,
+    collision.escalating,
+  );
 });
 
 // A concise spoken summary of the active collision danger, written into a persistent assertive live
@@ -587,8 +599,11 @@ const collisionAlert = $derived.by(() => {
   const lead = nearest.severity === 'warning' ? 'Collision warning' : 'Collision danger';
   return `${lead}: ${count} ${count === 1 ? 'contact' : 'contacts'}, nearest ${who}, CPA ${formatCpaNm(nearest.cpaMeters)} nautical miles in ${formatTcpaMin(nearest.tcpaSeconds, 1)} minutes.`;
 });
-// A muted collision alarm is a safety state, so announce it politely; clearing it on unmute is silent.
-const muteAlert = $derived(alarmMuted.value ? 'Collision alarm muted.' : '');
+// A muted collision alarm is a safety state, so announce it politely; clearing it on expiry or unmute
+// is silent. The mute auto-expires, so the badge shows the minutes left to make the bounded window
+// and the coming re-arm obvious.
+const muteAlert = $derived(collisionMute.active ? 'Collision alarm muted.' : '');
+const muteRemainingMin = $derived(Math.max(1, Math.ceil(collisionMute.remainingMs / 60_000)));
 
 // Publish the collision notification to Signal K as the assessment changes.
 $effect(() => {
@@ -1092,17 +1107,17 @@ onDestroy(() => {
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>
     <span class="topbar-actions">
-      {#if alarmMuted.value}
+      {#if collisionMute.active}
         <button
           type="button"
           class="btn btn-pill btn-warning"
           aria-pressed="true"
-          aria-label="Collision alarm muted, tap to unmute"
-          title="Collision alarm muted, tap to unmute"
-          onclick={() => alarmMuted.set(false)}
+          aria-label="Collision alarm muted, {muteRemainingMin} minutes left, tap to unmute"
+          title="Collision alarm muted, {muteRemainingMin} min left, tap to unmute"
+          onclick={() => collisionMute.unmute()}
         >
           <VolumeX size={16} aria-hidden="true" />
-          Muted
+          Muted {muteRemainingMin}m
         </button>
       {/if}
       {#if updateReady}
@@ -1161,8 +1176,8 @@ onDestroy(() => {
       />
       <DangerStrip
         {collision}
-        muted={alarmMuted.value}
-        onToggleMute={() => alarmMuted.set(!alarmMuted.value)}
+        muted={collisionMute.active}
+        onToggleMute={() => collisionMute.toggle()}
       />
     </div>
     {#if selectedNote && noteLoader}

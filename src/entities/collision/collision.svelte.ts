@@ -30,6 +30,13 @@ interface OwnFix {
 
 const SEVERITY_RANK: Record<Severity, number> = { danger: 0, warning: 1, clear: 2 };
 
+// A hard inner ring. A danger contact closer than this, and closing within this time, is an
+// emergency that overrides both mute and acknowledge so the alarm sounds regardless. These are fixed
+// safety floors, not the user thresholds, so a generously wide threshold setting can never silence a
+// genuinely close, imminent contact.
+const ESCALATE_CPA_METERS = 185; // about 0.1 nm
+const ESCALATE_TCPA_SECONDS = 120;
+
 function classify(cpaMeters: number, tcpaSeconds: number, t: Thresholds): Severity {
   if (cpaMeters <= t.dangerCpaMeters && tcpaSeconds <= t.dangerTcpaSeconds) return 'danger';
   if (cpaMeters <= t.warningCpaMeters && tcpaSeconds <= t.warningTcpaSeconds) return 'warning';
@@ -136,6 +143,18 @@ export class CollisionAssessment {
   get suppressed(): boolean {
     const sig = this.#signature();
     return sig !== null && sig === this.#ackSignature;
+  }
+
+  // True when the worst contact is inside the hard inner ring: close enough and imminent enough that
+  // the alarm must sound even if muted or acknowledged. Consumers use it to override suppression.
+  get escalating(): boolean {
+    const top = this.#assessment.contacts[0];
+    return (
+      !!top &&
+      top.severity === 'danger' &&
+      top.cpaMeters <= ESCALATE_CPA_METERS &&
+      top.tcpaSeconds <= ESCALATE_TCPA_SECONDS
+    );
   }
 
   acknowledge(): void {

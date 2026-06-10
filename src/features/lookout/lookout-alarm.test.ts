@@ -37,6 +37,26 @@ describe('LookoutAlarm', () => {
     }
   });
 
+  it('sounds despite mute or acknowledge when escalating past the inner ring', () => {
+    // A muted danger and an acknowledged danger both stay silent normally, but the escalation
+    // override forces the alarm so a close, imminent contact cannot be silenced.
+    for (const [suppressed, muted] of [
+      [false, true],
+      [true, false],
+      [true, true],
+    ] as Array<[boolean, boolean]>) {
+      const fake = new FakeAlarm();
+      new LookoutAlarm(fake).update('danger', suppressed, muted, true);
+      expect(fake.events).toEqual(['start']);
+    }
+  });
+
+  it('does not sound a non-danger even when escalating', () => {
+    const fake = new FakeAlarm();
+    new LookoutAlarm(fake).update('warning', false, false, true);
+    expect(fake.events).toEqual(['stop']);
+  });
+
   it('forwards prime to the alarm', () => {
     const fake = new FakeAlarm();
     new LookoutAlarm(fake).prime();

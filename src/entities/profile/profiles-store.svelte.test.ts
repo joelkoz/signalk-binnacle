@@ -61,7 +61,6 @@ const settings = (overrides: Partial<ProfileSettings> = {}): ProfileSettings => 
   },
   trackSettings: { intervalSeconds: 10, minMeters: 10, colorMode: 'speed' },
   planningSpeedKn: 6,
-  alarmMuted: false,
   arrivalMuted: false,
   ...overrides,
 });

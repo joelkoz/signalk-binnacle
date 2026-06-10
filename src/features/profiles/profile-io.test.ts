@@ -21,7 +21,6 @@ const settings = (overrides: Partial<ProfileSettings> = {}): ProfileSettings => 
   },
   trackSettings: { intervalSeconds: 10, minMeters: 10, colorMode: 'speed' },
   planningSpeedKn: 6,
-  alarmMuted: false,
   arrivalMuted: false,
   ...overrides,
 });
@@ -94,9 +93,12 @@ describe('isProfileSettings', () => {
     expect(isProfileSettings(settings({ planningSpeedKn: Number.NaN }))).toBe(false);
   });
 
-  it('rejects a non-boolean mute field', () => {
-    expect(isProfileSettings(settings({ alarmMuted: 'yes' as never }))).toBe(false);
+  it('rejects a non-boolean arrivalMuted', () => {
     expect(isProfileSettings(settings({ arrivalMuted: 1 as never }))).toBe(false);
+  });
+
+  it('still accepts an older export that carries the dropped alarmMuted field', () => {
+    expect(isProfileSettings(settings({ alarmMuted: true } as never))).toBe(true);
   });
 
   it('accepts an optional string mode and rejects a non-string mode', () => {

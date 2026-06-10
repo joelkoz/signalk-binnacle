@@ -54,7 +54,8 @@ export function isProfileSettings(value: unknown): value is ProfileSettings {
   if (!isThresholds(value.thresholds)) return false;
   if (!isTrackSettings(value.trackSettings)) return false;
   if (!isFiniteNumber(value.planningSpeedKn)) return false;
-  if (typeof value.alarmMuted !== 'boolean') return false;
+  // alarmMuted was dropped from the schema (it is now session-only); an older export that still
+  // carries it validates fine, the extra field is simply ignored.
   if (typeof value.arrivalMuted !== 'boolean') return false;
   if (value.mode !== undefined && typeof value.mode !== 'string') return false;
   return true;

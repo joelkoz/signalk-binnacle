@@ -1,3 +1,4 @@
+export { CollisionMute } from './collision-mute.svelte';
 export { CollisionNotifier } from './collision-notification';
 export { COLLISION_OVERLAY_ID, createCollisionOverlay } from './collision-overlay';
 export { default as DangerStrip } from './DangerStrip.svelte';

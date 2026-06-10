@@ -119,3 +119,43 @@ describe('CollisionAssessment acknowledge', () => {
     expect(collision.suppressed).toBe(false);
   });
 });
+
+describe('CollisionAssessment escalating', () => {
+  it('escalates when the worst contact is inside the hard inner ring', () => {
+    // dangerStore puts a contact at CPA 100 m, TCPA 60 s, inside the 185 m and 120 s inner ring.
+    const store = dangerStore('vessels.a');
+    const collision = new CollisionAssessment(
+      new OwnVessel(store),
+      new AisTargets(store),
+      createThresholds(),
+    );
+    expect(collision.escalating).toBe(true);
+  });
+
+  it('does not escalate a danger that is outside the inner ring', () => {
+    // CPA 400 m, TCPA 300 s: a danger under the default thresholds, but outside the inner ring, so
+    // mute and acknowledge still apply.
+    const store = new SignalKStore();
+    store.applyFrame({
+      self: new Map<string, unknown>([['navigation.position', { latitude: 0, longitude: 0 }]]),
+      ais: new Map([
+        [
+          'vessels.a',
+          new Map<string, unknown>([
+            ['navigation.position', { latitude: 0.01, longitude: 0 }],
+            ['navigation.closestApproach', { distance: 400, timeTo: 300 }],
+          ]),
+        ],
+      ]),
+      connection: { phase: 'open', attempt: 0 },
+      epoch: Date.now(),
+    });
+    const collision = new CollisionAssessment(
+      new OwnVessel(store),
+      new AisTargets(store),
+      createThresholds(),
+    );
+    expect(collision.assessment.worst).toBe('danger');
+    expect(collision.escalating).toBe(false);
+  });
+});

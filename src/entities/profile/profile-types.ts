@@ -14,7 +14,9 @@ export interface ProfileSettings {
   thresholds: Thresholds;
   trackSettings: TrackSettings;
   planningSpeedKn: number;
-  alarmMuted: boolean;
+  // The collision-alarm mute is deliberately NOT a profile field: it is a session-only, auto-expiring
+  // safety state (see CollisionMute), never persisted or carried across a profile switch. Arrival mute
+  // is a benign convenience preference, so it stays.
   arrivalMuted: boolean;
   mode?: string;
 }

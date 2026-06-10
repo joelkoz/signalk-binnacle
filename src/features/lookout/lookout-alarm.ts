@@ -15,8 +15,12 @@ export class LookoutAlarm {
     this.#alarm.prime();
   }
 
-  update(worst: Severity, suppressed: boolean, muted: boolean): void {
-    if (worst === 'danger' && !suppressed && !muted) this.#alarm.start(DANGER_TONE);
+  // Sound the alarm for an active danger that is neither acknowledged nor muted. `escalate` is the
+  // hard-inner-ring override: a genuinely close, imminent contact sounds regardless of mute or
+  // acknowledge, so a wide threshold setting or a stale mute can never silence a real emergency.
+  update(worst: Severity, suppressed: boolean, muted: boolean, escalate = false): void {
+    const sound = worst === 'danger' && (escalate || (!suppressed && !muted));
+    if (sound) this.#alarm.start(DANGER_TONE);
     else this.#alarm.stop();
   }
 
