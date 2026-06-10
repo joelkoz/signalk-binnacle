@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { MobStore } from '$entities/mob';
-import { formatBearingOr, formatNm, PLACEHOLDER } from '$shared/lib';
+import { formatBearingOr, formatMetersOrNm } from '$shared/lib';
 import { formatElapsed } from './mob-format';
 
 interface Props {
@@ -13,14 +13,6 @@ interface Props {
 }
 
 const { mob, onSteer, onCancel }: Props = $props();
-
-// Recovery ranges are short, so meters until a nautical mile, then nautical miles.
-const range = $derived.by(() => {
-  const meters = mob.distanceMeters;
-  if (meters == null) return { value: PLACEHOLDER, unit: 'm' };
-  if (meters < 1852) return { value: Math.round(meters).toString(), unit: 'm' };
-  return { value: formatNm(meters), unit: 'nm' };
-});
 </script>
 
 {#if mob.active}
@@ -45,7 +37,7 @@ const range = $derived.by(() => {
     </div>
     <div class="row">
       <span class="metric">Bearing <b>{formatBearingOr(mob.bearingRad)}</b>&deg;T</span>
-      <span class="metric">Range <b>{range.value}</b> {range.unit}</span>
+      <span class="metric">Range <b>{formatMetersOrNm(mob.distanceMeters)}</b></span>
       {#if mob.elapsedSeconds !== undefined}
         <span class="metric">Elapsed <b>{formatElapsed(mob.elapsedSeconds)}</b></span>
       {/if}
