@@ -30,6 +30,9 @@ describe('MobStore', () => {
     store.applyFrame(frame({ 'navigation.position': BOAT }));
     const mark = mob.trigger();
     expect(mark).toEqual({ position: BOAT, epochMs: clock.now });
+    // The mark is published to the stream worker via postMessage, so it must be a plain object:
+    // a reactive proxy leaking through here throws DataCloneError and the alarm never goes out.
+    expect(() => structuredClone(mark)).not.toThrow();
     expect(mob.active).toBe(true);
     expect(mob.position).toEqual(BOAT);
     mob.cancel();

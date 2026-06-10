@@ -112,9 +112,15 @@ export class MobStore {
   // Mark man overboard at the current boat position. Returns the mark, or undefined without a fix
   // (the button is disabled then, so this is a backstop, not a UI path).
   trigger(): MobMark | undefined {
-    const position = this.#vessel.position;
-    if (!position) return undefined;
-    const mark = { position, epochMs: this.#clock?.now ?? 0 };
+    const boat = this.#vessel.position;
+    if (!boat) return undefined;
+    // Snapshot the fix into a plain object: the store cell value is a Svelte reactive proxy, and a
+    // proxy cannot be structured-cloned into the stream worker when the mark is published
+    // (postMessage throws DataCloneError and the boat-wide alarm silently never goes out).
+    const mark = {
+      position: { latitude: boat.latitude, longitude: boat.longitude },
+      epochMs: this.#clock?.now ?? 0,
+    };
     this.#acknowledged = false;
     this.#setLocal(mark);
     return mark;

@@ -673,13 +673,40 @@ function onMobTrigger(): void {
   mapCommands?.flyTo(mark.position.latitude, mark.position.longitude);
 }
 
-// While a mark exists the button flies to it instead of re-marking, so a second press cannot move
-// the spot away from the person in the water; with no mark yet (including a remote alarm that
-// carried none), it marks here.
+// The MOB button must never trigger on a stray tap, so marking takes two: the button pops out a
+// confirm, and only the confirm marks. The window self-dismisses so a half-press cannot leave a
+// live trigger armed on screen.
+let mobConfirming = $state(false);
+let mobConfirmTimer: ReturnType<typeof setTimeout> | undefined;
+const MOB_CONFIRM_MS = 6000;
+
+function dismissMobConfirm(): void {
+  if (mobConfirmTimer) clearTimeout(mobConfirmTimer);
+  mobConfirmTimer = undefined;
+  mobConfirming = false;
+}
+
+// While a mark exists the button flies to it instead of re-marking, so a press cannot move the
+// spot away from the person in the water; with no mark yet (including a remote alarm that carried
+// none), it opens the confirm pop-out, and a second press dismisses it.
 function onMobButton(): void {
   const mark = mob.position;
-  if (mark) mapCommands?.flyTo(mark.latitude, mark.longitude);
-  else onMobTrigger();
+  if (mark) {
+    dismissMobConfirm();
+    mapCommands?.flyTo(mark.latitude, mark.longitude);
+    return;
+  }
+  if (mobConfirming) {
+    dismissMobConfirm();
+    return;
+  }
+  mobConfirming = true;
+  mobConfirmTimer = setTimeout(dismissMobConfirm, MOB_CONFIRM_MS);
+}
+
+function onMobConfirm(): void {
+  dismissMobConfirm();
+  onMobTrigger();
 }
 
 function onMobCancel(): void {
@@ -1263,6 +1290,7 @@ onMount(() => {
 onDestroy(() => {
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   if (arrivalBannerTimer) clearTimeout(arrivalBannerTimer);
+  if (mobConfirmTimer) clearTimeout(mobConfirmTimer);
   // Revoke any object URLs still held for file-backed user charts so they do not leak on teardown.
   for (const blobUrl of registeredUserCharts.values()) {
     if (blobUrl) URL.revokeObjectURL(blobUrl);
@@ -1560,19 +1588,30 @@ onDestroy(() => {
       >
     </div>
     <div class="strip-center">
-      <button
-        type="button"
-        class="btn btn-pill mob-btn"
-        class:is-on={mob.active}
-        aria-pressed={mob.active}
-        aria-label={mob.active ? 'Fly to the man overboard mark' : 'Mark man overboard here'}
-        title={mob.active ? 'Fly to the MOB mark' : 'Mark man overboard at the boat position'}
-        disabled={!mob.active && !vessel.position}
-        onclick={onMobButton}
-      >
-        <LifeBuoy size={16} aria-hidden="true" />
-        MOB
-      </button>
+      <span class="mob-slot">
+        {#if mobConfirming}
+          <button type="button" class="btn mob-confirm" onclick={onMobConfirm}>
+            <LifeBuoy size={18} aria-hidden="true" />
+            Confirm man overboard
+          </button>
+        {/if}
+        <button
+          type="button"
+          class="btn btn-pill mob-btn"
+          class:is-on={mob.active}
+          aria-pressed={mob.active}
+          aria-expanded={mob.active ? undefined : mobConfirming}
+          aria-label={mob.active ? 'Fly to the man overboard mark' : 'Mark man overboard here'}
+          title={mob.active
+            ? 'Fly to the MOB mark'
+            : 'Mark man overboard at the boat position (asks to confirm)'}
+          disabled={!mob.active && !vessel.position}
+          onclick={onMobButton}
+        >
+          <LifeBuoy size={16} aria-hidden="true" />
+          MOB
+        </button>
+      </span>
       <button
         type="button"
         class="btn btn-pill"
@@ -1839,13 +1878,38 @@ onDestroy(() => {
   color: var(--alarm);
 }
 /* The MOB button reads as the emergency control it is: alarm-colored at rest, alarm-tinted while a
-   mark is active (when it becomes fly-to-mark instead of re-marking). */
+   mark is active (when it becomes fly-to-mark instead of re-marking). Marking takes a second tap on
+   the confirm pop-out anchored above it, so a stray tap on the strip can never raise the alarm. */
+.mob-slot {
+  position: relative;
+  display: inline-flex;
+}
 .mob-btn {
   color: var(--alarm);
   border-color: var(--alarm);
   font-weight: 600;
 }
 .mob-btn.is-on {
+  background: var(--alarm-tint);
+}
+/* The confirm is deliberately big (a panicked, gloved tap must land) and unmistakably the alarm
+   surface, floated above the strip so it cannot be hit by the tap that opened it. */
+.mob-confirm {
+  position: absolute;
+  inset-block-end: calc(100% + var(--space-2));
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 700;
+  color: var(--alarm);
+  border-color: var(--alarm);
+  background: var(--alarm-tint);
+  box-shadow: var(--shadow-overlay);
+  z-index: var(--z-overlay);
+}
+.mob-confirm:hover:not(:disabled) {
+  border-color: var(--alarm);
   background: var(--alarm-tint);
 }
 /* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
@@ -1857,9 +1921,11 @@ onDestroy(() => {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
-/* The leading SOG and COG are the strip's hero numbers, the values a helmsman glances at most, so
-   they take the full instrument-readout size, a step above the trailing position cluster. */
-.strip-start .readout b {
+/* Every footer readout number, leading (AIS, SOG, COG) and trailing (the position cluster), takes
+   the same instrument-readout size, so the strip reads as one instrument row rather than two
+   mismatched type sizes. */
+.strip-start .readout b,
+.center-cluster .readout b {
   font-size: var(--text-readout);
 }
 </style>
