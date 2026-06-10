@@ -13,22 +13,21 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.3.1
+## What's new in 0.4.0
 
-A pass over the existing features for safety, honesty under failure, performance, and accessibility:
+Four new at-sea features, built for the watchkeeper:
 
-- **Honest under failure.** When the GPS feed stops, the footer shows "No GPS fix" and dashes the
-  speed and course instead of holding a frozen value out as live, and the collision and course math
-  stand down. The connection badge reads "Reconnecting" or "Not connected" during an outage.
-- **Safer alarms.** The collision mute is now session-only and auto-expires after ten minutes, a close
-  and imminent contact overrides mute and acknowledge, and acknowledging keeps the danger readout on
-  screen while the target is still closing.
-- **Steering at a glance.** A cross-track deviation needle on the nav strip, an arrival banner paired
-  with the tone, and an "AIS" chip confirming the collision watch is live.
-- **Lighter on the hardware.** The chart's idle render loops no longer run at full frame rate at
-  anchor, and the weather and wind layers stop forcing continuous GPU work.
-- **More accessible.** Opening a panel moves focus into it, disclosure toggles announce their state,
-  confirm steps focus their new control, and route delete asks before it removes a saved route.
+- **Anchor watch.** Drop the anchor, set or capture the swing radius, and get a drag alarm that
+  latches until acknowledged. Drives the signalk-anchoralarm-plugin when installed (the alarm keeps
+  running with the browser closed) and watches fully in the browser when it is not.
+- **Man overboard.** An always-visible MOB button centered in the top bar, with a confirm pop-out so
+  a stray tap can never raise the alarm. Confirming marks the spot, alerts every station on the
+  boat, and raises a recovery strip with live bearing, range, and elapsed time.
+- **Measure tool.** Tap points on the chart for per-leg range and bearing and a running total.
+- **AIS target list.** Every tracked target with live range, bearing, SOG, and CPA and TCPA,
+  sortable and tap-to-locate, with risky contacts colored by the lookout.
+- **Shell polish.** The connection state is a compact status dot, and the footer readouts share one
+  instrument size.
 
 See the [changelog](CHANGELOG.md) for the full list.
 

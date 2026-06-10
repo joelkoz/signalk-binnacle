@@ -4,6 +4,56 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-10
+
+Four new at-sea features (an anchor watch, a man-overboard button, a measure tool, and an AIS
+target list) plus shell refinements from helm feedback.
+
+### Added
+
+- **Anchor watch.** Drop the anchor at the boat, set the swing radius by hand or capture it from
+  the live distance plus a margin, and get a drag alarm after three consecutive fixes outside the
+  circle. The alarm latches until acknowledged, so a boat that swings back inside cannot silently
+  clear an alarm you never saw, and the watch survives a reload. When the signalk-anchoralarm-plugin
+  is installed, Binnacle drives it instead, so the alarm keeps running with the browser closed; the
+  panel says which mode is watching. On the chart: the swing circle, a rode line, and a drop-point
+  marker you can drag to where the hook actually lies.
+- **Man overboard.** An always-visible MOB button centered in the top bar. One tap pops out a
+  large confirm (so a stray tap can never raise the alarm, and the window self-dismisses); the
+  confirm marks the spot, publishes the boat-wide `notifications.mob` alarm so every station sees
+  it, flies the chart to the mark, and raises a recovery strip with live bearing, range, and
+  elapsed time. Steering to the mark stays a deliberate second tap (Steer to MOB) through the
+  course system, never automatic, since a coupled autopilot may follow the course. An MOB raised
+  by another station shows here too, and the mark survives a reload.
+- **Measure tool.** Arm it from the menu, tap points on the chart, and read each leg's range and
+  bearing plus the running total, with the total labeled at the last point. Undo, Clear, Done, or
+  Escape.
+- **AIS target list.** Every tracked target as a tappable card with name or MMSI, live range and
+  bearing, SOG, and CPA and TCPA when available, sortable by range, CPA, or name, with the
+  lookout's severity coloring risky contacts and a tap flying the chart to the target.
+- A depth readout in the anchor panel when a sounder publishes `environment.depth.belowTransducer`.
+
+### Changed
+
+- The footer's "Connected" text is now a compact status dot: green by day and dusk, a calm dim red
+  in night-red (which forbids green), and the caution color while the stream is down. The label
+  remains for screen readers and the hover title, and the dot stays on phones where the word used
+  to be hidden.
+- The trailing position cluster's numerals now take the same instrument-readout size as the
+  leading AIS, SOG, and COG readouts, so the footer reads as one instrument row.
+- The four feature alarms now share one edge-triggered core (`GatedAlarm`), with the collision
+  alarm keeping its escalation-overrides-mute policy on top; tones are unchanged, and each alarm
+  remains audibly distinct (MOB above the collision two-beep, anchor between collision and
+  arrival).
+
+### Fixed
+
+- The MOB trigger's boat-wide notification never actually left the browser: the position object
+  read from the live store is a reactive proxy, which cannot be structured-cloned into the stream
+  worker, so the publish threw and was lost while the local strip looked fine. The mark is now
+  snapshotted into a plain object, with a regression test, and the round trip is verified against
+  a live server.
+
 ## [0.3.1] - 2026-06-10
 
 A pass over the existing features for safety, honesty under failure, performance on modest hardware,
