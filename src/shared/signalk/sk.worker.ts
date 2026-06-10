@@ -21,6 +21,10 @@ class SignalKWorker implements SignalKClientApi {
     this.#core.publish(delta);
   }
 
+  async reconnect(): Promise<void> {
+    this.#core.reconnect();
+  }
+
   async disconnect(): Promise<void> {
     this.#core.disconnect();
   }

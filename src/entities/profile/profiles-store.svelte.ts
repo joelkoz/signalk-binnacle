@@ -42,6 +42,20 @@ export class LocalProfileAdapter implements ProfileAdapter {
   }
 }
 
+// A light shape guard for a stored profile: enough to drop a grossly malformed or drifted entry at
+// load rather than trust it. The deep settings validation lives in the features layer (isProfileSettings)
+// and runs on import; entities cannot reach up to it, so a load-time guard stays minimal here.
+function isStoredProfile(value: unknown): value is Profile {
+  if (!value || typeof value !== 'object') return false;
+  const p = value as Record<string, unknown>;
+  return (
+    typeof p.id === 'string' &&
+    typeof p.name === 'string' &&
+    !!p.settings &&
+    typeof p.settings === 'object'
+  );
+}
+
 // The reactive home for saved profiles. Each mutation updates the runes and persists the whole
 // state through the adapter, so the on-disk document always matches what the UI shows.
 export class ProfileStore {
@@ -63,7 +77,7 @@ export class ProfileStore {
     this.#adapter = adapter;
     const stored = adapter.load();
     if (stored) {
-      this.profiles = stored.profiles ?? [];
+      this.profiles = (stored.profiles ?? []).filter(isStoredProfile);
       this.activeId = stored.activeId;
       this.#defaultId = stored.defaultId;
     }

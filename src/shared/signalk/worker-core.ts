@@ -62,6 +62,13 @@ export class WorkerCore {
     this.#connection?.send(delta);
   }
 
+  // Reconnect immediately, resetting the backoff. SkConnection.connect drops any pending reconnect
+  // timer and the old socket, so calling it while down skips the remaining backoff delay; the
+  // subscription registry resubscribes everything on open. A no-op before the first connect.
+  reconnect(): void {
+    this.#connection?.connect();
+  }
+
   disconnect(): void {
     // Drop any flush the batcher had scheduled before tearing the socket down, so a queued frame
     // cannot fire into the store after disconnect and leave the worker non-idempotent.

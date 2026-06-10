@@ -113,5 +113,8 @@ export interface SignalKClientApi {
   // socket is not open, with no transport-level replay; the producer resends on its next
   // changed value.
   publish(delta: Delta): Promise<void>;
+  // Reconnect now, resetting the backoff. Used when the OS reports the network is back, so a long
+  // outage does not wait out the full backoff delay before the next attempt.
+  reconnect(): Promise<void>;
   disconnect(): Promise<void>;
 }

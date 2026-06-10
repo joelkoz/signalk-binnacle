@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PmtilesStore } from '$shared/storage';
-import { UserCharts } from './user-charts.svelte';
+import { isUserChartSource, UserCharts } from './user-charts.svelte';
 
 // The entity reads PMTiles metadata through $shared/map; stub it so the test does not need a real
 // archive. The descriptor's name defaults to this meta name unless the commit overrides it.
@@ -32,6 +32,37 @@ function fakeStore(): { store: PmtilesStore; blobs: Map<string, Blob> } {
     },
   };
 }
+
+describe('isUserChartSource', () => {
+  const valid = {
+    id: 'c1',
+    name: 'Chart',
+    kind: 'vector',
+    origin: { type: 'file', storeId: 's1' },
+  };
+
+  it('accepts a well-formed descriptor', () => {
+    expect(isUserChartSource(valid)).toBe(true);
+    expect(
+      isUserChartSource({ ...valid, origin: { type: 'url', url: 'https://x/y.pmtiles' } }),
+    ).toBe(true);
+  });
+
+  it('rejects drifted or malformed descriptors', () => {
+    expect(isUserChartSource(null)).toBe(false);
+    expect(isUserChartSource({ ...valid, id: 1 })).toBe(false);
+    expect(isUserChartSource({ ...valid, kind: 'bitmap' })).toBe(false);
+    expect(isUserChartSource({ ...valid, origin: { type: 'file' } })).toBe(false);
+    expect(isUserChartSource({ ...valid, origin: { type: 'other' } })).toBe(false);
+    expect(isUserChartSource({ ...valid, bounds: [0, 0, Number.NaN, 1] })).toBe(false);
+  });
+
+  it('drops invalid persisted descriptors on construction', () => {
+    const { store } = fakeStore();
+    const charts = new UserCharts(store, [valid, { id: 'bad' }] as never, () => {});
+    expect(charts.sources.map((s) => s.id)).toEqual(['c1']);
+  });
+});
 
 describe('UserCharts stage, commit, and remove', () => {
   it('stages a URL chart without saving, then commits with the edited name', async () => {

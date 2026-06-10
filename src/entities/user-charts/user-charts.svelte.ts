@@ -17,6 +17,37 @@ export interface UserChartSource {
   byteSize?: number;
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+// Guards a persisted chart descriptor against schema drift across releases: a renamed or removed
+// field would otherwise flow in as undefined and surface deep in rendering (or as a NaN passed to
+// fitBounds). A descriptor that fails the guard is dropped at load rather than trusted.
+export function isUserChartSource(value: unknown): value is UserChartSource {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.id !== 'string' || typeof v.name !== 'string') return false;
+  if (v.kind !== 'vector' && v.kind !== 'raster') return false;
+  const origin = v.origin;
+  if (!origin || typeof origin !== 'object') return false;
+  const o = origin as Record<string, unknown>;
+  if (o.type === 'url') {
+    if (typeof o.url !== 'string') return false;
+  } else if (o.type === 'file') {
+    if (typeof o.storeId !== 'string') return false;
+  } else {
+    return false;
+  }
+  if (
+    v.bounds !== undefined &&
+    (!Array.isArray(v.bounds) || v.bounds.length !== 4 || !v.bounds.every(isFiniteNumber))
+  ) {
+    return false;
+  }
+  return true;
+}
+
 // A staged import: the resolved descriptor (not yet saved) plus, for a file import, the file to
 // store on commit. Staging reads the PMTiles metadata so the user can review and rename before save.
 export interface DraftChart {
@@ -78,7 +109,9 @@ export class UserCharts {
     onRemove?: (source: UserChartSource) => void,
   ) {
     this.#store = store;
-    this.sources = persisted;
+    // Drop any persisted descriptor that no longer matches the schema, so a drifted entry from an
+    // older build cannot flow in as a partly-undefined source.
+    this.sources = persisted.filter(isUserChartSource);
     this.#persist = persist;
     this.#onAdd = onAdd;
     this.#onRemove = onRemove;

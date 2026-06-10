@@ -47,6 +47,19 @@ const profile = (id: string, name: string, updatedAt: number): Profile => ({
 // Let the single-flight push runner finish: it is started but not awaited by syncWithServer/#persist.
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+describe('ProfileStore load guard', () => {
+  it('drops a malformed stored profile at load', () => {
+    const good = profile('good', 'Good', 1);
+    const adapter = fakeAdapter({
+      profiles: [good, { id: 'bad' } as unknown as Profile, null as unknown as Profile],
+      activeId: undefined,
+      defaultId: undefined,
+    });
+    const store = new ProfileStore(adapter);
+    expect(store.profiles.map((p) => p.id)).toEqual(['good']);
+  });
+});
+
 const settings = (overrides: Partial<ProfileSettings> = {}): ProfileSettings => ({
   theme: 'day',
   layers: {},
