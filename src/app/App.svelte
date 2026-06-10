@@ -1322,6 +1322,30 @@ onDestroy(() => {
       <AppMenu items={menuItems} open={menuOpen} onOpenChange={(next) => (menuOpen = next)} />
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>
+    <span class="mob-slot">
+      <button
+        type="button"
+        class="btn btn-pill mob-btn"
+        class:is-on={mob.active}
+        aria-pressed={mob.active}
+        aria-expanded={mob.active ? undefined : mobConfirming}
+        aria-label={mob.active ? 'Fly to the man overboard mark' : 'Mark man overboard here'}
+        title={mob.active
+          ? 'Fly to the MOB mark'
+          : 'Mark man overboard at the boat position (asks to confirm)'}
+        disabled={!mob.active && !vessel.position}
+        onclick={onMobButton}
+      >
+        <LifeBuoy size={16} aria-hidden="true" />
+        MOB
+      </button>
+      {#if mobConfirming}
+        <button type="button" class="btn mob-confirm" onclick={onMobConfirm}>
+          <LifeBuoy size={18} aria-hidden="true" />
+          Confirm man overboard
+        </button>
+      {/if}
+    </span>
     <span class="topbar-actions">
       {#if collisionMute.active}
         <button
@@ -1553,8 +1577,15 @@ onDestroy(() => {
   </section>
   <footer class="status-strip">
     <div class="strip-start">
-      <span class="conn" class:conn--down={connectionDown} role="status" aria-live="polite">
-        {connectionLabel}
+      <span
+        class="conn"
+        class:conn--down={connectionDown}
+        role="status"
+        aria-live="polite"
+        title={connectionLabel}
+      >
+        <span class="conn-dot" aria-hidden="true"></span>
+        <span class="visually-hidden">{connectionLabel}</span>
       </span>
       {#if !net.online}
         <span class="readout offline" role="status" aria-live="polite">Offline</span>
@@ -1588,30 +1619,6 @@ onDestroy(() => {
       >
     </div>
     <div class="strip-center">
-      <span class="mob-slot">
-        {#if mobConfirming}
-          <button type="button" class="btn mob-confirm" onclick={onMobConfirm}>
-            <LifeBuoy size={18} aria-hidden="true" />
-            Confirm man overboard
-          </button>
-        {/if}
-        <button
-          type="button"
-          class="btn btn-pill mob-btn"
-          class:is-on={mob.active}
-          aria-pressed={mob.active}
-          aria-expanded={mob.active ? undefined : mobConfirming}
-          aria-label={mob.active ? 'Fly to the man overboard mark' : 'Mark man overboard here'}
-          title={mob.active
-            ? 'Fly to the MOB mark'
-            : 'Mark man overboard at the boat position (asks to confirm)'}
-          disabled={!mob.active && !vessel.position}
-          onclick={onMobButton}
-        >
-          <LifeBuoy size={16} aria-hidden="true" />
-          MOB
-        </button>
-      </span>
       <button
         type="button"
         class="btn btn-pill"
@@ -1694,10 +1701,13 @@ onDestroy(() => {
   font-weight: 600;
   z-index: var(--z-overlay);
 }
+/* Three columns so the MOB button sits dead center regardless of how wide the brand and the
+   action cluster are; the flanks are 1fr each so the center cannot drift. */
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   border-block-end: 1px solid var(--border);
 }
@@ -1710,8 +1720,9 @@ onDestroy(() => {
 .topbar-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
-  flex-shrink: 0;
+  min-inline-size: 0;
 }
 .brand {
   font-weight: 600;
@@ -1816,13 +1827,11 @@ onDestroy(() => {
   gap: var(--space-2);
   min-inline-size: 0;
 }
-/* On a phone or small tablet the three labeled pills and the live readouts do not fit one row, so the
+/* On a phone or small tablet the labeled pills and the live readouts do not fit one row, so the
    strip stacks into one centered column: the readouts above, and Center, Follow, and Forecast on a
-   single row below within thumb reach. The duplicate position cluster drops (the chart and panels still
-   report it) and the connection label is visually hidden rather than display:none so its polite live
-   region keeps announcing. This block sits after the base rules above, so it wins the cascade when the
-   query matches. The single row needs about 840px for the readouts, the three pills, and the position
-   cluster, so the strip stacks below 900px to keep a comfortable margin. */
+   single row below within thumb reach. The duplicate position cluster drops (the chart and panels
+   still report it); the connection dot is small enough to stay. This block sits after the base rules
+   above, so it wins the cascade when the query matches. */
 @media (max-width: 900px) {
   .status-strip {
     grid-template-columns: 1fr;
@@ -1836,23 +1845,25 @@ onDestroy(() => {
   .center-cluster {
     display: none;
   }
-  .conn {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
 }
 .offline {
   color: var(--alarm);
 }
-/* The connection badge turns to the caution color while the stream is reconnecting or closed, so a
-   mid-passage drop reads at a glance instead of staying the muted "Connected" gray. */
-.conn--down {
-  color: var(--warning);
-  font-weight: 600;
+/* The connection state is a compact dot (its label stays for assistive tech and the hover title):
+   the healthy token while the stream is up, the caution color while it is reconnecting or closed,
+   so a mid-passage drop still reads at a glance without the word taking strip space. */
+.conn {
+  display: inline-flex;
+  align-items: center;
+}
+.conn-dot {
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.conn--down .conn-dot {
+  background: var(--warning);
 }
 /* A lost own fix is a caution, not an alarm: the boat is still where it was, the position is just no
    longer updating. Warning-colored and calm, beside the dashed SOG and COG. */
@@ -1893,10 +1904,10 @@ onDestroy(() => {
   background: var(--alarm-tint);
 }
 /* The confirm is deliberately big (a panicked, gloved tap must land) and unmistakably the alarm
-   surface, floated above the strip so it cannot be hit by the tap that opened it. */
+   surface, dropped below the top-bar button so it cannot be hit by the tap that opened it. */
 .mob-confirm {
   position: absolute;
-  inset-block-end: calc(100% + var(--space-2));
+  inset-block-start: calc(100% + var(--space-2));
   inset-inline-start: 50%;
   transform: translateX(-50%);
   white-space: nowrap;

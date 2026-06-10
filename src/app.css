@@ -57,6 +57,10 @@
   --accent: #0d5a86;
   --accent-contrast: #ffffff;
   --select: #ffb300;
+  /* Healthy-state indicator (the connection dot): green by day and dusk; night-red forbids green,
+     so it collapses to a calm dim red told from --alarm and --warning by brightness, the same
+     contract as the navPort lateral mark. */
+  --ok: #2e8a52;
   --alarm: #c8401f;
   /* Caution tier, one step below --alarm: a dark amber by day (dark enough to read as text on the
      light surface and clearly gold rather than red), a lighter amber by dusk, and a dimmer red at
@@ -90,6 +94,7 @@
   --accent: #2c6da3;
   --accent-contrast: #f4fbff;
   --select: #ffc24d;
+  --ok: #3fae6a;
   --alarm: #e0703a;
   --warning: #d9a441;
   --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.45);
@@ -114,6 +119,7 @@
   --accent: #e0473a;
   --accent-contrast: #1a0000;
   --select: #ffb39a;
+  --ok: #7a2620;
   --alarm: #ff6a5a;
   /* A medium red, dimmer than the brighter --alarm so danger and caution stay distinguishable by
      brightness alone, with no blue or green. */
