@@ -18,13 +18,21 @@ export function openIdbDatabase(
   let dbPromise: Promise<IDBDatabase> | undefined;
   return () => {
     if (!dbPromise) {
-      dbPromise = new Promise((resolve, reject) => {
+      const pending = new Promise<IDBDatabase>((resolve, reject) => {
         const req = factory.open(dbName, version);
         req.onupgradeneeded = () => upgrade(req.result);
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
         // A second tab holding the prior version blocks the upgrade; reject instead of hanging.
         req.onblocked = () => reject(new Error('indexedDB open blocked'));
+      });
+      dbPromise = pending;
+      // On failure (a transient error, or a second tab blocking the upgrade) clear the memo so the
+      // next call retries the open, rather than pinning every store to memory for the whole session
+      // by reusing a permanently-rejected promise. The catch only resets state; awaiters still see
+      // the rejection through their own handle on `pending`.
+      pending.catch(() => {
+        if (dbPromise === pending) dbPromise = undefined;
       });
     }
     return dbPromise;

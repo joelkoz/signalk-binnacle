@@ -66,8 +66,10 @@ describe('fetchCharts', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     await fetchCharts('http://pi.local', 'tok');
-    expect(fetchMock).toHaveBeenCalledWith('http://pi.local/signalk/v2/api/resources/charts', {
-      headers: { Authorization: 'Bearer tok' },
-    });
+    // objectContaining tolerates the timeout AbortSignal the resource client now adds to every init.
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://pi.local/signalk/v2/api/resources/charts',
+      expect.objectContaining({ headers: { Authorization: 'Bearer tok' } }),
+    );
   });
 });

@@ -116,6 +116,9 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
           // Promote the L2 hit into L1 with the persisted absolute expiry, so the in-memory copy
           // expires exactly when the persisted entry would, rather than restarting the TTL from now.
           gridCache.putAt(key, stored.value, stored.expires, t);
+          // Prune here too, not only after a network fetch: a long offline session keeps hitting the
+          // cache and would otherwise never evict expired L2 entries.
+          void deps.persist.prune(t);
           return { grid: stored.value, partial: false, fromNetwork: false };
         }
         if (t < gridCooldownUntil) return { grid: undefined, partial: false, fromNetwork: false };

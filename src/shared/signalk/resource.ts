@@ -1,3 +1,5 @@
+import { withTimeout } from '$shared/lib';
+
 // Helpers shared by the resource clients (charts, notes, tracks): the bearer-auth request init
 // and the string guards for parsing untyped resource JSON. A token is sent only when present.
 
@@ -51,7 +53,7 @@ async function tryKeyedResource<T>(
   onError?: (url: string, status: number) => void,
 ): Promise<T[] | undefined> {
   try {
-    const response = await fetch(url, authInit(token));
+    const response = await fetch(url, withTimeout(authInit(token)));
     if (!response.ok) {
       onError?.(url, response.status);
       return undefined;
@@ -79,11 +81,13 @@ export async function putResource(
   try {
     const response = await fetch(
       url,
-      authInit(token, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }),
+      withTimeout(
+        authInit(token, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }),
+      ),
     );
     return response.ok;
   } catch {
@@ -94,7 +98,7 @@ export async function putResource(
 // DELETE a resource URL, returning whether it succeeded. Never throws (see putResource).
 export async function deleteResource(url: string, token: string | undefined): Promise<boolean> {
   try {
-    const response = await fetch(url, authInit(token, { method: 'DELETE' }));
+    const response = await fetch(url, withTimeout(authInit(token, { method: 'DELETE' })));
     return response.ok;
   } catch {
     return false;
