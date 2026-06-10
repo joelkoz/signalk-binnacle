@@ -3,6 +3,7 @@ import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
 import type { AnchorWatch } from '$entities/anchor';
 import type { CollisionAssessment } from '$entities/collision';
+import type { MobStore } from '$entities/mob';
 import type { RouteStore } from '$entities/route';
 import type { TidesStore } from '$entities/tides';
 import type { TrackRecorder } from '$entities/track';
@@ -15,6 +16,7 @@ import { fetchCharts } from '$features/charts';
 import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
 import { LayersView } from '$features/layers-panel';
 import { COLLISION_OVERLAY_ID, createCollisionOverlay } from '$features/lookout';
+import { createMobOverlay, MOB_OVERLAY_ID } from '$features/mob';
 import { createMpaOverlay, MPA_SOURCES } from '$features/mpa-overlays';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { buildOceanSources, createOceanOverlay } from '$features/ocean-conditions';
@@ -46,6 +48,8 @@ interface Props {
   aisTargets: AisTargets;
   // The anchor watch, drawn as the swing circle, rode line, and draggable drop-point marker.
   anchor: AnchorWatch;
+  // The man-overboard mark, pinned with the collision ring so nothing can hide it.
+  mob: MobStore;
   collision: CollisionAssessment;
   recorder: TrackRecorder;
   // The route store, drawn by the route overlay and edited on the chart via Terra Draw.
@@ -88,6 +92,7 @@ const {
   vessel,
   aisTargets,
   anchor,
+  mob,
   collision,
   recorder,
   routeStore,
@@ -140,9 +145,10 @@ onMount(() => {
       onChange: onLayersChange,
       savedOrder,
       onOrderChange,
-      // The own vessel and active collision alarms stay pinned on top so a chart or traffic can
-      // never hide them; bottom to top, collision sits just beneath the vessel.
-      pinned: [COLLISION_OVERLAY_ID, OWN_VESSEL_OVERLAY_ID],
+      // The own vessel, an active MOB mark, and active collision alarms stay pinned on top so a
+      // chart or traffic can never hide them; bottom to top, collision, then the MOB mark, then
+      // the vessel itself.
+      pinned: [COLLISION_OVERLAY_ID, MOB_OVERLAY_ID, OWN_VESSEL_OVERLAY_ID],
     },
     onView: (view) => onViewChange?.(view),
     onUserPan: () => onUserPan?.(),
@@ -185,6 +191,7 @@ onMount(() => {
       // safety overlays, the ocean fields, and the charts at the base); the order below sets only the
       // order within a band.
       const anchorOverlay = createAnchorOverlay(anchor, vessel, onAnchorMoved);
+      const mobOverlay = createMobOverlay(mob, vessel);
       const routeOverlay = createRouteOverlay(routeStore);
       const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect);
       const aisOverlay = createAisOverlay(aisTargets, store);
@@ -207,6 +214,7 @@ onMount(() => {
         notesOverlay,
         aisOverlay,
         collisionOverlay,
+        mobOverlay,
         trackOverlay,
         overlay,
       ]);
@@ -292,6 +300,7 @@ onMount(() => {
         notesOverlay,
         aisOverlay,
         collisionOverlay,
+        mobOverlay,
         trackOverlay,
         overlay,
       ]);

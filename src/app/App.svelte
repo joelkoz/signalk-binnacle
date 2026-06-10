@@ -5,6 +5,7 @@ import {
   BellOff,
   CloudSun,
   Layers,
+  LifeBuoy,
   LocateFixed,
   Navigation,
   Route,
@@ -20,6 +21,7 @@ import { AisTargets } from '$entities/ais';
 import { AnchorWatch } from '$entities/anchor';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
+import { MobStore } from '$entities/mob';
 import {
   type Profile,
   type ProfileSettings,
@@ -52,6 +54,7 @@ import {
   ThresholdsPanel,
 } from '$features/lookout';
 import { AppMenu, type MenuItem } from '$features/menu';
+import { MobAlarm, MobStrip, mobClearNotification, mobNotification } from '$features/mob';
 import { ArrivalAlarm, NavStrip, type RouteProgress } from '$features/navigation';
 import {
   createNoteDetailLoader,
@@ -164,6 +167,11 @@ const collisionNotifier = new CollisionNotifier(
 // drag alarm mirrors the collision split: an audible tone here, the strip and live region below.
 const anchor = new AnchorWatch(store, vessel);
 const anchorAlarm = new AnchorAlarm();
+
+// Man overboard: one tap on the strip button marks the spot, publishes the boat-wide alarm, and
+// raises the recovery strip; a remote station's notifications.mob raises it here too.
+const mob = new MobStore(store, vessel, clock);
+const mobAlarm = new MobAlarm();
 
 // Track recording: client-side from navigation.position, persisted whole-voyage in IndexedDB.
 const trackSettings = createTrackSettings();
@@ -605,6 +613,55 @@ const anchorAlert = $derived.by(() => {
   const limit = radius == null ? '' : `, watch radius ${Math.round(radius)} meters`;
   return `Anchor alarm: the boat is dragging${where}${limit}.`;
 });
+
+// Sound the man-overboard alarm while a mark is active and unacknowledged.
+$effect(() => {
+  mobAlarm.update(mob.active, mob.acknowledged);
+});
+
+// The MOB channel of the assertive live region, the most urgent announcement in the app.
+const mobAlert = $derived.by(() => {
+  if (!mob.active || mob.acknowledged) return '';
+  const distance = mob.distanceMeters;
+  const range = distance == null ? '' : `, range ${Math.round(distance)} meters`;
+  return `Man overboard${range}. Steer back to the mark.`;
+});
+
+function publishMobValue(value: unknown): void {
+  void client.publish({
+    context: SELF_CONTEXT,
+    updates: [{ values: [{ path: SK_PATHS.mobNotification, value }] }],
+  });
+}
+
+// One tap: mark the spot, tell the whole boat, and bring the mark into view. Guidance only; the
+// course (and any coupled autopilot) is touched solely by the strip's deliberate Steer to MOB.
+function onMobTrigger(): void {
+  const mark = mob.trigger();
+  if (!mark) return;
+  publishMobValue(mobNotification(mark.position));
+  mapCommands?.flyTo(mark.position.latitude, mark.position.longitude);
+}
+
+// While a mark exists the button flies to it instead of re-marking, so a second press cannot move
+// the spot away from the person in the water; with no mark yet (including a remote alarm that
+// carried none), it marks here.
+function onMobButton(): void {
+  const mark = mob.position;
+  if (mark) mapCommands?.flyTo(mark.latitude, mark.longitude);
+  else onMobTrigger();
+}
+
+function onMobCancel(): void {
+  mob.cancel();
+  publishMobValue(mobClearNotification());
+}
+
+// The deliberate second tap: hand the mark to the course system via the existing goto plumbing.
+function onMobSteer(): void {
+  const mark = mob.position;
+  if (mark) void onGoToHere(mark);
+}
 
 // An anchor error shown in the panel until the next anchor action (the boat-error persistence
 // rationale on routeError applies here too).
@@ -1055,6 +1112,7 @@ const primeAudio = () => {
   lookoutAlarm.prime();
   arrivalAlarm.prime();
   anchorAlarm.prime();
+  mobAlarm.prime();
 };
 
 const CONNECTION_LABELS: Record<ConnectionPhase, string> = {
@@ -1140,6 +1198,7 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.anchorPosition, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.anchorMaxRadius, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.anchorNotification, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.mobNotification, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.position, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.courseOverGroundTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.speedOverGround, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
@@ -1181,6 +1240,7 @@ onDestroy(() => {
   window.removeEventListener('pointerdown', primeAudio);
   lookoutAlarm.stop();
   anchorAlarm.stop();
+  mobAlarm.stop();
   auth.stop();
   net.dispose();
   clock.dispose();
@@ -1194,6 +1254,9 @@ onDestroy(() => {
   </div>
   <div class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true">
     {anchorAlert}
+  </div>
+  <div class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true">
+    {mobAlert}
   </div>
   <div class="visually-hidden" aria-live="polite" aria-atomic="true">{muteAlert}</div>
   <header class="topbar">
@@ -1234,6 +1297,7 @@ onDestroy(() => {
       {vessel}
       {aisTargets}
       {anchor}
+      {mob}
       {collision}
       {recorder}
       {routeStore}
@@ -1280,6 +1344,7 @@ onDestroy(() => {
         muted={collisionMute.active}
         onToggleMute={() => collisionMute.toggle()}
       />
+      <MobStrip {mob} onSteer={onMobSteer} onCancel={onMobCancel} />
     </div>
     {#if selectedNote && noteLoader}
       <div class="note-panel-slot">
@@ -1451,6 +1516,19 @@ onDestroy(() => {
       >
     </div>
     <div class="strip-center">
+      <button
+        type="button"
+        class="btn btn-pill mob-btn"
+        class:is-on={mob.active}
+        aria-pressed={mob.active}
+        aria-label={mob.active ? 'Fly to the man overboard mark' : 'Mark man overboard here'}
+        title={mob.active ? 'Fly to the MOB mark' : 'Mark man overboard at the boat position'}
+        disabled={!mob.active && !vessel.position}
+        onclick={onMobButton}
+      >
+        <LifeBuoy size={16} aria-hidden="true" />
+        MOB
+      </button>
       <button
         type="button"
         class="btn btn-pill"
@@ -1715,6 +1793,16 @@ onDestroy(() => {
 }
 .anchor-chip--alarm b {
   color: var(--alarm);
+}
+/* The MOB button reads as the emergency control it is: alarm-colored at rest, alarm-tinted while a
+   mark is active (when it becomes fly-to-mark instead of re-marking). */
+.mob-btn {
+  color: var(--alarm);
+  border-color: var(--alarm);
+  font-weight: 600;
+}
+.mob-btn.is-on {
+  background: var(--alarm-tint);
 }
 /* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
 .readout {
