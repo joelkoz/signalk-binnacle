@@ -72,6 +72,23 @@ describe('WorkerCore', () => {
     expect(frame?.ais?.get('vessels.self-urn')).toBeUndefined();
   });
 
+  it('delivers a connection-only frame on each phase change, even without data', () => {
+    const frames: SKFrame[] = [];
+    const core = new WorkerCore();
+    core.connect('ws://test', (f) => frames.push(f));
+    // The connecting phase reaches the store immediately, carrying no self values.
+    expect(frames.at(-1)?.connection.phase).toBe('connecting');
+    expect(frames.at(-1)?.self.size).toBe(0);
+    const ws = FakeWebSocket.instances[0];
+    ws.open();
+    expect(frames.at(-1)?.connection.phase).toBe('open');
+    // A dropped socket produces no data; the reconnecting phase must still reach the store so the
+    // connection badge does not keep reading "Connected" through the outage.
+    ws.close();
+    expect(frames.at(-1)?.connection.phase).toBe('reconnecting');
+    expect(frames.at(-1)?.self.size).toBe(0);
+  });
+
   it('treats vessels.self context as own vessel', () => {
     const frames: SKFrame[] = [];
     const core = new WorkerCore();

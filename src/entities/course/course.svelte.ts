@@ -113,10 +113,17 @@ export class CourseGuidance {
     return this.#info.nextPoint?.position;
   }
 
+  // The vessel position only while the fix is fresh. A stale fix must not feed the computed-fallback
+  // geodesy, or DTW, BTW, XTE, and VMG would keep ticking off a frozen position. The server's own
+  // calcValues, when present, are the server's responsibility and pass through untouched.
+  get #freshPos(): LatLon | undefined {
+    return this.#vessel.positionStale ? undefined : this.#vessel.position;
+  }
+
   // The leg origin: the server's previousPoint when present, else the vessel's own position so a
   // single-mark "go to" with no leg origin still yields a sensible cross-track baseline.
   get #prev(): LatLon | undefined {
-    return this.#info.previousPoint?.position ?? this.#vessel.position;
+    return this.#info.previousPoint?.position ?? this.#freshPos;
   }
 
   // The active-leg readouts are $derived so each leg's geodesy is computed once per dependency
@@ -126,19 +133,19 @@ export class CourseGuidance {
   // cross-track ran two or three times per render in the computed-fallback path.
   distanceToNextMeters: number | undefined = $derived.by(() => {
     if (this.#calc?.distance != null) return this.#calc.distance;
-    const pos = this.#vessel.position;
+    const pos = this.#freshPos;
     return pos && this.#next ? rhumbDistanceMeters(pos, this.#next) : undefined;
   });
 
   bearingToNextRad: number | undefined = $derived.by(() => {
     if (this.#calc?.bearingTrue != null) return this.#calc.bearingTrue;
-    const pos = this.#vessel.position;
+    const pos = this.#freshPos;
     return pos && this.#next ? rhumbBearingRad(pos, this.#next) : undefined;
   });
 
   crossTrackErrorMeters: number | undefined = $derived.by(() => {
     if (this.#calc?.crossTrackError != null) return this.#calc.crossTrackError;
-    const pos = this.#vessel.position;
+    const pos = this.#freshPos;
     return pos && this.#prev && this.#next
       ? crossTrackErrorMeters(this.#prev, this.#next, pos)
       : undefined;
@@ -146,7 +153,7 @@ export class CourseGuidance {
 
   velocityMadeGoodMps: number | undefined = $derived.by(() => {
     if (this.#calc?.velocityMadeGood != null) return this.#calc.velocityMadeGood;
-    const pos = this.#vessel.position;
+    const pos = this.#freshPos;
     const sog = this.#vessel.sogMps;
     const cog = this.#vessel.cogRad;
     return pos && this.#next && sog != null && cog != null

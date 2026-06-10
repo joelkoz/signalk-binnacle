@@ -81,6 +81,7 @@ import {
 } from '$features/weather';
 import type { LatLon } from '$shared/geo';
 import {
+  Clock,
   formatBearingOr,
   formatCpaNm,
   formatFixed,
@@ -119,7 +120,10 @@ import { WeatherMap } from '$widgets/weather-map';
 const ALL_VESSELS = 'vessels.*' as Context;
 
 const store = new SignalKStore();
-const vessel = new OwnVessel(store);
+// A one-second reactive clock drives every staleness check (a frozen GPS fix, a dropped feed), so
+// they re-evaluate even while no data arrives. Disposed on teardown.
+const clock = new Clock();
+const vessel = new OwnVessel(store, clock);
 const aisTargets = new AisTargets(store);
 const client = createSignalKClient();
 const auth = new AuthController(serverOrigin());
@@ -976,6 +980,14 @@ const CONNECTION_LABELS: Record<ConnectionPhase, string> = {
 };
 
 const connectionLabel = $derived(CONNECTION_LABELS[store.connection.phase]);
+// The stream is down (not merely connecting at startup) when it is reconnecting or closed. The badge
+// is colored to match, so a mid-passage drop is visible at a glance rather than reading "Connected".
+const connectionDown = $derived(
+  store.connection.phase === 'reconnecting' || store.connection.phase === 'closed',
+);
+// The own fix has aged out: the footer dashes SOG and COG and shows a calm "No GPS fix" note rather
+// than presenting a frozen speed and course as if they were live.
+const fixStale = $derived(vessel.positionStale);
 
 const accessRequestsUrl = `${serverOrigin()}/admin/#/security/access/requests`;
 
@@ -1064,6 +1076,7 @@ onDestroy(() => {
   lookoutAlarm.stop();
   auth.stop();
   net.dispose();
+  clock.dispose();
   void client.disconnect();
 });
 </script>
@@ -1273,12 +1286,21 @@ onDestroy(() => {
   </section>
   <footer class="status-strip">
     <div class="strip-start">
-      <span class="conn" role="status" aria-live="polite">{connectionLabel}</span>
+      <span class="conn" class:conn--down={connectionDown} role="status" aria-live="polite">
+        {connectionLabel}
+      </span>
       {#if !net.online}
         <span class="readout offline" role="status" aria-live="polite">Offline</span>
       {/if}
-      <span class="readout">SOG <b>{formatKnotsOr(vessel.sogMps)}</b> kn</span>
-      <span class="readout">COG <b>{formatBearingOr(vessel.cogRad)}</b>&deg;T</span>
+      {#if fixStale}
+        <span class="readout fix-lost" role="status" aria-live="polite">No GPS fix</span>
+      {/if}
+      <span class="readout"
+        >SOG <b>{formatKnotsOr(fixStale ? undefined : vessel.sogMps)}</b> kn</span
+      >
+      <span class="readout"
+        >COG <b>{formatBearingOr(fixStale ? undefined : vessel.cogRad)}</b>&deg;T</span
+      >
     </div>
     <div class="strip-center">
       <button
@@ -1498,6 +1520,18 @@ onDestroy(() => {
 .offline {
   color: var(--alarm);
 }
+/* The connection badge turns to the caution color while the stream is reconnecting or closed, so a
+   mid-passage drop reads at a glance instead of staying the muted "Connected" gray. */
+.conn--down {
+  color: var(--warning);
+  font-weight: 600;
+}
+/* A lost own fix is a caution, not an alarm: the boat is still where it was, the position is just no
+   longer updating. Warning-colored and calm, beside the dashed SOG and COG. */
+.fix-lost {
+  color: var(--warning);
+  font-weight: 600;
+}
 /* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
 .readout {
   white-space: nowrap;
@@ -1507,9 +1541,9 @@ onDestroy(() => {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
-/* The leading SOG and COG are the strip's hero numbers, so they step up a size over their labels and
-   over the trailing position cluster, the instrument-readout gesture. */
+/* The leading SOG and COG are the strip's hero numbers, the values a helmsman glances at most, so
+   they take the full instrument-readout size, a step above the trailing position cluster. */
 .strip-start .readout b {
-  font-size: var(--text-lg);
+  font-size: var(--text-readout);
 }
 </style>

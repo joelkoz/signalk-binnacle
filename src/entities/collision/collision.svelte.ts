@@ -111,9 +111,14 @@ export class CollisionAssessment {
   #assessment = $derived.by<Assessment>(() => {
     void this.#targets.version;
     const position = this.#vessel.position;
-    const own = position
-      ? { position, sogMps: this.#vessel.sogMps ?? 0, cogRad: this.#vessel.cogRad ?? 0 }
-      : undefined;
+    // A stale own fix is treated as no fix: computing CPA and TCPA against a position the boat left
+    // minutes ago would alarm (or fail to alarm) on geometry that no longer exists. assessContacts
+    // already returns all-clear for an absent fix, so the danger strip and alarm simply stand down
+    // until a fresh position arrives.
+    const own =
+      position && !this.#vessel.positionStale
+        ? { position, sogMps: this.#vessel.sogMps ?? 0, cogRad: this.#vessel.cogRad ?? 0 }
+        : undefined;
     return assessContacts(own, this.#targets.list(), this.#thresholds.value);
   });
 

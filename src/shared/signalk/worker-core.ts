@@ -30,6 +30,12 @@ export class WorkerCore {
     this.#connection = new SkConnection(url, {
       onState: (state) => {
         this.#connectionState = state;
+        // Push the new phase to the store immediately, not piggybacked on the next data frame. A
+        // dropped socket produces no data, so without this the batcher (which only flushes when a
+        // value buffered) never delivers the reconnecting or closed phase and the connection badge
+        // keeps reading "Connected" through the whole outage. An empty-self frame just updates the
+        // connection field; it stamps no cells and bumps no AIS version.
+        this.#onFrame?.({ self: new Map(), connection: state, epoch: Date.now() });
       },
       onDelta: (raw) => this.#ingest(raw),
       onOpen: () => this.#registry?.resubscribeAll(),
@@ -57,6 +63,9 @@ export class WorkerCore {
   }
 
   disconnect(): void {
+    // Drop any flush the batcher had scheduled before tearing the socket down, so a queued frame
+    // cannot fire into the store after disconnect and leave the worker non-idempotent.
+    this.#batcher.reset();
     this.#connection?.disconnect();
   }
 

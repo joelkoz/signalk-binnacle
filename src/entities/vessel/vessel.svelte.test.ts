@@ -43,6 +43,35 @@ describe('OwnVessel', () => {
     expect(vessel.position).toBeUndefined();
   });
 
+  it('reports no staleness before any fix and while a clock is absent', () => {
+    const store = new SignalKStore();
+    // No clock wired: staleness is never reported, the pre-clock behavior.
+    expect(new OwnVessel(store).positionStale).toBe(false);
+    // With a clock but no fix yet, the position is absent, not stale.
+    const clock = $state({ now: 1000 });
+    expect(new OwnVessel(store, clock).positionStale).toBe(false);
+  });
+
+  it('flags the fix stale once it ages past the threshold, fresh again on a new fix', () => {
+    const store = new SignalKStore();
+    const clock = $state({ now: 1000 });
+    const vessel = new OwnVessel(store, clock);
+    // The frame stamps the position cell at epoch 1000.
+    store.applyFrame(frame({ 'navigation.position': { latitude: 1, longitude: 2 } }));
+    clock.now = 1000 + 5_000;
+    expect(vessel.positionStale).toBe(false);
+    clock.now = 1000 + 20_000;
+    expect(vessel.positionStale).toBe(true);
+    // A fresh fix at the current clock clears the staleness.
+    clock.now = 1000 + 21_000;
+    store.applyFrame({
+      self: new Map([['navigation.position', { latitude: 1, longitude: 2 }]]) as SKFrame['self'],
+      connection: { phase: 'open', attempt: 0 },
+      epoch: clock.now,
+    });
+    expect(vessel.positionStale).toBe(false);
+  });
+
   it('pre-creates its cells at construction so reactive reads track them', () => {
     // The store creates a cell lazily on first access. If that first access were a
     // reactive template read, the freshly created $state source would not be tracked

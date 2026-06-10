@@ -7,6 +7,7 @@ beforeEach(() => {
     'requestAnimationFrame',
     (cb: (t: number) => void) => setTimeout(() => cb(0), 0) as unknown as number,
   );
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id));
   vi.useFakeTimers();
 });
 
@@ -50,6 +51,23 @@ describe('FrameBatcher', () => {
     batcher.onFlush = (self) => flushes.push(self);
     vi.runAllTimers();
     expect(flushes).toHaveLength(0);
+  });
+
+  it('reset() drops a pending flush and clears the buffers', () => {
+    const batcher = new FrameBatcher();
+    const flushes: Map<string, Value>[] = [];
+    batcher.onFlush = (self) => flushes.push(self);
+
+    batcher.put('navigation.speedOverGround', 3.1);
+    batcher.reset();
+    vi.runAllTimers();
+    expect(flushes).toHaveLength(0);
+
+    // Still reusable: a later put schedules and flushes afresh.
+    batcher.put('navigation.headingTrue', 1);
+    vi.runAllTimers();
+    expect(flushes).toHaveLength(1);
+    expect(flushes[0]).toEqual(new Map([['navigation.headingTrue', 1]]));
   });
 
   it('accumulates per-vessel writes keyed by context, last write wins', () => {

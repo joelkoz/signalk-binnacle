@@ -1,4 +1,5 @@
 export { formatBytes } from './bytes';
+export { Clock } from './clock.svelte';
 export { formatLatitude, formatLongitude, PLACEHOLDER } from './coords';
 export { downloadBlob, downloadText } from './download';
 export { fetchJsonOrUndefined } from './fetch-json';

@@ -50,6 +50,17 @@ describe('SignalKStore', () => {
     expect(store.connection.phase).toBe('open');
   });
 
+  it('stamps each self cell with the frame epoch for staleness', () => {
+    const store = new SignalKStore();
+    expect(store.cell('navigation.position').epoch).toBe(0);
+    store.applyFrame({
+      self: new Map([['navigation.position', { latitude: 0, longitude: 0 }]]),
+      connection: { phase: 'open', attempt: 0 },
+      epoch: 1234,
+    });
+    expect(store.cell('navigation.position').epoch).toBe(1234);
+  });
+
   it('reacts only for the changed cell, not unrelated cells', () => {
     const store = new SignalKStore();
     const cleanup = $effect.root(() => {

@@ -3,6 +3,11 @@ import { INITIAL_CONNECTION_STATE } from './types';
 
 export class PathCell {
   value = $state<Value | undefined>(undefined);
+  // The wall-clock epoch of the most recent stream update, for staleness checks. Zero until the
+  // first value arrives. Reactive so a consumer comparing it against a ticking clock re-renders
+  // when a fresh value lands. Seeded cells (the course REST hydration writes value directly, not
+  // through applyFrame) leave this at zero, which is correct: those are not stream-aged.
+  epoch = $state(0);
 }
 
 export class SignalKStore {
@@ -26,7 +31,9 @@ export class SignalKStore {
 
   applyFrame(frame: SKFrame): void {
     for (const [path, value] of frame.self) {
-      this.cell(path).value = value;
+      const cell = this.cell(path);
+      cell.value = value;
+      cell.epoch = frame.epoch;
     }
     if (frame.ais) {
       for (const [context, incoming] of frame.ais) {
