@@ -4,6 +4,59 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-10
+
+A pass over the existing features for safety, honesty under failure, performance on modest hardware,
+and accessibility, plus a few navigation additions.
+
+### Added
+
+- Honest data-staleness signals. When the position feed stops, the footer shows a calm "No GPS fix"
+  note and dashes SOG and COG instead of presenting a frozen speed and course as if they were live,
+  and the collision watch and the course guidance stop computing against the stale fix. The connection
+  badge turns to a caution color and reads "Reconnecting" or "Not connected" during an outage instead
+  of staying "Connected".
+- A cross-track deviation needle (a CDI) on the nav strip, so steering to track is a glance rather than
+  a number read, with a caution color when it pegs at full scale.
+- An on-screen arrival banner paired with the arrival tone, for a helm with the volume low.
+- A footer "AIS" chip showing how many targets the collision watch is tracking, so an empty danger
+  strip reads as all-clear rather than as a possible failure.
+- A status note in the weather panel (loading, offline, or showing the last forecast) instead of a
+  blank or silently outdated map.
+
+### Changed
+
+- The collision-alarm mute is now session-only and auto-expires after ten minutes, then re-arms; it is
+  no longer persisted across a reload or carried by a profile, so a mute set in a crowded anchorage
+  cannot silently follow you into the next passage. A close, imminent contact (inside about 0.1 nm and
+  two minutes) overrides both mute and acknowledge, so a real emergency always sounds. Acknowledging a
+  danger now keeps the strip on screen, dimmed, with its CPA and TCPA, while the target is still
+  closing, instead of hiding it.
+- Deleting a route now asks to confirm, with distinct wording when the delete will also stop active
+  navigation. The nav strip disables waypoint-skip at the first and last points and keeps a gutter
+  before Stop, so a mis-tap cannot end navigation.
+- The footer SOG and COG step up to the full instrument-readout size, the numbers a helmsman glances
+  at most.
+- Performance on the Raspberry Pi: the chart's overlays no longer sync at full frame rate while idle
+  (they update on real map repaints plus a low-frequency tick and pause when the tab is hidden), the
+  weather fields and the wind particle field stop forcing continuous GPU work, and a long track
+  simplifies incrementally rather than re-processing the whole track on every fix.
+- Signal K conformance: TCPA accepts the spec's ISO-8601 duration form, the nav strip prefers the
+  server's estimated time of arrival when a provider supplies it, the client-side course fallback uses
+  consistent rhumb-line geometry, and a target that stops reporting is dropped after three minutes
+  rather than six.
+- Resilience: in-app requests time out instead of hanging on a half-open link, the local chart and
+  track stores recover after a transient IndexedDB failure instead of dropping to memory for the
+  session, the stream reconnects immediately when the network returns, and persisted charts and
+  profiles are validated on load so a drifted entry is dropped rather than trusted.
+- Accessibility: opening a panel moves focus into it, the Forecast and Here toggles use aria-expanded,
+  in-place confirm and review steps move focus to their new control, a failed chart import is
+  announced, and the app menu stays open when a mute toggle is flipped.
+
+### Fixed
+
+- The wind particle field no longer freezes after switching away from and back to the browser tab.
+
 ## [0.3.0] - 2026-06-09
 
 ### Added

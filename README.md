@@ -13,24 +13,22 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.3.0
+## What's new in 0.4.0
 
-Profiles, richer routing, and passage planning:
+A pass over the existing features for safety, honesty under failure, performance, and accessibility:
 
-- **Profiles.** Save named bundles of your settings (theme, which layers are on and their order, the
-  weather layers, the collision thresholds, and the track and planning settings), switch between them
-  in one tap, set a default, export and import them as files, and sync them across devices through a
-  secured server.
-- **Tap to navigate.** Long-press or right-click the chart and choose **Go to here** to navigate
-  straight to a point over the Course API.
-- **GPX import and export.** Move routes between Binnacle and other plotters and MFDs.
-- **Passage planning.** A plan speed turns the route's leg table into per-waypoint and whole-route
-  arrival times.
-- **Track-to-route.** Save the current track as a route, reverse a route for the return leg, navigate
-  home by retracing your track, and skip the active waypoint forward or back from the nav strip.
-- **Fixes.** Importing a malformed GPX no longer aborts the import, the Routes opacity slider now dims
-  the waypoint labels with the rest of the route, and the waypoint-skip buttons are a full touch
-  target.
+- **Honest under failure.** When the GPS feed stops, the footer shows "No GPS fix" and dashes the
+  speed and course instead of holding a frozen value out as live, and the collision and course math
+  stand down. The connection badge reads "Reconnecting" or "Not connected" during an outage.
+- **Safer alarms.** The collision mute is now session-only and auto-expires after ten minutes, a close
+  and imminent contact overrides mute and acknowledge, and acknowledging keeps the danger readout on
+  screen while the target is still closing.
+- **Steering at a glance.** A cross-track deviation needle on the nav strip, an arrival banner paired
+  with the tone, and an "AIS" chip confirming the collision watch is live.
+- **Lighter on the hardware.** The chart's idle render loops no longer run at full frame rate at
+  anchor, and the weather and wind layers stop forcing continuous GPU work.
+- **More accessible.** Opening a panel moves focus into it, disclosure toggles announce their state,
+  confirm steps focus their new control, and route delete asks before it removes a saved route.
 
 See the [changelog](CHANGELOG.md) for the full list.
 
