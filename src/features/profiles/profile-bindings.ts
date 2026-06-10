@@ -1,0 +1,104 @@
+import type { ProfileSettings } from '$entities/profile';
+import type { LayerSettings } from '$shared/map';
+import type { PersistedValue, Thresholds, TrackSettings } from '$shared/settings';
+import type { ThemeController } from '$shared/ui';
+
+// Every store a profile captures. All are shared-layer services or entity types, so this binding
+// table lives in the profiles feature without reaching across to another feature or up to a widget;
+// the composition root just hands the constructed services in.
+export interface ProfileBindingDeps {
+  theme: ThemeController;
+  layers: PersistedValue<LayerSettings>;
+  layerOrder: PersistedValue<string[]>;
+  layerCategories: PersistedValue<Record<string, boolean>>;
+  weatherLayers: PersistedValue<LayerSettings>;
+  thresholds: PersistedValue<Thresholds>;
+  trackSettings: PersistedValue<TrackSettings>;
+  planningSpeedKn: PersistedValue<number>;
+  arrivalMuted: PersistedValue<boolean>;
+}
+
+export interface ProfileBindings {
+  // Read every portable store into a profile bundle.
+  capture(): ProfileSettings;
+  // Write every portable store from a bundle. The live map-layer push stays in the composition root,
+  // which owns the map handles.
+  apply(settings: ProfileSettings): void;
+  // Read every portable store, so a reactive effect that calls this re-runs when any of them change.
+  track(): void;
+}
+
+// Defines every portable setting once: how to read it into a profile bundle, how to write it back, and
+// how to track it for the dirty check. Adding a setting is one entry here, not a parallel edit to a
+// capture list, an apply list, and a dirty-tracking list that could drift out of step. The layers and
+// order read the persisted overrides, not the live LayerManager state, which keeps capture cheap and
+// matches what a restore writes back.
+export function createProfileBindings(deps: ProfileBindingDeps): ProfileBindings {
+  // The satisfies clause keys the table by every portable ProfileSettings field (mode is reserved and
+  // inert, so it is excluded), so forgetting a setting is a build error here rather than a silently
+  // incomplete capture. Each read returns just its own slice for the assembled bundle.
+  const table = {
+    theme: {
+      read: () => ({ theme: deps.theme.theme }),
+      write: (s) => deps.theme.set(s.theme),
+      track: () => void deps.theme.theme,
+    },
+    layers: {
+      read: () => ({ layers: { ...deps.layers.value } }),
+      write: (s) => deps.layers.set(s.layers),
+      track: () => void deps.layers.value,
+    },
+    layerOrder: {
+      read: () => ({ layerOrder: [...deps.layerOrder.value] }),
+      write: (s) => deps.layerOrder.set(s.layerOrder),
+      track: () => void deps.layerOrder.value,
+    },
+    layerCategories: {
+      read: () => ({ layerCategories: { ...deps.layerCategories.value } }),
+      write: (s) => deps.layerCategories.set(s.layerCategories),
+      track: () => void deps.layerCategories.value,
+    },
+    weatherLayers: {
+      read: () => ({ weatherLayers: { ...deps.weatherLayers.value } }),
+      write: (s) => deps.weatherLayers.set(s.weatherLayers),
+      track: () => void deps.weatherLayers.value,
+    },
+    thresholds: {
+      read: () => ({ thresholds: { ...deps.thresholds.value } }),
+      write: (s) => deps.thresholds.set(s.thresholds),
+      track: () => void deps.thresholds.value,
+    },
+    trackSettings: {
+      read: () => ({ trackSettings: { ...deps.trackSettings.value } }),
+      write: (s) => deps.trackSettings.set(s.trackSettings),
+      track: () => void deps.trackSettings.value,
+    },
+    planningSpeedKn: {
+      read: () => ({ planningSpeedKn: deps.planningSpeedKn.value }),
+      write: (s) => deps.planningSpeedKn.set(s.planningSpeedKn),
+      track: () => void deps.planningSpeedKn.value,
+    },
+    arrivalMuted: {
+      read: () => ({ arrivalMuted: deps.arrivalMuted.value }),
+      write: (s) => deps.arrivalMuted.set(s.arrivalMuted),
+      track: () => void deps.arrivalMuted.value,
+    },
+  } satisfies {
+    [K in keyof Omit<ProfileSettings, 'mode'>]: {
+      read: () => Pick<ProfileSettings, K>;
+      write: (s: ProfileSettings) => void;
+      track: () => void;
+    };
+  };
+
+  const bindings = Object.values(table);
+  return {
+    capture: () => Object.assign({}, ...bindings.map((p) => p.read())) as ProfileSettings,
+    apply: (settings) => {
+      for (const p of bindings) p.write(settings);
+    },
+    track: () => {
+      for (const p of bindings) p.track();
+    },
+  };
+}
