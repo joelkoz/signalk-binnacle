@@ -108,6 +108,15 @@ export function formatNmOr(meters: number | null | undefined, digits = 2): strin
   return formatFixed(metersToNauticalMiles(meters), digits);
 }
 
+// A short-range distance with its unit built in: whole meters under one nautical mile, nautical
+// miles beyond. The MOB and measure readouts deal in recovery and harbor scales where "0.05 nm"
+// reads worse than "93 m", and the unit switches so the caller cannot label it statically.
+export function formatMetersOrNm(meters: number | null | undefined): string {
+  if (meters == null) return PLACEHOLDER;
+  if (meters < METERS_PER_NAUTICAL_MILE) return `${Math.round(meters)} m`;
+  return `${formatNm(meters)} nm`;
+}
+
 // CPA is just a distance; named for the collision metric at its call sites.
 export function formatCpaNm(meters: number, digits = 2): string {
   return formatNm(meters, digits);

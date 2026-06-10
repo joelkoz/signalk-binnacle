@@ -9,6 +9,7 @@ import {
   LocateFixed,
   Navigation,
   Route,
+  Ruler,
   SlidersHorizontal,
   Spline,
   UserCog,
@@ -21,6 +22,7 @@ import { AisTargets } from '$entities/ais';
 import { AnchorWatch } from '$entities/anchor';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
+import { MeasureStore } from '$entities/measure';
 import { MobStore } from '$entities/mob';
 import {
   type Profile,
@@ -53,6 +55,7 @@ import {
   LookoutAlarm,
   ThresholdsPanel,
 } from '$features/lookout';
+import { MeasureStrip } from '$features/measure';
 import { AppMenu, type MenuItem } from '$features/menu';
 import { MobAlarm, MobStrip, mobClearNotification, mobNotification } from '$features/mob';
 import { ArrivalAlarm, NavStrip, type RouteProgress } from '$features/navigation';
@@ -172,6 +175,9 @@ const anchorAlarm = new AnchorAlarm();
 // raises the recovery strip; a remote station's notifications.mob raises it here too.
 const mob = new MobStore(store, vessel, clock);
 const mobAlarm = new MobAlarm();
+
+// The measure tool: armed from the menu, fed by chart taps, read by its overlay and strip.
+const measure = new MeasureStore();
 
 // Track recording: client-side from navigation.position, persisted whole-voyage in IndexedDB.
 const trackSettings = createTrackSettings();
@@ -511,6 +517,13 @@ const menuItems = $derived<MenuItem[]>([
       openPanel('tides');
       loadTides();
     },
+  },
+  {
+    id: 'measure',
+    label: 'Measure distance',
+    icon: Ruler,
+    group: 'Navigation',
+    onSelect: () => measure.start(),
   },
   {
     id: 'layers',
@@ -1298,6 +1311,7 @@ onDestroy(() => {
       {aisTargets}
       {anchor}
       {mob}
+      {measure}
       {collision}
       {recorder}
       {routeStore}
@@ -1338,6 +1352,7 @@ onDestroy(() => {
         onStop={onStopCourse}
         onSkip={routeStore.activeId !== undefined ? onSkipPoint : undefined}
       />
+      <MeasureStrip {measure} />
       <AnchorStrip {anchor} onRaise={() => void onRaiseAnchor()} />
       <DangerStrip
         {collision}

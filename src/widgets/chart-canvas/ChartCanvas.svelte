@@ -3,6 +3,7 @@ import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
 import type { AnchorWatch } from '$entities/anchor';
 import type { CollisionAssessment } from '$entities/collision';
+import type { MeasureStore } from '$entities/measure';
 import type { MobStore } from '$entities/mob';
 import type { RouteStore } from '$entities/route';
 import type { TidesStore } from '$entities/tides';
@@ -16,6 +17,7 @@ import { fetchCharts } from '$features/charts';
 import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
 import { LayersView } from '$features/layers-panel';
 import { COLLISION_OVERLAY_ID, createCollisionOverlay } from '$features/lookout';
+import { createMeasureOverlay } from '$features/measure';
 import { createMobOverlay, MOB_OVERLAY_ID } from '$features/mob';
 import { createMpaOverlay, MPA_SOURCES } from '$features/mpa-overlays';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
@@ -50,6 +52,8 @@ interface Props {
   anchor: AnchorWatch;
   // The man-overboard mark, pinned with the collision ring so nothing can hide it.
   mob: MobStore;
+  // The measure tool; while armed, chart taps append measurement points.
+  measure: MeasureStore;
   collision: CollisionAssessment;
   recorder: TrackRecorder;
   // The route store, drawn by the route overlay and edited on the chart via Terra Draw.
@@ -93,6 +97,7 @@ const {
   aisTargets,
   anchor,
   mob,
+  measure,
   collision,
   recorder,
   routeStore,
@@ -169,6 +174,12 @@ onMount(() => {
       map.on('movestart', () => {
         chartMenu = undefined;
       });
+      // While the measure tool is armed, plain taps append measurement points. Route editing wins
+      // when both are somehow active, since Terra Draw owns the chart taps then.
+      map.on('click', (e) => {
+        if (!measure.active || routeStore.working) return;
+        measure.add({ latitude: e.lngLat.lat, longitude: e.lngLat.lng });
+      });
       // The server origin is fixed for the session, so resolve it once and reuse it for the chart
       // fetch, the overlays built here, and the user-chart registrar closure below.
       const origin = serverOrigin();
@@ -192,6 +203,7 @@ onMount(() => {
       // order within a band.
       const anchorOverlay = createAnchorOverlay(anchor, vessel, onAnchorMoved);
       const mobOverlay = createMobOverlay(mob, vessel);
+      const measureOverlay = createMeasureOverlay(measure);
       const routeOverlay = createRouteOverlay(routeStore);
       const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect);
       const aisOverlay = createAisOverlay(aisTargets, store);
@@ -210,6 +222,7 @@ onMount(() => {
         ...SEAMARK_SOURCES.map((source) => createSeamarkOverlay(source)),
         tidesOverlay,
         anchorOverlay,
+        measureOverlay,
         routeOverlay,
         notesOverlay,
         aisOverlay,
@@ -296,6 +309,7 @@ onMount(() => {
       runTick([
         tidesOverlay,
         anchorOverlay,
+        measureOverlay,
         routeOverlay,
         notesOverlay,
         aisOverlay,

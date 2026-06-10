@@ -19,6 +19,7 @@ export {
   formatHectopascalsOr,
   formatKnots,
   formatKnotsOr,
+  formatMetersOrNm,
   formatNm,
   formatNmOr,
   formatTcpaMin,

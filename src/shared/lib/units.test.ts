@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatCpaNm,
+  formatMetersOrNm,
   formatTcpaMin,
   metersPerSecondToKnots,
   metersToNauticalMiles,
@@ -33,5 +34,19 @@ describe('units', () => {
     expect(formatCpaNm(926)).toBe('0.50');
     expect(formatTcpaMin(600)).toBe('10');
     expect(formatTcpaMin(90, 1)).toBe('1.5');
+  });
+});
+
+describe('formatMetersOrNm', () => {
+  it('reads whole meters under a nautical mile, nautical miles beyond', () => {
+    expect(formatMetersOrNm(93.4)).toBe('93 m');
+    expect(formatMetersOrNm(1851)).toBe('1851 m');
+    expect(formatMetersOrNm(1852)).toBe('1.00 nm');
+    expect(formatMetersOrNm(4260)).toBe('2.30 nm');
+  });
+
+  it('reads the placeholder for an absent value', () => {
+    expect(formatMetersOrNm(undefined)).toBe('--');
+    expect(formatMetersOrNm(null)).toBe('--');
   });
 });
