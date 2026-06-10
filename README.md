@@ -13,7 +13,7 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.4.0
+## What's new in 0.3.1
 
 A pass over the existing features for safety, honesty under failure, performance, and accessibility:
 
