@@ -24,6 +24,7 @@ export class OwnVessel {
       SK_PATHS.speedOverGround,
       SK_PATHS.courseOverGroundTrue,
       SK_PATHS.headingTrue,
+      SK_PATHS.depthBelowTransducer,
     ]) {
       store.cell(path);
     }
@@ -42,6 +43,11 @@ export class OwnVessel {
   // Heading (true) in radians (SI).
   get headingRad(): number | undefined {
     return asNumber(this.#raw(SK_PATHS.headingTrue));
+  }
+
+  // Depth below the transducer in meters (SI), when a sounder publishes it.
+  get depthMeters(): number | undefined {
+    return asNumber(this.#raw(SK_PATHS.depthBelowTransducer));
   }
 
   get position(): LatLon | undefined {

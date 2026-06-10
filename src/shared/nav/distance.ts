@@ -10,6 +10,34 @@ export function normalizeLonDeltaDeg(delta: number): number {
   return delta - 360 * Math.round(delta / 360);
 }
 
+// A closed geodesic circle around a center as a GeoJSON ring (lon/lat pairs, first equals last),
+// from the great-circle destination formula. At small radii a flat circle would also do, but the
+// exact form costs nothing and stays honest at high latitudes.
+export function geodesicCircleRing(
+  latitude: number,
+  longitude: number,
+  radiusMeters: number,
+  steps = 64,
+): [number, number][] {
+  const angular = radiusMeters / EARTH_RADIUS_M;
+  const lat = latitude * DEG_TO_RAD;
+  const lon = longitude * DEG_TO_RAD;
+  const sinLat = Math.sin(lat);
+  const cosLat = Math.cos(lat);
+  const sinAngular = Math.sin(angular);
+  const cosAngular = Math.cos(angular);
+  const ring: [number, number][] = [];
+  for (let i = 0; i <= steps; i += 1) {
+    const bearing = (i / steps) * 2 * Math.PI;
+    const pointLat = Math.asin(sinLat * cosAngular + cosLat * sinAngular * Math.cos(bearing));
+    const pointLon =
+      lon +
+      Math.atan2(Math.sin(bearing) * sinAngular * cosLat, cosAngular - sinLat * Math.sin(pointLat));
+    ring.push([pointLon / DEG_TO_RAD, pointLat / DEG_TO_RAD]);
+  }
+  return ring;
+}
+
 // Great-circle distance between two lat/lon points in meters.
 export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const dLat = (lat2 - lat1) * DEG_TO_RAD;
