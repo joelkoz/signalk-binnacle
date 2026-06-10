@@ -1,5 +1,6 @@
 import type { RasterLayerSpecification, RasterSourceSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
+import { prefersReducedMotion } from '$shared/lib';
 import {
   applyRasterTheme,
   type MapThemePaint,
@@ -21,9 +22,10 @@ export interface RadarOverlay extends OverlayModule {
 
 // RainViewer real-time precipitation radar as a themed raster overlay in the weather band. Off by
 // default. It loops the past frames (oldest to newest, then a longer hold on the latest) so the rain
-// is seen moving. The loop is driven from the per-frame tick rather than its own timer, so it stops
-// when the chart unmounts; `now` is injectable for tests. Night-red desaturates and dims the raster
-// (it cannot be recolored), the same treatment the depth-charts rasters use.
+// is seen moving, unless a reduced-motion preference is set, in which case it holds on the latest
+// frame. The loop is driven from the tick rather than its own timer, so it stops when the chart
+// unmounts; `now` is injectable for tests. Night-red desaturates and dims the raster (it cannot be
+// recolored), the same treatment the depth-charts rasters use.
 //
 // The source and layer are created lazily, only once a real frame exists, and removed nowhere except
 // in remove(). A raster source's tiles cannot be a usable placeholder: an empty array crashes the
@@ -109,6 +111,9 @@ export function createRadarOverlay(
         return;
       }
       if (!desiredVisible || !ctx.map.getLayer(LAYER_ID) || !radar || frames.length < 2) return;
+      // A reduced-motion preference holds the radar on its latest frame (set on each new-radar branch
+      // above) rather than looping, mirroring the wind field and the camera moves.
+      if (prefersReducedMotion()) return;
       // Advance one frame per FRAME_MS, holding PAUSE_MS on the latest before wrapping to the oldest.
       const interval = frameIndex === frames.length - 1 ? PAUSE_MS : FRAME_MS;
       const t = now();

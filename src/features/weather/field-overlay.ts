@@ -1,4 +1,8 @@
-import type { CanvasSourceSpecification, RasterLayerSpecification } from 'maplibre-gl';
+import type {
+  CanvasSource,
+  CanvasSourceSpecification,
+  RasterLayerSpecification,
+} from 'maplibre-gl';
 import type { TimeBracket, WeatherGrid, WeatherStore } from '$entities/weather';
 import type { OverlayContext, OverlayModule } from '$shared/map';
 import type { Theme } from '$shared/ui';
@@ -34,11 +38,10 @@ const PLACEHOLDER_COORDS: Quad = [
 
 // A weather scalar field rendered as a MapLibre canvas source drawn at grid resolution and smoothed
 // by the GPU (raster-resampling linear), in the weather band. Off by default. The canvas is redrawn
-// only when the grid, the selected time, or the theme changes. The source is animated so MapLibre
-// re-reads the canvas after each redraw; the per-frame re-upload of a grid-resolution texture (a few
-// KB) is negligible next to the vector-tile redraw, and it avoids the version-dependent canvas
-// re-read behavior of a static source. Shared by the waves and precipitation overlays; waves
-// composes this and adds its own arrow layer on top.
+// only when the grid, the selected time, or the theme changes. The source is NOT animated, so it does
+// not re-read the canvas or keep the map repainting every frame while visible. After each redraw, one
+// play()/pause() forces a single texture re-upload to show the new pixels. Shared by the waves and
+// precipitation overlays; waves composes this and adds its own arrow layer on top.
 export function createFieldOverlay(
   store: WeatherStore,
   options: FieldOverlayOptions,
@@ -50,6 +53,35 @@ export function createFieldOverlay(
   let lastGrid: unknown;
   let lastTime = Number.NaN;
   let lastTheme: Theme | undefined;
+  // Pending frames during which the non-animated source stays "playing" so it re-reads the canvas.
+  // A single rAF chain runs at a time; a redraw mid-window just extends the count, never stacks.
+  let refreshFrames = 0;
+  let refreshScheduled = false;
+
+  // Force a texture re-upload of the non-animated canvas source after a redraw, then stop. play()
+  // sets the source playing and triggers a repaint; the source re-reads the canvas on each render's
+  // prepare() while playing. The image source populates its tile asynchronously, so pause() is held
+  // for a couple of frames (not called synchronously) to guarantee the new pixels upload before
+  // continuous re-reading stops. Repeated calls extend the window rather than starting a second chain.
+  function refreshSource(map: OverlayContext['map']): void {
+    const source = map.getSource(sourceId) as Partial<CanvasSource> | undefined;
+    // A real CanvasSource exposes play/pause; guard so a non-canvas or stubbed source is a no-op.
+    if (typeof source?.play !== 'function' || typeof source.pause !== 'function') return;
+    source.play();
+    refreshFrames = 2;
+    if (refreshScheduled) return;
+    refreshScheduled = true;
+    const step = () => {
+      refreshFrames -= 1;
+      if (refreshFrames > 0) {
+        requestAnimationFrame(step);
+        return;
+      }
+      refreshScheduled = false;
+      (map.getSource(sourceId) as Partial<CanvasSource> | undefined)?.pause?.();
+    };
+    requestAnimationFrame(step);
+  }
 
   function redraw(): void {
     const grid = store.grid;
@@ -92,7 +124,7 @@ export function createFieldOverlay(
           type: 'canvas',
           canvas,
           coordinates: PLACEHOLDER_COORDS,
-          animate: true,
+          animate: false,
         };
         ctx.map.addSource(sourceId, source);
       }
@@ -116,6 +148,9 @@ export function createFieldOverlay(
       const coords = fieldCoords();
       const source = ctx.map.getSource(sourceId) as { setCoordinates(c: Quad): void } | undefined;
       if (coords) source?.setCoordinates(coords);
+      // The source is not animated, so MapLibre will not re-read the canvas on its own; force a single
+      // texture re-upload to show the freshly drawn pixels, with no permanent repaint.
+      refreshSource(ctx.map);
     },
     remove(ctx) {
       if (ctx.map.getLayer(layerId)) ctx.map.removeLayer(layerId);

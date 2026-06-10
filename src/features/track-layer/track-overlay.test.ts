@@ -46,6 +46,75 @@ describe('track overlay', () => {
     expect(fc.features.length).toBe(1);
   });
 
+  it('simplifies a straight run of collinear points to a single segment', () => {
+    // Five points on one east-west line, more than 9 m apart end to end: Douglas-Peucker collapses
+    // the three interior points, leaving one segment from the first to the last.
+    const points = [
+      { lat: 0, lon: 0, t: 0, sog: 1 },
+      { lat: 0, lon: 0.01, t: 10_000, sog: 1 },
+      { lat: 0, lon: 0.02, t: 20_000, sog: 1 },
+      { lat: 0, lon: 0.03, t: 30_000, sog: 1 },
+      { lat: 0, lon: 0.04, t: 40_000, sog: 1 },
+    ];
+    const overlay = createTrackOverlay(stubRecorder(points), stubSettings('speed'));
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    overlay.sync(ctxFor(map));
+    const fc = map.sources.get('binnacle-track-active')?.data as GeoJSON.FeatureCollection;
+    expect(fc.features.length).toBe(1);
+    const line = fc.features[0].geometry as GeoJSON.LineString;
+    expect(line.coordinates).toEqual([
+      [0, 0],
+      [0.04, 0],
+    ]);
+  });
+
+  it('splits the active line at a gap point so no segment crosses the break', () => {
+    // Two legs separated by a gap point: the segment from the last point of leg one to the gap point
+    // is suppressed, so the result is two single-segment legs, not one line drawn across the break.
+    const points = [
+      { lat: 0, lon: 0, t: 0, sog: 1 },
+      { lat: 0, lon: 0.01, t: 10_000, sog: 1 },
+      { lat: 1, lon: 1, t: 1_000_000, sog: 1, gap: true },
+      { lat: 1, lon: 1.01, t: 1_010_000, sog: 1 },
+    ];
+    const overlay = createTrackOverlay(stubRecorder(points), stubSettings('speed'));
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    overlay.sync(ctxFor(map));
+    const fc = map.sources.get('binnacle-track-active')?.data as GeoJSON.FeatureCollection;
+    expect(fc.features.length).toBe(2);
+    const legs = fc.features.map((f) => (f.geometry as GeoJSON.LineString).coordinates);
+    expect(legs).toContainEqual([
+      [0, 0],
+      [0.01, 0],
+    ]);
+    expect(legs).toContainEqual([
+      [1, 1],
+      [1.01, 1],
+    ]);
+  });
+
+  it('extends the active line incrementally as new fixes arrive', () => {
+    // The recorder array is shared by reference, so appending a fix and re-syncing must extend the
+    // rendered line. A turn (not collinear) keeps both segments rather than collapsing them.
+    const points = [
+      { lat: 0, lon: 0, t: 0, sog: 1 },
+      { lat: 0, lon: 0.02, t: 10_000, sog: 1 },
+    ];
+    const overlay = createTrackOverlay(stubRecorder(points), stubSettings('speed'));
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    overlay.sync(ctxFor(map));
+    let fc = map.sources.get('binnacle-track-active')?.data as GeoJSON.FeatureCollection;
+    expect(fc.features.length).toBe(1);
+
+    points.push({ lat: 0.02, lon: 0.02, t: 20_000, sog: 1 });
+    overlay.sync(ctxFor(map));
+    fc = map.sources.get('binnacle-track-active')?.data as GeoJSON.FeatureCollection;
+    expect(fc.features.length).toBe(2);
+  });
+
   it('applyTheme recolors both layers', () => {
     const overlay = createTrackOverlay(stubRecorder([]), stubSettings('solid'));
     const map = createFakeMap();

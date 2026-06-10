@@ -21,6 +21,10 @@ type GL = WebGLRenderingContext | WebGL2RenderingContext;
 const SOURCE_ID = 'binnacle-weather-wind';
 const LAYER_ID = 'binnacle-weather-wind-line';
 const GL_LAYER_ID = 'binnacle-weather-wind-particles';
+// Cap the particle simulation at ~25 fps. The custom layer's render runs on every map composite, but
+// stepping the field that often pins the Pi GPU at max FPS. Frames closer together than this just
+// re-blit the last trail, so the field stays visible while the simulation advances at the capped rate.
+const STEP_MS = 40;
 
 export interface WindOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -46,7 +50,8 @@ function sameMatrix(a: number[], b: number[]): boolean {
 // The wind layer: an animated WebGL particle field advected through the forecast u/v, colored by
 // speed with fading trails, in the weather band. Off by default. Falls back to a per-cell arrow line
 // layer when WebGL is unavailable. Rebuilds the wind texture only when the grid or selected time
-// changes; the animation runs in the custom layer's own render loop via triggerRepaint.
+// changes; the animation runs in the custom layer's own render loop via triggerRepaint, throttled to
+// ~25 fps and paused while the document is hidden, and recovers from a WebGL context loss.
 export function createWindOverlay(store: WeatherStore): WindOverlay {
   // The animated particle field is a continuous, self-driving render loop, so a reduced-motion
   // preference falls back to the static arrow layer (which still conveys wind direction and speed).
@@ -61,6 +66,10 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
   // Particle path.
   let particles: WindParticles | undefined;
   let lastMatrix: number[] = [];
+  // The render-loop clock for the simulation throttle, and the cleanup for the context-loss listeners
+  // (empty until the particle layer is added, run on its removal).
+  let lastStep = 0;
+  let removeContextListeners = () => {};
 
   // Arrow fallback path.
   function colorExpr(t: Theme): ExpressionSpecification {
@@ -101,10 +110,40 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
   }
 
   function addParticleLayer(ctx: OverlayContext): void {
+    // The GL context can be lost (GPU reset, tab backgrounding, driver hiccup). preventDefault on the
+    // lost event lets the browser restore it, and on restore the particle resources are rebuilt so the
+    // field recovers instead of staying dead with stale handles.
+    let contextLost = false;
+    const canvas = ctx.map.getCanvas();
+    const onLost = (event: Event) => {
+      event.preventDefault();
+      contextLost = true;
+    };
+    const onRestored = () => {
+      contextLost = false;
+      try {
+        particles?.reinit();
+      } catch (error) {
+        // The restored context could not rebuild the particle resources: degrade to arrows.
+        console.warn('[wind] particle reinit failed, using arrows', error);
+        particles?.dispose();
+        particles = undefined;
+        addArrowLayer(ctx);
+        syncArrows(ctx);
+      }
+    };
+
     const layer: CustomLayerInterface = {
       id: GL_LAYER_ID,
       type: 'custom',
       onAdd(_map: MapLibreMap, gl: GL) {
+        canvas.addEventListener('webglcontextlost', onLost as EventListener);
+        canvas.addEventListener('webglcontextrestored', onRestored as EventListener);
+        removeContextListeners = () => {
+          canvas.removeEventListener('webglcontextlost', onLost as EventListener);
+          canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
+          removeContextListeners = () => {};
+        };
         try {
           particles = new WindParticles(gl);
           particles.setTheme(windColorTexture(theme));
@@ -120,15 +159,28 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
         }
       },
       render(gl: GL, args: unknown) {
-        if (!particles || !visible) return;
+        if (!particles || !visible || contextLost) return;
         const matrix = matrixOf(args);
         if (matrix.length < 16) return; // unrecognized render args; MapLibre 5 gives a 4x4 matrix
         const moved = !sameMatrix(matrix, lastMatrix);
         lastMatrix = matrix;
-        particles.render(matrix, gl.drawingBufferWidth, gl.drawingBufferHeight, moved);
-        ctx.map.triggerRepaint();
+        const w = gl.drawingBufferWidth;
+        const h = gl.drawingBufferHeight;
+        // A pan or zoom must redraw immediately so the trail clears in place; otherwise step the
+        // simulation only at the capped rate and re-blit the last trail on the in-between frames.
+        const now = performance.now();
+        if (moved || now - lastStep >= STEP_MS) {
+          lastStep = now;
+          particles.render(matrix, w, h, moved);
+        } else {
+          particles.blit(w, h);
+        }
+        // Schedule the next frame only when the document is visible: a hidden tab does not composite,
+        // so there is nothing to animate and no reason to keep the GPU awake.
+        if (!document.hidden) ctx.map.triggerRepaint();
       },
       onRemove() {
+        removeContextListeners();
         particles?.dispose();
         particles = undefined;
       },

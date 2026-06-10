@@ -20,7 +20,7 @@ export interface MapViewLike {
   zoom: number;
 }
 
-// Anything the per-frame tick can sync: the overlay modules all expose sync(ctx).
+// Anything the overlay sync can drive: the overlay modules all expose sync(ctx).
 interface Syncable {
   sync(ctx: OverlayContext): void;
 }
@@ -37,7 +37,11 @@ export interface ThemedMapApi {
   recolor: (theme: Theme) => void;
   // Whether the widget has been destroyed, for bailing out of async overlay registration.
   isDestroyed: () => boolean;
-  // Start the per-animation-frame loop that calls sync(ctx) on each overlay.
+  // Start syncing the overlays: on every MapLibre 'render' (so pan and zoom repaints update them)
+  // and on a low-frequency interval (so store-driven overlays that change without a camera move,
+  // like AIS prune, tides, radar advance, and collision, still tick). Both stop while the document
+  // is hidden. The per-overlay dirty-checks still gate real work, so this only changes WHEN sync is
+  // invoked, not what it does.
   runTick: (overlays: ReadonlyArray<Syncable>) => void;
 }
 
@@ -67,6 +71,10 @@ export interface ThemedMapHandle {
 
 const DEFAULT_CENTER: [number, number] = [0, 30];
 const DEFAULT_ZOOM = 2;
+// How often store-driven overlays (AIS prune, tides, radar advance, collision) are synced when the
+// map is not repainting on its own. Map moves still sync on every 'render', so this only covers the
+// overlays that change without a camera move; 250 ms is well under the radar frame dwell.
+const STORE_SYNC_MS = 250;
 // A touch long-press that holds still this long, and within this pixel slop, stands in for the
 // contextmenu event that touch browsers do not reliably fire.
 const LONG_PRESS_MS = 500;
@@ -74,8 +82,9 @@ const LONG_PRESS_MOVE_PX = 10;
 
 // The shared MapLibre bootstrap for both map widgets (the navigation chart and the weather mini-map):
 // map creation, a ResizeObserver, the per-frame view-emit coalescer, sentinels, the LayerManager, the
-// theme recolor closure, the per-frame overlay tick, and a single destroy. Each widget supplies only
-// its overlay set and its own wiring via onLoad. One source of truth so the two never drift.
+// theme recolor closure, the render-driven plus low-frequency overlay sync, and a single destroy.
+// Each widget supplies only its overlay set and its own wiring via onLoad. One source of truth so the
+// two never drift.
 export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   let map: maplibregl.Map;
   try {
@@ -99,7 +108,9 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
 
   const mapInstance = map;
   let destroyed = false;
-  let frame = 0;
+  // Teardown for the sync wiring runTick installs (the 'render' listener, the interval, and the
+  // visibilitychange listener). Empty until runTick is called; invoked once on destroy.
+  let stopTick = () => {};
 
   // The OpenFreeMap "liberty" base style references a handful of sprite icons and landuse
   // fill-patterns (for example "office", "gate", "brownfield", "reservoir") that its published
@@ -195,11 +206,49 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
     };
 
     const runTick = (overlays: ReadonlyArray<Syncable>) => {
-      const tick = () => {
+      // Calling this once replaces the old unconditional rAF loop, which synced ~60x/sec for the life
+      // of the map even at anchor. Now sync runs only when the map actually repaints (pan, zoom) and
+      // on a low-frequency interval for the store-driven overlays, and both pause while hidden.
+      const syncAll = () => {
+        if (destroyed) return;
         for (const overlay of overlays) overlay.sync(ctx);
-        frame = requestAnimationFrame(tick);
       };
-      frame = requestAnimationFrame(tick);
+
+      // MapLibre fires 'render' only when it repaints, so this covers every pan and zoom without a
+      // self-scheduling frame loop.
+      mapInstance.on('render', syncAll);
+
+      let interval = 0;
+      const startInterval = () => {
+        if (interval) return;
+        interval = window.setInterval(syncAll, STORE_SYNC_MS);
+      };
+      const stopInterval = () => {
+        if (!interval) return;
+        clearInterval(interval);
+        interval = 0;
+      };
+
+      // Pause both the interval and (implicitly, since the map stops repainting) the render sync while
+      // the tab is hidden; resume and sync once on return so a hidden-tab change shows immediately.
+      const onVisibility = () => {
+        if (document.hidden) {
+          stopInterval();
+        } else {
+          startInterval();
+          syncAll();
+        }
+      };
+      document.addEventListener('visibilitychange', onVisibility);
+      if (!document.hidden) startInterval();
+      syncAll();
+
+      stopTick = () => {
+        mapInstance.off('render', syncAll);
+        stopInterval();
+        document.removeEventListener('visibilitychange', onVisibility);
+        stopTick = () => {};
+      };
     };
 
     void opts.onLoad({
@@ -216,7 +265,7 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
     destroy: () => {
       destroyed = true;
       cancelLongPress();
-      cancelAnimationFrame(frame);
+      stopTick();
       resizeObserver.disconnect();
       mapInstance.remove();
     },

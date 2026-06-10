@@ -64,18 +64,26 @@ function createBuffer(gl: GL, data: Float32Array): WebGLBuffer {
 }
 
 // A lightweight probe: can this environment compile the wind programs on a throwaway context? Used
-// by the overlay to choose particles vs the arrow fallback before touching the map.
+// by the overlay to choose particles vs the arrow fallback before touching the map. The result is
+// fixed for the page (the GPU and driver do not change), so it is memoized: the probe allocates a
+// canvas, a GL context, and two compiled programs, and that should happen at most once per load.
+let windGlSupport: boolean | undefined;
 export function supportsWindGl(): boolean {
+  if (windGlSupport !== undefined) return windGlSupport;
   try {
     const canvas = document.createElement('canvas');
     const gl = (canvas.getContext('webgl') ?? canvas.getContext('experimental-webgl')) as GL | null;
-    if (!gl) return false;
+    if (!gl) {
+      windGlSupport = false;
+      return windGlSupport;
+    }
     createProgram(gl, QUAD_VERT, UPDATE_FRAG);
     createProgram(gl, DRAW_VERT, DRAW_FRAG);
-    return true;
+    windGlSupport = true;
   } catch {
-    return false;
+    windGlSupport = false;
   }
+  return windGlSupport;
 }
 
 type Uniform = WebGLUniformLocation | null;
@@ -113,22 +121,25 @@ interface DrawLoc {
 
 export class WindParticles {
   #gl: GL;
-  #updateProgram: WebGLProgram;
-  #drawProgram: WebGLProgram;
-  #screenProgram: WebGLProgram;
-  #screenLoc: ScreenLoc;
-  #updateLoc: UpdateLoc;
-  #drawLoc: DrawLoc;
-  #quadBuffer: WebGLBuffer;
-  #indexBuffer: WebGLBuffer;
-  #framebuffer: WebGLFramebuffer;
-  #colorRamp: WebGLTexture;
+  // The GL resources are built by #build, called from the constructor and again from reinit after a
+  // WebGL context-loss/restore, so they carry definite-assignment assertions.
+  #updateProgram!: WebGLProgram;
+  #drawProgram!: WebGLProgram;
+  #screenProgram!: WebGLProgram;
+  #screenLoc!: ScreenLoc;
+  #updateLoc!: UpdateLoc;
+  #drawLoc!: DrawLoc;
+  #quadBuffer!: WebGLBuffer;
+  #indexBuffer!: WebGLBuffer;
+  #framebuffer!: WebGLFramebuffer;
+  #colorRamp!: WebGLTexture;
   #wind: WebGLTexture | undefined;
   #field: WindField | undefined;
-  #state0: WebGLTexture;
-  #state1: WebGLTexture;
-  #screen0: WebGLTexture;
-  #screen1: WebGLTexture;
+  #rampPixels: Uint8Array | undefined;
+  #state0!: WebGLTexture;
+  #state1!: WebGLTexture;
+  #screen0!: WebGLTexture;
+  #screen1!: WebGLTexture;
   #screenW = 0;
   #screenH = 0;
   #res: number;
@@ -147,6 +158,11 @@ export class WindParticles {
     this.#dropRate = options.dropRate ?? 0.003;
     this.#dropRateBump = options.dropRateBump ?? 0.01;
     this.#fadeOpacity = options.fadeOpacity ?? 0.96;
+    this.#build();
+  }
+
+  #build(): void {
+    const gl = this.#gl;
     this.#updateProgram = createProgram(gl, QUAD_VERT, UPDATE_FRAG);
     this.#drawProgram = createProgram(gl, DRAW_VERT, DRAW_FRAG);
     this.#screenProgram = createProgram(gl, QUAD_VERT, SCREEN_FRAG);
@@ -190,6 +206,18 @@ export class WindParticles {
     this.#state1 = createTexture(gl, gl.NEAREST, seed, this.#res, this.#res);
     this.#screen0 = createTexture(gl, gl.NEAREST, null, 1, 1);
     this.#screen1 = createTexture(gl, gl.NEAREST, null, 1, 1);
+    this.#wind = undefined;
+    this.#screenW = 0;
+    this.#screenH = 0;
+  }
+
+  // Rebuild every GL resource after a WebGL context-loss/restore, then re-push the last theme ramp
+  // and wind field so the field recovers instead of staying dead with stale handles. The opacity is
+  // a plain number, so it survives untouched.
+  reinit(): void {
+    this.#build();
+    if (this.#rampPixels) this.setTheme(this.#rampPixels);
+    if (this.#field) this.setWind(this.#field);
   }
 
   #randomState(): Uint8Array {
@@ -206,6 +234,7 @@ export class WindParticles {
   }
 
   setTheme(rampPixels: Uint8Array): void {
+    this.#rampPixels = rampPixels;
     const gl = this.#gl;
     gl.bindTexture(gl.TEXTURE_2D, this.#colorRamp);
     gl.texImage2D(
@@ -347,6 +376,22 @@ export class WindParticles {
     const tmp = this.#screen0;
     this.#screen0 = this.#screen1;
     this.#screen1 = tmp;
+  }
+
+  // Re-blit the last composed trail (in #screen0 after the most recent render swap) to the map without
+  // stepping the simulation. Used on throttled frames so the field stays visible every map composite
+  // while the particles advance only at the capped rate.
+  blit(widthPx: number, heightPx: number): void {
+    const gl = this.#gl;
+    if (!this.#wind || !this.#field) return;
+    this.#resizeScreen(widthPx, heightPx);
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.STENCIL_TEST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    this.#drawTexture(this.#screen0, this.#opacity);
+    gl.disable(gl.BLEND);
   }
 
   dispose(): void {
