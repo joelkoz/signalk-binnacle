@@ -14,6 +14,7 @@ export const SK_PATHS = {
   anchorPosition: 'navigation.anchor.position',
   anchorMaxRadius: 'navigation.anchor.maxRadius',
   anchorNotification: 'notifications.navigation.anchor',
+  mobNotification: 'notifications.mob',
   name: 'name',
   aisShipType: 'design.aisShipType',
   courseNextPoint: 'navigation.course.nextPoint',
