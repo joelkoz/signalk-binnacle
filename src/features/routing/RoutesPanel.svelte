@@ -83,6 +83,14 @@ function promptSave(): void {
   if (name !== undefined) onSave(name);
 }
 
+// Delete is destructive and, for the active route, also stops navigation, so it arms a confirm step
+// rather than firing on a single tap where a mis-tap on a rolling deck would lose a saved route.
+let confirmingDelete = $state<string | undefined>();
+function confirmDelete(id: string): void {
+  confirmingDelete = undefined;
+  onDelete(id);
+}
+
 async function importGpx(): Promise<void> {
   const text = await pickTextFile('.gpx,application/gpx+xml');
   if (text !== undefined) onImportGpx(text);
@@ -242,71 +250,87 @@ $effect(() => {
         <dt class="caps-label">Waypoints</dt>
         <dd><span class="num">{route.waypoints.length}</span></dd>
       </dl>
-      <div class="actions">
-        <VisibilityToggle
-          shown={shownIds.has(route.id)}
-          onToggle={() => onToggleShown(route.id, !shownIds.has(route.id))}
-        />
-        <button
-          type="button"
-          class="icon-btn"
-          aria-label="Edit route"
-          title="Edit"
-          disabled={working !== undefined}
-          onclick={() => onEditRoute(route.id)}
-        >
-          <SquarePen size={18} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="icon-btn"
-          aria-label="Reverse route"
-          title="Save a reversed copy"
-          onclick={() => onReverse(route.id)}
-        >
-          <ArrowLeftRight size={18} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="icon-btn"
-          aria-label="Export route as GPX"
-          title="Export GPX"
-          onclick={() => onExportGpx(route.id)}
-        >
-          <Download size={18} aria-hidden="true" />
-        </button>
-        {#if route.id === activeId}
-          <button
-            type="button"
-            class="icon-btn icon-btn--accent"
-            aria-label="Stop navigation"
-            title="Stop navigation"
-            onclick={onStop}
-          >
-            <Square size={18} aria-hidden="true" />
-          </button>
-        {:else}
+      {#if confirmingDelete === route.id}
+        <div class="confirm" role="group" aria-label="Confirm delete route">
+          <span class="confirm-text">
+            {route.id === activeId ? 'Delete this route and stop navigating?' : 'Delete this route?'}
+          </span>
+          <div class="confirm-actions">
+            <button type="button" class="btn btn-danger" onclick={() => confirmDelete(route.id)}>
+              Delete
+            </button>
+            <button type="button" class="btn" onclick={() => (confirmingDelete = undefined)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      {:else}
+        <div class="actions">
+          <VisibilityToggle
+            shown={shownIds.has(route.id)}
+            onToggle={() => onToggleShown(route.id, !shownIds.has(route.id))}
+          />
           <button
             type="button"
             class="icon-btn"
-            aria-label="Activate route"
-            title="Activate route"
+            aria-label="Edit route"
+            title="Edit"
             disabled={working !== undefined}
-            onclick={() => onActivate(route.id)}
+            onclick={() => onEditRoute(route.id)}
           >
-            <Navigation size={18} aria-hidden="true" />
+            <SquarePen size={18} aria-hidden="true" />
           </button>
-        {/if}
-        <button
-          type="button"
-          class="icon-btn icon-btn--danger"
-          aria-label="Delete route"
-          title="Delete"
-          onclick={() => onDelete(route.id)}
-        >
-          <Trash2 size={18} aria-hidden="true" />
-        </button>
-      </div>
+          <button
+            type="button"
+            class="icon-btn"
+            aria-label="Reverse route"
+            title="Save a reversed copy"
+            onclick={() => onReverse(route.id)}
+          >
+            <ArrowLeftRight size={18} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="icon-btn"
+            aria-label="Export route as GPX"
+            title="Export GPX"
+            onclick={() => onExportGpx(route.id)}
+          >
+            <Download size={18} aria-hidden="true" />
+          </button>
+          {#if route.id === activeId}
+            <button
+              type="button"
+              class="icon-btn icon-btn--accent"
+              aria-label="Stop navigation"
+              title="Stop navigation"
+              onclick={onStop}
+            >
+              <Square size={18} aria-hidden="true" />
+            </button>
+          {:else}
+            <button
+              type="button"
+              class="icon-btn"
+              aria-label="Activate route"
+              title="Activate route"
+              disabled={working !== undefined}
+              onclick={() => onActivate(route.id)}
+            >
+              <Navigation size={18} aria-hidden="true" />
+            </button>
+          {/if}
+          <button
+            type="button"
+            class="icon-btn icon-btn--danger"
+            aria-label="Delete route"
+            title="Delete"
+            onclick={() => (confirmingDelete = route.id)}
+          >
+            <Trash2 size={18} aria-hidden="true" />
+          </button>
+        </div>
+      {/if}
     {/snippet}
   </SavedList>
 </SlideOver>
@@ -396,6 +420,23 @@ $effect(() => {
   border-radius: var(--radius-sm);
   color: var(--alarm);
   font-size: var(--text-sm);
+}
+/* The inline delete confirm replaces the action row for the armed card: a clear question and a pair
+   of full buttons, so confirming or backing out is a deliberate second tap. */
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.confirm-text {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.confirm-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 /* The route-edit working-plan stats use the global .stat-grid system in app.css. */
 /* The card list, wrapper, stats, and actions come from the shared SavedList plus the global .saved
