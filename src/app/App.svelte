@@ -8,6 +8,7 @@ import {
   LifeBuoy,
   LocateFixed,
   Navigation,
+  Radar,
   Route,
   Ruler,
   SlidersHorizontal,
@@ -36,6 +37,7 @@ import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
 import { OwnVessel } from '$entities/vessel';
 import { WeatherStore } from '$entities/weather';
+import { AisListPanel } from '$features/ais-list';
 import {
   AnchorAlarm,
   AnchorPanel,
@@ -261,7 +263,15 @@ let layersView = $state<LayersView | undefined>();
 // The edge-docked panels (routes, layers, tracks, collision thresholds) are mutually exclusive: one
 // docks at the leading edge at a time. A single active-panel value enforces that structurally, so
 // opening one closes whatever was open without each opener having to clear the others by hand.
-type LeftPanel = 'routes' | 'layers' | 'tracks' | 'tides' | 'anchor' | 'thresholds' | 'profiles';
+type LeftPanel =
+  | 'routes'
+  | 'layers'
+  | 'tracks'
+  | 'tides'
+  | 'ais'
+  | 'anchor'
+  | 'thresholds'
+  | 'profiles';
 let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
 // the menu after it closed on selection.
@@ -517,6 +527,13 @@ const menuItems = $derived<MenuItem[]>([
       openPanel('tides');
       loadTides();
     },
+  },
+  {
+    id: 'ais',
+    label: 'AIS targets',
+    icon: Radar,
+    group: 'Navigation',
+    onSelect: () => openPanel('ais'),
   },
   {
     id: 'measure',
@@ -1432,6 +1449,18 @@ onDestroy(() => {
     {#if activePanel === 'tides'}
       <div class="panel-slot">
         <TidesPanel store={tidesStore} onClose={closePanel} onBack={backToMenu} />
+      </div>
+    {/if}
+    {#if activePanel === 'ais'}
+      <div class="panel-slot">
+        <AisListPanel
+          {aisTargets}
+          {vessel}
+          {collision}
+          onLocate={(position) => mapCommands?.flyTo(position.latitude, position.longitude)}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
       </div>
     {/if}
     {#if activePanel === 'anchor'}

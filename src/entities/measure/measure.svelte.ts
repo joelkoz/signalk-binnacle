@@ -42,10 +42,14 @@ export class MeasureStore {
     return this.legs[this.legs.length - 1];
   }
 
-  get totalMeters(): number {
+  #total = $derived.by<number>(() => {
     let total = 0;
     for (const leg of this.legs) total += leg.distanceMeters;
     return total;
+  });
+
+  get totalMeters(): number {
+    return this.#total;
   }
 
   // Arm the tool with a clean slate; chart taps then append points.

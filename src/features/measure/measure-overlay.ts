@@ -25,23 +25,21 @@ export const MEASURE_OVERLAY_ID = 'measure';
 function features(measure: MeasureStore): GeoJSON.FeatureCollection {
   const points = measure.points;
   if (points.length === 0) return emptyFeatureCollection();
-  const out: GeoJSON.Feature[] = points.map((point, index) => ({
+  const coordinates = points.map<[number, number]>((point) => [point.longitude, point.latitude]);
+  const out: GeoJSON.Feature[] = coordinates.map((position, index) => ({
     type: 'Feature',
-    geometry: { type: 'Point', coordinates: [point.longitude, point.latitude] },
+    geometry: { type: 'Point', coordinates: position },
     properties:
       // The running total rides on the last vertex, so the chart answers "how far" at the
       // cursor without a glance down at the strip.
-      index === points.length - 1 && points.length > 1
+      index === coordinates.length - 1 && coordinates.length > 1
         ? { label: formatMetersOrNm(measure.totalMeters) }
         : {},
   }));
-  if (points.length > 1) {
+  if (coordinates.length > 1) {
     out.push({
       type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates: points.map((point) => [point.longitude, point.latitude]),
-      },
+      geometry: { type: 'LineString', coordinates },
       properties: { line: true },
     });
   }
