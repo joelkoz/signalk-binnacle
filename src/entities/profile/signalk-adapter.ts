@@ -1,3 +1,4 @@
+import { withTimeout } from '$shared/lib';
 import { authInit } from '$shared/signalk';
 import type { ProfilesState } from './profile-types';
 import type { AsyncProfileAdapter } from './profiles-store.svelte';
@@ -22,7 +23,7 @@ export class SignalKProfileAdapter implements AsyncProfileAdapter {
 
   async load(): Promise<ProfilesState | undefined> {
     try {
-      const response = await fetch(APP_DATA_URL(this.#base), authInit(this.#token));
+      const response = await fetch(APP_DATA_URL(this.#base), withTimeout(authInit(this.#token)));
       // Any non-2xx (401 unauthenticated, 405 security off, 404, and the rest) means the store is
       // unavailable: undefined tells the caller to stay local and not attempt a write that would also
       // fail, distinct from the reachable-but-empty case below.
@@ -43,11 +44,13 @@ export class SignalKProfileAdapter implements AsyncProfileAdapter {
     try {
       const response = await fetch(
         APP_DATA_URL(this.#base),
-        authInit(this.#token, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(state),
-        }),
+        withTimeout(
+          authInit(this.#token, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state),
+          }),
+        ),
       );
       return response.ok;
     } catch {

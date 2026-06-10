@@ -117,6 +117,12 @@ export function formatTcpaMin(seconds: number, digits = 0): string {
   return (seconds / 60).toFixed(digits);
 }
 
+// A wall-clock time as hour and minute, shared so the nav strip, the tides display, and any other
+// readout format an absolute time the same way.
+export function formatClockTime(timeMs: number): string {
+  return new Date(timeMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 // A time-to-go readout with its own unit: minutes under an hour ("45 min"), hours and minutes above
 // ("2h 05m"). TTG on a passage routinely exceeds an hour, where a bare minute count ("420 min")
 // reads as nonsense, so the unit is built in rather than appended by the caller.

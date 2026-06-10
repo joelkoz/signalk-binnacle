@@ -2,14 +2,12 @@
 import { ArrowLeft, ChevronDown, ChevronUp, X } from '@lucide/svelte';
 import type { Snippet } from 'svelte';
 import { fly } from 'svelte/transition';
+import { prefersReducedMotion } from '$shared/lib';
 import { dialog } from './dialog';
 
-// The panel slides in from the edge it docks to. Gated on the system reduced-motion preference
-// (checked inline so this shell stays self-contained within shared/ui): a zero duration makes the
-// reveal instant, so a helm with reduce-motion set sees no movement.
-const reduceMotion =
-  typeof window !== 'undefined' &&
-  window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+// The panel slides in from the edge it docks to, with a zero duration when the system reduced-motion
+// preference is set, so a helm with reduce-motion sees no movement.
+const reduceMotion = prefersReducedMotion();
 
 interface Props {
   // The panel heading, and the default accessible name for the panel landmark.

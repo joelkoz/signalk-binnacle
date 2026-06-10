@@ -1,9 +1,9 @@
 <script lang="ts">
 import { onDestroy } from 'svelte';
 import type { TidesStore } from '$entities/tides';
+import { formatClockTime } from '$shared/lib';
 import { SlideOver } from '$shared/ui';
 import {
-  formatClockTime,
   formatCurrentRate,
   formatStationDistance,
   formatTideHeight,

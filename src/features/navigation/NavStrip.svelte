@@ -3,6 +3,7 @@ import { SkipBack, SkipForward } from '@lucide/svelte';
 import type { CourseGuidance } from '$entities/course';
 import {
   formatBearingOr,
+  formatClockTime,
   formatDuration,
   formatKnotsOr,
   formatNmOr,
@@ -43,7 +44,7 @@ const cdi = $derived.by<{ pos: number; pegged: boolean } | null>(() => {
   const side = steerSide(xte);
   if (side === null) return { pos: 0, pegged: false };
   const mag = Math.min(1, Math.abs(xte) / CDI_FULL_SCALE_M);
-  return { pos: side === 'starboard' ? mag : -mag, pegged: Math.abs(xte) >= CDI_FULL_SCALE_M };
+  return { pos: side === 'starboard' ? mag : -mag, pegged: mag >= 1 };
 });
 
 // Each readout shows the placeholder when its value is absent, never a misleading zero.
@@ -76,17 +77,12 @@ const eta = $derived.by(() => {
   // back to a local clock estimate (now plus the route time-to-go) when the server value is absent.
   const iso = guidance.estimatedTimeOfArrivalIso;
   if (iso) {
-    const at = new Date(iso);
-    if (!Number.isNaN(at.getTime())) {
-      return at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
+    const at = new Date(iso).getTime();
+    if (!Number.isNaN(at)) return formatClockTime(at);
   }
   const ttgSeconds = routeProgress.timeToGoSeconds;
   if (ttgSeconds == null) return PLACEHOLDER;
-  return new Date(Date.now() + ttgSeconds * 1000).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatClockTime(Date.now() + ttgSeconds * 1000);
 });
 </script>
 

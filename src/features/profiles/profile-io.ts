@@ -1,5 +1,5 @@
 import type { Profile, ProfileSettings } from '$entities/profile';
-import { downloadText } from '$shared/lib';
+import { downloadText, isFiniteNumber } from '$shared/lib';
 import { THEMES } from '$shared/ui';
 
 // The canonical valid-theme list, so a corrupt import cannot smuggle an unknown theme into the store.
@@ -14,10 +14,6 @@ export interface ImportedProfile {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
 }
 
 function isThresholds(value: unknown): boolean {

@@ -1,4 +1,5 @@
 import { asNumber, isLatLon, type LatLon } from '$shared/geo';
+import type { ReactiveClock } from '$shared/lib';
 import { type SignalKStore, SK_PATHS } from '$shared/signalk';
 
 // How long the own-vessel fix may go without a position update before it is treated as lost. The
@@ -6,12 +7,6 @@ import { type SignalKStore, SK_PATHS } from '$shared/signalk';
 // a frozen fix out as if it were live is the worst lie to tell a navigator, so the readouts, the nav
 // guidance, and the collision math all degrade once the fix ages past this.
 const FIX_STALE_MS = 10_000;
-
-// A minimal reactive clock: just the ticking `now` the staleness check needs. The full Clock from
-// $shared/lib satisfies this, and tests can pass a stub or omit it entirely.
-interface ReactiveClock {
-  readonly now: number;
-}
 
 export class OwnVessel {
   #store: SignalKStore;

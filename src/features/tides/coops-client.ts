@@ -1,4 +1,5 @@
 import type { CurrentEvent, TideEvent, TideStation } from '$entities/tides';
+import { withTimeout } from '$shared/lib';
 
 // NOAA CO-OPS, the US tide and tidal-current authority. Public domain, key-free, CORS-open. The
 // metadata API lists stations; the datagetter returns predictions for one station.
@@ -27,7 +28,7 @@ export function localYmd(ms: number, sep = ''): string {
 }
 
 async function fetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url);
+  const response = await fetch(url, withTimeout());
   if (!response.ok) throw new Error(`CO-OPS ${response.status}`);
   return response.json();
 }

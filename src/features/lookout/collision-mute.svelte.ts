@@ -1,7 +1,4 @@
-// A minimal reactive clock: the ticking `now` the mute window needs to expire on its own.
-interface ReactiveClock {
-  readonly now: number;
-}
+import type { ReactiveClock } from '$shared/lib';
 
 // The default mute window. Long enough to clear a busy harbor entrance, short enough that a forgotten
 // mute re-arms itself well before the next leg.

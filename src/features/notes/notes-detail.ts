@@ -1,3 +1,4 @@
+import { withTimeout } from '$shared/lib';
 import { asKeyedObject, authInit, str, strArray } from '$shared/signalk';
 
 const ITEM_KINDS = [
@@ -116,7 +117,7 @@ async function tryFetch(
   id: string,
 ): Promise<NoteDetail | undefined> {
   try {
-    const response = await fetch(url, authInit(token));
+    const response = await fetch(url, withTimeout(authInit(token)));
     if (!response.ok) return undefined;
     const keyed = asKeyedObject(await response.json());
     if (!keyed) return undefined;

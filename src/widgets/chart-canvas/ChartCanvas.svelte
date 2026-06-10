@@ -22,7 +22,7 @@ import { createSeamarkOverlay, SEAMARK_SOURCES } from '$features/seamark-overlay
 import { createTidesOverlay } from '$features/tides';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
-import type { LatLon } from '$shared/geo';
+import { type LatLon, normalizeBounds } from '$shared/geo';
 import { prefersReducedMotion } from '$shared/lib';
 import {
   chartSourceId,
@@ -255,27 +255,16 @@ onMount(() => {
             ...(prefersReducedMotion() ? { duration: 0 } : {}),
           });
         },
-        fitBounds: ([west, south, east, north]) => {
-          // A malformed chart descriptor can carry NaN or Infinity; ignore the command rather than
-          // sending MapLibre to an extreme or invalid camera.
-          if (![west, south, east, north].every(Number.isFinite)) return;
-          // A west > east box crosses the antimeridian; MapLibre fits it when the east longitude is
-          // expressed greater than west, so add 360 to east. Then pad a zero-area box (a point, or a
-          // zero-width or zero-height descriptor) to a small delta so MapLibre does not jump to an
-          // extreme zoom trying to frame nothing.
-          const PAD = 0.0005; // about 55 m, enough to give a degenerate box a real extent
-          const unwrappedEast = east < west ? east + 360 : east;
-          const w = unwrappedEast === west ? west - PAD : west;
-          const e = unwrappedEast === west ? unwrappedEast + PAD : unwrappedEast;
-          const s = north === south ? south - PAD : south;
-          const n = north === south ? north + PAD : north;
-          map.fitBounds(
-            [
-              [w, s],
-              [e, n],
-            ],
-            { padding: 40, maxZoom: 16, duration: prefersReducedMotion() ? 0 : 800 },
-          );
+        fitBounds: (bounds) => {
+          // normalizeBounds rejects a malformed (non-finite) descriptor, unwraps an antimeridian
+          // crossing, and pads a degenerate box, so the widget just issues the camera move.
+          const corners = normalizeBounds(bounds);
+          if (!corners) return;
+          map.fitBounds(corners, {
+            padding: 40,
+            maxZoom: 16,
+            duration: prefersReducedMotion() ? 0 : 800,
+          });
         },
         clearNoteSelection: () => notesOverlay.deselect(ctx),
         startRouteEdit: (route) => routeEditor?.start(route),

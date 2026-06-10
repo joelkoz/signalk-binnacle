@@ -3,6 +3,13 @@
 // when a stale fix has to be detected. A $derived comparing against a bare Date.now() would never
 // re-run once the feed it watches stops, so it would never notice the feed stopping. This ticking
 // source gives those deriveds a dependency that keeps advancing. Call dispose() to stop the timer.
+// The minimal reactive-clock contract a staleness check needs: just the ticking `now`. Consumers type
+// against this rather than the full Clock, so a test can pass a plain object and slices do not each
+// redeclare the same structural stub.
+export interface ReactiveClock {
+  readonly now: number;
+}
+
 export class Clock {
   now = $state(Date.now());
 

@@ -132,6 +132,12 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
         syncArrows(ctx);
       }
     };
+    // render() stops requesting frames while the tab is hidden, and nothing else repaints the map on
+    // return, so the particle loop would stay frozen until a pan, zoom, or toggle. Resume it here when
+    // the tab becomes visible again.
+    const onVisible = () => {
+      if (!document.hidden && visible && particles && !contextLost) ctx.map.triggerRepaint();
+    };
 
     const layer: CustomLayerInterface = {
       id: GL_LAYER_ID,
@@ -139,9 +145,11 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
       onAdd(_map: MapLibreMap, gl: GL) {
         canvas.addEventListener('webglcontextlost', onLost as EventListener);
         canvas.addEventListener('webglcontextrestored', onRestored as EventListener);
+        document.addEventListener('visibilitychange', onVisible);
         removeContextListeners = () => {
           canvas.removeEventListener('webglcontextlost', onLost as EventListener);
           canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
+          document.removeEventListener('visibilitychange', onVisible);
           removeContextListeners = () => {};
         };
         try {

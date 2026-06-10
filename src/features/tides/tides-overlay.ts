@@ -5,6 +5,7 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { CurrentReading, TideReading, TidesStore } from '$entities/tides';
+import { formatClockTime } from '$shared/lib';
 import {
   emptyFeatureCollection,
   mapThemePaint,
@@ -12,7 +13,6 @@ import {
   type OverlayModule,
 } from '$shared/map';
 import {
-  formatClockTime,
   formatCurrentRate,
   formatTideHeight,
   nextCurrentEvent,

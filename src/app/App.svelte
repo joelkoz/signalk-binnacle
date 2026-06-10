@@ -285,10 +285,8 @@ let applying = false;
 // Handed up by the weather mini-map once it is ready, to push a weather-layer snapshot at runtime.
 let applyWeatherLayers = $state<((settings: LayerSettings) => void) | undefined>();
 
-// The portable-setting binding table (read, write, track for every profile field) lives in the
-// profiles feature, so adding a setting is one edit there, not surgery in the composition root. Its
-// deps are all shared-layer services, so it stays inside the feature's boundary; the live map-layer
-// push on apply stays here, since the map handles are owned here.
+// The portable-setting binding table lives in the profiles feature (createProfileBindings); the live
+// map-layer push on apply stays here, since this composition root owns the map handles.
 const profileBindings = createProfileBindings({
   theme,
   layers: layerSettings,
@@ -982,11 +980,8 @@ $effect(() => {
 
 // The count of AIS targets the lookout is tracking, so a quiet footer chip confirms the watch is live
 // and receiving traffic, rather than leaving the navigator to wonder whether an empty danger strip
-// means "all clear" or "not working". Shown only once the stream is open.
-const aisCount = $derived.by<number>(() => {
-  void aisTargets.version;
-  return aisTargets.list().length;
-});
+// means "all clear" or "not working". list() reads aisVersion, so the derived stays reactive.
+const aisCount = $derived(aisTargets.list().length);
 
 const accessRequestsUrl = `${serverOrigin()}/admin/#/security/access/requests`;
 

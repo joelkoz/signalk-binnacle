@@ -1,4 +1,4 @@
-import { uuidv4 } from '$shared/lib';
+import { isFiniteNumber, uuidv4 } from '$shared/lib';
 import { readPmtilesMeta, type SignalKChart } from '$shared/map';
 import type { PmtilesStore } from '$shared/storage';
 
@@ -15,10 +15,6 @@ export interface UserChartSource {
   layers?: string[];
   // Stored byte size for a file-backed chart, shown in the delete confirm.
   byteSize?: number;
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
 }
 
 // Guards a persisted chart descriptor against schema drift across releases: a renamed or removed

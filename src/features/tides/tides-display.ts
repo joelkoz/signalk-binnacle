@@ -27,10 +27,6 @@ export function formatStationDistance(meters: number): string {
   return km < 1 ? '<1 km' : `${Math.round(km)} km`;
 }
 
-export function formatClockTime(timeMs: number): string {
-  return new Date(timeMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
 // The high and low events at or after a reference time, soonest first, for the next-tide readout.
 export function upcomingEvents(events: TideEvent[], nowMs: number): TideEvent[] {
   return events.filter((event) => event.timeMs >= nowMs).sort((a, b) => a.timeMs - b.timeMs);

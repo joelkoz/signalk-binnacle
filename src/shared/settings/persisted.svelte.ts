@@ -1,3 +1,5 @@
+import { isFiniteNumber } from '$shared/lib';
+
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 function resolveStorage(injected?: StorageLike): StorageLike | undefined {
@@ -54,10 +56,6 @@ export interface MapView {
   lat: number;
   lon: number;
   zoom: number;
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
 }
 
 // Guards a stored view against corruption: a NaN or out-of-range center would break the map.
