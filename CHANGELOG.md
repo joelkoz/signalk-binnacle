@@ -4,6 +4,76 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-06-11
+
+A safety-focused redesign of the man-overboard confirm, a broad weather-panel upgrade (more
+decision data, honest provenance, and accessibility), and a new app icon.
+
+### Added
+
+- **Gusts without a provider.** The free forecast grid now carries wind gusts, so the reefing
+  number shows in the tap readout and the vessel conditions panel even with no weather provider
+  configured.
+- **Barometric tendency.** The conditions panel shows the trend a sailor decides by ("falling
+  1.2 hPa/3 h"): the provider's own tendency when it reports one, otherwise computed from the
+  trailing three hours of the forecast grid.
+- **More conditions data.** Wave and swell direction (labeled "from"), visibility, and water
+  temperature appear when the source carries them, and the current block is tagged Observed or
+  Forecast with its valid time and zone.
+- **Forecast provenance.** A footer states the source and fetch time, the stale note says how old
+  the shown forecast is, and a grid missing its requested wave fields is qualified rather than
+  passed off as complete.
+- **Radar honesty.** The legend names the frame the loop is painting (for example "frame
+  -40 min"), extrapolated nowcast frames are labeled as such, cached radar is flagged when
+  offline, and the radar hides while the time slider is away from now instead of painting live
+  rain over a three-day-out wind field.
+- **Slider orientation.** A tick marks now on the forecast slider, the label carries Past or
+  Forecast plus the time zone, and a one-shot note explains the zoom cap the first time you
+  pinch into it.
+- **New app icon**, aligned with the rest of the plugin family: a compass rose on a white
+  compass-card badge over the shared ocean-wave mark.
+
+### Changed
+
+- **Man overboard confirm.** Pressing MOB now opens a centered dialog. The position is captured
+  at the press, so the seconds spent confirming can no longer carry the mark away from the
+  person; the confirm only gates the alarm. One full-width Mark man overboard button sits in the
+  one-handed thumb zone with a quiet Cancel stacked above it, the dialog self-dismisses after 15
+  seconds with a visible countdown (a re-press shortly after reuses the earlier press-time fix),
+  and without a GPS fix the boat-wide alarm still raises, position-less, with a clear warning.
+  The recovery strip adds the wall-clock Marked time for the log and the VHF relay.
+- **Weather opens at now.** The time slider seeds to the forecast step nearest now instead of
+  the start of the series, which begins up to a day in the past.
+- **Conditions track the slider.** With a weather provider configured, the Here panel re-picks
+  the forecast step as the slider moves, and it falls back to the free grid when the provider
+  fails instead of freezing a one-shot sample.
+- **Warnings.** Sorted most severe first, with the issuing source and the validity window, at a
+  readable size; free mode now says warnings are unavailable instead of showing a silently empty
+  list.
+- **Legends.** Wind in whole 10-knot bands, cloud in whole percent, and weather readouts in
+  whole knots.
+- **Night-red.** The map attribution control follows the theme on both maps instead of rendering
+  as a bright white bar.
+
+### Fixed
+
+- The tapped readout blends the two forecast steps exactly as the drawn fields do, so the number
+  can no longer disagree with the picture under the finger by a full step.
+- Weather provider detection re-runs when the auth token arrives or the stream reconnects; one
+  failed probe no longer locks the whole session onto the free sources.
+- The latest observation is picked by date rather than response order, and a provider's last
+  forecast step no longer answers for a time days past its horizon.
+- A rate-limited marine (waves) endpoint no longer blocks the healthy atmospheric fetch, so
+  turning waves off recovers immediately.
+- Provider precipitation is labeled as the accumulation it is (mm), not a rate.
+- The course strip no longer covers the weather panel's slider and legend while a route is
+  active; the strips lift to the panel's top edge instead.
+- Accessibility: the forecast slider announces real times instead of epoch milliseconds, manual
+  time changes are announced, the floating map notes are reliable live regions that stack
+  instead of overlapping, scrubbing stops playback so the thumb is not yanked back mid-drag,
+  Enter on the focused mini-map samples the center, and the tap readout can be pinned (hover or
+  focus) and dismissed.
+
 ## [0.4.0] - 2026-06-10
 
 Four new at-sea features (an anchor watch, a man-overboard button, a measure tool, and an AIS

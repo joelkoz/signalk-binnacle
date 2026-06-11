@@ -13,21 +13,24 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.4.0
+## What's new in 0.5.0
 
-Four new at-sea features, built for the watchkeeper:
+A safer man-overboard flow and a sharper weather panel:
 
-- **Anchor watch.** Drop the anchor, set or capture the swing radius, and get a drag alarm that
-  latches until acknowledged. Drives the signalk-anchoralarm-plugin when installed (the alarm keeps
-  running with the browser closed) and watches fully in the browser when it is not.
-- **Man overboard.** An always-visible MOB button centered in the top bar, with a confirm pop-out so
-  a stray tap can never raise the alarm. Confirming marks the spot, alerts every station on the
-  boat, and raises a recovery strip with live bearing, range, and elapsed time.
-- **Measure tool.** Tap points on the chart for per-leg range and bearing and a running total.
-- **AIS target list.** Every tracked target with live range, bearing, SOG, and CPA and TCPA,
-  sortable and tap-to-locate, with risky contacts colored by the lookout.
-- **Shell polish.** The connection state is a compact status dot, and the footer readouts share one
-  instrument size.
+- **MOB confirm, redesigned.** Pressing MOB opens a centered dialog with one big Mark man
+  overboard button. The position is captured the instant you press, so the seconds spent
+  confirming no longer carry the mark away from the person, and without a GPS fix the boat-wide
+  alarm still raises. The recovery strip now shows the wall-clock Marked time for the log.
+- **Weather opens at now.** The forecast slider seeds to the step nearest now (it used to open up
+  to a day in the past), a tick marks now on the track, and labels carry the time zone.
+- **More decision data.** Gusts without a provider, barometric tendency ("falling 1.2 hPa/3 h"),
+  wave and swell direction, visibility, and water temperature, with each reading tagged Observed
+  or Forecast and a footer stating the source and fetch time.
+- **Radar honesty.** The legend names the frame being painted, nowcast frames are labeled,
+  offline radar is flagged as cached, and the radar hides while the slider is away from now.
+- **Conditions track the slider** with a weather provider configured, and warnings sort most
+  severe first with their source and validity window.
+- **A new app icon**, plus a themed map attribution bar that no longer glows white at night.
 
 See the [changelog](CHANGELOG.md) for the full list.
 
