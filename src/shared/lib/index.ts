@@ -5,7 +5,7 @@ export { downloadBlob, downloadText } from './download';
 export { fetchJsonOrUndefined } from './fetch-json';
 export { DEFAULT_FETCH_TIMEOUT_MS, withTimeout } from './fetch-timeout';
 export { uuidv4 } from './id';
-export { isFiniteNumber, lerp } from './math';
+export { isFiniteNumber, lerp, nearestBy } from './math';
 export { prefersReducedMotion } from './motion';
 export {
   DAY_MS,
@@ -14,6 +14,7 @@ export {
   formatBearingOr,
   formatClockTime,
   formatCpaNm,
+  formatDayClock,
   formatDuration,
   formatFixed,
   formatHectopascalsOr,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatClockTime,
   formatCpaNm,
+  formatDayClock,
   formatMetersOrNm,
   formatTcpaMin,
   metersPerSecondToKnots,
@@ -58,5 +59,16 @@ describe('formatClockTime', () => {
     const at = Date.UTC(2026, 5, 11, 14, 32, 5);
     expect(formatClockTime(at).match(/\d+/g)).toHaveLength(2);
     expect(formatClockTime(at, { seconds: true }).match(/\d+/g)).toHaveLength(3);
+  });
+});
+
+describe('formatDayClock', () => {
+  it('reads weekday plus clock, optionally with the zone, and is blank for NaN', () => {
+    const at = Date.UTC(2026, 5, 11, 14, 32, 5);
+    expect(formatDayClock(at)).toMatch(/[A-Za-z]/);
+    expect(formatDayClock(at).match(/\d+/g)).toHaveLength(2);
+    // The zone variant appends a non-numeric zone token, so the text grows.
+    expect(formatDayClock(at, { zone: true }).length).toBeGreaterThan(formatDayClock(at).length);
+    expect(formatDayClock(Number.NaN)).toBe('');
   });
 });

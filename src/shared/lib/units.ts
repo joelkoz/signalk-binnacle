@@ -137,6 +137,19 @@ export function formatClockTime(timeMs: number, opts?: { seconds?: boolean }): s
   });
 }
 
+// A weekday wall-clock label ("Thu, 12:00 PM"), optionally with the zone. The weather valid-time
+// labels carry the zone so a crew keeping ship's time in UTC cannot misread a front by hours; one
+// helper so the scrubber label and the conditions panel cannot drift apart.
+export function formatDayClock(timeMs: number, opts?: { zone?: boolean }): string {
+  if (Number.isNaN(timeMs)) return '';
+  return new Date(timeMs).toLocaleString([], {
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(opts?.zone ? { timeZoneName: 'short' } : {}),
+  });
+}
+
 // A time-to-go readout with its own unit: minutes under an hour ("45 min"), hours and minutes above
 // ("2h 05m"). TTG on a passage routinely exceeds an hour, where a bare minute count ("420 min")
 // reads as nonsense, so the unit is built in rather than appended by the caller.

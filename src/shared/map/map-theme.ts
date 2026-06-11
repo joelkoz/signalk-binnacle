@@ -148,6 +148,9 @@ export function mapThemePaint(theme: Theme): MapThemePaint {
 // Apply the theme to a raster overlay layer. A raster layer cannot be recolored, so night-red
 // desaturates and dims it instead. Shared by the chart, depth-bathymetry, and rain-radar rasters
 // so the one treatment is defined once.
+// PINNED by the radar legend's night swatches in features/weather/legend.ts, which hand-approximate
+// this treatment's output: changing rasterSaturation or rasterBrightnessMax means re-tuning those
+// swatch literals or the legend lies about the tiles.
 export function applyRasterTheme(map: MapLibreMap, layerId: string, paint: MapThemePaint): void {
   map.setPaintProperty(layerId, 'raster-saturation', paint.rasterSaturation);
   map.setPaintProperty(layerId, 'raster-brightness-max', paint.rasterBrightnessMax);

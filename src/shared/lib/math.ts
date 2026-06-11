@@ -9,3 +9,25 @@ export function lerp(a: number, b: number, f: number): number {
 export function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
+
+// The item whose time is nearest the target, skipping items with a NaN time. One scan shared by
+// the nearest-forecast-step, nearest-grid-time, and latest-observation lookups, which were three
+// structurally identical loops.
+export function nearestBy<T>(
+  items: readonly T[],
+  toMs: (item: T) => number,
+  targetMs: number,
+): T | undefined {
+  let best: T | undefined;
+  let bestGap = Number.POSITIVE_INFINITY;
+  for (const item of items) {
+    const t = toMs(item);
+    if (Number.isNaN(t)) continue;
+    const gap = Math.abs(t - targetMs);
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = item;
+    }
+  }
+  return best;
+}
