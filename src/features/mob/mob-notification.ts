@@ -9,12 +9,14 @@ export interface MobNotificationValue {
   position?: LatLon;
 }
 
-export function mobNotification(position: LatLon): MobNotificationValue {
+export function mobNotification(position?: LatLon): MobNotificationValue {
   return {
     state: 'emergency',
     method: ['visual', 'sound'],
-    message: `Man overboard at ${formatLatitude(position.latitude)} ${formatLongitude(position.longitude)}`,
-    position,
+    message: position
+      ? `Man overboard at ${formatLatitude(position.latitude)} ${formatLongitude(position.longitude)}`
+      : 'Man overboard, no position fix',
+    ...(position ? { position } : {}),
   };
 }
 

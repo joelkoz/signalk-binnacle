@@ -8,15 +8,17 @@ import { ALARM_NOTIFICATION_STATES, type SignalKStore, SK_PATHS } from '$shared/
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 // The mark this station made: where and when the person went in. Persisted so a reload during a
-// recovery cannot lose the spot.
+// recovery cannot lose the spot. The position is optional: an MOB without a fix is still an MOB
+// (the boat-wide alarm, the elapsed clock, and the crew mobilization carry value with no datum).
 export interface MobMark {
-  position: LatLon;
+  position?: LatLon;
   epochMs: number;
 }
 
 function validMark(value: MobMark | null): MobMark | null {
   if (!value || typeof value !== 'object') return null;
-  if (!isLatLon(value.position) || !isFiniteNumber(value.epochMs)) return null;
+  if (!isFiniteNumber(value.epochMs)) return null;
+  if (value.position !== undefined && !isLatLon(value.position)) return null;
   return value;
 }
 
@@ -73,6 +75,12 @@ export class MobStore {
     return this.#local?.position ?? this.#remotePosition;
   }
 
+  // When this station's mark was made: the timestamp the log and the VHF relay need, so a stressed
+  // skipper never does clock arithmetic from elapsed. A remote alarm carries no reliable epoch.
+  get markEpochMs(): number | undefined {
+    return this.#local?.epochMs;
+  }
+
   // Seconds since this station's trigger. A remote alarm carries no reliable epoch, so it has none.
   get elapsedSeconds(): number | undefined {
     if (!this.#clock || !this.#local) return undefined;
@@ -106,21 +114,35 @@ export class MobStore {
     return this.#acknowledged;
   }
 
-  // Mark man overboard at the current boat position. Returns the mark, or undefined without a fix
-  // (the button is disabled then, so this is a backstop, not a UI path).
-  trigger(): MobMark | undefined {
+  // Snapshot the boat position and time WITHOUT committing anything: the press-time capture that
+  // the confirm dialog later hands back to trigger(). Undefined without a fix.
+  // The snapshot is a plain object: the store cell value is a Svelte reactive proxy, and a proxy
+  // cannot be structured-cloned into the stream worker when the mark is published (postMessage
+  // throws DataCloneError and the boat-wide alarm silently never goes out).
+  capture(): MobMark | undefined {
     const boat = this.#vessel.position;
     if (!boat) return undefined;
-    // Snapshot the fix into a plain object: the store cell value is a Svelte reactive proxy, and a
-    // proxy cannot be structured-cloned into the stream worker when the mark is published
-    // (postMessage throws DataCloneError and the boat-wide alarm silently never goes out).
-    const mark = {
+    return {
       position: { latitude: boat.latitude, longitude: boat.longitude },
       epochMs: this.#clock?.now ?? 0,
     };
+  }
+
+  // How old a capture is on the store's clock, so the confirm flow judges reuse freshness against
+  // the same time source that stamped the mark. Undefined without a clock (treat as stale).
+  captureAgeMs(mark: MobMark): number | undefined {
+    if (!this.#clock) return undefined;
+    return Math.max(0, this.#clock.now - mark.epochMs);
+  }
+
+  // Mark man overboard. The confirm flow passes the press-time capture so the seconds spent
+  // confirming cannot carry the mark away from the person; with no capture (no fix at press or
+  // since), the alarm still raises, position-less.
+  trigger(mark?: MobMark): MobMark {
+    const committed = mark ?? this.capture() ?? { epochMs: this.#clock?.now ?? 0 };
     this.#acknowledged = false;
-    this.#setLocal(mark);
-    return mark;
+    this.#setLocal(committed);
+    return committed;
   }
 
   // Clear the local mark (recovery complete, or an accidental tap).

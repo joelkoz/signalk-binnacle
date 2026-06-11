@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { MobStore } from '$entities/mob';
-import { formatBearingOr, formatMetersOrNm } from '$shared/lib';
+import { formatBearingOr, formatClockTime, formatMetersOrNm } from '$shared/lib';
 import { formatElapsed } from './mob-format';
 
 interface Props {
@@ -40,6 +40,13 @@ const { mob, onSteer, onCancel }: Props = $props();
       <span class="metric">Range <b>{formatMetersOrNm(mob.distanceMeters)}</b></span>
       {#if mob.elapsedSeconds !== undefined}
         <span class="metric">Elapsed <b>{formatElapsed(mob.elapsedSeconds)}</b></span>
+      {/if}
+      <!-- The wall-clock mark time: what goes in the log and out on the VHF relay, so a stressed
+           skipper never does clock arithmetic from elapsed. -->
+      {#if mob.markEpochMs !== undefined}
+        <span class="metric"
+          >Marked <b>{formatClockTime(mob.markEpochMs, { seconds: true })}</b></span
+        >
       {/if}
     </div>
   </aside>

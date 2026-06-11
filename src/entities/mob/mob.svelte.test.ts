@@ -18,11 +18,44 @@ function setup(seed?: Record<string, string>) {
 }
 
 describe('MobStore', () => {
-  it('is inactive until triggered, and needs a fix to trigger', () => {
-    const { mob } = setup();
+  it('is inactive until triggered, and triggers position-less without a fix', () => {
+    const { mob, clock } = setup();
     expect(mob.active).toBe(false);
-    expect(mob.trigger()).toBeUndefined();
+    // An MOB without a fix is still an MOB: the alarm raises, with no mark to steer to.
+    const mark = mob.trigger();
+    expect(mark).toEqual({ epochMs: clock.now });
+    expect(mob.active).toBe(true);
+    expect(mob.position).toBeUndefined();
+  });
+
+  it('captures a snapshot without committing, and trigger commits a passed capture', () => {
+    const { store, mob, clock } = setup();
+    expect(mob.capture()).toBeUndefined();
+    store.applyFrame(frame({ 'navigation.position': BOAT }));
+    const pressed = mob.capture();
+    expect(pressed).toEqual({ position: BOAT, epochMs: clock.now });
     expect(mob.active).toBe(false);
+    // The boat moves between press and confirm; the committed mark stays at the press fix.
+    store.applyFrame(
+      frame({
+        'navigation.position': { latitude: BOAT.latitude + 0.01, longitude: BOAT.longitude },
+      }),
+    );
+    clock.now += 10_000;
+    expect(mob.trigger(pressed)).toEqual(pressed);
+    expect(mob.position).toEqual(BOAT);
+  });
+
+  it('ages a capture on the store clock, and treats no clock as unknown age', () => {
+    const { store, mob, clock } = setup();
+    store.applyFrame(frame({ 'navigation.position': BOAT }));
+    const pressed = mob.capture();
+    if (!pressed) throw new Error('expected a capture');
+    expect(mob.captureAgeMs(pressed)).toBe(0);
+    clock.now += 45_000;
+    expect(mob.captureAgeMs(pressed)).toBe(45_000);
+    const clockless = new MobStore(store, new OwnVessel(store), undefined, createFakeStorage());
+    expect(clockless.captureAgeMs(pressed)).toBeUndefined();
   });
 
   it('marks the boat position and time on trigger, and cancel clears it', () => {
@@ -35,6 +68,7 @@ describe('MobStore', () => {
     expect(() => structuredClone(mark)).not.toThrow();
     expect(mob.active).toBe(true);
     expect(mob.position).toEqual(BOAT);
+    expect(mob.markEpochMs).toBe(clock.now);
     mob.cancel();
     expect(mob.active).toBe(false);
     expect(mob.position).toBeUndefined();
@@ -55,6 +89,13 @@ describe('MobStore', () => {
   it('rejects a corrupted persisted mark', () => {
     const { mob } = setup({ 'binnacle:mob': JSON.stringify({ position: 7 }) });
     expect(mob.active).toBe(false);
+  });
+
+  it('restores a persisted position-less mark', () => {
+    const { mob } = setup({ 'binnacle:mob': JSON.stringify({ epochMs: 5000 }) });
+    expect(mob.active).toBe(true);
+    expect(mob.position).toBeUndefined();
+    expect(mob.markEpochMs).toBe(5000);
   });
 
   it('ticks the elapsed time on the clock', () => {

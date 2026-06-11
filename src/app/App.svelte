@@ -23,7 +23,7 @@ import { AnchorWatch } from '$entities/anchor';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
 import { MeasureStore } from '$entities/measure';
-import { MobStore } from '$entities/mob';
+import { type MobMark, MobStore } from '$entities/mob';
 import {
   type Profile,
   type ProfileSettings,
@@ -670,13 +670,15 @@ function publishMobValue(value: unknown): void {
   });
 }
 
-// One tap: mark the spot, tell the whole boat, and bring the mark into view. Guidance only; the
-// course (and any coupled autopilot) is touched solely by the strip's deliberate Steer to MOB.
-function onMobTrigger(): void {
-  const mark = mob.trigger();
-  if (!mark) return;
-  publishMobValue(mobNotification(mark.position));
-  mapCommands?.flyTo(mark.position.latitude, mark.position.longitude);
+// Commit the press-time mark, tell the whole boat, and bring the mark into view. Guidance only;
+// the course (and any coupled autopilot) is touched solely by the strip's deliberate Steer to MOB.
+// Without a fix the alarm still raises, position-less, so the crew mobilizes either way.
+function onMobTrigger(mark: MobMark | undefined): void {
+  const committed = mob.trigger(mark);
+  publishMobValue(mobNotification(committed.position));
+  if (committed.position) {
+    mapCommands?.flyTo(committed.position.latitude, committed.position.longitude);
+  }
 }
 
 function onMobCancel(): void {
@@ -1293,7 +1295,6 @@ onDestroy(() => {
     </span>
     <MobButton
       {mob}
-      hasFix={!!vessel.position}
       onTrigger={onMobTrigger}
       onLocate={(position) => mapCommands?.flyTo(position.latitude, position.longitude)}
     />

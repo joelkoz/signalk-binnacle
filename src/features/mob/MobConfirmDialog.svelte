@@ -1,0 +1,167 @@
+<script lang="ts">
+import { LifeBuoy } from '@lucide/svelte';
+import { onDestroy } from 'svelte';
+import type { MobMark } from '$entities/mob';
+import { formatClockTime, formatLatitude, formatLongitude } from '$shared/lib';
+import { dialog, focusOnMount, focusTrap } from '$shared/ui';
+
+interface Props {
+  // The press-time capture; undefined when there was no GPS fix at the press.
+  mark: MobMark | undefined;
+  onConfirm: () => void;
+  onCancel: () => void;
+  // Self-dismiss, distinct from onCancel so the opener can retain the press-time fix for a
+  // re-press (a timeout is an abandoned dialog, a Cancel is a statement of false alarm).
+  onTimeout: () => void;
+}
+
+const { mark, onConfirm, onCancel, onTimeout }: Props = $props();
+
+// Generous for wet, gloved, one-handed taps on a pitching deck; press-time capture makes the wait
+// free. The dialog still self-dismisses so an unattended accidental press can never leave a modal
+// occluding a later alarm strip.
+const TIMEOUT_S = 15;
+let remaining = $state(TIMEOUT_S);
+const countdown = setInterval(() => {
+  remaining -= 1;
+  if (remaining <= 0) onTimeout();
+}, 1000);
+onDestroy(() => clearInterval(countdown));
+
+function confirm(): void {
+  // Registration cue for a numb or gloved finger; the alarm tone follows from the trigger.
+  navigator.vibrate?.(200);
+  onConfirm();
+}
+</script>
+
+<!-- The scrim is deliberately inert: a panicked hammer-tap outside the dialog must neither confirm
+     (any stray touch would arm the alarm) nor dismiss (retracting an emergency takes the explicit
+     Cancel, or Escape via the dialog action). -->
+<div class="mob-modal">
+  <!-- The host deliberately carries NO tabindex (unlike SlideOver): the dialog action's
+       node.focus() then no-ops, so the confirm button's focusOnMount owns initial focus. -->
+  <div
+    class="mob-dialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="mob-confirm-title"
+    aria-describedby="mob-confirm-desc"
+    use:dialog={onCancel}
+    use:focusTrap
+  >
+    <header class="head">
+      <LifeBuoy size={28} aria-hidden="true" />
+      <h2 id="mob-confirm-title">Man overboard</h2>
+    </header>
+    <p id="mob-confirm-desc" class="desc">
+      Marks the spot where MOB was pressed and sounds the alarm on every station.
+    </p>
+    {#if mark?.position}
+      <p class="fix" aria-hidden="true">
+        Captured {formatClockTime(mark.epochMs, { seconds: true })}<br>
+        {formatLatitude(mark.position.latitude)} {formatLongitude(mark.position.longitude)}
+      </p>
+    {:else}
+      <p class="fix no-fix">No GPS fix. The alarm will sound without a position.</p>
+    {/if}
+    <div class="actions">
+      <button type="button" class="btn" onclick={onCancel}>
+        Cancel <span aria-hidden="true">({remaining}s)</span>
+      </button>
+      <button type="button" class="btn confirm" use:focusOnMount onclick={confirm}>
+        <LifeBuoy size={20} aria-hidden="true" />
+        Mark man overboard
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.mob-modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+}
+.mob-dialog {
+  inline-size: min(22rem, calc(100dvw - 2 * var(--space-4)));
+  border: 2px solid var(--alarm);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+  /* Clips the header band to the radius. */
+  overflow: hidden;
+  animation: mob-dialog-in 0.12s ease;
+}
+@keyframes mob-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mob-dialog {
+    animation: none;
+  }
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--alarm-tint);
+  color: var(--alarm);
+}
+.head h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+.desc,
+.fix {
+  margin: 0;
+  padding-inline: var(--space-4);
+  color: var(--text);
+}
+.desc {
+  padding-block-start: var(--space-3);
+}
+.fix {
+  padding-block-start: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.no-fix {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--warning);
+}
+/* Stacked, never side by side at equal size: the deadly miss is a panicked finger landing on
+   Cancel when it meant Confirm. Cancel sits above, quiet and full-sized; the confirm is the
+   dominant bottom element in the one-handed thumb zone. */
+.actions {
+  display: grid;
+  row-gap: var(--space-3);
+  padding: var(--space-4);
+}
+.actions .btn {
+  font-size: var(--text-md);
+}
+/* The one tap in the app made with wet, gloved, shaking hands: 1.5x the normal touch target. */
+.confirm {
+  min-block-size: calc(var(--control-size) * 1.5);
+  color: var(--alarm);
+  border: 2px solid var(--alarm);
+  background: var(--alarm-tint-strong);
+  font-weight: 700;
+}
+.confirm:hover:not(:disabled) {
+  border-color: var(--alarm);
+  background: var(--alarm-tint-strong);
+  filter: brightness(1.06);
+}
+</style>

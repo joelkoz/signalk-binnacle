@@ -10,6 +10,14 @@ describe('mob notifications', () => {
     expect(value.message).toContain('Man overboard');
   });
 
+  it('raises a position-less emergency without a fix', () => {
+    const value = mobNotification(undefined);
+    expect(value.state).toBe('emergency');
+    expect(value.method).toContain('sound');
+    expect(value.position).toBeUndefined();
+    expect(value.message).toContain('no position');
+  });
+
   it('clears to normal with no methods', () => {
     const value = mobClearNotification();
     expect(value.state).toBe('normal');
