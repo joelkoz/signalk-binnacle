@@ -29,9 +29,16 @@ export interface WeatherGrid {
   times: number[]; // epoch ms, ascending
   windU: number[][]; // m/s, eastward
   windV: number[][]; // m/s, northward
+  // When the loader fetched this grid from the network (epoch ms), carried through the caches so
+  // the panel can state the forecast's age honestly. Absent on grids persisted before this field.
+  fetchedAt?: number;
+  // Waves were requested but the marine endpoint failed, so the wave fields are missing from an
+  // otherwise complete grid; the panel qualifies its stale note with this.
+  partialWaves?: boolean;
   // Supplementary fields, present only when fetched; absent (undefined) for a wind-only grid or
   // over cells the provider omits. All SI: pressure in Pa, wave height in m, direction in radians,
   // period in s. Marine fields are NaN over land cells.
+  windGust?: number[][]; // m/s
   pressureMsl?: number[][]; // Pa
   precipitation?: number[][]; // mm (hourly total)
   cloudCover?: number[][]; // 0..1 fraction
@@ -102,6 +109,22 @@ export interface TimeBracket {
   lo: number;
   hi: number;
   frac: number;
+}
+
+// The grid step nearest a target time, clamped into the series. Used to seed the time slider to
+// now on load: Open-Meteo's hourly series starts at 00:00 of the current day, so the first step is
+// up to a day in the past and must never be the default.
+export function nearestGridTime(times: number[], targetMs: number): number | undefined {
+  let best: number | undefined;
+  let bestGap = Number.POSITIVE_INFINITY;
+  for (const t of times) {
+    const gap = Math.abs(t - targetMs);
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = t;
+    }
+  }
+  return best;
 }
 
 // The two forecast step indices bracketing a selected time and the blend fraction, clamped to the

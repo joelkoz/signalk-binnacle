@@ -1,4 +1,4 @@
-import { formatFixed, formatKnotsOr } from '$shared/lib';
+import { formatFixed, formatKnotsOr, knotsToMetersPerSecond } from '$shared/lib';
 import type { Theme } from '$shared/ui';
 import { cloudColor } from './cloud-colormap';
 import { type Rgba, rgbaCss } from './color-ramp';
@@ -27,7 +27,9 @@ export interface WeatherLegend {
   note?: string;
 }
 
-const WIND_STOPS = [0, 5, 10, 15, 20, 26]; // m/s
+// Whole-knot stops (in m/s): sailors think in 10-knot bands, and the old m/s stops rendered as
+// "0.0" and "50.5" kn, false precision on model wind.
+const WIND_STOPS = [0, 10, 20, 30, 40, 50].map(knotsToMetersPerSecond);
 const WAVE_STOPS = [0.5, 1, 2, 4, 6, 9]; // m
 const PRECIP_STOPS = [0.2, 1, 2.5, 10, 25, 40]; // mm/h, tops out where the precip colormap does
 const CLOUD_STOPS = [0.25, 0.5, 0.75, 1]; // fraction
@@ -70,7 +72,7 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         'Wind (kn)',
         WIND_STOPS,
         (s) => windColor(s, theme),
-        (s) => formatKnotsOr(s, 1),
+        (s) => formatKnotsOr(s, 0),
       );
     case WEATHER_LAYER_IDS.pressure:
       return {
@@ -102,12 +104,16 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         'Cloud (%)',
         CLOUD_STOPS,
         (c) => cloudColor(c, theme),
-        (c) => formatFixed(c * 100, 1),
+        // Whole percent: model cloud fraction has no tenth-percent meaning.
+        (c) => formatFixed(c * 100, 0),
       );
     case WEATHER_LAYER_IDS.radar:
       // RainViewer's raster palette is a fixed light-to-intense scale. At night the tiles are
       // desaturated to red (applyRasterTheme), so the legend uses a red-band ramp there to honor the
       // night-red contract rather than showing literal blue and green chips.
+      // PINNED to applyRasterTheme in shared/map/map-theme.ts: these night chips hand-approximate
+      // that treatment's raster-saturation and raster-brightness-max output, so a change to those
+      // paint values must re-tune these literals or the legend lies about the tiles.
       return {
         id: layerId,
         title: 'Rain radar',
@@ -125,7 +131,9 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
                 { color: 'rgb(230, 200, 60)', label: 'heavy' },
                 { color: 'rgb(220, 70, 60)', label: 'intense' },
               ],
-        note: 'live radar, regional resolution',
+        // The newest RainViewer frames are model extrapolation, not observation; "live radar"
+        // would overstate them.
+        note: 'radar with short-term nowcast, regional resolution',
       };
     default:
       return undefined;

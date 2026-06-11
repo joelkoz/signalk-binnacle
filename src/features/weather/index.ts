@@ -8,7 +8,7 @@ export {
 export { type WeatherLegend, weatherLegend } from './legend';
 export { createPrecipOverlay } from './precip-overlay';
 export { createPressureOverlay } from './pressure-overlay';
-export { createRadarOverlay } from './radar-overlay';
+export { createRadarOverlay, radarScrubbedAway } from './radar-overlay';
 export { fetchRadar } from './rainviewer-client';
 export {
   conditionsFromSignalK,
@@ -17,7 +17,8 @@ export {
   fetchPointForecasts,
   fetchWeatherProviders,
   fetchWeatherWarnings,
-  nearestInTime,
+  NEAR_NOW_MS,
+  nearestInTimeBounded,
   type PointConditions,
   readoutFromSignalK,
   type SignalKWeatherData,
@@ -33,5 +34,10 @@ export {
   type WeatherLayersWanted,
   type WeatherLoader,
 } from './weather-loader';
-export { RAIN_VISIBLE_MM_H, readoutAt, type WeatherReadout } from './weather-readout';
+export {
+  RAIN_VISIBLE_MM_H,
+  readoutAt,
+  readoutAtBracket,
+  type WeatherReadout,
+} from './weather-readout';
 export { createWindOverlay } from './wind-overlay';

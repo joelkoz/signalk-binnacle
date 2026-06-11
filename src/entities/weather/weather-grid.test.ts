@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { bilinearAt, sampleGrid, timeBracket, type WeatherGrid } from './weather-grid';
+import {
+  bilinearAt,
+  nearestGridTime,
+  sampleGrid,
+  timeBracket,
+  type WeatherGrid,
+} from './weather-grid';
 
 const tiny: WeatherGrid = {
   lats: [0, 1],
@@ -42,5 +48,16 @@ describe('timeBracket', () => {
   it('clamps before the first and after the last step', () => {
     expect(timeBracket(tiny, 0)).toEqual({ lo: 0, hi: 0, frac: 0 });
     expect(timeBracket(tiny, 9999)).toEqual({ lo: 1, hi: 1, frac: 0 });
+  });
+});
+
+describe('nearestGridTime', () => {
+  it('picks the step nearest the target, clamped into the series', () => {
+    expect(nearestGridTime([1000, 4000, 7000], 4400)).toBe(4000);
+    expect(nearestGridTime([1000, 4000, 7000], 0)).toBe(1000);
+    expect(nearestGridTime([1000, 4000, 7000], 99_999)).toBe(7000);
+  });
+  it('is undefined for an empty series', () => {
+    expect(nearestGridTime([], 5)).toBeUndefined();
   });
 });

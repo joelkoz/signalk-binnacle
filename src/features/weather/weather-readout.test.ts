@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WeatherGrid } from '$entities/weather';
-import { readoutAt } from './weather-readout';
+import { pressureTrendPa, readoutAt, readoutAtBracket } from './weather-readout';
 
 const grid: WeatherGrid = {
   lats: [0, 1],
@@ -13,6 +13,14 @@ const grid: WeatherGrid = {
   windV: [
     [0, 0, 0, 0],
     [0, 0, 0, 0],
+  ],
+  windGust: [
+    [15, 15, 15, 15],
+    [5, 5, 5, 5],
+  ],
+  waveDirection: [
+    [1, 1, 1, 1],
+    [2, 2, 2, 2],
   ],
   pressureMsl: [
     [101300, 101300, 101300, 101300],
@@ -46,8 +54,49 @@ describe('readoutAt', () => {
     expect(r?.wavePeriodS).toBeCloseTo(7, 4);
     expect(r?.precipitationMm).toBeCloseTo(2, 4);
     expect(r?.cloudCoverFraction).toBeCloseTo(0.8, 4);
+    expect(r?.gustMs).toBeCloseTo(15, 4);
+    expect(r?.waveFromRad).toBeCloseTo(1, 4);
   });
   it('returns undefined outside the grid', () => {
     expect(readoutAt(grid, 9, 9, 0)).toBeUndefined();
+  });
+});
+
+describe('readoutAtBracket', () => {
+  it('blends the two bracketing steps exactly as the drawn fields do', () => {
+    const r = readoutAtBracket(grid, 0.5, 0.5, { lo: 0, hi: 1, frac: 0.5 });
+    // windU blends -10 toward 0, so the speed is the midpoint, not the lower step's value.
+    expect(r?.speedMs).toBeCloseTo(5, 4);
+    expect(r?.gustMs).toBeCloseTo(10, 4);
+    // The wave direction blends through the shorter arc.
+    expect(r?.waveFromRad).toBeCloseTo(1.5, 4);
+  });
+
+  it('matches readoutAt at a zero fraction', () => {
+    expect(readoutAtBracket(grid, 0.5, 0.5, { lo: 0, hi: 0, frac: 0 })).toEqual(
+      readoutAt(grid, 0.5, 0.5, 0),
+    );
+  });
+});
+
+describe('pressureTrendPa', () => {
+  const HOUR = 3_600_000;
+  const trendGrid: WeatherGrid = {
+    lats: [0, 1],
+    lons: [0, 1],
+    times: [0, HOUR, 2 * HOUR, 3 * HOUR, 4 * HOUR],
+    windU: Array.from({ length: 5 }, () => [0, 0, 0, 0]),
+    windV: Array.from({ length: 5 }, () => [0, 0, 0, 0]),
+    // Falling 100 Pa (1 hPa) per hour, so the trailing 3-hour change is -300 Pa.
+    pressureMsl: Array.from({ length: 5 }, (_, t) => new Array(4).fill(101_500 - t * 100)),
+  };
+
+  it('reports the trailing three-hour change', () => {
+    expect(pressureTrendPa(trendGrid, 0.5, 0.5, 4 * HOUR)).toBeCloseTo(-300, 4);
+  });
+
+  it('refuses a window the series cannot cover', () => {
+    // A shorter window must never be passed off as the 3-hour tendency.
+    expect(pressureTrendPa(trendGrid, 0.5, 0.5, HOUR)).toBeUndefined();
   });
 });

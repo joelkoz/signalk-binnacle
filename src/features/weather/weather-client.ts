@@ -16,6 +16,7 @@ interface OmLoc {
     time?: number[];
     wind_speed_10m?: number[];
     wind_direction_10m?: number[];
+    wind_gusts_10m?: number[];
     pressure_msl?: number[];
     precipitation?: number[];
     cloud_cover?: number[];
@@ -118,7 +119,9 @@ export async function fetchForecast(
 ): Promise<WeatherGrid | undefined> {
   const result = await fetchGridLocations<OmLoc>(
     FORECAST_URL,
-    'wind_speed_10m,wind_direction_10m,pressure_msl,precipitation,cloud_cover',
+    // Gusts ride along: gust versus sustained is the reefing decision, so the free grid must carry
+    // it for the readouts even when no provider is configured.
+    'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,precipitation,cloud_cover',
     { wind_speed_unit: 'ms' },
     bbox,
     opts,
@@ -136,6 +139,7 @@ function parse(locs: OmLoc[], lats: number[], lons: number[]): WeatherGrid | und
   if (locs.length !== cells) return undefined;
   const windU = grid2d(steps, cells, 0);
   const windV = grid2d(steps, cells, 0);
+  const windGust = grid2d(steps, cells);
   const pressureMsl = grid2d(steps, cells);
   const precipitation = grid2d(steps, cells);
   const cloudCover = grid2d(steps, cells);
@@ -143,6 +147,7 @@ function parse(locs: OmLoc[], lats: number[], lons: number[]): WeatherGrid | und
     const h = locs[c]?.hourly;
     const spd = h?.wind_speed_10m ?? [];
     const dir = h?.wind_direction_10m ?? [];
+    const gust = h?.wind_gusts_10m ?? [];
     const pres = h?.pressure_msl ?? [];
     const precip = h?.precipitation ?? [];
     const cloud = h?.cloud_cover ?? [];
@@ -151,6 +156,8 @@ function parse(locs: OmLoc[], lats: number[], lons: number[]): WeatherGrid | und
       const d = (dir[t] ?? 0) * DEG_TO_RAD;
       windU[t][c] = -s * Math.sin(d);
       windV[t][c] = -s * Math.cos(d);
+      const g = gust[t];
+      if (g !== undefined) windGust[t][c] = g;
       const hpa = pres[t];
       if (hpa !== undefined) pressureMsl[t][c] = hpa * PA_PER_HPA;
       const mm = precip[t];
@@ -159,7 +166,7 @@ function parse(locs: OmLoc[], lats: number[], lons: number[]): WeatherGrid | und
       if (cc !== undefined) cloudCover[t][c] = cc / 100;
     }
   }
-  return { lats, lons, times, windU, windV, pressureMsl, precipitation, cloudCover };
+  return { lats, lons, times, windU, windV, windGust, pressureMsl, precipitation, cloudCover };
 }
 
 // Fetch Open-Meteo marine wave data for the same sampled grid as the forecast. Best-effort: returns

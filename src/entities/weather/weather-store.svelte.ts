@@ -1,5 +1,5 @@
 import type { Bbox, RadarData, TimeBracket, WeatherGrid } from './weather-grid';
-import { timeBracket } from './weather-grid';
+import { nearestGridTime, timeBracket } from './weather-grid';
 
 export type WeatherStatus = 'idle' | 'loading' | 'ready' | 'error' | 'stale';
 
@@ -21,13 +21,16 @@ export class WeatherStore {
     this.status = status;
   }
 
-  setGrid(grid: WeatherGrid): void {
+  setGrid(grid: WeatherGrid, nowMs: number = Date.now()): void {
     this.grid = grid;
     this.status = 'ready';
     const first = grid.times[0];
     const last = grid.times[grid.times.length - 1];
     if (first !== undefined && (this.selectedTime < first || this.selectedTime > last)) {
-      this.selectedTime = first;
+      // Seed to the step nearest now, never times[0]: Open-Meteo's series starts at 00:00 of the
+      // current day, so the first step is up to a day in the past and would park the slider, the
+      // overlays, and the readouts on stale history at every panel open.
+      this.selectedTime = nearestGridTime(grid.times, nowMs) ?? first;
     }
   }
 

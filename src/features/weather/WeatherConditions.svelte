@@ -3,11 +3,14 @@ import { TriangleAlert } from '@lucide/svelte';
 import type { WeatherStore } from '$entities/weather';
 import {
   formatBearingOr,
+  formatDayClock,
   formatFixed,
   formatHectopascalsOr,
   formatKnotsOr,
+  formatMetersOrNm,
   HOUR_MS,
   kelvinToCelsius,
+  PA_PER_HPA,
 } from '$shared/lib';
 import { GRID_SOURCE_LABEL } from './fills';
 import {
@@ -15,10 +18,20 @@ import {
   fetchObservations,
   fetchPointForecasts,
   fetchWeatherWarnings,
+  NEAR_NOW_MS,
+  nearestInTimeBounded,
   type PointConditions,
+  type SignalKWeatherData,
   type WeatherWarning,
 } from './signalk-weather';
-import { RAIN_VISIBLE_MM_H, readoutAt } from './weather-readout';
+import {
+  PRESSURE_TREND_WINDOW_MS,
+  pressureTrendPa,
+  RAIN_VISIBLE_MM_H,
+  readoutAt,
+  readoutAtBracket,
+  type WeatherReadout,
+} from './weather-readout';
 
 interface Props {
   origin: string;
@@ -35,8 +48,12 @@ const FORECAST_STEPS = 6;
 const FREE_STEP_MS = 6 * HOUR_MS;
 
 let loading = $state(false);
-let current = $state<PointConditions | undefined>();
-let forecast = $state<PointConditions[]>([]);
+// The provider's raw answers, kept as data so the conditions DERIVE from them and the selected
+// time: scrubbing the slider re-picks the step without refetching, and a transient provider
+// failure (undefined) falls through to the time-reactive free grid instead of freezing a one-shot
+// sample on screen.
+let obsData = $state<SignalKWeatherData | undefined>();
+let seriesData = $state<SignalKWeatherData[] | undefined>();
 let warnings = $state<WeatherWarning[]>([]);
 // A sequence guard so a slow earlier load cannot overwrite a newer one.
 let seq = 0;
@@ -55,8 +72,8 @@ function posCoords(key: string): [number, number] {
   return [lat, lon];
 }
 
-// Provider data: fetch only when the rounded position or the provider changes, not on every scrub or
-// GPS jitter. Observations, the point forecast, and warnings do not depend on the selected time.
+// Provider data: fetch only when the rounded position or the provider changes, not on every scrub
+// or GPS jitter; the deriveds below re-pick the step for the selected time without a request.
 $effect(() => {
   const key = posKey;
   const provider = providerName;
@@ -64,27 +81,14 @@ $effect(() => {
     clear();
     return;
   }
-  if (!provider) return; // the free-fallback effect owns the no-provider case
+  if (!provider) return;
   const [lat, lon] = posCoords(key);
   void loadProvider(lat, lon);
 });
 
-// Free fallback: recompute from the grid on rounded-position or selected-time change, but only when
-// no provider is configured. With a provider, the effect above owns the conditions.
-$effect(() => {
-  const key = posKey;
-  const provider = providerName;
-  void store.selectedTime;
-  if (!key || provider) return;
-  const [lat, lon] = posCoords(key);
-  current = freeCurrent(lat, lon);
-  forecast = freeForecast(lat, lon);
-  warnings = [];
-});
-
 function clear(): void {
-  current = undefined;
-  forecast = [];
+  obsData = undefined;
+  seriesData = undefined;
   warnings = [];
 }
 
@@ -97,10 +101,8 @@ async function loadProvider(lat: number, lon: number): Promise<void> {
     fetchWeatherWarnings(origin, lat, lon, token),
   ]);
   if (mine !== seq) return;
-  current = obs ? conditionsFromSignalK(obs) : freeCurrent(lat, lon);
-  forecast = series
-    ? series.map(conditionsFromSignalK).slice(0, FORECAST_STEPS)
-    : freeForecast(lat, lon);
+  obsData = obs;
+  seriesData = series;
   // fetchWeatherWarnings returns undefined on a transient failure and [] only when the provider
   // genuinely reports none. Warnings have no free fallback, so keep the last set on a failure: a
   // slow or rate-limited provider must not flicker an active gale or small-craft advisory off the
@@ -109,12 +111,92 @@ async function loadProvider(lat: number, lon: number): Promise<void> {
   loading = false;
 }
 
-function freeCurrent(lat: number, lon: number): PointConditions | undefined {
-  const grid = store.grid;
-  if (!grid) return undefined;
-  const r = readoutAt(grid, lon, lat, store.bracket.lo);
-  return r ? { timeMs: store.selectedTime, windMs: r.speedMs, ...readoutFields(r) } : undefined;
+// The time the conditions answer for: the scrubbed forecast time once a grid exists, otherwise now.
+const targetMs = $derived(store.grid ? store.selectedTime : Date.now());
+
+// The provider's answer for the target time: the latest observation when the target is near now,
+// else the bounded nearest forecast step (never an entry days from the target).
+const providerCurrent = $derived.by<{ cond: PointConditions; observed: boolean } | undefined>(
+  () => {
+    if (!providerName) return undefined;
+    if (Math.abs(targetMs - Date.now()) < NEAR_NOW_MS && obsData) {
+      return { cond: conditionsFromSignalK(obsData), observed: true };
+    }
+    if (seriesData) {
+      const step = nearestInTimeBounded(seriesData, targetMs);
+      if (step) return { cond: conditionsFromSignalK(step), observed: false };
+    }
+    return undefined;
+  },
+);
+
+// One readout-to-conditions mapper shared by the current block and the forecast rows, so a field
+// added to one (as gusts just were) cannot be forgotten in the other.
+function conditionsFromReadout(r: WeatherReadout, timeMs: number): PointConditions {
+  return {
+    timeMs,
+    windMs: r.speedMs,
+    fromRad: r.fromRad,
+    gustMs: r.gustMs,
+    pressurePa: r.pressurePa,
+    cloudFraction: r.cloudCoverFraction,
+    waveHeightM: r.waveHeightM,
+    wavePeriodS: r.wavePeriodS,
+    waveFromRad: r.waveFromRad,
+    precipitationMm: r.precipitationMm,
+    precipIsRate: r.precipIsRate,
+  };
 }
+
+// The free-grid sample at the vessel, blended across the time bracket like the drawn fields.
+const freeCurrent = $derived.by<PointConditions | undefined>(() => {
+  if (!posKey || !store.grid) return undefined;
+  const [lat, lon] = posCoords(posKey);
+  const r = readoutAtBracket(store.grid, lon, lat, store.bracket);
+  return r ? conditionsFromReadout(r, store.selectedTime) : undefined;
+});
+
+const current = $derived(providerCurrent?.cond ?? freeCurrent);
+const currentObserved = $derived(providerCurrent?.observed ?? false);
+
+// The barometric tendency, the datum a sailor actually decides by. The provider's qualitative
+// string wins when present; otherwise the trailing 3-hour delta computed from the free grid.
+const tendencyText = $derived.by<string | undefined>(() => {
+  const fromProvider = providerCurrent?.cond.pressureTendency;
+  if (fromProvider) return fromProvider;
+  if (!posKey || !store.grid) return undefined;
+  const [lat, lon] = posCoords(posKey);
+  const dPa = pressureTrendPa(store.grid, lon, lat, targetMs);
+  if (dPa === undefined) return undefined;
+  const dHpa = dPa / PA_PER_HPA;
+  const hours = PRESSURE_TREND_WINDOW_MS / HOUR_MS;
+  if (Math.abs(dHpa) < 0.5) return 'steady';
+  const word = dHpa > 0 ? 'rising' : 'falling';
+  return `${word} ${formatFixed(Math.abs(dHpa), 1)} hPa/${hours} h`;
+});
+
+// Parsed once per fetch, so scrubbing (700 ms ticks during playback) filters a stable array
+// instead of re-parsing twelve dates per step.
+const parsedSeries = $derived(seriesData?.map(conditionsFromSignalK));
+
+const forecast = $derived.by<PointConditions[]>(() => {
+  if (providerName && parsedSeries) {
+    return parsedSeries
+      .filter((c) => !Number.isNaN(c.timeMs) && c.timeMs >= targetMs)
+      .slice(0, FORECAST_STEPS);
+  }
+  if (!posKey) return [];
+  const [lat, lon] = posCoords(posKey);
+  return freeForecast(lat, lon);
+});
+
+// The forecast window the rows actually span, so the cadence (6-hourly free, provider-defined
+// otherwise) never has to be guessed from the row times.
+const forecastHorizonH = $derived(
+  forecast.length > 0
+    ? Math.max(1, Math.round((forecast[forecast.length - 1].timeMs - targetMs) / HOUR_MS))
+    : 0,
+);
 
 function freeForecast(lat: number, lon: number): PointConditions[] {
   const grid = store.grid;
@@ -126,24 +208,26 @@ function freeForecast(lat: number, lon: number): PointConditions[] {
     if (t < store.selectedTime || t - lastMs < FREE_STEP_MS) continue;
     const r = readoutAt(grid, lon, lat, i);
     if (!r) continue;
-    out.push({ timeMs: t, windMs: r.speedMs, ...readoutFields(r) });
+    out.push(conditionsFromReadout(r, t));
     lastMs = t;
   }
   return out;
 }
 
-function readoutFields(r: NonNullable<ReturnType<typeof readoutAt>>): Partial<PointConditions> {
-  return {
-    fromRad: r.fromRad,
-    pressurePa: r.pressurePa,
-    cloudFraction: r.cloudCoverFraction,
-    waveHeightM: r.waveHeightM,
-    wavePeriodS: r.wavePeriodS,
-    precipitationMm: r.precipitationMm,
-  };
+// Severity order for the warnings list: the gale must never sit under a marginal advisory.
+function severityRank(type: string): number {
+  const t = type.toLowerCase();
+  if (/hurricane|typhoon/.test(t)) return 0;
+  if (/storm/.test(t)) return 1;
+  if (/gale/.test(t)) return 2;
+  if (/small craft/.test(t)) return 3;
+  return 4;
 }
+const sortedWarnings = $derived(
+  [...warnings].sort((a, b) => severityRank(a.type) - severityRank(b.type)),
+);
 
-const knots = formatKnotsOr;
+const knots = (v: number | undefined) => formatKnotsOr(v, 0);
 const bearing = formatBearingOr;
 const hpa = formatHectopascalsOr;
 const degC = (v: number | undefined) => formatFixed(kelvinToCelsius(v), 0);
@@ -153,6 +237,11 @@ function stepLabel(timeMs: number): string {
   if (Number.isNaN(timeMs)) return '';
   return new Date(timeMs).toLocaleString([], { weekday: 'short', hour: '2-digit' });
 }
+
+// The current block's valid time carries the zone (the formatDayClock rationale).
+const validLabel = (timeMs: number): string => formatDayClock(timeMs, { zone: true });
+
+const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTime));
 </script>
 
 <section class="conditions" aria-label="Conditions at the vessel">
@@ -164,25 +253,35 @@ function stepLabel(timeMs: number): string {
   {#if !position}
     <p class="cond-empty" role="status">Waiting for a vessel position.</p>
   {:else}
-    {#if warnings.length > 0}
+    {#if sortedWarnings.length > 0}
       <ul class="warnings" role="alert">
-        {#each warnings as w (w.startTime + w.type)}
+        {#each sortedWarnings as w (w.startTime + w.type)}
+          {@const until = untilLabel(w.endTime)}
           <li class="warning">
             <TriangleAlert size={14} aria-hidden="true" />
             <span>
               <b>{w.type}</b>
               {w.details}
+              <span class="warning-meta"> {w.source}{until ? ` · until ${until}` : ''} </span>
             </span>
           </li>
         {/each}
       </ul>
+    {:else if !providerName}
+      <!-- Silence must be labeled: an empty list would read as "no warnings active" when the free
+           sources simply carry none. -->
+      <p class="cond-note">Warnings unavailable without a weather provider.</p>
     {/if}
 
     {#if current}
+      <p class="cond-when">
+        {currentObserved ? 'Observed' : 'Forecast'}
+        · {validLabel(current.timeMs)}
+      </p>
       <dl class="now">
         <div>
           <dt>Wind</dt>
-          <dd><b>{knots(current.windMs)}</b> kn {bearing(current.fromRad)}&deg;T</dd>
+          <dd><b>{knots(current.windMs)}</b> kn from {bearing(current.fromRad)}&deg;T</dd>
         </div>
         {#if current.gustMs !== undefined}
           <div>
@@ -193,13 +292,31 @@ function stepLabel(timeMs: number): string {
         {#if current.pressurePa !== undefined}
           <div>
             <dt>Pressure</dt>
-            <dd><b>{hpa(current.pressurePa)}</b> hPa</dd>
+            <dd>
+              <b>{hpa(current.pressurePa)}</b>
+              hPa
+              {#if tendencyText}
+                <span class="trend">{tendencyText}</span>
+              {/if}
+            </dd>
           </div>
         {/if}
         {#if current.airTempK !== undefined}
           <div>
             <dt>Air</dt>
             <dd><b>{degC(current.airTempK)}</b>&deg;C</dd>
+          </div>
+        {/if}
+        {#if current.waterTempK !== undefined}
+          <div>
+            <dt>Water</dt>
+            <dd><b>{degC(current.waterTempK)}</b>&deg;C</dd>
+          </div>
+        {/if}
+        {#if current.visibilityM !== undefined}
+          <div>
+            <dt>Visibility</dt>
+            <dd><b>{formatMetersOrNm(current.visibilityM)}</b></dd>
           </div>
         {/if}
         {#if current.cloudFraction !== undefined}
@@ -217,30 +334,60 @@ function stepLabel(timeMs: number): string {
               {#if current.wavePeriodS !== undefined}
                 / <b>{formatFixed(current.wavePeriodS, 1)}</b> s
               {/if}
+              {#if current.waveFromRad !== undefined}
+                from {bearing(current.waveFromRad)}&deg;T
+              {/if}
+            </dd>
+          </div>
+        {/if}
+        {#if current.swellHeightM !== undefined}
+          <div>
+            <dt>Swell</dt>
+            <dd>
+              <b>{formatFixed(current.swellHeightM, 1)}</b>
+              m
+              {#if current.swellPeriodS !== undefined}
+                / <b>{formatFixed(current.swellPeriodS, 1)}</b> s
+              {/if}
+              {#if current.swellFromRad !== undefined}
+                from {bearing(current.swellFromRad)}&deg;T
+              {/if}
             </dd>
           </div>
         {/if}
         {#if current.precipitationMm !== undefined && current.precipitationMm >= RAIN_VISIBLE_MM_H}
           <div>
             <dt>Rain</dt>
-            <dd><b>{formatFixed(current.precipitationMm, 1)}</b> mm/h</dd>
+            <dd>
+              <b>{formatFixed(current.precipitationMm, 1)}</b>
+              {current.precipIsRate ? 'mm/h' : 'mm'}
+            </dd>
           </div>
         {/if}
       </dl>
     {:else if loading}
       <p class="cond-empty" role="status">Loading conditions.</p>
+    {:else if !providerName && !store.grid}
+      <p class="cond-empty" role="status">Turn on a weather layer to load conditions.</p>
     {:else}
-      <p class="cond-empty" role="status">No conditions for this point</p>
+      <p class="cond-empty" role="status">No conditions for this point.</p>
     {/if}
 
     {#if forecast.length > 0}
+      <p class="caps-label forecast-head">Forecast · next {forecastHorizonH} h</p>
       <ul class="forecast">
         {#each forecast as step (step.timeMs)}
           <li>
             <span class="f-time">{stepLabel(step.timeMs)}</span>
-            <span class="f-wind"><b>{knots(step.windMs)}</b> kn {bearing(step.fromRad)}&deg;T</span>
+            <span class="f-wind">
+              <b>{knots(step.windMs)}</b>
+              kn from {bearing(step.fromRad)}&deg;T
+            </span>
             {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}
-              <span class="f-rain"><b>{formatFixed(step.precipitationMm, 1)}</b> mm/h</span>
+              <span class="f-rain">
+                <b>{formatFixed(step.precipitationMm, 1)}</b>
+                {step.precipIsRate ? 'mm/h' : 'mm'}
+              </span>
             {/if}
           </li>
         {/each}
@@ -274,9 +421,17 @@ function stepLabel(timeMs: number): string {
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
-.cond-empty {
+.cond-empty,
+.cond-note {
   margin: 0;
   font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+/* Whether the block is an observation or model output, and for when: forecast data styled as
+   present conditions misleads. */
+.cond-when {
+  margin: 0;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 .warnings {
@@ -287,6 +442,8 @@ function stepLabel(timeMs: number): string {
   flex-direction: column;
   gap: 0.3rem;
 }
+/* Warning text holds the small-panel body size, never the smallest tier: a gale advisory is the
+   highest-stakes content here and must stay readable on a pitching deck. */
 .warning {
   display: flex;
   align-items: start;
@@ -296,7 +453,7 @@ function stepLabel(timeMs: number): string {
   border-radius: var(--radius-sm);
   background: var(--alarm-tint);
   color: var(--text);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
 }
 .warning :global(svg) {
   color: var(--alarm);
@@ -307,6 +464,11 @@ function stepLabel(timeMs: number): string {
 .warning span {
   min-inline-size: 0;
   overflow-wrap: anywhere;
+}
+.warning-meta {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 .now {
   display: grid;
@@ -336,11 +498,20 @@ function stepLabel(timeMs: number): string {
 .now b {
   font-size: var(--text-lg);
 }
-.forecast {
-  list-style: none;
+.trend {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.forecast-head {
   margin: 0;
   padding-block-start: 0.4rem;
   border-block-start: 1px solid var(--border);
+}
+.forecast {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);

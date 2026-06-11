@@ -1,4 +1,5 @@
-import { bilinearAt, type WeatherGrid } from '$entities/weather';
+import { bilinearAt, type TimeBracket, timeBracket, type WeatherGrid } from '$entities/weather';
+import { HOUR_MS, lerp } from '$shared/lib';
 
 // Below this rate (mm/h) precipitation is not worth showing in a readout: a trace that rounds to
 // nothing. Shared by the readouts that gate a rain line on it so the threshold is defined once.
@@ -7,56 +8,128 @@ export const RAIN_VISIBLE_MM_H = 0.1;
 export interface WeatherReadout {
   speedMs: number;
   fromRad: number; // meteorological direction the wind comes from, radians, 0..2pi
+  gustMs?: number; // present only when the grid carries gusts
   pressurePa?: number; // present only when the grid carries pressure
   waveHeightM?: number; // present only when the grid carries waves
   wavePeriodS?: number;
-  precipitationMm?: number; // mm/h, present only when the grid carries precipitation
+  waveFromRad?: number; // direction the waves come from, radians, 0..2pi
+  precipitationMm?: number; // present only when the source carries precipitation
+  // Whether precipitationMm is a rate (mm/h, the free grid) or an accumulation volume (mm, the
+  // provider), carried in the data so every display labels it the same way.
+  precipIsRate?: boolean;
   cloudCoverFraction?: number; // 0..1, present only when the grid carries cloud cover
 }
 
-// Wind speed, from-direction, and (when present) pressure at a lon/lat for a forecast step, sampled
-// from the grid. Returns undefined when the point is outside the grid. Values are SI; the display
-// converts at its edge.
+// Wind speed, from-direction, and (when present) the other fields at a lon/lat for one forecast
+// step. Values are SI; the display converts at its edge.
 export function readoutAt(
   grid: WeatherGrid,
   lon: number,
   lat: number,
   timeIndex: number,
 ): WeatherReadout | undefined {
-  const u = bilinearAt(grid, grid.windU[timeIndex], lon, lat);
-  const v = bilinearAt(grid, grid.windV[timeIndex], lon, lat);
-  if (u === undefined || v === undefined) return undefined;
+  return readoutAtBracket(grid, lon, lat, { lo: timeIndex, hi: timeIndex, frac: 0 });
+}
+
+// The readout at a time BRACKET, blending the two bracketing steps by the fraction, exactly as the
+// drawn overlays do. Sampling only the lower step made the tapped number disagree with the picture
+// under the finger by up to a full forecast step.
+export function readoutAtBracket(
+  grid: WeatherGrid,
+  lon: number,
+  lat: number,
+  bracket: TimeBracket,
+): WeatherReadout | undefined {
+  const { lo, hi, frac } = bracket;
+  const uLo = bilinearAt(grid, grid.windU[lo], lon, lat);
+  const vLo = bilinearAt(grid, grid.windV[lo], lon, lat);
+  if (uLo === undefined || vLo === undefined) return undefined;
+  const u = lerpTo(uLo, bilinearAt(grid, grid.windU[hi], lon, lat), frac);
+  const v = lerpTo(vLo, bilinearAt(grid, grid.windV[hi], lon, lat), frac);
   const speedMs = Math.hypot(u, v);
   const fromRad = (Math.atan2(-u, -v) + 2 * Math.PI) % (2 * Math.PI);
-  const pressureField = grid.pressureMsl?.[timeIndex];
-  const pressurePa = pressureField?.length
-    ? nanToUndef(bilinearAt(grid, pressureField, lon, lat))
-    : undefined;
-  const waveField = grid.waveHeight?.[timeIndex];
-  const waveHeightM = waveField?.length
-    ? nanToUndef(bilinearAt(grid, waveField, lon, lat))
-    : undefined;
-  const periodField = grid.wavePeriod?.[timeIndex];
-  const wavePeriodS = periodField?.length
-    ? nanToUndef(bilinearAt(grid, periodField, lon, lat))
-    : undefined;
-  const precipField = grid.precipitation?.[timeIndex];
-  const precipitationMm = precipField?.length
-    ? nanToUndef(bilinearAt(grid, precipField, lon, lat))
-    : undefined;
-  const cloudField = grid.cloudCover?.[timeIndex];
-  const cloudCoverFraction = cloudField?.length
-    ? nanToUndef(bilinearAt(grid, cloudField, lon, lat))
-    : undefined;
+  const scalar = (field: number[][] | undefined): number | undefined =>
+    lerpOr(fieldAt(grid, field, lo, lon, lat), fieldAt(grid, field, hi, lon, lat), frac);
   return {
     speedMs,
     fromRad,
-    pressurePa,
-    waveHeightM,
-    wavePeriodS,
-    precipitationMm,
-    cloudCoverFraction,
+    gustMs: scalar(grid.windGust),
+    pressurePa: scalar(grid.pressureMsl),
+    waveHeightM: scalar(grid.waveHeight),
+    wavePeriodS: scalar(grid.wavePeriod),
+    waveFromRad: circularOr(
+      fieldAt(grid, grid.waveDirection, lo, lon, lat),
+      fieldAt(grid, grid.waveDirection, hi, lon, lat),
+      frac,
+    ),
+    precipitationMm: scalar(grid.precipitation),
+    precipIsRate: true,
+    cloudCoverFraction: scalar(grid.cloudCover),
   };
+}
+
+// The trailing 3-hour barometric change at a point (Pa, negative falling): the tendency a sailor
+// decides by, where a spot reading decides nothing. Undefined when the series does not reach a
+// full 3 hours back from the requested time, so a short window is never passed off as the trend.
+export const PRESSURE_TREND_WINDOW_MS = 3 * HOUR_MS;
+export function pressureTrendPa(
+  grid: WeatherGrid,
+  lon: number,
+  lat: number,
+  timeMs: number,
+): number | undefined {
+  const earlier = timeMs - PRESSURE_TREND_WINDOW_MS;
+  if (grid.times.length === 0 || earlier < grid.times[0]) return undefined;
+  const nowPa = pressureAtBracket(grid, lon, lat, timeBracket(grid, timeMs));
+  const thenPa = pressureAtBracket(grid, lon, lat, timeBracket(grid, earlier));
+  if (nowPa === undefined || thenPa === undefined) return undefined;
+  return nowPa - thenPa;
+}
+
+// Pressure-only sampling: the tendency recomputes on every scrub tick, and a full readout would
+// sample the grid eight fields wide to read one.
+function pressureAtBracket(
+  grid: WeatherGrid,
+  lon: number,
+  lat: number,
+  bracket: TimeBracket,
+): number | undefined {
+  return lerpOr(
+    fieldAt(grid, grid.pressureMsl, bracket.lo, lon, lat),
+    fieldAt(grid, grid.pressureMsl, bracket.hi, lon, lat),
+    bracket.frac,
+  );
+}
+
+function fieldAt(
+  grid: WeatherGrid,
+  field: number[][] | undefined,
+  timeIndex: number,
+  lon: number,
+  lat: number,
+): number | undefined {
+  const step = field?.[timeIndex];
+  return step?.length ? nanToUndef(bilinearAt(grid, step, lon, lat)) : undefined;
+}
+
+// Blend toward the high step only when it sampled; the wind components must never go NaN.
+function lerpTo(a: number, b: number | undefined, f: number): number {
+  return b === undefined || Number.isNaN(b) ? a : lerp(a, b, f);
+}
+
+function lerpOr(a: number | undefined, b: number | undefined, f: number): number | undefined {
+  if (a !== undefined && b !== undefined) return lerp(a, b, f);
+  return a ?? b;
+}
+
+// Angles blend through the shorter arc via the unit vector, never across the 0/360 seam.
+function circularOr(a: number | undefined, b: number | undefined, f: number): number | undefined {
+  if (a !== undefined && b !== undefined) {
+    const x = lerp(Math.sin(a), Math.sin(b), f);
+    const y = lerp(Math.cos(a), Math.cos(b), f);
+    return (Math.atan2(x, y) + 2 * Math.PI) % (2 * Math.PI);
+  }
+  return a ?? b;
 }
 
 // Marine fields are NaN over land; collapse those to undefined so the display shows nothing rather

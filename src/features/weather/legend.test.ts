@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { weatherLegend } from './legend';
 
 describe('weatherLegend', () => {
-  it('builds a wind speed gradient in knots', () => {
+  it('builds a wind speed gradient with whole-knot end labels', () => {
     const legend = weatherLegend('weather-wind', 'day');
     expect(legend?.title).toMatch(/wind/i);
     expect(legend?.gradient).toMatch(/linear-gradient/);
-    expect(legend?.lowLabel).toBe('0.0');
-    expect(legend?.highLabel).toBe('50.5');
+    expect(legend?.lowLabel).toBe('0');
+    expect(legend?.highLabel).toBe('50');
   });
 
   it('builds a single isobar swatch for pressure', () => {
@@ -22,10 +22,16 @@ describe('weatherLegend', () => {
     }
   });
 
-  it('builds a discrete intensity legend for the radar', () => {
+  it('builds a discrete intensity legend for the radar, honest about the nowcast', () => {
     const legend = weatherLegend('weather-radar', 'day');
     expect(legend?.title).toMatch(/radar/i);
     expect(legend?.swatches?.length).toBeGreaterThan(1);
+    // "live radar" would overstate the extrapolated newest frames.
+    expect(legend?.note).toMatch(/nowcast/);
+  });
+
+  it('labels cloud cover in whole percent', () => {
+    expect(weatherLegend('weather-cloud', 'day')?.highLabel).toBe('100');
   });
 
   it('returns undefined for an unknown layer', () => {

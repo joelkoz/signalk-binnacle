@@ -7,6 +7,7 @@ import {
   fetchWeatherProviders,
   fetchWeatherWarnings,
   nearestInTime,
+  nearestInTimeBounded,
   readoutFromSignalK,
   type SignalKWeatherData,
 } from './signalk-weather';
@@ -60,8 +61,11 @@ describe('defaultProviderName', () => {
     expect(defaultProviderName({ b: { name: 'OpenMeteo', isDefault: false } })).toBe('OpenMeteo');
   });
 
-  it('falls back to the provider id when no name is present', () => {
-    expect(defaultProviderName({ 'open-meteo': { isDefault: true } })).toBe('open-meteo');
+  it('falls back to a prettified provider id when no name is present', () => {
+    expect(defaultProviderName({ 'open-meteo': { isDefault: true } })).toBe('Open Meteo');
+    expect(defaultProviderName({ 'signalk-weather-accuweather': { isDefault: true } })).toBe(
+      'Weather Accuweather',
+    );
   });
 
   it('is undefined when there are no providers', () => {
@@ -110,6 +114,17 @@ describe('fetchObservations', () => {
   it('returns undefined when the body is not weather data', async () => {
     expect(await fetchObservations(ORIGIN, 0, 0, undefined, mockFetch(null))).toBeUndefined();
   });
+
+  it('picks the latest observation by date, not by position', async () => {
+    // The API does not guarantee ordering; an oldest-first provider must not serve a stale "now".
+    const fetchFn = mockFetch([
+      { date: '2026-06-03T09:00:00Z', wind: { speedTrue: 1 } },
+      { date: '2026-06-03T12:00:00Z', wind: { speedTrue: 9 } },
+      { date: '2026-06-03T11:00:00Z', wind: { speedTrue: 5 } },
+    ]);
+    const result = await fetchObservations(ORIGIN, 0, 0, undefined, fetchFn);
+    expect(result?.wind?.speedTrue).toBe(9);
+  });
 });
 
 describe('fetchPointForecasts', () => {
@@ -142,6 +157,7 @@ describe('readoutFromSignalK', () => {
       waveHeightM: 1.5,
       wavePeriodS: 7,
       precipitationMm: 2,
+      precipIsRate: false,
       cloudCoverFraction: 0.5,
     });
   });
@@ -170,7 +186,24 @@ describe('conditionsFromSignalK', () => {
       waveHeightM: 1,
       wavePeriodS: 6,
       precipitationMm: 0.5,
+      // Provider precipitation is an accumulation volume, not a rate; the display labels it "mm".
+      precipIsRate: false,
     });
+  });
+
+  it('carries tendency, swell, visibility, and water temperature when supplied', () => {
+    const data: SignalKWeatherData = {
+      date: '2026-06-03T12:00:00Z',
+      outside: { pressureTendency: 'falling', horizontalVisibility: 4000 },
+      water: { temperature: 288, swellHeight: 2.5, swellPeriod: 11, swellDirection: 3.1 },
+    };
+    const cond = conditionsFromSignalK(data);
+    expect(cond.pressureTendency).toBe('falling');
+    expect(cond.visibilityM).toBe(4000);
+    expect(cond.waterTempK).toBe(288);
+    expect(cond.swellHeightM).toBe(2.5);
+    expect(cond.swellPeriodS).toBe(11);
+    expect(cond.swellFromRad).toBe(3.1);
   });
 });
 
@@ -196,5 +229,24 @@ describe('nearestInTime', () => {
 
   it('is undefined for an empty series', () => {
     expect(nearestInTime([], 0)).toBeUndefined();
+  });
+});
+
+describe('nearestInTimeBounded', () => {
+  const series: SignalKWeatherData[] = [
+    { date: '2026-06-03T12:00:00Z' },
+    { date: '2026-06-03T15:00:00Z' },
+    { date: '2026-06-03T18:00:00Z' },
+  ];
+
+  it('answers within one series step of the target', () => {
+    const target = Date.parse('2026-06-03T19:30:00Z');
+    expect(nearestInTimeBounded(series, target)?.date).toBe('2026-06-03T18:00:00Z');
+  });
+
+  it('refuses to answer for a target far past the horizon', () => {
+    // The last step must never stand in for a time days away.
+    const target = Date.parse('2026-06-06T18:00:00Z');
+    expect(nearestInTimeBounded(series, target)).toBeUndefined();
   });
 });

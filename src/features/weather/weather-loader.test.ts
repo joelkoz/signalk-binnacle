@@ -10,14 +10,14 @@ const FAKE_RADAR = { host: 'h', frames: [] } as unknown as RadarData;
 
 function makeStore() {
   const status: string[] = [];
-  const grids: unknown[] = [];
+  const grids: WeatherGrid[] = [];
   const radars: unknown[] = [];
   const store = {
     grid: undefined as unknown,
     setStatus(s: string) {
       status.push(s);
     },
-    setGrid(g: unknown) {
+    setGrid(g: WeatherGrid) {
       grids.push(g);
       store.grid = g;
     },
@@ -67,7 +67,7 @@ describe('createWeatherLoader', () => {
     expect(deps.forecast).toHaveBeenCalledTimes(2);
   });
 
-  it('backs off both endpoints when only the marine (waves) fetch fails, then retries', async () => {
+  it('backs off only the marine endpoint when the waves fetch fails, then retries it', async () => {
     const nowRef = { ms: 0 };
     const deps = makeDeps(nowRef);
     // forecast succeeds; marine returns undefined (a 429 on the separate marine host).
@@ -78,16 +78,27 @@ describe('createWeatherLoader', () => {
     expect(deps.forecast).toHaveBeenCalledTimes(1);
     expect(deps.marine).toHaveBeenCalledTimes(1);
     expect(grids).toHaveLength(1); // the partial grid (wind and pressure) is still shown
+    expect(grids[0].partialWaves).toBe(true); // and says so, for the panel's qualifier
 
-    // Within the cooldown a pan does not re-hit the rate-limited endpoint.
+    // Within the cooldown a pan skips the rate-limited marine host, but the healthy atmospheric
+    // endpoint keeps answering (the partial grid was deliberately not cached).
     await loader.load(store, BBOX, OPTS, { waves: true, radar: false });
-    expect(deps.forecast).toHaveBeenCalledTimes(1);
+    expect(deps.forecast).toHaveBeenCalledTimes(2);
     expect(deps.marine).toHaveBeenCalledTimes(1);
 
     // Past the cooldown it retries marine.
     nowRef.ms += 61_000;
     await loader.load(store, BBOX, OPTS, { waves: true, radar: false });
     expect(deps.marine).toHaveBeenCalledTimes(2);
+  });
+
+  it('stamps the network fetch time onto the grid for provenance', async () => {
+    const deps = makeDeps({ ms: 12_345 });
+    const loader = createWeatherLoader(deps);
+    const { store, grids } = makeStore();
+
+    await loader.load(store, BBOX, OPTS, { waves: false, radar: false });
+    expect(grids[0].fetchedAt).toBe(12_345);
   });
 
   it('fetches marine only when waves is wanted', async () => {

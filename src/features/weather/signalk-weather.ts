@@ -1,4 +1,4 @@
-import { fetchJsonOrUndefined } from '$shared/lib';
+import { fetchJsonOrUndefined, HOUR_MS, MINUTE_MS, nearestBy } from '$shared/lib';
 import { asKeyedObject, authInit } from '$shared/signalk';
 import type { WeatherReadout } from './weather-readout';
 
@@ -13,6 +13,11 @@ import type { WeatherReadout } from './weather-readout';
 // EventEmitter and dies at load when bundled.
 
 const WEATHER_BASE = '/signalk/v2/api/weather';
+
+// How close to now a requested time must be for the latest OBSERVATION to answer instead of a
+// forecast step. One constant so the tap readout and the conditions panel switch sources at the
+// same distance from now.
+export const NEAR_NOW_MS = 90 * MINUTE_MS;
 
 export interface SignalKWeatherData {
   date: string;
@@ -99,7 +104,18 @@ export function defaultProviderName(
   );
   if (entries.length === 0) return undefined;
   const [id, info] = entries.find(([, p]) => p.isDefault) ?? entries[0];
-  return info.name ?? id;
+  return info.name ?? prettyProviderId(id);
+}
+
+// A raw plugin id like "signalk-weather-accuweather" reads poorly as a source label on readouts;
+// strip the convention prefixes and title-case the words.
+function prettyProviderId(id: string): string {
+  const words = id
+    .replace(/^(signalk-|sk-)/, '')
+    .split(/[-_]+/)
+    .filter(Boolean);
+  if (words.length === 0) return id;
+  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 function pointUrl(origin: string, path: string, lat: number, lon: number, count?: number): string {
@@ -108,7 +124,9 @@ function pointUrl(origin: string, path: string, lat: number, lon: number, count?
   return `${origin}${WEATHER_BASE}/${path}?${params.toString()}`;
 }
 
-// Latest observation at a point. undefined on failure or when no provider answers.
+// Latest observation at a point. undefined on failure or when no provider answers. The API does
+// not guarantee ordering, so the latest is picked by date rather than trusting index 0: an
+// hours-stale buffered entry must never be presented as current.
 export async function fetchObservations(
   origin: string,
   lat: number,
@@ -117,8 +135,12 @@ export async function fetchObservations(
   fetchFn: Fetch = defaultFetch,
 ): Promise<SignalKWeatherData | undefined> {
   const many = await fetchWeatherList(pointUrl(origin, 'observations', lat, lon), token, fetchFn);
-  return many?.[0];
+  if (!many || many.length === 0) return undefined;
+  // Nearest to the far future is the latest; entries without a parseable date lose to any dated one.
+  return nearestBy(many, entryMs, Number.MAX_SAFE_INTEGER) ?? many[0];
 }
+
+const entryMs = (entry: SignalKWeatherData): number => Date.parse(entry.date);
 
 // A point forecast series (ascending in time), capped at `count` steps. undefined on failure.
 export async function fetchPointForecasts(
@@ -169,11 +191,22 @@ export interface PointConditions {
   fromRad?: number;
   gustMs?: number;
   pressurePa?: number;
+  // The provider's qualitative barometer trend ("falling", "steady"), when it supplies one.
+  pressureTendency?: string;
   airTempK?: number;
   cloudFraction?: number;
   waveHeightM?: number;
   wavePeriodS?: number;
+  waveFromRad?: number;
+  swellHeightM?: number;
+  swellPeriodS?: number;
+  swellFromRad?: number;
+  visibilityM?: number;
+  waterTempK?: number;
   precipitationMm?: number;
+  // Whether precipitationMm is a rate (mm/h, the free grid) or an accumulation volume over the
+  // provider's unspecified period (mm). Displaying a volume as a rate is wrong by the period factor.
+  precipIsRate?: boolean;
 }
 
 export function conditionsFromSignalK(d: SignalKWeatherData): PointConditions {
@@ -183,11 +216,19 @@ export function conditionsFromSignalK(d: SignalKWeatherData): PointConditions {
     fromRad: d.wind?.directionTrue,
     gustMs: d.wind?.gust,
     pressurePa: d.outside?.pressure,
+    pressureTendency: d.outside?.pressureTendency,
     airTempK: d.outside?.temperature,
     cloudFraction: d.outside?.cloudCover,
     waveHeightM: d.water?.waveSignificantHeight,
     wavePeriodS: d.water?.wavePeriod,
+    waveFromRad: d.water?.waveDirection,
+    swellHeightM: d.water?.swellHeight,
+    swellPeriodS: d.water?.swellPeriod,
+    swellFromRad: d.water?.swellDirection,
+    visibilityM: d.outside?.horizontalVisibility,
+    waterTempK: d.water?.temperature,
     precipitationMm: d.outside?.precipitationVolume,
+    precipIsRate: false,
   };
 }
 
@@ -201,10 +242,13 @@ export function readoutFromSignalK(d: SignalKWeatherData): WeatherReadout | unde
   return {
     speedMs,
     fromRad,
+    gustMs: d.wind?.gust,
     pressurePa: d.outside?.pressure,
     waveHeightM: d.water?.waveSignificantHeight,
     wavePeriodS: d.water?.wavePeriod,
+    waveFromRad: d.water?.waveDirection,
     precipitationMm: d.outside?.precipitationVolume,
+    precipIsRate: false,
     cloudCoverFraction: d.outside?.cloudCover,
   };
 }
@@ -215,16 +259,23 @@ export function nearestInTime(
   series: SignalKWeatherData[],
   targetMs: number,
 ): SignalKWeatherData | undefined {
-  let best: SignalKWeatherData | undefined;
-  let bestGap = Number.POSITIVE_INFINITY;
-  for (const entry of series) {
-    const t = Date.parse(entry.date);
-    if (Number.isNaN(t)) continue;
-    const gap = Math.abs(t - targetMs);
-    if (gap < bestGap) {
-      bestGap = gap;
-      best = entry;
-    }
-  }
-  return best;
+  return nearestBy(series, entryMs, targetMs);
+}
+
+const DEFAULT_SERIES_STEP_MS = 3 * HOUR_MS;
+
+// nearestInTime, but only within one series step of the target: past the series horizon the last
+// entry must not answer for a time days away as if it were current. The accepted gap is the series'
+// own cadence (from its first two entries), defaulting to 3 hours for a one-entry series.
+export function nearestInTimeBounded(
+  series: SignalKWeatherData[],
+  targetMs: number,
+): SignalKWeatherData | undefined {
+  const best = nearestInTime(series, targetMs);
+  if (!best) return undefined;
+  const t0 = Date.parse(series[0]?.date ?? '');
+  const t1 = Date.parse(series[1]?.date ?? '');
+  const stepMs =
+    !Number.isNaN(t0) && !Number.isNaN(t1) && t1 > t0 ? t1 - t0 : DEFAULT_SERIES_STEP_MS;
+  return Math.abs(Date.parse(best.date) - targetMs) <= stepMs ? best : undefined;
 }

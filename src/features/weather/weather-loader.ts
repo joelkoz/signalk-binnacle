@@ -76,23 +76,33 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
   let radarCache: { data: RadarData; expires: number } | undefined;
   // After a grid fetch fails (Open-Meteo rate-limiting returns 429 or 502 with no body), hold off on
   // the next network attempt so panning and resizing do not retry-storm and deepen the rate limit.
+  // The cooldowns are per endpoint: a marine 429 must not block the healthy atmospheric fetch, or a
+  // waves-off pan would still show "Showing last forecast" for the cooldown of a host it never hits.
   let gridCooldownUntil = 0;
+  let marineCooldownUntil = 0;
 
   // Returns the merged grid plus whether it is partial: waves were requested but the marine endpoint
   // failed (commonly an Open-Meteo 429 on the separate marine host). A partial grid still carries
-  // wind and pressure, so it is shown, but it is not cached and it triggers the cooldown so the
-  // rate-limited marine endpoint is not re-hit on the next pan.
+  // wind and pressure, so it is shown, but it is not cached, and only the MARINE endpoint backs off.
   async function fetchMerged(
     bbox: Bbox,
     opts: ForecastOptions,
     waves: boolean,
+    t: number,
   ): Promise<{ grid: WeatherGrid | undefined; partial: boolean }> {
+    const tryMarine = waves && t >= marineCooldownUntil;
     const [base, marine] = await Promise.all([
       deps.forecast(bbox, opts),
-      waves ? deps.marine(bbox, opts) : Promise.resolve(undefined),
+      tryMarine ? deps.marine(bbox, opts) : Promise.resolve(undefined),
     ]);
+    if (tryMarine && !marine) marineCooldownUntil = deps.now() + GRID_FAIL_COOLDOWN_MS;
     if (!base) return { grid: undefined, partial: false };
-    return { grid: marine ? mergeMarine(base, marine) : base, partial: waves && !marine };
+    const partial = waves && !marine;
+    // Stamp provenance onto the grid itself so it survives both cache tiers: the panel states the
+    // forecast's age from fetchedAt, and qualifies the display when the wave fields are missing.
+    const grid: WeatherGrid = { ...(marine ? mergeMarine(base, marine) : base), fetchedAt: t };
+    if (partial) grid.partialWaves = true;
+    return { grid, partial };
   }
 
   return {
@@ -122,7 +132,7 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
           return { grid: stored.value, partial: false, fromNetwork: false };
         }
         if (t < gridCooldownUntil) return { grid: undefined, partial: false, fromNetwork: false };
-        const fetched = await fetchMerged(bbox, opts, want.waves);
+        const fetched = await fetchMerged(bbox, opts, want.waves, t);
         return { ...fetched, fromNetwork: true };
       };
 
@@ -138,12 +148,11 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
       ]);
 
       if (grid) {
-        store.setGrid(grid);
-        if (partial) {
-          // Waves failed: show the wind and pressure we got, but do not cache (so a later view
-          // retries marine) and back off so the rate-limited endpoint is not re-hit on the next pan.
-          gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;
-        } else if (fromNetwork) {
+        store.setGrid(grid, t);
+        // A partial grid (waves failed) is shown but never cached, so a later view retries marine;
+        // the marine backoff itself was armed inside fetchMerged, and the healthy atmospheric
+        // endpoint stays unblocked.
+        if (!partial && fromNetwork) {
           // The cache computes its own expiry as `t + GRID_TTL_MS`; persist stores the same absolute
           // value so the two tiers expire together.
           gridCache.put(key, grid, t);

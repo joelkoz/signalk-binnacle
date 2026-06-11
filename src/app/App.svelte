@@ -1206,6 +1206,8 @@ $effect(() => {
   if (phase === 'open') everOpen = true;
   if (!reconnected) return;
   void refreshRoutes();
+  // A provider plugin enabled while the link was down would otherwise stay undetected.
+  void refreshWeatherProvider(auth.token ?? undefined);
   if (courseActive) void hydrateAndSeedCourse();
 });
 
@@ -1238,10 +1240,23 @@ async function connectStream(token: string | undefined): Promise<void> {
   ]);
   await refreshSavedTracks();
   await refreshRoutes();
-  // Detect a configured Signal K weather provider so the panel can prefer it over the free sources.
-  // Best-effort: a server without the weather API leaves the provider undefined and the grid answers.
-  weatherProviderName = defaultProviderName(await fetchWeatherProviders(serverOrigin(), token));
 }
+
+// Detect a configured Signal K weather provider so the panel can prefer it over the free sources.
+// undefined means the TRANSPORT failed (a 401 before the token landed, a slow server): keep the
+// current value and let the next trigger retry, so one bad probe cannot lock the whole session
+// onto the free fallback. An answered {} genuinely means no provider and clears it.
+async function refreshWeatherProvider(token: string | undefined): Promise<void> {
+  const providers = await fetchWeatherProviders(serverOrigin(), token);
+  if (providers !== undefined) weatherProviderName = defaultProviderName(providers);
+}
+
+// Keyed on the auth token rather than run once at first connect, so a token that arrives later
+// (an approval from another tab) or changes re-detects with the right credentials.
+$effect(() => {
+  if (auth.status !== 'authenticated' && auth.status !== 'unsecured') return;
+  void refreshWeatherProvider(auth.token ?? undefined);
+});
 
 onMount(() => {
   window.addEventListener('pointerdown', primeAudio, { once: true });
@@ -1366,7 +1381,7 @@ onDestroy(() => {
     {#if arrivalBanner}
       <div class="arrival-banner" role="status">Arrived at {arrivalBanner}</div>
     {/if}
-    <div class="bottom-stack">
+    <div class="bottom-stack" class:above-weather={weatherPanelOpen}>
       <NavStrip
         guidance={courseGuidance}
         {routeProgress}
@@ -1523,6 +1538,7 @@ onDestroy(() => {
         token={chartsToken}
         providerName={weatherProviderName}
         position={vessel.position}
+        online={net.online}
         onClose={() => (weatherPanelOpen = false)}
       />
     {/if}
@@ -1598,7 +1614,7 @@ onDestroy(() => {
         class="btn btn-pill"
         class:is-on={weatherPanelOpen}
         aria-expanded={weatherPanelOpen}
-        aria-haspopup="true"
+        aria-haspopup="dialog"
         aria-controls={weatherPanelOpen ? 'weather-panel' : undefined}
         onclick={() => (weatherPanelOpen = !weatherPanelOpen)}
       >
@@ -1717,6 +1733,13 @@ onDestroy(() => {
 }
 .bottom-stack :global(.bottom-strip) {
   pointer-events: auto;
+}
+/* While the Forecast panel is open the strips lift to sit on its top edge instead of covering its
+   scrubber and legend: the stack outranks the panel by design (safety surfaces stay visible and
+   tappable), so clearance has to come from geometry, not stacking order. The panel height is the
+   shared --weather-panel-height token, so the two cannot drift apart. */
+.bottom-stack.above-weather {
+  inset-block-end: calc(var(--control-size) + 2 * var(--space-2) + var(--weather-panel-height));
 }
 .note-panel-slot {
   position: absolute;
