@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatClockTime,
   formatCpaNm,
   formatMetersOrNm,
   formatTcpaMin,
@@ -48,5 +49,14 @@ describe('formatMetersOrNm', () => {
   it('reads the placeholder for an absent value', () => {
     expect(formatMetersOrNm(undefined)).toBe('--');
     expect(formatMetersOrNm(null)).toBe('--');
+  });
+});
+
+describe('formatClockTime', () => {
+  it('reads hour and minute by default, and adds seconds on opt-in', () => {
+    // Locale-dependent rendering, so assert the field count, not exact text.
+    const at = Date.UTC(2026, 5, 11, 14, 32, 5);
+    expect(formatClockTime(at).match(/\d+/g)).toHaveLength(2);
+    expect(formatClockTime(at, { seconds: true }).match(/\d+/g)).toHaveLength(3);
   });
 });

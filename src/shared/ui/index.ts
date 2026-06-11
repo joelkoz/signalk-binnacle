@@ -1,6 +1,6 @@
 export { dialog } from './dialog';
 export { pickTextFile } from './file-pick';
-export { focusOnMount } from './focus';
+export { focusOnMount, focusTrap } from './focus';
 export { promptSaveName } from './prompt';
 export { default as SavedList } from './SavedList.svelte';
 export { default as SlideOver } from './SlideOver.svelte';

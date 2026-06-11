@@ -127,9 +127,14 @@ export function formatTcpaMin(seconds: number, digits = 0): string {
 }
 
 // A wall-clock time as hour and minute, shared so the nav strip, the tides display, and any other
-// readout format an absolute time the same way.
-export function formatClockTime(timeMs: number): string {
-  return new Date(timeMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+// readout format an absolute time the same way. The seconds opt-in serves the readouts that get
+// written in a log or relayed on the VHF (the MOB mark time), where minute resolution is too coarse.
+export function formatClockTime(timeMs: number, opts?: { seconds?: boolean }): string {
+  return new Date(timeMs).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(opts?.seconds ? { second: '2-digit' } : {}),
+  });
 }
 
 // A time-to-go readout with its own unit: minutes under an hour ("45 min"), hours and minutes above
