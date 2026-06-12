@@ -68,6 +68,23 @@ describe('LayerManager', () => {
     expect(overlay.events.at(-1)).toBe('remove');
   });
 
+  it('unregister drops the id from the persisted snapshot and saved order', async () => {
+    const changes: Array<Record<string, { visible: boolean; opacity: number }>> = [];
+    const orders: string[][] = [];
+    const manager = new LayerManager(fakeCtx(), {
+      onChange: (s) => changes.push(s),
+      onOrderChange: (o) => orders.push(o),
+    });
+    await manager.register(fakeOverlay('chart'));
+    await manager.register(fakeOverlay('ais'));
+    // Put both ids into the explicit order, then delete one.
+    manager.reorder('chart', 0);
+    manager.unregister('chart');
+    expect(Object.keys(changes.at(-1) ?? {})).toEqual(['ais']);
+    expect(orders.at(-1)).not.toContain('chart');
+    expect(manager.layers().map((l) => l.id)).toEqual(['ais']);
+  });
+
   it('rejects a duplicate id', async () => {
     const manager = new LayerManager(fakeCtx());
     await manager.register(fakeOverlay('ais'));
@@ -120,6 +137,26 @@ describe('LayerManager', () => {
     await manager.register(overlay);
     expect(overlay.events).toContain('visible:false');
     expect(overlay.events).toContain('opacity:0.3');
+  });
+
+  it('coerces a malformed persisted entry on restore (missing opacity defaults to 1)', async () => {
+    const overlay = fakeOverlay('ais');
+    const manager = new LayerManager(fakeCtx(), {
+      // A legacy entry that predates the opacity field, restored from localStorage as-is.
+      saved: { ais: { visible: true } as never },
+    });
+    await manager.register(overlay);
+    expect(overlay.events).toContain('visible:true');
+    expect(overlay.events).toContain('opacity:1');
+  });
+
+  it('clamps an out-of-range persisted opacity on restore', async () => {
+    const overlay = fakeOverlay('ais');
+    const manager = new LayerManager(fakeCtx(), {
+      saved: { ais: { visible: true, opacity: 7 } },
+    });
+    await manager.register(overlay);
+    expect(overlay.events).toContain('opacity:1');
   });
 
   it('a layer with no saved entry takes the visible default', async () => {

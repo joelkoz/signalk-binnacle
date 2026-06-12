@@ -2,7 +2,7 @@ import type { Map as MapLibreMap, MapSourceDataEvent } from 'maplibre-gl';
 import { chartSourceId, chartToSpecs, PMTILES_SCHEME, THEME_PAINT_KEY } from './chart-adapter';
 import type { SignalKChart } from './chart-types';
 import { applyRasterTheme, type MapColorKey } from './map-theme';
-import { registerPmtilesArchive } from './pmtiles';
+import { registerPmtilesArchive, unregisterPmtilesArchive } from './pmtiles';
 import type { OverlayModule, ZBand } from './types';
 
 // How far past a chart's native max zoom its layers keep drawing before they hand off
@@ -44,6 +44,15 @@ export function createChartOverlay(
     themePaint: (layer.metadata as Record<string, MapColorKey> | undefined)?.[THEME_PAINT_KEY],
   }));
   const chartSource = sourceIds[0];
+  // The bare http urls of this chart's PMTiles archives, registered with the protocol on add and
+  // unregistered on remove so a deleted chart does not leak its archive instance (for a blob: url,
+  // a permanently dead one).
+  const pmtilesUrls = sourceIds.flatMap((sourceId) => {
+    const spec = specs.sources[sourceId];
+    return 'url' in spec && typeof spec.url === 'string' && spec.url.startsWith(PMTILES_SCHEME)
+      ? [spec.url.slice(PMTILES_SCHEME.length)]
+      : [];
+  });
   let onSourceData: ((event: MapSourceDataEvent) => void) | undefined;
 
   // The native max zoom lives in the source's TileJSON, which a PMTiles archive reports
@@ -68,15 +77,14 @@ export function createChartOverlay(
     supportsOpacity: true,
     layerIds: layers.map((layer) => layer.id),
     add(ctx) {
+      // A PMTiles archive registers a no-store source first so MapLibre resolves the
+      // pmtiles:// url to it rather than the default cache-writing fetch source.
+      for (const url of pmtilesUrls) {
+        registerPmtilesArchive(url);
+      }
       for (const sourceId of sourceIds) {
-        const spec = specs.sources[sourceId];
-        // A PMTiles archive registers a no-store source first so MapLibre resolves the
-        // pmtiles:// url to it rather than the default cache-writing fetch source.
-        if ('url' in spec && typeof spec.url === 'string' && spec.url.startsWith(PMTILES_SCHEME)) {
-          registerPmtilesArchive(spec.url.slice(PMTILES_SCHEME.length));
-        }
         if (!ctx.map.getSource(sourceId)) {
-          ctx.map.addSource(sourceId, spec);
+          ctx.map.addSource(sourceId, specs.sources[sourceId]);
         }
       }
       for (const layer of specs.layers) {
@@ -115,6 +123,9 @@ export function createChartOverlay(
       }
       for (const sourceId of sourceIds) {
         if (ctx.map.getSource(sourceId)) ctx.map.removeSource(sourceId);
+      }
+      for (const url of pmtilesUrls) {
+        unregisterPmtilesArchive(url);
       }
     },
     setVisible(ctx, visible) {

@@ -96,8 +96,15 @@ export class LayerManager {
     }
     this.#modules.set(module.id, module);
     const restored = this.#saved[module.id];
+    // Coerce a restored state's shape: a legacy persisted entry missing opacity would otherwise
+    // flow undefined into setOpacity and render as NaN.
     const fallback = restored
-      ? { ...restored }
+      ? {
+          visible: Boolean(restored.visible),
+          opacity: Number.isFinite(restored.opacity)
+            ? Math.max(0, Math.min(1, restored.opacity))
+            : 1,
+        }
       : { visible: module.defaultVisible ?? true, opacity: module.defaultOpacity ?? 1 };
     const state = this.#state.get(module.id) ?? fallback;
     // Enforce exclusion on restore too: a saved or legacy state with two members of an exclusive
@@ -120,6 +127,14 @@ export class LayerManager {
     if (!module) return;
     module.remove(this.#ctx);
     this.#modules.delete(id);
+    // Drop the state and order entries too, and persist, so a deleted overlay (a removed user
+    // chart) does not live on in the saved snapshot forever.
+    this.#state.delete(id);
+    if (this.#explicitOrder.includes(id)) {
+      this.#explicitOrder = this.#explicitOrder.filter((other) => other !== id);
+      this.#onOrderChange?.([...this.#explicitOrder]);
+    }
+    this.#persist();
   }
 
   toggle(id: string, visible: boolean): void {

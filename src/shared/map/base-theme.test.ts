@@ -174,6 +174,13 @@ describe('applyBaseIconVisibility', () => {
       },
       // A place label is a symbol with no icon, so its (text-only) layer is left alone.
       { id: 'label_city', type: 'symbol', 'source-layer': 'place', layout: {} },
+      // An overlay-owned symbol layer (own vessel, AIS, notes) themes itself and carries the
+      // user's saved opacity, so the base icon pass must leave it untouched in both directions.
+      {
+        id: 'binnacle-ais-symbol',
+        type: 'symbol',
+        layout: { 'icon-image': 'binnacle-ais-icon' },
+      },
     ]);
 
     // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
@@ -181,11 +188,13 @@ describe('applyBaseIconVisibility', () => {
     expect(map.getPaintProperty('poi_r1', 'icon-opacity')).toBe(0);
     expect(map.getPaintProperty('road_shield', 'icon-opacity')).toBe(0);
     expect(map.getPaintProperty('label_city', 'icon-opacity')).toBeUndefined();
+    expect(map.getPaintProperty('binnacle-ais-symbol', 'icon-opacity')).toBeUndefined();
 
     // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
     applyBaseIconVisibility(map as any, mapThemePaint('day'));
     expect(map.getPaintProperty('poi_r1', 'icon-opacity')).toBe(1);
     expect(map.getPaintProperty('road_shield', 'icon-opacity')).toBe(1);
+    expect(map.getPaintProperty('binnacle-ais-symbol', 'icon-opacity')).toBeUndefined();
     // biome-ignore lint/suspicious/noExplicitAny: minimal map stub for the test
     applyBaseIconVisibility(map as any, mapThemePaint('dusk'));
     expect(map.getPaintProperty('poi_r1', 'icon-opacity')).toBe(1);

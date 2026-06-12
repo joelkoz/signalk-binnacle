@@ -98,3 +98,10 @@ export function registerPmtilesArchive(httpUrl: string): void {
   if (protocol?.get(source.getKey())) return;
   protocol?.add(new PMTiles(source));
 }
+
+// Drop a registered archive when its chart is removed, or each user-chart delete would leak a
+// PMTiles instance (for a blob: URL, a permanently dead one). The protocol exposes add and get
+// but no remove, so this reaches into its keyed instance map directly.
+export function unregisterPmtilesArchive(httpUrl: string): void {
+  protocol?.tiles.delete(httpUrl);
+}

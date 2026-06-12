@@ -96,6 +96,9 @@ export class UserCharts {
   // Fires when a chart is removed, so the app can also delete its server-registered resource. Runs
   // before the local descriptor is dropped, so the source is still available to the handler.
   #onRemove?: (source: UserChartSource) => void;
+  // Fires with the updated descriptor after a rename, so the app can re-register the overlay
+  // under the new title and re-put a server-synced URL chart's resource.
+  #onRename?: (source: UserChartSource) => void;
 
   constructor(
     store: PmtilesStore,
@@ -103,6 +106,7 @@ export class UserCharts {
     persist: (sources: UserChartSource[]) => void,
     onAdd?: (source: UserChartSource) => void,
     onRemove?: (source: UserChartSource) => void,
+    onRename?: (source: UserChartSource) => void,
   ) {
     this.#store = store;
     // Drop any persisted descriptor that no longer matches the schema, so a drifted entry from an
@@ -111,6 +115,7 @@ export class UserCharts {
     this.#persist = persist;
     this.#onAdd = onAdd;
     this.#onRemove = onRemove;
+    this.#onRename = onRename;
   }
 
   // Read a remote archive's metadata and stage it as a draft, without saving, so the user can review
@@ -163,8 +168,11 @@ export class UserCharts {
   }
 
   rename(id: string, name: string): void {
+    if (!this.sources.some((source) => source.id === id)) return;
     this.sources = this.sources.map((source) => (source.id === id ? { ...source, name } : source));
     this.#persist(this.sources);
+    const renamed = this.sources.find((source) => source.id === id);
+    if (renamed) this.#onRename?.(renamed);
   }
 
   async remove(id: string): Promise<void> {

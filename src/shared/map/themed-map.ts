@@ -154,6 +154,9 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   if (opts.onContextMenu) {
     const emit = opts.onContextMenu;
     mapInstance.on('contextmenu', (e) => {
+      // Android Chrome fires the native contextmenu for a long press too; cancel the synthesized
+      // timer so a single press cannot emit twice.
+      cancelLongPress();
       emit({ lng: e.lngLat.lng, lat: e.lngLat.lat, x: e.point.x, y: e.point.y });
     });
     const canvas = mapInstance.getCanvas();
@@ -206,6 +209,9 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
     };
 
     const runTick = (overlays: ReadonlyArray<Syncable>) => {
+      // A second call must not orphan the first 'render' listener, interval, and visibilitychange
+      // listener, so tear down any prior wiring first.
+      stopTick();
       // Calling this once replaces the old unconditional rAF loop, which synced ~60x/sec for the life
       // of the map even at anchor. Now sync runs only when the map actually repaints (pan, zoom) and
       // on a low-frequency interval for the store-driven overlays, and both pause while hidden.
@@ -251,14 +257,16 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
       };
     };
 
-    void opts.onLoad({
-      map: mapInstance,
-      ctx,
-      manager,
-      recolor,
-      isDestroyed: () => destroyed,
-      runTick,
-    });
+    Promise.resolve(
+      opts.onLoad({
+        map: mapInstance,
+        ctx,
+        manager,
+        recolor,
+        isDestroyed: () => destroyed,
+        runTick,
+      }),
+    ).catch((e) => console.error('map onLoad failed', e));
   });
 
   return {

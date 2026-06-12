@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LayerListItem } from '$shared/map';
-import { CATEGORY_ORDER, layerCategory } from './layer-category';
+import { CATEGORY_ORDER, clampReorderSlot, layerCategory } from './layer-category';
 
 const item = (overrides: Partial<LayerListItem>): LayerListItem => ({
   id: 'x',
@@ -37,5 +37,47 @@ describe('layerCategory', () => {
     for (const id of CATEGORY_ORDER) {
       expect(layerCategory(item({ category: id })).title).toBeTruthy();
     }
+  });
+});
+
+describe('clampReorderSlot', () => {
+  // Two "mine" rows, two "live" rows, one "charts" row, in panel order (top of the map first).
+  const movable = [
+    item({ id: 'route', category: 'mine' }),
+    item({ id: 'track', category: 'mine' }),
+    item({ id: 'ais', category: 'live' }),
+    item({ id: 'tides', category: 'live' }),
+    item({ id: 'chart', category: 'charts' }),
+  ];
+
+  it('passes through a slot inside the row category span', () => {
+    // With 'ais' removed, 'tides' sits at index 2; slots 2 and 3 keep ais in the live bucket.
+    expect(clampReorderSlot(movable, 'ais', 2)).toBe(2);
+    expect(clampReorderSlot(movable, 'ais', 3)).toBe(3);
+  });
+
+  it('clamps a slot that would cross into the bucket above', () => {
+    // Slot 0 would drop 'ais' above the mine rows; clamp to the top of the live span.
+    expect(clampReorderSlot(movable, 'ais', 0)).toBe(2);
+    expect(clampReorderSlot(movable, 'tides', 1)).toBe(2);
+  });
+
+  it('clamps a slot that would cross into the bucket below', () => {
+    // Slot 4 would drop 'ais' below the chart row; clamp to just under the live span.
+    expect(clampReorderSlot(movable, 'ais', 4)).toBe(3);
+  });
+
+  it('keeps a single-row bucket at its own slot', () => {
+    expect(clampReorderSlot(movable, 'chart', 0)).toBe(4);
+    expect(clampReorderSlot(movable, 'chart', 5)).toBe(4);
+  });
+
+  it('clamps within the top bucket', () => {
+    expect(clampReorderSlot(movable, 'route', 3)).toBe(1);
+    expect(clampReorderSlot(movable, 'track', 0)).toBe(0);
+  });
+
+  it('returns the slot unchanged for an unknown id', () => {
+    expect(clampReorderSlot(movable, 'ghost', 3)).toBe(3);
   });
 });

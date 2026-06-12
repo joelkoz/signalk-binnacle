@@ -138,6 +138,33 @@ describe('UserCharts stage, commit, and remove', () => {
     expect(removed).toEqual([id]);
   });
 
+  it('fires onRename with the updated descriptor, and not for an unknown id', async () => {
+    const { store } = fakeStore();
+    const renamed: Array<{ id: string; name: string }> = [];
+    const snapshots: string[][] = [];
+    const charts = new UserCharts(
+      store,
+      [],
+      (sources) => snapshots.push(sources.map((s) => s.name)),
+      undefined,
+      undefined,
+      (source) => renamed.push({ id: source.id, name: source.name }),
+    );
+    const draft = await charts.stageUrl('https://example.com/x.pmtiles');
+    await charts.commit(draft, 'Old name');
+    const id = charts.sources[0].id;
+
+    charts.rename(id, 'New name');
+    expect(charts.sources[0].name).toBe('New name');
+    expect(renamed).toEqual([{ id, name: 'New name' }]);
+    // The rename persisted before the callback fired.
+    expect(snapshots.at(-1)).toEqual(['New name']);
+
+    charts.rename('missing', 'Ghost');
+    expect(renamed).toHaveLength(1);
+    expect(snapshots).toHaveLength(2);
+  });
+
   it('reconcile deletes orphaned blobs and keeps referenced and URL charts', async () => {
     const { store, blobs } = fakeStore();
     blobs.set('referenced', new Blob(['a']));

@@ -24,6 +24,7 @@ export function createFakeMap() {
     updatedImages,
     hasImage: (id: string) => images.has(id),
     addImage: (id: string) => images.add(id),
+    removeImage: (id: string) => images.delete(id),
     updateImage: (id: string) => {
       updatedImages.push(id);
       images.add(id);

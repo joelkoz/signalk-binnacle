@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createFakeMap } from '$shared/testing/fake-map';
 import { createChartOverlay } from './chart-overlay';
+import { registerPmtilesArchive, unregisterPmtilesArchive } from './pmtiles';
 import type { OverlayContext } from './types';
+
+vi.mock('./pmtiles', () => ({
+  registerPmtilesArchive: vi.fn(),
+  unregisterPmtilesArchive: vi.fn(),
+}));
 
 function ctxFor(map: ReturnType<typeof createFakeMap>): OverlayContext {
   return { map: map as never, beforeIdFor: () => undefined };
@@ -57,6 +63,32 @@ describe('chart overlay', () => {
     overlay.setOpacity?.(ctxFor(map), 0.5);
     expect(map.setPaintProperty).toHaveBeenCalledWith('chart-vec-water', 'fill-opacity', 0.5);
     expect(map.setPaintProperty).toHaveBeenCalledWith('chart-vec-roads', 'line-opacity', 0.5);
+  });
+
+  it('registers a PMTiles archive on add and unregisters it on remove', () => {
+    const overlay = createChartOverlay(
+      { identifier: 'pm', name: 'PM', type: 'tileJSON', url: 'https://x/c.pmtiles', layers: [] },
+      'http://pi.local',
+    );
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    expect(registerPmtilesArchive).toHaveBeenCalledWith('https://x/c.pmtiles');
+    overlay.remove(ctxFor(map));
+    expect(unregisterPmtilesArchive).toHaveBeenCalledWith('https://x/c.pmtiles');
+  });
+
+  it('does not touch the PMTiles registry for a plain tile-server chart', () => {
+    vi.mocked(registerPmtilesArchive).mockClear();
+    vi.mocked(unregisterPmtilesArchive).mockClear();
+    const overlay = createChartOverlay(
+      { identifier: 'noaa', name: 'NOAA', type: 'tilelayer', tilemapUrl: '/t/{z}/{x}/{y}' },
+      'http://pi.local',
+    );
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    overlay.remove(ctxFor(map));
+    expect(registerPmtilesArchive).not.toHaveBeenCalled();
+    expect(unregisterPmtilesArchive).not.toHaveBeenCalled();
   });
 
   it('caps chart layers one zoom past the source native max zoom', () => {

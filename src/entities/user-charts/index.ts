@@ -1,6 +1,5 @@
 export {
   type DraftChart,
-  isUserChartSource,
   type UserChartSource,
   UserCharts,
   userChartToSignalK,

@@ -6,7 +6,12 @@ import type { PersistedValue } from '$shared/settings';
 import { SlideOver } from '$shared/ui';
 import AddChartForm from './AddChartForm.svelte';
 import LayerRow from './LayerRow.svelte';
-import { CATEGORY_DEFAULT_OPEN, CATEGORY_ORDER, layerCategory } from './layer-category';
+import {
+  CATEGORY_DEFAULT_OPEN,
+  CATEGORY_ORDER,
+  clampReorderSlot,
+  layerCategory,
+} from './layer-category';
 import type { LayersView } from './layers-view.svelte';
 import SourceDetail from './SourceDetail.svelte';
 
@@ -114,23 +119,30 @@ function handlePointerDown(id: string, event: PointerEvent): void {
   const handle = event.currentTarget as HTMLElement;
   handle.setPointerCapture(event.pointerId);
 
-  // Measure each non-dragged row's vertical midpoint once. Collapsed-category rows stay in the DOM
-  // (hidden), so they measure as a zero midpoint and never become a drop target, while still holding
-  // their movable index, so the slot the pointer resolves to is a valid movable index. The slot is
-  // the first midpoint the pointer is above, matching view.reorder's contract.
-  const midpoints = listEl
-    ? [...listEl.querySelectorAll<HTMLElement>('[data-layer-row]')]
-        .filter((el) => el.dataset.layerRow !== id)
-        .map((el) => {
-          const rect = el.getBoundingClientRect();
-          return rect.top + rect.height / 2;
-        })
-    : [];
+  // Measure each non-dragged row's vertical midpoint on every move, so a panel scroll mid-drag
+  // cannot leave the slots pointing at stale positions (the list is small, so a per-move measure is
+  // cheap). Collapsed-category rows stay in the DOM (hidden), so they measure as a zero midpoint and
+  // never become a drop target, while still holding their movable index, so the slot the pointer
+  // resolves to is a valid movable index. The slot is the first midpoint the pointer is above,
+  // matching view.reorder's contract, then clamped to the row's own category span so a drag can
+  // never silently change z-order outside the visible category.
   const slotFromPointer = (clientY: number): number => {
+    const midpoints = listEl
+      ? [...listEl.querySelectorAll<HTMLElement>('[data-layer-row]')]
+          .filter((el) => el.dataset.layerRow !== id)
+          .map((el) => {
+            const rect = el.getBoundingClientRect();
+            return rect.top + rect.height / 2;
+          })
+      : [];
+    let slot = midpoints.length;
     for (let i = 0; i < midpoints.length; i++) {
-      if (clientY < midpoints[i]) return i;
+      if (clientY < midpoints[i]) {
+        slot = i;
+        break;
+      }
     }
-    return midpoints.length;
+    return clampReorderSlot(movable, id, slot);
   };
 
   // One AbortController tears down all three listeners on drop or cancel, so the teardown
@@ -168,6 +180,10 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
   else return;
   event.preventDefault();
   if (to < 0 || to >= movable.length) return;
+  // Hold the move inside the row's own category: a clamp back to the current slot means the row
+  // is already at its bucket edge, so there is nothing to move or announce.
+  to = clampReorderSlot(movable, id, to);
+  if (to === from) return;
   const title = movable[from]?.title ?? 'Layer';
   view.reorder(id, to);
   reorderAnnouncement = `Moved ${title} to position ${to + 1} of ${movable.length}.`;

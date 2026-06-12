@@ -43,3 +43,27 @@ export function layerCategory(item: LayerListItem): LayerCategory {
   const id = resolveId(item);
   return { id, title: TITLE.get(id) ?? '' };
 }
+
+// Clamp a reorder target so a row never leaves its own category bucket: the panel order must keep
+// matching the map z-order per category, and a drag or arrow-key move that crossed buckets would
+// silently change z-order outside the visible category. `slot` is an insertion index into the
+// movable list with the moved row removed (view.reorder's contract); the valid span runs from just
+// above the bucket's top row to just below its bottom row. A single-row bucket keeps its own slot.
+export function clampReorderSlot(movable: LayerListItem[], id: string, slot: number): number {
+  const from = movable.findIndex((item) => item.id === id);
+  if (from < 0) return slot;
+  const category = layerCategory(movable[from]).id;
+  let first = -1;
+  let last = -1;
+  let i = 0;
+  for (const item of movable) {
+    if (item.id === id) continue;
+    if (layerCategory(item).id === category) {
+      if (first < 0) first = i;
+      last = i;
+    }
+    i++;
+  }
+  if (first < 0) return from;
+  return Math.max(first, Math.min(slot, last + 1));
+}

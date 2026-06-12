@@ -114,6 +114,9 @@ export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
 export function applyBaseIconVisibility(map: MapLibreMap, paint: MapThemePaint): void {
   const opacity = paint.theme === 'night-red' ? 0 : 1;
   for (const layer of baseLayers(map)) {
+    // Overlay-owned symbol layers (own vessel, AIS, notes) theme themselves and carry user-set
+    // opacity, so they must never be hidden here or force-written back to 1.
+    if (MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix))) continue;
     if (layer.type !== 'symbol' || !layer.layout?.['icon-image']) continue;
     try {
       map.setPaintProperty(layer.id, 'icon-opacity', opacity);

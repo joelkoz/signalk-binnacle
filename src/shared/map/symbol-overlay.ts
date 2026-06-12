@@ -57,21 +57,25 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
         config.iconImage(config.defaultColor),
         config.pixelRatio ?? 1,
       );
-      const source: GeoJSONSourceSpecification = { type: 'geojson', data: config.features() };
-      ctx.map.addSource(config.sourceId, source);
-      const layer: SymbolLayerSpecification = {
-        id: config.layerId,
-        type: 'symbol',
-        source: config.sourceId,
-        layout: {
-          'icon-image': config.iconId,
-          'icon-rotate': ['get', 'heading'],
-          'icon-rotation-alignment': 'map',
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-        },
-      };
-      ctx.map.addLayer(layer, ctx.beforeIdFor(config.band));
+      if (!ctx.map.getSource(config.sourceId)) {
+        const source: GeoJSONSourceSpecification = { type: 'geojson', data: config.features() };
+        ctx.map.addSource(config.sourceId, source);
+      }
+      if (!ctx.map.getLayer(config.layerId)) {
+        const layer: SymbolLayerSpecification = {
+          id: config.layerId,
+          type: 'symbol',
+          source: config.sourceId,
+          layout: {
+            'icon-image': config.iconId,
+            'icon-rotate': ['get', 'heading'],
+            'icon-rotation-alignment': 'map',
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+          },
+        };
+        ctx.map.addLayer(layer, ctx.beforeIdFor(config.band));
+      }
     },
     sync(ctx) {
       config.beforeSync?.();
@@ -90,6 +94,7 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
     remove(ctx) {
       if (ctx.map.getLayer(config.layerId)) ctx.map.removeLayer(config.layerId);
       if (ctx.map.getSource(config.sourceId)) ctx.map.removeSource(config.sourceId);
+      if (ctx.map.hasImage(config.iconId)) ctx.map.removeImage(config.iconId);
     },
   };
 }
