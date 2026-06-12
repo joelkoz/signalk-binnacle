@@ -1,6 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import type { Theme } from '$shared/ui';
-import { baseStyleUrl } from './base-style';
+import { baseStyleUrl, fallbackBaseStyle } from './base-style';
 import {
   applyBaseIconVisibility,
   applyBaseTheme,
@@ -111,6 +111,25 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   // Teardown for the sync wiring runTick installs (the 'render' listener, the interval, and the
   // visibilitychange listener). Empty until runTick is called; invoked once on destroy.
   let stopTick = () => {};
+
+  // If the base style JSON itself never arrives (plain http at sea: no service worker, no
+  // internet), the map can never fire 'load' and nothing mounts, including the charts already
+  // sitting in the IndexedDB block cache. Swap in the one-layer fallback style so 'load' fires
+  // and every overlay mounts. The gate is precise: 'styledata' fires once the style JSON parses,
+  // so sprite, glyph, and tile failures (which all come after it) can never trip this. One shot;
+  // the real style returns on the next load with connectivity.
+  let styleArrived = false;
+  mapInstance.once('styledata', () => {
+    styleArrived = true;
+  });
+  mapInstance.on('error', () => {
+    if (styleArrived || destroyed) return;
+    styleArrived = true;
+    console.info(
+      '[map] the base map style is unreachable; starting on the offline fallback base. Cached charts and overlays still load.',
+    );
+    mapInstance.setStyle(fallbackBaseStyle());
+  });
 
   // The OpenFreeMap "liberty" base style references a handful of sprite icons and landuse
   // fill-patterns (for example "office", "gate", "brownfield", "reservoir") that its published

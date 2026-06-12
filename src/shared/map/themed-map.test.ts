@@ -31,9 +31,20 @@ vi.mock('maplibre-gl', () => {
       set.add(fn);
       this.handlers.set(event, set);
     }
+    once(event: string, fn: (e?: unknown) => void): void {
+      const wrapped = (e?: unknown) => {
+        this.off(event, wrapped);
+        fn(e);
+      };
+      this.on(event, wrapped);
+    }
     off(event: string, fn: (e?: unknown) => void): void {
       this.handlers.get(event)?.delete(fn);
     }
+    setStyle(style: unknown): void {
+      this.styles.push(style);
+    }
+    styles: unknown[] = [];
     fire(event: string, e?: unknown): void {
       for (const fn of [...(this.handlers.get(event) ?? [])]) fn(e);
     }
@@ -129,6 +140,29 @@ describe('createThemedMap onLoad', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(errorSpy).toHaveBeenCalledWith('map onLoad failed', expect.any(Error));
+  });
+});
+
+describe('createThemedMap style fallback', () => {
+  it('swaps to the fallback style when the style JSON never arrives', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    createThemedMap({ container, onLoad: () => {} });
+    const map = (await lastMap()) as FakeMapInstance & { styles: unknown[] };
+    map.fire('error', { error: new Error('Failed to fetch') });
+    expect(map.styles).toHaveLength(1);
+    expect(map.styles[0]).toMatchObject({ name: 'binnacle-offline-fallback' });
+    expect(infoSpy).toHaveBeenCalledOnce();
+    // Later errors (tiles, glyphs) must not re-trigger the swap.
+    map.fire('error', { error: new Error('tile failed') });
+    expect(map.styles).toHaveLength(1);
+  });
+
+  it('never swaps once styledata has arrived', async () => {
+    createThemedMap({ container, onLoad: () => {} });
+    const map = (await lastMap()) as FakeMapInstance & { styles: unknown[] };
+    map.fire('styledata');
+    map.fire('error', { error: new Error('sprite failed') });
+    expect(map.styles).toHaveLength(0);
   });
 });
 

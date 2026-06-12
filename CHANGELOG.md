@@ -63,6 +63,9 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
 - Tide stations and predictions, chart notes, and the vessel conditions panel now persist in
   browser storage, so a reload with no signal replays the last data for the area, each item
   declaring its own age, over plain http as well as https.
+- When the base map style itself is unreachable (plain http at sea with no internet), the map
+  starts on a minimal water-colored fallback instead of staying blank, so cached charts and
+  every overlay still load. The real base map returns on the next load with connectivity.
 
 ### Removed
 
