@@ -104,6 +104,8 @@ interface Props {
   // Drop a standard waypoint at a long-pressed chart position; a refused save surfaces in the
   // Waypoints panel (write access is unknowable client-side).
   onDropWaypoint?: (position: LatLon) => void;
+  // Arm the measure tool seeded with the long-pressed chart position as its first point.
+  onMeasureFrom?: (position: LatLon) => void;
   // Whether the server runs the tracks plugin, read per tick so trails light up when known.
   aisTrailsAvailable?: () => boolean;
   // Connectivity, so the notes overlay can serve expired cached POIs while offline instead of
@@ -148,6 +150,7 @@ const {
   onUserPan,
   onGoToHere,
   onDropWaypoint,
+  onMeasureFrom,
   aisTrailsAvailable,
   isOnline,
   historyProviders,
@@ -379,6 +382,12 @@ onDestroy(() => mapHandle?.destroy());
       onDropWaypoint={onDropWaypoint
         ? () => {
             onDropWaypoint({ latitude: menu.lat, longitude: menu.lon });
+            chartMenu = undefined;
+          }
+        : undefined}
+      onMeasureFrom={onMeasureFrom
+        ? () => {
+            onMeasureFrom({ latitude: menu.lat, longitude: menu.lon });
             chartMenu = undefined;
           }
         : undefined}

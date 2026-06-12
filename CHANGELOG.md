@@ -4,6 +4,18 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<a id="unreleased"></a>
+
+## [Unreleased]
+
+### Added
+
+- Measure from the chart: the long-press and right-click menu gains "Measure from here", arming
+  the measure tool with its first point at the pressed position, so measuring starts where you
+  are looking instead of via the app menu.
+- A Charts pill on the bottom status strip opens Layers and charts in one tap, beside Center,
+  Follow, and Forecast, so switching charts no longer goes through the app menu.
+
 <a id="v060"></a>
 
 ## [0.6.0] - 2026-06-12

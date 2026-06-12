@@ -1,5 +1,5 @@
 <script lang="ts">
-import { MapPin, Navigation } from '@lucide/svelte';
+import { MapPin, Navigation, Ruler } from '@lucide/svelte';
 import { focusOnMount } from '$shared/ui';
 
 interface Props {
@@ -13,10 +13,13 @@ interface Props {
   // Optional: absent when the app does not wire dropping. Write access is unknowable client-side,
   // so a refused save surfaces as the Waypoints panel error rather than hiding the item.
   onDropWaypoint?: () => void;
+  // Optional: arms the measure tool with its first point at the pressed position, so measuring
+  // starts where the navigator is looking instead of via the app menu.
+  onMeasureFrom?: () => void;
   onClose: () => void;
 }
 
-const { x, y, width, height, onGoToHere, onDropWaypoint, onClose }: Props = $props();
+const { x, y, width, height, onGoToHere, onDropWaypoint, onMeasureFrom, onClose }: Props = $props();
 
 const MENU_WIDTH = 170;
 const ITEM_HEIGHT = 44;
@@ -31,7 +34,7 @@ const left = $derived(
   ),
 );
 // Prefer above the press so a finger does not cover the menu; drop below near the top edge.
-const itemCount = $derived(onDropWaypoint ? 2 : 1);
+const itemCount = $derived(1 + (onDropWaypoint ? 1 : 0) + (onMeasureFrom ? 1 : 0));
 const menuHeight = $derived(itemCount * ITEM_HEIGHT + MENU_PADDING);
 const above = $derived(y > menuHeight + EDGE * 2 || y > height / 2);
 const top = $derived(above ? y - EDGE : y + EDGE);
@@ -59,6 +62,12 @@ function onKeydown(event: KeyboardEvent): void {
     <button type="button" role="menuitem" class="item" onclick={onDropWaypoint}>
       <MapPin size={16} aria-hidden="true" />
       Drop waypoint
+    </button>
+  {/if}
+  {#if onMeasureFrom}
+    <button type="button" role="menuitem" class="item" onclick={onMeasureFrom}>
+      <Ruler size={16} aria-hidden="true" />
+      Measure from here
     </button>
   {/if}
 </div>

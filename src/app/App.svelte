@@ -717,7 +717,8 @@ function setLayerVisible(id: string, visible: boolean): void {
 
 // The app menu's options, grouped from the data into four intent groups: Navigate (plan and chart),
 // Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings. Center, Follow,
-// and the Forecast pill live on the bottom status strip too; the menu row makes weather findable.
+// Charts, and the Forecast pill live on the bottom status strip too, so the chart and weather
+// surfaces stay one tap away; the menu rows keep them findable.
 // Adding an option is a single entry; the launcher renders and groups whatever it is given.
 const menuItems = $derived<MenuItem[]>([
   {
@@ -1709,6 +1710,13 @@ onDestroy(() => {
       onNoteSelect={selectNote}
       onUserPan={() => (following = false)}
       {onGoToHere}
+      onMeasureFrom={(position) => {
+        // Same order as the menu tile: reveal a hidden measure layer before arming, then seed
+        // the first leg at the pressed position so measuring starts under the cursor.
+        setLayerVisible('measure', true);
+        measure.start();
+        measure.add(position);
+      }}
       onAnchorMoved={(position) => void onAnchorMoved(position)}
     />
     <div class="banner-slot">
@@ -2003,6 +2011,20 @@ onDestroy(() => {
       <button
         type="button"
         class="btn btn-pill"
+        class:is-on={activePanel === 'layers'}
+        aria-expanded={activePanel === 'layers'}
+        aria-haspopup="dialog"
+        aria-label="Layers and charts"
+        title="Layers and charts"
+        disabled={!layersView}
+        onclick={() => (activePanel === 'layers' ? closePanel() : openPanel('layers'))}
+      >
+        <Layers size={16} aria-hidden="true" />
+        Charts
+      </button>
+      <button
+        type="button"
+        class="btn btn-pill"
         class:is-on={weatherPanelOpen}
         aria-expanded={weatherPanelOpen}
         aria-haspopup="dialog"
@@ -2179,8 +2201,8 @@ onDestroy(() => {
   gap: var(--space-3);
   min-inline-size: 0;
 }
-/* Center, Follow, and Forecast read as one row of matching labeled pills in the flexible middle. They
-   wrap rather than overflow when a narrow phone leaves too little width. */
+/* Center, Follow, Charts, and Forecast read as one row of matching labeled pills in the flexible
+   middle. They wrap rather than overflow when a narrow phone leaves too little width. */
 .strip-center {
   display: flex;
   flex-wrap: wrap;
@@ -2196,9 +2218,9 @@ onDestroy(() => {
   min-inline-size: 0;
 }
 /* On a phone or small tablet the labeled pills and the live readouts do not fit one row, so the
-   strip stacks into one centered column: the readouts above, and Center, Follow, and Forecast on a
-   single row below within thumb reach. The duplicate position cluster drops (the chart and panels
-   still report it); the connection dot is small enough to stay. This block sits after the base rules
+   strip stacks into one centered column: the readouts above, and the labeled pills on a wrapping
+   row below within thumb reach. The duplicate position cluster drops (the chart and panels still
+   report it); the connection dot is small enough to stay. This block sits after the base rules
    above, so it wins the cascade when the query matches. */
 @media (max-width: 900px) {
   .status-strip {
