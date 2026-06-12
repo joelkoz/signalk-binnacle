@@ -4,6 +4,7 @@ import {
   CloudSun,
   Layers,
   LocateFixed,
+  MapPin,
   Navigation,
   Radar,
   Route,
@@ -21,6 +22,7 @@ import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
 import { MeasureStore } from '$entities/measure';
 import { type MobMark, MobStore } from '$entities/mob';
+import { type ActiveNotification, NotificationsStore } from '$entities/notifications';
 import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$entities/profile';
 import { RouteStore, remainingRouteDistanceMeters, reverseRoute } from '$entities/route';
 import { TidesStore } from '$entities/tides';
@@ -28,6 +30,7 @@ import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { UnitsStore } from '$entities/units';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
 import { OwnVessel } from '$entities/vessel';
+import { type Waypoint, WaypointsStore } from '$entities/waypoint';
 import { WeatherStore } from '$entities/weather';
 import { AisListPanel } from '$features/ais-list';
 import {
@@ -100,6 +103,7 @@ import {
   saveTrack,
   TracksPanel,
 } from '$features/tracks';
+import { deleteWaypoint, fetchWaypoints, saveWaypoint, WaypointsPanel } from '$features/waypoints';
 import {
   createWeatherLoader,
   defaultProviderName,
@@ -135,15 +139,23 @@ import {
 import type { ConnectionPhase, Context } from '$shared/signalk';
 import {
   AuthController,
+  acknowledgeNotification,
   createSignalKClient,
+  fetchServerFeatures,
+  postMobNotification,
+  postNotification,
+  resolveNotification,
   SELF_CONTEXT,
+  type ServerFeatures,
   SignalKStore,
   SK_PATHS,
   serverOrigin,
+  silenceNotification,
   streamUrl,
+  updateNotification,
 } from '$shared/signalk';
-import { createPmtilesStore, createTrackStore } from '$shared/storage';
-import { createThemeController, type Theme } from '$shared/ui';
+import { createTrackStore } from '$shared/storage';
+import { createThemeController, promptSaveName, type Theme } from '$shared/ui';
 import { ChartCanvas, type MapCommands, type UserChartRegistrar } from '$widgets/chart-canvas';
 import { WeatherMap } from '$widgets/weather-map';
 
@@ -166,11 +178,77 @@ const lookoutAlarm = new LookoutAlarm();
 // a close, imminent contact escalates past it. Deliberately not a PersistedValue and not part of a
 // profile bundle.
 const collisionMute = new CollisionMute(clock);
-// So other Signal K clients and devices see the same collision alert.
-const collisionNotifier = new CollisionNotifier(
-  (path, value) =>
-    void client.publish({ context: SELF_CONTEXT, updates: [{ values: [{ path, value }] }] }),
-);
+// Server capability discovery: gates the v2 Notifications transport below; an older server
+// falls back to the raw v1 delta publish.
+let serverFeatures = $state<ServerFeatures | undefined>();
+const notificationsApi = $derived(serverFeatures?.apis.has('notifications') ?? false);
+
+function publishDelta(path: string, value: unknown): void {
+  void client.publish({ context: SELF_CONTEXT, updates: [{ values: [{ path, value }] }] });
+}
+
+// So other Signal K clients and devices see the same collision alert. On a 2.28 server it rides
+// the v2 Notifications API (server-managed id, silence and acknowledge work boat-wide): one id is
+// raised, updated in place as the contact develops, and resolved on all-clear. Older servers get
+// the v1 delta publish unchanged.
+let collisionAlertId: string | undefined;
+const collisionNotifier = new CollisionNotifier({
+  publish: async (path, value) => {
+    if (!notificationsApi) {
+      publishDelta(path, value);
+      return;
+    }
+    if (value.state === 'normal') {
+      if (collisionAlertId) {
+        void resolveNotification(serverOrigin(), chartsToken, collisionAlertId);
+        collisionAlertId = undefined;
+      }
+      return;
+    }
+    if (collisionAlertId) {
+      const updated = await updateNotification(serverOrigin(), chartsToken, collisionAlertId, {
+        state: value.state,
+        message: value.message,
+      });
+      if (updated) return;
+      // The server reaped or lost the id (a restart): fall through and raise afresh.
+      collisionAlertId = undefined;
+    }
+    collisionAlertId = await postNotification(serverOrigin(), chartsToken, {
+      state: value.state,
+      message: value.message,
+      path: 'navigation.collision',
+      includePosition: true,
+      includeCreatedAt: true,
+    });
+  },
+});
+
+// Muting locally also silences the boat-wide v2 alert, so another station sees a silenced alarm
+// rather than one still sounding that this helm has already quieted.
+function toggleCollisionMute(): void {
+  collisionMute.toggle();
+  if (collisionMute.active && collisionAlertId) {
+    void silenceNotification(serverOrigin(), chartsToken, collisionAlertId);
+  }
+}
+
+// Every notifications.* path on the stream, mirrored for the Alarms panel's active-alert list:
+// engine, NMEA2000, autopilot, and plugin alarms all surface without Binnacle knowing any of them.
+const notificationsStore = new NotificationsStore(store);
+
+// Silence and acknowledge act on the server's notification id, so the action propagates to every
+// station; rows without an id (a v1-only producer) simply do not offer the buttons.
+function onSilenceNotification(notification: ActiveNotification): void {
+  if (notification.id) {
+    void silenceNotification(serverOrigin(), chartsToken, notification.id);
+  }
+}
+function onAcknowledgeNotification(notification: ActiveNotification): void {
+  if (notification.id) {
+    void acknowledgeNotification(serverOrigin(), chartsToken, notification.id);
+  }
+}
 
 // The anchor watch: server-driven when the anchoralarm plugin answers, client-side otherwise. The
 // drag alarm mirrors the collision split: an audible tone here, the strip and live region below.
@@ -270,6 +348,7 @@ type LeftPanel =
   | 'routes'
   | 'layers'
   | 'tracks'
+  | 'waypoints'
   | 'tides'
   | 'ais'
   | 'anchor'
@@ -324,6 +403,49 @@ const layerCategoriesOpen = new PersistedValue<Record<string, boolean>>(
 // The display-unit preference: follows the server's unit preferences when they resolve, with a
 // locally persisted fallback that profiles can carry. The store stays SI; only readouts consult it.
 const units = new UnitsStore();
+
+// Standard server waypoints: fetched from /resources/waypoints, rendered by the chart overlay,
+// managed in the Waypoints panel, and dropped from the chart's long-press menu.
+const waypointsStore = new WaypointsStore();
+let waypointError = $state<string | undefined>();
+
+async function refreshWaypoints(): Promise<void> {
+  const fetched = await fetchWaypoints(serverOrigin(), chartsToken);
+  if (fetched) waypointsStore.setWaypoints(fetched);
+}
+
+async function onDropWaypoint(position: LatLon): Promise<void> {
+  waypointError = undefined;
+  const name = promptSaveName('Waypoint');
+  if (name === undefined) return;
+  const waypoint: Waypoint = { id: uuidv4(), name, position };
+  if (!(await saveWaypoint(serverOrigin(), chartsToken, waypoint))) {
+    waypointError = 'Could not save the waypoint. Check the connection and write access.';
+    activePanel = 'waypoints';
+    return;
+  }
+  await refreshWaypoints();
+}
+
+async function onRenameWaypoint(id: string, name: string): Promise<void> {
+  waypointError = undefined;
+  const existing = waypointsStore.waypoints.find((w) => w.id === id);
+  if (!existing) return;
+  if (!(await saveWaypoint(serverOrigin(), chartsToken, { ...existing, name }))) {
+    waypointError = 'Could not rename the waypoint.';
+    return;
+  }
+  await refreshWaypoints();
+}
+
+async function onDeleteWaypoint(id: string): Promise<void> {
+  waypointError = undefined;
+  if (!(await deleteWaypoint(serverOrigin(), chartsToken, id))) {
+    waypointError = 'Could not delete the waypoint.';
+    return;
+  }
+  await refreshWaypoints();
+}
 
 const profileStore = new ProfileStore();
 // True only while a profile is being applied, so the dirty-tracking effect below does not flag the
@@ -438,32 +560,26 @@ function onImportProfiles(profiles: ImportedProfile[]): void {
   }
 }
 
-// User-imported PMTiles charts: the descriptor list is persisted, the files live in the browser
-// PMTiles store, and the chart-canvas registers an overlay per source.
-const pmtilesStore = createPmtilesStore();
+// User-imported charts: URL descriptors only, persisted locally and synced to the server as chart
+// resources so every station sees them. Local .pmtiles FILES are the signalk-pmtiles-plugin's job
+// (it serves them as ordinary chart resources Binnacle already renders), not a browser blob store.
 const userChartsStore = new PersistedValue<UserChartSource[]>('binnacle:user-charts', []);
-// Register (or refresh) a URL chart as a server resource, best-effort, so other Signal K devices
-// discover it. Gated on a token: without auth the write only earns a 401, so do not bother. A
-// file chart's bytes cannot be hosted on a stock server, so it stays local.
+// Register (or refresh) a chart as a server resource, best-effort. Gated on a token: without auth
+// the write only earns a 401, so do not bother.
 function syncUrlChartToServer(source: UserChartSource): void {
-  if (source.origin.type === 'url' && chartsToken) {
+  if (chartsToken) {
     void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url));
   }
 }
 
-// Drop a registered user-chart overlay and free its blob, so the reconcile effect can register it
-// afresh (rename) or let a removed chart go. Shared by the reconcile eviction and the rename
-// callback so the unregister-and-revoke dance has one owner.
+// Drop a registered user-chart overlay so the reconcile effect can register it afresh (rename) or
+// let a removed chart go; one owner for the eviction.
 function dropRegisteredUserChart(id: string): void {
-  if (!registeredUserCharts.has(id)) return;
-  const blobUrl = registeredUserCharts.get(id);
-  registeredUserCharts.delete(id);
+  if (!registeredUserCharts.delete(id)) return;
   userChartRegistrar?.unregister(id);
-  if (blobUrl) URL.revokeObjectURL(blobUrl);
 }
 
 const userCharts = new UserCharts(
-  pmtilesStore,
   userChartsStore.value,
   (sources) => userChartsStore.set(sources),
   // Fly to a freshly imported chart so the user sees it, even when it covers a different area than
@@ -472,10 +588,9 @@ const userCharts = new UserCharts(
     if (source.bounds) mapCommands?.fitBounds(source.bounds);
     syncUrlChartToServer(source);
   },
-  // On removal, also delete a URL chart's server resource (best-effort); a file chart was never
-  // synced, so there is nothing on the server to remove.
+  // On removal, also delete the chart's server resource (best-effort).
   (source) => {
-    if (source.origin.type === 'url' && chartsToken) {
+    if (chartsToken) {
       void deleteChart(serverOrigin(), chartsToken, source.id);
     }
   },
@@ -486,12 +601,8 @@ const userCharts = new UserCharts(
     syncUrlChartToServer(source);
   },
 );
-// Reclaim any orphaned PMTiles blob (a leftover from a failed-persist import or a degraded delete)
-// once at startup, but only when the descriptor set was actually read from storage: a missing or
-// unreadable set must never delete a valid chart's blob.
-if (userChartsStore.fromStorage) void userCharts.reconcile();
 let userChartRegistrar = $state<UserChartRegistrar | undefined>();
-const registeredUserCharts = new Map<string, string | undefined>();
+const registeredUserCharts = new Set<string>();
 
 // Tide data is fetched only while something can display it: the tide-stations layer or the Tides
 // panel. With both off (the default) a pan must not issue NOAA station and prediction fetches that
@@ -564,6 +675,13 @@ const menuItems = $derived<MenuItem[]>([
     icon: Spline,
     group: 'Navigate',
     onSelect: () => openPanel('tracks'),
+  },
+  {
+    id: 'waypoints',
+    label: 'Waypoints',
+    icon: MapPin,
+    group: 'Navigate',
+    onSelect: () => openPanel('waypoints'),
   },
   {
     id: 'measure',
@@ -726,9 +844,19 @@ function publishMobValue(value: unknown): void {
 // Commit the press-time mark, tell the whole boat, and bring the mark into view. Guidance only;
 // the course (and any coupled autopilot) is touched solely by the strip's deliberate Steer to MOB.
 // Without a fix the alarm still raises, position-less, so the crew mobilizes either way.
+let mobAlertId: string | undefined;
 function onMobTrigger(mark: MobMark | undefined): void {
   const committed = mob.trigger(mark);
-  publishMobValue(mobNotification(committed.position));
+  if (notificationsApi) {
+    // The v2 route attaches the server's own position and timestamp; if the POST fails, fall
+    // back to the v1 delta so the boat-wide alarm is never lost to a transport error.
+    void postMobNotification(serverOrigin(), chartsToken, 'Man overboard').then((id) => {
+      mobAlertId = id;
+      if (!id) publishMobValue(mobNotification(committed.position));
+    });
+  } else {
+    publishMobValue(mobNotification(committed.position));
+  }
   if (committed.position) {
     mapCommands?.flyTo(committed.position.latitude, committed.position.longitude);
   }
@@ -736,7 +864,12 @@ function onMobTrigger(mark: MobMark | undefined): void {
 
 function onMobCancel(): void {
   mob.cancel();
-  publishMobValue(mobClearNotification());
+  if (mobAlertId) {
+    void resolveNotification(serverOrigin(), chartsToken, mobAlertId);
+    mobAlertId = undefined;
+  } else {
+    publishMobValue(mobClearNotification());
+  }
 }
 
 // The deliberate second tap: hand the mark to the course system via the existing goto plumbing.
@@ -820,20 +953,19 @@ $effect(() => {
 });
 
 // Reconcile the registered user-chart overlays with the entity's source list: register an added
-// chart (resolving a stored file to a blob url first), unregister a removed one, and free its blob.
+// chart, unregister a removed one.
 $effect(() => {
   const registrar = userChartRegistrar;
   const sources = userCharts.sources;
   if (!registrar) return;
   const wanted = new Set(sources.map((source) => source.id));
-  for (const id of registeredUserCharts.keys()) {
+  for (const id of registeredUserCharts) {
     if (!wanted.has(id)) dropRegisteredUserChart(id);
   }
   for (const source of sources) {
     if (registeredUserCharts.has(source.id)) continue;
-    // Reserve the slot before the async register so a re-fire cannot double-register; the value
-    // is the blob url to revoke later, or undefined while registering or for a url-backed chart.
-    registeredUserCharts.set(source.id, undefined);
+    // Reserve the slot before the async register so a re-fire cannot double-register.
+    registeredUserCharts.add(source.id);
     void addUserChartOverlay(source, registrar);
   }
 });
@@ -842,28 +974,10 @@ async function addUserChartOverlay(
   source: UserChartSource,
   registrar: UserChartRegistrar,
 ): Promise<void> {
-  let blobUrl: string | undefined;
-  let url: string;
-  if (source.origin.type === 'url') {
-    url = source.origin.url;
-  } else {
-    const blob = await userCharts.resolveBlob(source.origin.storeId);
-    // The chart can be removed while its blob resolves; the reconcile cleanup then drops the
-    // reservation. Bail before creating an object URL or registering a ghost overlay for it.
-    if (!blob || !registeredUserCharts.has(source.id)) {
-      registeredUserCharts.delete(source.id);
-      return;
-    }
-    blobUrl = URL.createObjectURL(blob);
-    registeredUserCharts.set(source.id, blobUrl);
-    url = `pmtiles://${blobUrl}`;
-  }
-  await registrar.register(userChartToSignalK(source, url));
-  // If it was removed during registration, undo the overlay and free its blob rather than leave
-  // a ghost layer for a deleted chart.
+  await registrar.register(userChartToSignalK(source, source.origin.url));
+  // If it was removed during registration, undo the overlay rather than leave a ghost layer.
   if (!registeredUserCharts.has(source.id)) {
     registrar.unregister(source.id);
-    if (blobUrl) URL.revokeObjectURL(blobUrl);
     return;
   }
   recolorMap?.(theme.theme);
@@ -1300,6 +1414,7 @@ $effect(() => {
   if (phase === 'open') everOpen = true;
   if (!reconnected) return;
   void refreshRoutes();
+  void refreshWaypoints();
   // A provider plugin enabled while the link was down would otherwise stay undetected.
   void refreshWeatherProvider(auth.token ?? undefined);
   // Unconditional: a course activated from another station while the link was down would otherwise
@@ -1326,6 +1441,7 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.anchorMaxRadius, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.anchorNotification, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.mobNotification, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.allNotifications, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.position, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.courseOverGroundTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.speedOverGround, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
@@ -1339,7 +1455,12 @@ async function connectStream(token: string | undefined): Promise<void> {
   // nothing under subscribe=none until the next change, and the local activation flags are
   // session state, so without it a mid-passage reload leaves the nav strip, arrival alarm, and
   // auto-advance dead while the server is still navigating.
-  await Promise.all([refreshSavedTracks(), refreshRoutes(), hydrateAndSeedCourse()]);
+  await Promise.all([
+    refreshSavedTracks(),
+    refreshRoutes(),
+    refreshWaypoints(),
+    hydrateAndSeedCourse(),
+  ]);
 }
 
 // Detect a configured Signal K weather provider so the panel can prefer it over the free sources.
@@ -1359,6 +1480,11 @@ $effect(() => {
   // Resolve the server's unit preferences with the same trigger: per-user resolution rides on the
   // session credentials that exist once access has resolved.
   void units.syncFromServer(serverOrigin());
+  // Capability discovery; a transport failure keeps the current value so one bad probe cannot
+  // drop the session back to v1 transports.
+  void fetchServerFeatures(serverOrigin(), auth.token ?? undefined).then((features) => {
+    if (features) serverFeatures = features;
+  });
 });
 
 onMount(() => {
@@ -1380,10 +1506,6 @@ onMount(() => {
 onDestroy(() => {
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   if (arrivalBannerTimer) clearTimeout(arrivalBannerTimer);
-  // Revoke any object URLs still held for file-backed user charts so they do not leak on teardown.
-  for (const blobUrl of registeredUserCharts.values()) {
-    if (blobUrl) URL.revokeObjectURL(blobUrl);
-  }
   window.removeEventListener('pointerdown', primeAudio);
   lookoutAlarm.stop();
   anchorAlarm.stop();
@@ -1442,6 +1564,8 @@ onDestroy(() => {
   <section class="chart-host" aria-label="Chart">
     <ChartCanvas
       {units}
+      waypoints={waypointsStore}
+      onDropWaypoint={(position) => void onDropWaypoint(position)}
       {store}
       {vessel}
       {aisTargets}
@@ -1490,11 +1614,7 @@ onDestroy(() => {
       />
       <MeasureStrip {measure} {units} />
       <AnchorStrip {anchor} {units} onRaise={() => void onRaiseAnchor()} />
-      <DangerStrip
-        {collision}
-        muted={collisionMute.active}
-        onToggleMute={() => collisionMute.toggle()}
-      />
+      <DangerStrip {collision} muted={collisionMute.active} onToggleMute={toggleCollisionMute} />
       <MobStrip {mob} {units} onSteer={onMobSteer} onCancel={onMobCancel} />
     </div>
     {#if selectedNote && noteLoader}
@@ -1565,6 +1685,20 @@ onDestroy(() => {
         />
       </div>
     {/if}
+    {#if activePanel === 'waypoints'}
+      <div class="panel-slot">
+        <WaypointsPanel
+          waypoints={waypointsStore.waypoints}
+          error={waypointError}
+          onLocate={(waypoint) => flyToPosition(waypoint.position)}
+          onGoTo={(waypoint) => void onGoToHere(waypoint.position)}
+          onRename={(id, name) => void onRenameWaypoint(id, name)}
+          onDelete={(id) => void onDeleteWaypoint(id)}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
+      </div>
+    {/if}
     {#if activePanel === 'tides'}
       <div class="panel-slot">
         <TidesPanel
@@ -1611,9 +1745,12 @@ onDestroy(() => {
           {thresholds}
           collisionMuted={collisionMute.active}
           collisionMuteRemainingMin={collisionMute.active ? muteRemainingMin : undefined}
-          onToggleCollisionMute={() => collisionMute.toggle()}
+          onToggleCollisionMute={toggleCollisionMute}
           arrivalMuted={arrivalMuted.value}
           onToggleArrivalMute={() => arrivalMuted.set(!arrivalMuted.value)}
+          notifications={notificationsStore}
+          onSilence={notificationsApi ? onSilenceNotification : undefined}
+          onAcknowledge={notificationsApi ? onAcknowledgeNotification : undefined}
           onClose={closePanel}
           onBack={backToMenu}
         />

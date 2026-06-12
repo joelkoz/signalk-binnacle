@@ -1,25 +1,25 @@
 import { isFiniteNumber, uuidv4 } from '$shared/lib';
 import { readPmtilesMeta, type SignalKChart } from '$shared/map';
-import type { PmtilesStore } from '$shared/storage';
 
-// A chart the user imported, persisted as a descriptor: a file lives in the PMTiles store by
-// storeId, a URL points at a remote archive. Both vector and raster archives are supported.
+// A chart the user imported by URL, persisted as a descriptor pointing at a remote archive. Both
+// vector and raster archives are supported. Local .pmtiles files are served by the
+// signalk-pmtiles-plugin as ordinary chart resources, so there is no browser-local file origin.
 export interface UserChartSource {
   id: string;
   name: string;
   kind: 'vector' | 'raster';
-  origin: { type: 'url'; url: string } | { type: 'file'; storeId: string };
+  origin: { type: 'url'; url: string };
   bounds?: [number, number, number, number];
   minzoom?: number;
   maxzoom?: number;
   layers?: string[];
-  // Stored byte size for a file-backed chart, shown in the delete confirm.
-  byteSize?: number;
 }
 
 // Guards a persisted chart descriptor against schema drift across releases: a renamed or removed
 // field would otherwise flow in as undefined and surface deep in rendering (or as a NaN passed to
-// fitBounds). A descriptor that fails the guard is dropped at load rather than trusted.
+// fitBounds). A descriptor that fails the guard is dropped at load rather than trusted. Rejecting
+// non-url origins here also silently drops the browser-local file charts of older builds, whose
+// blobs no longer have a store.
 export function isUserChartSource(value: unknown): value is UserChartSource {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
@@ -28,13 +28,7 @@ export function isUserChartSource(value: unknown): value is UserChartSource {
   const origin = v.origin;
   if (!origin || typeof origin !== 'object') return false;
   const o = origin as Record<string, unknown>;
-  if (o.type === 'url') {
-    if (typeof o.url !== 'string') return false;
-  } else if (o.type === 'file') {
-    if (typeof o.storeId !== 'string') return false;
-  } else {
-    return false;
-  }
+  if (o.type !== 'url' || typeof o.url !== 'string') return false;
   if (
     v.bounds !== undefined &&
     (!Array.isArray(v.bounds) || v.bounds.length !== 4 || !v.bounds.every(isFiniteNumber))
@@ -44,15 +38,14 @@ export function isUserChartSource(value: unknown): value is UserChartSource {
   return true;
 }
 
-// A staged import: the resolved descriptor (not yet saved) plus, for a file import, the file to
-// store on commit. Staging reads the PMTiles metadata so the user can review and rename before save.
+// A staged import: the resolved descriptor, not yet saved. Staging reads the PMTiles metadata so
+// the user can review and rename before save.
 export interface DraftChart {
   source: UserChartSource;
-  file?: File;
 }
 
-// Build the SignalKChart the existing chart overlay renders, with the tile url already resolved:
-// a remote .pmtiles URL, or a pmtiles://blob: URL for a stored file.
+// Build the SignalKChart the existing chart overlay renders, with the tile url already resolved to
+// a remote .pmtiles URL.
 export function userChartToSignalK(source: UserChartSource, url: string): SignalKChart {
   const vector = source.kind !== 'raster';
   return {
@@ -87,30 +80,27 @@ function nameFromUrl(url: string): string {
 export class UserCharts {
   sources = $state<UserChartSource[]>([]);
 
-  #store: PmtilesStore;
   #persist: (sources: UserChartSource[]) => void;
   // Fires only when the user commits an imported chart, never for the persisted set restored at
-  // startup, so the app can fly the map to a freshly imported chart and sync a URL chart to the
-  // server.
+  // startup, so the app can fly the map to a freshly imported chart and sync it to the server.
   #onAdd?: (source: UserChartSource) => void;
   // Fires when a chart is removed, so the app can also delete its server-registered resource. Runs
   // before the local descriptor is dropped, so the source is still available to the handler.
   #onRemove?: (source: UserChartSource) => void;
   // Fires with the updated descriptor after a rename, so the app can re-register the overlay
-  // under the new title and re-put a server-synced URL chart's resource.
+  // under the new title and re-put the server-synced chart's resource.
   #onRename?: (source: UserChartSource) => void;
 
   constructor(
-    store: PmtilesStore,
     persisted: UserChartSource[],
     persist: (sources: UserChartSource[]) => void,
     onAdd?: (source: UserChartSource) => void,
     onRemove?: (source: UserChartSource) => void,
     onRename?: (source: UserChartSource) => void,
   ) {
-    this.#store = store;
     // Drop any persisted descriptor that no longer matches the schema, so a drifted entry from an
-    // older build cannot flow in as a partly-undefined source.
+    // older build cannot flow in as a partly-undefined source. This also drops the file-origin
+    // charts of older builds, whose browser-local blobs are gone with the file import path.
     this.sources = persisted.filter(isUserChartSource);
     this.#persist = persist;
     this.#onAdd = onAdd;
@@ -136,35 +126,12 @@ export class UserCharts {
     };
   }
 
-  // Read a file's metadata and stage it as a draft, holding the file to store on commit. The id is
-  // shared by the descriptor and the stored blob so a chart and its file keep one identity.
-  async stageFile(file: File): Promise<DraftChart> {
-    const meta = await readPmtilesMeta(file);
-    const id = uuidv4();
-    return {
-      source: {
-        id,
-        name: meta.name ?? file.name.replace(/\.pmtiles$/i, ''),
-        kind: meta.kind,
-        origin: { type: 'file', storeId: id },
-        bounds: meta.bounds,
-        minzoom: meta.minzoom,
-        maxzoom: meta.maxzoom,
-        layers: meta.vectorLayers,
-        byteSize: meta.byteSize ?? file.size,
-      },
-      file,
-    };
-  }
-
-  // Save a staged draft with the reviewed name. Stores the blob for a file import, then adds the
-  // descriptor (which fires onAdd so the map flies to the new chart).
-  async commit(draft: DraftChart, name: string): Promise<void> {
+  // Save a staged draft with the reviewed name, which fires onAdd so the map flies to the new chart.
+  commit(draft: DraftChart, name: string): void {
     const source: UserChartSource = { ...draft.source, name: name.trim() || draft.source.name };
-    if (draft.file && source.origin.type === 'file') {
-      await this.#store.put(source.origin.storeId, draft.file);
-    }
-    this.#add(source);
+    this.sources = [...this.sources, source];
+    this.#persist(this.sources);
+    this.#onAdd?.(source);
   }
 
   rename(id: string, name: string): void {
@@ -176,38 +143,11 @@ export class UserCharts {
     this.#onRename?.(renamed);
   }
 
-  async remove(id: string): Promise<void> {
+  remove(id: string): void {
     const source = this.sources.find((s) => s.id === id);
     if (!source) return;
     this.#onRemove?.(source);
-    if (source.origin.type === 'file') await this.#store.delete(source.origin.storeId);
     this.sources = this.sources.filter((s) => s.id !== id);
     this.#persist(this.sources);
-  }
-
-  resolveBlob(storeId: string): Promise<Blob | undefined> {
-    return this.#store.get(storeId);
-  }
-
-  // Delete any stored blob with no file-origin descriptor referencing it. Two rare paths can orphan
-  // a blob: a commit whose descriptor persist failed (storage full or private mode), and a delete
-  // that landed only in the degrade-to-memory fallback while IndexedDB was down. The caller runs
-  // this once at startup, and only when the descriptor set was actually loaded from storage, so a
-  // missing or unreadable set can never delete a valid chart's blob.
-  async reconcile(): Promise<void> {
-    const referenced = new Set<string>();
-    for (const source of this.sources) {
-      if (source.origin.type === 'file') referenced.add(source.origin.storeId);
-    }
-    const stored = await this.#store.keys();
-    for (const id of stored) {
-      if (!referenced.has(id)) await this.#store.delete(id);
-    }
-  }
-
-  #add(source: UserChartSource): void {
-    this.sources = [...this.sources, source];
-    this.#persist(this.sources);
-    this.#onAdd?.(source);
   }
 }

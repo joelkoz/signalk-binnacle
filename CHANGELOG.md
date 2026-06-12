@@ -29,6 +29,22 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
   layer opacity sliders have a floor so a checked safety layer can never be dimmed invisible.
 - The Terra Draw route editor loads on first use instead of at startup, trimming the initial
   bundle by about 137 kB for faster cold loads on Pi-class displays.
+- Standard waypoints: drop one from a long press on the chart, see them as named markers, and
+  locate, go to, rename, or delete them from the new Waypoints panel. They live in the server's
+  own waypoint resources, so they interoperate with Freeboard-SK and every other client.
+- An Active alerts list in the Alarms panel: every notification on the boat (engine, NMEA2000,
+  autopilot, or any plugin) surfaces with severity, time, and one-tap Silence and Acknowledge
+  that propagate to every station on a 2.28 server.
+- Collision and MOB alerts ride the server's v2 Notifications API when available (server-managed
+  ids; muting locally silences the boat-wide alert), with the v1 delta publish kept for older
+  servers. Server capabilities are detected once from the features endpoint.
+
+### Removed
+
+- The browser-local PMTiles file upload. Chart files belong on the server: install the
+  signalk-pmtiles-plugin and drop .pmtiles files in its charts folder, and they appear in
+  Binnacle on every device automatically. Adding a chart by URL is unchanged and still syncs to
+  the server. Previously uploaded browser-local charts are dropped cleanly at upgrade.
 
 ### Changed
 

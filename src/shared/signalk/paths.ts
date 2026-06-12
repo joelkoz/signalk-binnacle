@@ -15,6 +15,8 @@ export const SK_PATHS = {
   anchorMaxRadius: 'navigation.anchor.maxRadius',
   anchorNotification: 'notifications.navigation.anchor',
   mobNotification: 'notifications.mob',
+  // Wildcard subscription so every raised notification (any producer) reaches the store mirror.
+  allNotifications: 'notifications.*',
   name: 'name',
   aisShipType: 'design.aisShipType',
   courseNextPoint: 'navigation.course.nextPoint',

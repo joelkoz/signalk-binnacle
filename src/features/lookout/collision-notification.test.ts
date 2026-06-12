@@ -47,7 +47,9 @@ describe('buildNotification', () => {
 describe('CollisionNotifier', () => {
   it('publishes on state change but not on every tick', () => {
     const sent: Array<{ path: string; value: unknown }> = [];
-    const notifier = new CollisionNotifier((path, value) => sent.push({ path, value }));
+    const notifier = new CollisionNotifier((path, value) => {
+      sent.push({ path, value });
+    });
     const danger: Assessment = { contacts: [contact()], worst: 'danger' };
 
     notifier.update(danger);
@@ -65,9 +67,9 @@ describe('CollisionNotifier', () => {
 
   it('republishes with fresh numbers as the contact closes a coarse bucket', () => {
     const sent: Array<{ value: { message: string } }> = [];
-    const notifier = new CollisionNotifier((_path, value) =>
-      sent.push({ value: value as { message: string } }),
-    );
+    const notifier = new CollisionNotifier((_path, value) => {
+      sent.push({ value: value as { message: string } });
+    });
     notifier.update({ contacts: [contact()], worst: 'danger' }); // CPA 463 m, TCPA 300 s
     notifier.update({
       contacts: [contact({ cpaMeters: 200, tcpaSeconds: 120 })],
@@ -78,9 +80,25 @@ describe('CollisionNotifier', () => {
     expect(sent[0].value.message).not.toBe(sent[1].value.message);
   });
 
+  it('accepts an async strategy object as the publish transport', () => {
+    const sent: Array<{ path: string; value: { state: string } }> = [];
+    const notifier = new CollisionNotifier({
+      publish: async (path, value) => {
+        sent.push({ path, value });
+        return true;
+      },
+    });
+    notifier.update({ contacts: [contact()], worst: 'danger' });
+    expect(sent).toEqual([
+      { path: NOTIFICATION_PATH, value: expect.objectContaining({ state: 'alarm' }) },
+    ]);
+  });
+
   it('does not publish a clear before any active alert, but does after one', () => {
     const sent: Array<{ value: unknown }> = [];
-    const notifier = new CollisionNotifier((_path, value) => sent.push({ value }));
+    const notifier = new CollisionNotifier((_path, value) => {
+      sent.push({ value });
+    });
     const clear: Assessment = { contacts: [], worst: 'clear' };
 
     notifier.update(clear); // initial clear: nothing to clear, no publish

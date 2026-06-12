@@ -15,15 +15,9 @@ describe('chartSpecRows', () => {
     const rows = chartSpecRows(source({ minzoom: 4, maxzoom: 12 }));
     expect(rows.type).toEqual({ label: 'Type', value: 'Vector' });
     expect(rows.zoom).toEqual({ label: 'Zoom', value: '4 to 12' });
-    expect(rows.size).toBeUndefined();
   });
 
   it('labels a raster chart', () => {
     expect(chartSpecRows(source({ kind: 'raster' })).type.value).toBe('Raster');
-  });
-
-  it('adds a Size row only when the byte size is known', () => {
-    const rows = chartSpecRows(source({ byteSize: 2 * 1024 * 1024 }));
-    expect(rows.size).toEqual({ label: 'Size', value: '2 MB' });
   });
 });

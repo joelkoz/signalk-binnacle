@@ -2,6 +2,20 @@ export type { AuthStatus } from './auth.svelte';
 export { AuthController } from './auth.svelte';
 export type { SignalKClient } from './client';
 export { createSignalKClient } from './client';
+export type { ServerFeatures } from './features-client';
+export { fetchServerFeatures } from './features-client';
+export type {
+  RaiseNotificationOptions,
+  UpdateNotificationOptions,
+} from './notifications-client';
+export {
+  acknowledgeNotification,
+  postMobNotification,
+  postNotification,
+  resolveNotification,
+  silenceNotification,
+  updateNotification,
+} from './notifications-client';
 export { serverOrigin, streamUrl } from './origin';
 export type { SkPathKey } from './paths';
 export { SK_PATHS } from './paths';
@@ -24,6 +38,7 @@ export type {
   CourseCalculations,
   CourseInfo,
   CoursePoint,
+  NotificationState,
   SKFrame,
   SubscribeEntry,
   SubscribePolicy,

@@ -1,7 +1,6 @@
 <script lang="ts">
 import { ArrowLeft, Trash2 } from '@lucide/svelte';
 import type { UserChartSource, UserCharts } from '$entities/user-charts';
-import { formatBytes } from '$shared/lib';
 import { InlineConfirm } from '$shared/ui';
 import ChartSpecList from './ChartSpecList.svelte';
 import { chartSpecRows } from './chart-spec';
@@ -20,10 +19,9 @@ let name = $state('');
 const spec = $derived(chartSpecRows(source));
 const specRows = $derived([
   spec.type,
-  { label: 'Source', value: source.origin.type === 'url' ? 'URL' : 'File (offline)' },
+  { label: 'Source', value: source.origin.url },
   spec.zoom,
   { label: 'Bounds', value: fmtBounds(source.bounds) },
-  ...(spec.size ? [spec.size] : []),
 ]);
 
 // Seed the editable name from the source, resyncing if it changes underneath. The panel keys
@@ -43,12 +41,12 @@ function fmtBounds(b: [number, number, number, number] | undefined): string {
   return `${r(b[1])}, ${r(b[0])} to ${r(b[3])}, ${r(b[2])}`;
 }
 
-async function doDelete(): Promise<void> {
+function doDelete(): void {
   // Capture the id before onBack: onBack clears the panel's manageId, which makes the live `source`
   // prop undefined, so reading source.id afterward would throw and the remove would never run.
   const { id } = source;
   onBack();
-  await userCharts.remove(id);
+  userCharts.remove(id);
 }
 </script>
 
@@ -83,7 +81,7 @@ async function doDelete(): Promise<void> {
   {#if confirming}
     <div class="confirm">
       <InlineConfirm
-        question={`Delete this chart?${source.byteSize ? ` Frees ${formatBytes(source.byteSize)}.` : ''}`}
+        question="Delete this chart?"
         onConfirm={doDelete}
         onCancel={() => (confirming = false)}
       />

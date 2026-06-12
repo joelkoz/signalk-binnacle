@@ -11,6 +11,7 @@ import type { TrackRecorder } from '$entities/track';
 import type { UnitsStore } from '$entities/units';
 import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
+import type { WaypointsStore } from '$entities/waypoint';
 import { createAisOverlay } from '$features/ais-layer';
 import { createAnchorOverlay } from '$features/anchor-watch';
 import { BOUNDARY_SOURCES, createBoundaryOverlay } from '$features/boundaries-overlay';
@@ -29,6 +30,7 @@ import { createSeamarkOverlay, SEAMARK_SOURCES } from '$features/seamark-overlay
 import { createTidesOverlay } from '$features/tides';
 import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
+import { createWaypointOverlay } from '$features/waypoints';
 import { type LatLon, normalizeBounds } from '$shared/geo';
 import { prefersReducedMotion } from '$shared/lib';
 import {
@@ -63,6 +65,8 @@ interface Props {
   tides: TidesStore;
   // The display-unit preference, threaded into the overlays that label distances and heights.
   units: UnitsStore;
+  // Standard server waypoints, drawn as named markers in the routes band.
+  waypoints: WaypointsStore;
   // The active theme, so the on-chart route editor restyles its draw layers per theme.
   theme: Theme;
   trackSettings: PersistedValue<TrackSettings>;
@@ -90,6 +94,8 @@ interface Props {
   onUserPan?: () => void;
   // Set a single "go to here" destination at a chart point the user long-pressed or right-clicked.
   onGoToHere?: (position: LatLon) => void;
+  // Drop a standard waypoint at a long-pressed chart position; absent until the server can write.
+  onDropWaypoint?: (position: LatLon) => void;
   // Commit a drag-to-adjust of the anchor marker (the app PUTs it server-side or moves it locally).
   onAnchorMoved?: (position: LatLon) => void;
 }
@@ -102,6 +108,7 @@ const {
   mob,
   measure,
   units,
+  waypoints,
   collision,
   recorder,
   routeStore,
@@ -124,6 +131,7 @@ const {
   onNoteSelect,
   onUserPan,
   onGoToHere,
+  onDropWaypoint,
   onAnchorMoved,
 }: Props = $props();
 
@@ -213,6 +221,7 @@ onMount(() => {
         createAnchorOverlay(anchor, vessel, onAnchorMoved),
         createMeasureOverlay(measure, units),
         createRouteOverlay(routeStore),
+        createWaypointOverlay(waypoints),
         notesOverlay,
         createAisOverlay(aisTargets, store),
         createCollisionOverlay(collision),
@@ -339,6 +348,12 @@ onDestroy(() => mapHandle?.destroy());
         onGoToHere?.({ latitude: menu.lat, longitude: menu.lon });
         chartMenu = undefined;
       }}
+      onDropWaypoint={onDropWaypoint
+        ? () => {
+            onDropWaypoint({ latitude: menu.lat, longitude: menu.lon });
+            chartMenu = undefined;
+          }
+        : undefined}
       onClose={() => {
         chartMenu = undefined;
       }}

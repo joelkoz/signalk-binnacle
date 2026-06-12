@@ -1,0 +1,119 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  acknowledgeNotification,
+  postMobNotification,
+  postNotification,
+  resolveNotification,
+  silenceNotification,
+  updateNotification,
+} from './notifications-client';
+
+const BASE = 'https://boat.example';
+const API = `${BASE}/signalk/v2/api/notifications`;
+const ID = '6e6f7469-6669-4361-9469-6f6e49644142';
+
+function stubFetch(response: { ok: boolean; body?: unknown } | 'reject') {
+  const mock = vi.fn(async (_url: string, _init?: RequestInit) => {
+    if (response === 'reject') throw new TypeError('network down');
+    return {
+      ok: response.ok,
+      json: async () => response.body,
+    } as Response;
+  });
+  vi.stubGlobal('fetch', mock);
+  return mock;
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('postNotification', () => {
+  it('raises via POST and returns the assigned id', async () => {
+    const mock = stubFetch({
+      ok: true,
+      body: { state: 'COMPLETED', statusCode: 200, message: 'OK', id: ID },
+    });
+    const options = { state: 'alarm', message: 'Shallow water', path: 'navigation.depth' } as const;
+    await expect(postNotification(BASE, 'tok', options)).resolves.toBe(ID);
+    const [url, init] = mock.mock.calls[0];
+    expect(url).toBe(API);
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(init?.body as string)).toEqual(options);
+    expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer tok');
+  });
+
+  it('returns undefined when the server rejects the raise', async () => {
+    stubFetch({ ok: false, body: { state: 'FAILED', statusCode: 400 } });
+    await expect(
+      postNotification(BASE, undefined, { state: 'alarm', message: 'x' }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('returns undefined on a transport failure instead of throwing', async () => {
+    stubFetch('reject');
+    await expect(
+      postNotification(BASE, undefined, { state: 'alarm', message: 'x' }),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe('updateNotification', () => {
+  it('updates in place via PUT on the id', async () => {
+    const mock = stubFetch({ ok: true });
+    await expect(updateNotification(BASE, 'tok', ID, { state: 'warn' })).resolves.toBe(true);
+    const [url, init] = mock.mock.calls[0];
+    expect(url).toBe(`${API}/${ID}`);
+    expect(init?.method).toBe('PUT');
+    expect(JSON.parse(init?.body as string)).toEqual({ state: 'warn' });
+  });
+});
+
+describe('resolveNotification', () => {
+  it('clears via DELETE on the id', async () => {
+    const mock = stubFetch({ ok: true });
+    await expect(resolveNotification(BASE, undefined, ID)).resolves.toBe(true);
+    const [url, init] = mock.mock.calls[0];
+    expect(url).toBe(`${API}/${ID}`);
+    expect(init?.method).toBe('DELETE');
+  });
+
+  it('returns false on failure', async () => {
+    stubFetch({ ok: false });
+    await expect(resolveNotification(BASE, undefined, ID)).resolves.toBe(false);
+  });
+});
+
+describe('silence and acknowledge', () => {
+  it('posts to the per-id action routes', async () => {
+    const mock = stubFetch({ ok: true });
+    await expect(silenceNotification(BASE, 'tok', ID)).resolves.toBe(true);
+    await expect(acknowledgeNotification(BASE, 'tok', ID)).resolves.toBe(true);
+    const urls = mock.mock.calls.map((call) => call[0]);
+    expect(urls).toEqual([`${API}/${ID}/silence`, `${API}/${ID}/acknowledge`]);
+    expect(mock.mock.calls.every((call) => call[1]?.method === 'POST')).toBe(true);
+  });
+
+  it('returns false on a transport failure instead of throwing', async () => {
+    stubFetch('reject');
+    await expect(silenceNotification(BASE, undefined, ID)).resolves.toBe(false);
+    await expect(acknowledgeNotification(BASE, undefined, ID)).resolves.toBe(false);
+  });
+});
+
+describe('postMobNotification', () => {
+  it('posts the optional message to the mob route and returns the id', async () => {
+    const mock = stubFetch({ ok: true, body: { id: ID } });
+    await expect(postMobNotification(BASE, 'tok', 'Crew overboard')).resolves.toBe(ID);
+    const [url, init] = mock.mock.calls[0];
+    expect(url).toBe(`${API}/mob`);
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(init?.body as string)).toEqual({ message: 'Crew overboard' });
+  });
+
+  it('sends an empty body when no message is given', async () => {
+    const mock = stubFetch({ ok: true, body: { id: ID } });
+    await expect(postMobNotification(BASE, undefined)).resolves.toBe(ID);
+    expect(JSON.parse(mock.mock.calls[0][1]?.body as string)).toEqual({});
+  });
+});

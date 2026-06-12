@@ -34,17 +34,27 @@ export function buildNotification(assessment: Assessment): SkNotification {
   };
 }
 
+// The transport the notifier publishes through: the legacy v1 delta publish or a v2
+// REST-backed strategy, injected so the notifier never knows which. A returned promise is
+// fire-and-forget; the strategy owns its own degrade contract and never rejects.
+export interface NotificationPublishStrategy {
+  publish(path: string, value: SkNotification): void | Promise<unknown>;
+}
+
+type PublishLike = NotificationPublishStrategy | NotificationPublishStrategy['publish'];
+
 // Publishes the collision notification when its state, the worst contact, or that contact's
 // coarse CPA or TCPA bucket changes, so the message refreshes as the contact closes without a
 // server write on every per-second CPA tick. A clear is published only after an active alert,
 // so loading the app does not write a redundant "normal".
 export class CollisionNotifier {
-  #publish: (path: string, value: unknown) => void;
+  #publish: NotificationPublishStrategy['publish'];
   #last: string | undefined;
   #active = false;
 
-  constructor(publish: (path: string, value: unknown) => void) {
-    this.#publish = publish;
+  constructor(publish: PublishLike) {
+    this.#publish =
+      typeof publish === 'function' ? publish : (path, value) => publish.publish(path, value);
   }
 
   update(assessment: Assessment): void {
@@ -60,6 +70,6 @@ export class CollisionNotifier {
     this.#last = signature;
     if (value.state === 'normal' && !this.#active) return;
     this.#active = value.state !== 'normal';
-    this.#publish(NOTIFICATION_PATH, value);
+    void this.#publish(NOTIFICATION_PATH, value);
   }
 }

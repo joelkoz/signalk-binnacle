@@ -18,6 +18,12 @@ export class SignalKStore {
   // Reactive so a $derived or $effect consumer is notified, not only the rAF poll.
   aisVersion = $state(0);
 
+  // Mirror of every raised self notifications.* value, keyed by path, mirroring the AIS
+  // pattern: a non-reactive Map plus a version bump so list consumers rebuild only on change.
+  // The per-path cells still update for the keyed consumers (anchor drag, MOB).
+  readonly notifications = new Map<string, Value>();
+  notificationsVersion = $state(0);
+
   #cells = new Map<string, PathCell>();
 
   cell(path: string): PathCell {
@@ -34,6 +40,7 @@ export class SignalKStore {
       const cell = this.cell(path);
       cell.value = value;
       cell.epoch = frame.epoch;
+      if (path.startsWith('notifications.')) this.#mirrorNotification(path, value);
     }
     if (frame.ais) {
       for (const [context, incoming] of frame.ais) {
@@ -56,6 +63,19 @@ export class SignalKStore {
     if (incoming.phase !== this.connection.phase || incoming.attempt !== this.connection.attempt) {
       this.connection = incoming;
     }
+  }
+
+  // A null value or one without a state string is a cleared notification (raw v1 producers
+  // publish null to clear); it leaves the mirror so only raised notifications are listed.
+  #mirrorNotification(path: string, value: Value): void {
+    const state =
+      value && typeof value === 'object' ? (value as { state?: unknown }).state : undefined;
+    if (typeof state !== 'string') {
+      if (this.notifications.delete(path)) this.notificationsVersion += 1;
+      return;
+    }
+    this.notifications.set(path, value);
+    this.notificationsVersion += 1;
   }
 
   pruneAis(now: number, ttlMs: number): number {

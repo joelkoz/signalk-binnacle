@@ -15,6 +15,10 @@ export const SELF_CONTEXT = 'vessels.self';
 // not sound; shared by every consumer that grades a notifications.* cell (anchor drag, MOB).
 export const ALARM_NOTIFICATION_STATES: ReadonlySet<string> = new Set(['alarm', 'emergency']);
 
+// The full Signal K alarm-state set (server-api ALARM_STATE). 'nominal' and 'normal' are the
+// quiet grades; the rest escalate alert < warn < alarm < emergency.
+export type NotificationState = 'nominal' | 'normal' | 'alert' | 'warn' | 'alarm' | 'emergency';
+
 export interface PathValue {
   path: Path;
   value: Value;

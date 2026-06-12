@@ -137,6 +137,41 @@ describe('SignalKStore', () => {
     expect(store.aisTargets.get('vessels.a')?.lastUpdate).toBe(2);
   });
 
+  it('mirrors notifications.* values into the notifications map and bumps the version', () => {
+    const store = new SignalKStore();
+    const before = store.notificationsVersion;
+    const value = { state: 'alarm', method: ['visual'], message: 'Dragging' };
+    store.applyFrame(frame({ 'notifications.navigation.anchor': value }));
+    expect(store.notifications.get('notifications.navigation.anchor')).toBe(value);
+    expect(store.notificationsVersion).toBe(before + 1);
+    // The keyed consumers (anchor drag, MOB) still read the per-path cell.
+    expect(store.cell('notifications.navigation.anchor').value).toBe(value);
+  });
+
+  it('does not bump the notifications version for non-notification paths', () => {
+    const store = new SignalKStore();
+    const before = store.notificationsVersion;
+    store.applyFrame(frame({ 'navigation.speedOverGround': 5 }));
+    expect(store.notificationsVersion).toBe(before);
+    expect(store.notifications.size).toBe(0);
+  });
+
+  it('removes a notification cleared with a null value', () => {
+    const store = new SignalKStore();
+    store.applyFrame(frame({ 'notifications.mob': { state: 'emergency', message: 'MOB' } }));
+    store.applyFrame(frame({ 'notifications.mob': null }));
+    expect(store.notifications.has('notifications.mob')).toBe(false);
+    expect(store.notificationsVersion).toBe(2);
+  });
+
+  it('removes a notification whose value has no state, without a version bump for a no-op', () => {
+    const store = new SignalKStore();
+    store.applyFrame(frame({ 'notifications.x': { message: 'no state' } }));
+    expect(store.notifications.size).toBe(0);
+    // Clearing a path that was never mirrored must not bump the version.
+    expect(store.notificationsVersion).toBe(0);
+  });
+
   it('prunes targets older than the ttl', () => {
     const store = new SignalKStore();
     store.applyFrame({

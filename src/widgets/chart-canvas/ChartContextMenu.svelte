@@ -1,5 +1,5 @@
 <script lang="ts">
-import { Navigation } from '@lucide/svelte';
+import { MapPin, Navigation } from '@lucide/svelte';
 import { focusOnMount } from '$shared/ui';
 
 interface Props {
@@ -10,13 +10,15 @@ interface Props {
   width: number;
   height: number;
   onGoToHere: () => void;
+  // Optional: rendered only when waypoint dropping is wired (it needs a write-capable server).
+  onDropWaypoint?: () => void;
   onClose: () => void;
 }
 
-const { x, y, width, height, onGoToHere, onClose }: Props = $props();
+const { x, y, width, height, onGoToHere, onDropWaypoint, onClose }: Props = $props();
 
-const MENU_WIDTH = 150;
-const MENU_HEIGHT = 44;
+const MENU_WIDTH = 170;
+const MENU_HEIGHT = 92;
 const EDGE = 8;
 
 // Clamp the anchor so the menu (centered on x) stays a margin clear of both side edges.
@@ -49,6 +51,12 @@ function onKeydown(event: KeyboardEvent): void {
     <Navigation size={16} aria-hidden="true" />
     Go to here
   </button>
+  {#if onDropWaypoint}
+    <button type="button" role="menuitem" class="item" onclick={onDropWaypoint}>
+      <MapPin size={16} aria-hidden="true" />
+      Drop waypoint
+    </button>
+  {/if}
 </div>
 
 <style>

@@ -12,7 +12,8 @@ const { auth, requestsUrl }: Props = $props();
 {#if auth.status === 'requesting'}
   <div class="auth-banner" role="status" aria-live="polite">
     Requesting access as <strong>{auth.clientId}</strong>. Approve it in Signal K under Security,
-    then Access Requests, and this connects on its own.
+    then Access Requests, and this connects on its own. Grant <strong>read and write</strong>:
+    routes, waypoints, tracks, course control, alarms, and profiles all save to the server.
     <a class="btn btn-ghost btn-pill" href={requestsUrl} target="_blank" rel="noopener noreferrer">
       Approve in Signal K
     </a>

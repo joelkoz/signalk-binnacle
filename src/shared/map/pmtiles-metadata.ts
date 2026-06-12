@@ -1,4 +1,4 @@
-import { FileSource, type Header, PMTiles, TileType } from 'pmtiles';
+import { type Header, PMTiles, TileType } from 'pmtiles';
 import { NoStoreSource } from './pmtiles';
 
 export interface PmtilesMeta {
@@ -8,7 +8,6 @@ export interface PmtilesMeta {
   minzoom: number;
   maxzoom: number;
   vectorLayers?: string[]; // source-layer ids, for a vector archive (from metadata vector_layers)
-  byteSize?: number;
 }
 
 // The pmtiles header decodes its packed int32 lon/lat fields by dividing by 1e7, so the
@@ -58,13 +57,10 @@ export function mapPmtilesMeta(header: Header, metadata: unknown): PmtilesMeta {
   };
 }
 
-// Read a PMTiles archive header and metadata from a local File or a remote URL.
-export async function readPmtilesMeta(source: File | string): Promise<PmtilesMeta> {
-  // A File reads through pmtiles' own FileSource (file.slice range reads), so there is no
-  // object URL to create or revoke. A remote URL uses NoStoreSource for the same uncached,
-  // retrying range reads the map tiles use.
-  const isFile = typeof source !== 'string';
-  const pm = new PMTiles(isFile ? new FileSource(source) : new NoStoreSource(source));
+// Read a PMTiles archive header and metadata from a remote URL, using NoStoreSource for the same
+// uncached, retrying range reads the map tiles use.
+export async function readPmtilesMeta(url: string): Promise<PmtilesMeta> {
+  const pm = new PMTiles(new NoStoreSource(url));
   const header = await pm.getHeader();
   // Metadata is optional convenience data (name, vector_layers); a malformed or absent
   // metadata block must not sink an otherwise-readable archive.
@@ -74,7 +70,5 @@ export async function readPmtilesMeta(source: File | string): Promise<PmtilesMet
   } catch {
     metadata = undefined;
   }
-  const meta = mapPmtilesMeta(header, metadata);
-  if (isFile) meta.byteSize = source.size;
-  return meta;
+  return mapPmtilesMeta(header, metadata);
 }
