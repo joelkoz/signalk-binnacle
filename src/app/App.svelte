@@ -18,7 +18,7 @@ import {
   Waves,
 } from '@lucide/svelte';
 import { onDestroy, onMount, tick } from 'svelte';
-import { AisTargets } from '$entities/ais';
+import { AIS_PRUNE_INTERVAL_MS, AIS_STALE_TTL_MS, AisTargets, shortVesselId } from '$entities/ais';
 import { AnchorWatch } from '$entities/anchor';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
@@ -246,14 +246,13 @@ let weatherPanelOpen = $state(false);
 // stream connects. When set, the weather panel prefers the provider for point data and falls back to
 // the free grid; when undefined (no provider configured), the grid answers.
 let weatherProviderName = $state<string | undefined>();
-// The panel's own weather-layer visibility and view, separate from the nav chart. Default wind and
-// waves on so the first open shows something without hunting through toggles.
+// The panel's own weather-layer visibility, separate from the nav chart. Default wind and
+// waves on so the first open shows something without hunting through toggles. The panel carries no
+// persisted view of its own: it always opens where the nav chart is looking.
 const weatherLayerSettings = new PersistedValue<LayerSettings>('binnacle:weather-layers', {
   [WEATHER_LAYER_IDS.wind]: { visible: true, opacity: 1 },
   [WEATHER_LAYER_IDS.waves]: { visible: true, opacity: 0.7 },
 });
-const weatherViewStore = createMapView('binnacle:weather-view');
-const savedWeatherView = isMapView(weatherViewStore.value) ? weatherViewStore.value : undefined;
 
 // Saved tracks fetched from /resources/tracks, and the subset the user has chosen to show on
 // the chart. The overlay polls savedSource each frame, so a version counter signals changes.
@@ -330,6 +329,11 @@ const profileStore = new ProfileStore();
 let applying = false;
 // Handed up by the weather mini-map once it is ready, to push a weather-layer snapshot at runtime.
 let applyWeatherLayers = $state<((settings: LayerSettings) => void) | undefined>();
+// The mini-map is destroyed with the panel; drop the stale handle on close so a later profile
+// apply cannot push a snapshot into a removed map (which would throw and wedge dirty tracking).
+$effect(() => {
+  if (!weatherPanelOpen) applyWeatherLayers = undefined;
+});
 
 // The portable-setting binding table lives in the profiles feature (createProfileBindings); the live
 // map-layer push on apply stays here, since this composition root owns the map handles.
@@ -363,19 +367,26 @@ function applyProfileSettings(s: ProfileSettings): void {
 }
 
 // Mark the active profile edited when any portable setting changes outside of an apply, so the panel
-// and the top-bar switcher can offer to save the change.
+// and the top-bar switcher can offer to save the change. The primed flag skips the effect's mount
+// run, which would otherwise flag a restored active profile as edited at every launch. markDirty
+// owns the "only when a profile is active" guard; its reads inside the effect are idempotent, so
+// the extra re-runs they cause are harmless.
+let dirtyTrackerPrimed = false;
 $effect(() => {
   profileBindings.track();
-  // markDirty owns the "only when a profile is active" guard, so this effect does not read activeId
-  // (which would add a needless dependency that re-runs it on every profile switch).
+  if (!dirtyTrackerPrimed) {
+    dirtyTrackerPrimed = true;
+    return;
+  }
   if (!applying) profileStore.markDirty();
 });
 
-// Seed three starter profiles on first run (no stored profiles), so the feature is not empty and
-// teaches the concept. They capture the current defaults and vary the theme; the navigator edits them.
-// The ids are stable so the same starters seeded on two devices merge to one on sync, not duplicate.
-$effect(() => {
-  if (profileStore.profiles.length > 0) return;
+// Seed three starter profiles on first run only (no stored document at all), so the feature is not
+// empty and teaches the concept. They capture the current defaults and vary the theme; the navigator
+// edits them. The ids are stable so the same starters seeded on two devices merge to one on sync,
+// not duplicate. A one-shot init check, not an effect keyed on live emptiness: deleting the last
+// profile must not instantly resurrect the starters.
+if (!profileStore.loadedFromStorage && profileStore.profiles.length === 0) {
   const base = captureProfileSettings();
   const now = Date.now();
   const starter = (id: string, name: string, settings: ProfileSettings): Profile => ({
@@ -390,7 +401,7 @@ $effect(() => {
     starter('binnacle-seed-night-passage', 'Night passage', { ...base, theme: 'night-red' }),
     starter('binnacle-seed-at-anchor', 'At anchor', { ...base, theme: 'dusk' }),
   ]);
-});
+}
 
 // Once the user is authenticated to a secured server, sync profiles through the SignalK applicationData
 // API so they follow the user across devices. Runs once; an unsecured server (status 'unsecured', no
@@ -465,6 +476,20 @@ const userCharts = new UserCharts(
       void deleteChart(serverOrigin(), chartsToken, source.id);
     }
   },
+  // On rename, drop the registered overlay so the reconcile effect re-registers it under the new
+  // name (the overlay title is read once at registration), and refresh a URL chart's server
+  // resource the same way the add path does.
+  (source) => {
+    const blobUrl = registeredUserCharts.get(source.id);
+    if (registeredUserCharts.has(source.id)) {
+      registeredUserCharts.delete(source.id);
+      userChartRegistrar?.unregister(source.id);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    }
+    if (source.origin.type === 'url' && chartsToken) {
+      void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url));
+    }
+  },
 );
 // Reclaim any orphaned PMTiles blob (a leftover from a failed-persist import or a degraded delete)
 // once at startup, but only when the descriptor set was actually read from storage: a missing or
@@ -472,6 +497,13 @@ const userCharts = new UserCharts(
 if (userChartsStore.fromStorage) void userCharts.reconcile();
 let userChartRegistrar = $state<UserChartRegistrar | undefined>();
 const registeredUserCharts = new Map<string, string | undefined>();
+
+// Tide data is fetched only while something can display it: the tide-stations layer or the Tides
+// panel. With both off (the default) a pan must not issue NOAA station and prediction fetches that
+// nothing renders.
+const tidesWanted = $derived(
+  (layerSettings.value.tides?.visible ?? false) || activePanel === 'tides',
+);
 
 // The view changes once per animation frame while panning; persist only after it
 // settles so a drag is one write, not hundreds.
@@ -482,7 +514,7 @@ function onViewChange(view: MapView): void {
   viewSaveTimer = setTimeout(() => {
     mapViewStore.set(view);
     // Refresh tides for the settled view; the loader skips small moves and dedups in flight.
-    void tidesLoader.load(tidesStore, view.lat, view.lon);
+    if (tidesWanted) void tidesLoader.load(tidesStore, view.lat, view.lon);
   }, 400);
 }
 
@@ -491,6 +523,12 @@ function loadTides(): void {
   const view = mapView ?? savedView;
   if (view) void tidesLoader.load(tidesStore, view.lat, view.lon);
 }
+
+// Toggling the tide layer on (or opening the panel) loads tides for the current view, covering the
+// fetches the gated pan-settle path skipped while nothing displayed them.
+$effect(() => {
+  if (tidesWanted) loadTides();
+});
 
 let mapCommands = $state<MapCommands | undefined>();
 
@@ -590,14 +628,24 @@ const menuItems = $derived<MenuItem[]>([
 
 // Sound the collision alarm whenever the assessment, acknowledgement, mute, or escalation changes.
 // Escalation past the inner ring overrides both acknowledge and mute, so a close, imminent contact
-// always sounds.
+// always sounds. reconcile() drops a stale acknowledge once the situation has gone all-clear, so
+// the same vessel re-approaching later alarms afresh.
 $effect(() => {
+  collision.reconcile();
   lookoutAlarm.update(
     collision.assessment.worst,
     collision.suppressed,
     collisionMute.active,
     collision.escalating,
   );
+});
+
+// AIS staleness pruning runs on its own coarse wall-clock interval, not the render loop: rendering
+// pauses while the tab is hidden, and collision assessment must not keep consuming targets that
+// stopped reporting.
+$effect(() => {
+  const id = setInterval(() => store.pruneAis(Date.now(), AIS_STALE_TTL_MS), AIS_PRUNE_INTERVAL_MS);
+  return () => clearInterval(id);
 });
 
 // A concise spoken summary of the active collision danger, written into a persistent assertive live
@@ -608,7 +656,7 @@ const collisionAlert = $derived.by(() => {
   const { contacts } = collision.assessment;
   if (collision.suppressed || contacts.length === 0) return '';
   const nearest = contacts[0];
-  const who = nearest.name || nearest.id;
+  const who = nearest.name || shortVesselId(nearest.id);
   const count = contacts.length;
   // Lead with the worst contact's grade (contacts[0] is severity-then-time sorted), so a
   // warning-only situation is not announced as full danger.
@@ -639,9 +687,19 @@ $effect(() => {
   anchorAlarm.update(anchor.dragging && !anchor.acknowledged);
 });
 
+// A GPS dropout starves the watch of position fixes. The chip stops showing numbers it cannot
+// stand behind, and in client mode, where the drag detector counts fixes and is silently dead
+// without them, the degradation is announced on the assertive anchor channel: this watch guards
+// a sleeping crew, so it must never fail quietly.
+const anchorFixLost = $derived(anchor.watching && vessel.positionStale);
+const anchorWatchDegraded = $derived(anchorFixLost && anchor.mode !== 'server');
+
 // The anchor channel of the assertive live region, separate from the collision channel so a drag
 // alarm is announced even while a collision alert holds the other region.
 const anchorAlert = $derived.by(() => {
+  if (anchorWatchDegraded) {
+    return 'Anchor watch degraded: no GPS fix, so drag detection has stopped.';
+  }
   if (!anchor.dragging || anchor.acknowledged) return '';
   const distance = anchor.distanceMeters;
   const radius = anchor.radiusMeters;
@@ -890,6 +948,20 @@ function clearRouteError(): void {
 let gotoActive = $state(false);
 const courseActive = $derived(routeStore.activeId !== undefined || gotoActive);
 
+// When the stream reports the course gone (cleared from this or another station), drop the local
+// activation flags on the falling edge, so the Routes panel cannot keep a stale Active badge for a
+// route the server stopped navigating. Falling edge only: during activation the local flags are set
+// before the hydration seeds the guidance, and a clear there would race the seed.
+let wasGuidanceActive = false;
+$effect(() => {
+  const active = courseGuidance.active;
+  if (!active && wasGuidanceActive && courseActive) {
+    routeStore.setActive(undefined);
+    gotoActive = false;
+  }
+  wasGuidanceActive = active;
+});
+
 // Clear the active course on the server and locally. Returns whether the server clear succeeded; the
 // local state is cleared only on success, so a failed stop does not desync from a server that is
 // still navigating (the next course delta would otherwise revive the nav strip).
@@ -900,6 +972,11 @@ async function stopActiveCourse(): Promise<boolean> {
   courseGuidance.clear();
   arrivalAlarm.stop();
   return true;
+}
+
+// Fly the chart to a position: the shared locate action for the MOB mark and AIS list rows.
+function flyToPosition(position: LatLon): void {
+  mapCommands?.flyTo(position.latitude, position.longitude);
 }
 
 // Fly the chart to a saved route's first waypoint, so showing, editing, activating, or tapping a
@@ -953,12 +1030,37 @@ function onCancelRouteEdit(): void {
   routeStore.setWorking(undefined);
 }
 
+// The server resource href for a route id, built in one place so every caller encodes the same way
+// as the routes client.
+function routeHref(id: string): string {
+  return `/resources/routes/${encodeURIComponent(id)}`;
+}
+
 // Seed the course cells once from a REST GET, then the stream keeps them live. The v2
 // navigation.course paths are not in the v1 full model, so under subscribe=none the stream sends
 // nothing until the next change; this makes the nav strip show values immediately on activation.
+// The hydrate start time lets seed() yield to any stream delta that landed while the GET was in
+// flight, so a slow hydration cannot roll back a fresher waypoint skip.
 async function hydrateAndSeedCourse(): Promise<void> {
+  const startedAt = Date.now();
   const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
-  courseGuidance.seed(info, calc);
+  courseGuidance.seed(info, calc, startedAt);
+  // Reconcile the local activation flags with what the server is actually navigating: a page
+  // reload mid-passage restores the Active badge, skip buttons, and route progress, and a course
+  // replaced from another station moves the badge to the right route. info undefined means the
+  // GET failed, so nothing is known and nothing is touched.
+  if (!info) return;
+  const routeId = info.activeRoute?.href?.split('/').pop();
+  if (routeId) {
+    if (routeStore.activeId !== routeId) {
+      routeStore.setActive(routeId);
+      routeStore.toggleShown(routeId, true);
+    }
+    gotoActive = false;
+  } else if (info.nextPoint?.position) {
+    routeStore.setActive(undefined);
+    gotoActive = true;
+  }
 }
 
 async function onDeleteRoute(id: string): Promise<void> {
@@ -979,7 +1081,7 @@ async function onDeleteRoute(id: string): Promise<void> {
 
 async function onActivateRoute(id: string): Promise<void> {
   clearRouteError();
-  if (!(await activateRoute(serverOrigin(), chartsToken, `/resources/routes/${id}`))) {
+  if (!(await activateRoute(serverOrigin(), chartsToken, routeHref(id)))) {
     flagRouteError('Could not activate the route. Check the connection.');
     return;
   }
@@ -999,8 +1101,11 @@ async function onStopCourse(): Promise<void> {
 
 // Skip the active route's waypoint forward (1) or back (-1). Best-effort: the streamed pointIndex
 // stays authoritative, so the strip self-corrects even if the server rejects a step past a route end.
+// A transport failure is still surfaced, matching the arrival auto-advance.
 function onSkipPoint(delta: number): void {
-  void advancePoint(serverOrigin(), chartsToken, delta);
+  void advancePoint(serverOrigin(), chartsToken, delta).then((ok) => {
+    if (!ok) flagRouteError('Could not skip the waypoint. Check the connection.');
+  });
 }
 
 // Save the current track as a reusable route, without stopping or clearing the recording, so a
@@ -1030,7 +1135,7 @@ async function onTrackHome(): Promise<void> {
     return;
   }
   await refreshRoutes();
-  if (!(await activateRoute(serverOrigin(), chartsToken, `/resources/routes/${route.id}`))) {
+  if (!(await activateRoute(serverOrigin(), chartsToken, routeHref(route.id)))) {
     flagRouteError('Could not start navigating home.');
     return;
   }
@@ -1075,6 +1180,9 @@ async function onImportRouteGpx(gpxText: string): Promise<void> {
   if (saved.length === 0) {
     flagRouteError('Could not save the imported route.');
     return;
+  }
+  if (saved.length < parsed.length) {
+    flagRouteError(`Imported ${saved.length} of ${parsed.length} routes; the rest did not save.`);
   }
   await refreshRoutes();
   for (const id of saved) routeStore.toggleShown(id, true);
@@ -1195,8 +1303,8 @@ $effect(() => {
 // value on resubscribe, only the next change: without this an active course would freeze on its
 // pre-drop geometry (and the arrival alarm and auto-advance would run on stale values) until the
 // course next changed. Self-vessel paths are in the v1 model and recover on their own; routes are
-// REST resources, so refresh them too. The first open is handled by connectStream; only a later
-// open (a genuine reconnect) re-hydrates.
+// REST resources, so refresh them too. The first open is handled by connectStream (including the
+// course hydration); only a later open (a genuine reconnect) re-hydrates here.
 let everOpen = false;
 let lastConnectionPhase: ConnectionPhase | undefined;
 $effect(() => {
@@ -1208,7 +1316,9 @@ $effect(() => {
   void refreshRoutes();
   // A provider plugin enabled while the link was down would otherwise stay undetected.
   void refreshWeatherProvider(auth.token ?? undefined);
-  if (courseActive) void hydrateAndSeedCourse();
+  // Unconditional: a course activated from another station while the link was down would otherwise
+  // stay unknown here until its next change; the hydration also reconciles the activation flags.
+  void hydrateAndSeedCourse();
 });
 
 async function connectStream(token: string | undefined): Promise<void> {
@@ -1240,6 +1350,11 @@ async function connectStream(token: string | undefined): Promise<void> {
   ]);
   await refreshSavedTracks();
   await refreshRoutes();
+  // Restore an in-progress course after a reload: the v2 course paths send nothing under
+  // subscribe=none until the next change, and the local activation flags are session state, so
+  // without this a mid-passage reload leaves the nav strip, arrival alarm, and auto-advance dead
+  // while the server is still navigating.
+  await hydrateAndSeedCourse();
 }
 
 // Detect a configured Signal K weather provider so the panel can prefer it over the free sources.
@@ -1308,11 +1423,7 @@ onDestroy(() => {
       <AppMenu items={menuItems} open={menuOpen} onOpenChange={(next) => (menuOpen = next)} />
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>
-    <MobButton
-      {mob}
-      onTrigger={onMobTrigger}
-      onLocate={(position) => mapCommands?.flyTo(position.latitude, position.longitude)}
-    />
+    <MobButton {mob} onTrigger={onMobTrigger} onLocate={flyToPosition} />
     <span class="topbar-actions">
       {#if collisionMute.active}
         <button
@@ -1476,7 +1587,7 @@ onDestroy(() => {
           {aisTargets}
           {vessel}
           {collision}
-          onLocate={(position) => mapCommands?.flyTo(position.latitude, position.longitude)}
+          onLocate={flyToPosition}
           onClose={closePanel}
           onBack={backToMenu}
         />
@@ -1530,8 +1641,6 @@ onDestroy(() => {
         loader={weatherLoader}
         theme={theme.theme}
         initialView={mapView ?? savedView}
-        savedView={savedWeatherView}
-        onViewChange={(view) => weatherViewStore.set(view)}
         savedLayers={weatherLayerSettings.value}
         onLayersChange={(settings) => weatherLayerSettings.set(settings)}
         onLayersReady={(apply) => (applyWeatherLayers = apply)}
@@ -1569,14 +1678,20 @@ onDestroy(() => {
       {#if anchor.watching}
         <span
           class="readout anchor-chip"
-          class:anchor-chip--alarm={anchor.dragging}
+          class:anchor-chip--alarm={anchor.dragging || anchorFixLost}
           role="status"
-          title="Anchor watch: distance from the anchor over the watch radius"
+          title={anchorFixLost
+            ? 'Anchor watch: no GPS fix, drag detection degraded'
+            : 'Anchor watch: distance from the anchor over the watch radius'}
         >
-          Anchor <b>{formatFixed(anchor.distanceMeters, 0)}</b>/<b
-            >{formatFixed(anchor.radiusMeters, 0)}</b
-          >
-          m
+          {#if anchorFixLost}
+            Anchor <b>no GPS</b>
+          {:else}
+            Anchor <b>{formatFixed(anchor.distanceMeters, 0)}</b>/<b
+              >{formatFixed(anchor.radiusMeters, 0)}</b
+            >
+            m
+          {/if}
         </span>
       {/if}
       <span class="readout"
@@ -1698,17 +1813,19 @@ onDestroy(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* On a phone the brand yields its version string so the muted badge and the Update pill keep room. */
-@media (max-width: 600px) {
-  .version {
-    display: none;
-  }
-}
 .version {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: 400;
   color: var(--text-muted);
+}
+/* On a phone the brand yields its version string so the muted badge and the Update pill keep room.
+   Phone override after the base rule: a media block before a same-specificity base is silently
+   defeated by source order. It works here only because the base sets no display. */
+@media (max-width: 600px) {
+  .version {
+    display: none;
+  }
 }
 .chart-host {
   position: relative;

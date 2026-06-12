@@ -201,16 +201,21 @@ onMount(() => {
       // vessel and collision pinned on top, then the navigator's routes and track, then AIS and the
       // safety overlays, the ocean fields, and the charts at the base); the order below sets only the
       // order within a band.
-      const anchorOverlay = createAnchorOverlay(anchor, vessel, onAnchorMoved);
-      const mobOverlay = createMobOverlay(mob, vessel);
-      const measureOverlay = createMeasureOverlay(measure);
-      const routeOverlay = createRouteOverlay(routeStore);
       const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect);
-      const aisOverlay = createAisOverlay(aisTargets, store);
-      const collisionOverlay = createCollisionOverlay(collision);
-      const trackOverlay = createTrackOverlay(recorder, trackSettings, savedTracks);
-      const tidesOverlay = createTidesOverlay(tides);
-      const overlay = createVesselOverlay(vessel);
+      // One list feeds both registration and the per-frame tick, so the two cannot drift. The order
+      // sets z within each band (tides under the safety overlays, the own vessel on top).
+      const dynamicOverlays = [
+        createTidesOverlay(tides),
+        createAnchorOverlay(anchor, vessel, onAnchorMoved),
+        createMeasureOverlay(measure),
+        createRouteOverlay(routeStore),
+        notesOverlay,
+        createAisOverlay(aisTargets, store),
+        createCollisionOverlay(collision),
+        createMobOverlay(mob, vessel),
+        createTrackOverlay(recorder, trackSettings, savedTracks),
+        createVesselOverlay(vessel),
+      ];
       await manager.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
         ...STREAMING_CHART_SOURCES.map((source) => createStreamingChartOverlay(source)),
@@ -220,16 +225,7 @@ onMount(() => {
         ...BOUNDARY_SOURCES.map((source) => createBoundaryOverlay(source)),
         ...MPA_SOURCES.map((source) => createMpaOverlay(source)),
         ...SEAMARK_SOURCES.map((source) => createSeamarkOverlay(source)),
-        tidesOverlay,
-        anchorOverlay,
-        measureOverlay,
-        routeOverlay,
-        notesOverlay,
-        aisOverlay,
-        collisionOverlay,
-        mobOverlay,
-        trackOverlay,
-        overlay,
+        ...dynamicOverlays,
       ]);
       if (isDestroyed()) return;
 
@@ -287,8 +283,8 @@ onMount(() => {
           });
         },
         fitBounds: (bounds) => {
-          // normalizeBounds rejects a malformed (non-finite) descriptor, unwraps an antimeridian
-          // crossing, and pads a degenerate box, so the widget just issues the camera move.
+          // normalizeBounds rejects a malformed (non-finite or inverted) descriptor, unwraps an
+          // antimeridian crossing, and pads a degenerate box, so the widget just issues the move.
           const corners = normalizeBounds(bounds);
           if (!corners) return;
           map.fitBounds(corners, {
@@ -306,18 +302,7 @@ onMount(() => {
         },
       });
 
-      runTick([
-        tidesOverlay,
-        anchorOverlay,
-        measureOverlay,
-        routeOverlay,
-        notesOverlay,
-        aisOverlay,
-        collisionOverlay,
-        mobOverlay,
-        trackOverlay,
-        overlay,
-      ]);
+      runTick(dynamicOverlays);
     },
   });
 });

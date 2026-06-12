@@ -1,4 +1,5 @@
 import type { Route } from '$entities/route';
+import type { Bbox4 } from '$shared/geo';
 import type { LayerSettings, SignalKChart } from '$shared/map';
 
 // Imperative map actions the chart exposes to the app shell (e.g. for menu items),
@@ -14,7 +15,7 @@ export interface MapCommands {
   flyTo: (latitude: number, longitude: number) => void;
   // Fit the map to a [west, south, east, north] bounding box, animated; used after importing a
   // chart so the imported area comes into view.
-  fitBounds: (bounds: [number, number, number, number]) => void;
+  fitBounds: (bounds: Bbox4) => void;
   // Start on-chart route editing (Terra Draw): with a route, edit it; without one, draw a fresh
   // route. stopRouteEdit tears the editor down.
   startRouteEdit: (route?: Route) => void;
