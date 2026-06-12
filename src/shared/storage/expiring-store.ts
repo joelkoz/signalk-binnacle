@@ -56,7 +56,11 @@ export function createExpiringStore<T>(dbName: string, options: Options = {}): E
   // Mirror every write to memory so a mid-session degrade keeps what was cached so far. Reads still
   // try IndexedDB first; the mirror only answers once degradeToMemory has tripped to the fallback.
   const memory = memoryStore<T>(maxEntries);
-  const idb = degradeToMemory();
+  // Observable rather than silent: the degrade is the right behavior, but a field report of
+  // "caching stopped surviving reloads" needs this one breadcrumb to be diagnosable.
+  const idb = degradeToMemory((error) => {
+    console.warn(`Persistence for "${dbName}" degraded to memory for this session.`, error);
+  });
   const db = openIdbDatabase(factory, dbName, 1, (conn) => {
     conn.createObjectStore(VALUES);
     conn.createObjectStore(META);

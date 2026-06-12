@@ -49,14 +49,19 @@ export const isOverlayTile = ({ url }: MatchContext): boolean =>
 export const isCoopsRequest = ({ url }: MatchContext): boolean =>
   url.hostname === 'api.tidesandcurrents.noaa.gov';
 
+// The domain itself or a real subdomain; a bare endsWith would also match a hostname that
+// merely ends with the same letters (evil-open-meteo.com style lookalikes).
+const isHost = (hostname: string, domain: string): boolean =>
+  hostname === domain || hostname.endsWith(`.${domain}`);
+
 export const isOpenMeteo = ({ url }: MatchContext): boolean =>
-  url.hostname.endsWith('open-meteo.com');
+  isHost(url.hostname, 'open-meteo.com');
 
 export const isRadarIndex = ({ url }: MatchContext): boolean =>
-  url.hostname.endsWith('rainviewer.com') && url.pathname.endsWith('.json');
+  isHost(url.hostname, 'rainviewer.com') && url.pathname.endsWith('.json');
 
 export const isRadarTile = ({ url }: MatchContext): boolean =>
-  url.hostname.endsWith('rainviewer.com') && url.pathname.endsWith('.png');
+  isHost(url.hostname, 'rainviewer.com') && url.pathname.endsWith('.png');
 
 // PMTiles archives are deliberately ABSENT: their range requests answer 206, which the Cache API
 // refuses to store, so a worker route can never cache them. They are cached as aligned blocks in

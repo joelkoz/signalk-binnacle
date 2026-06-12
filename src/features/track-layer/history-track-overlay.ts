@@ -3,6 +3,7 @@ import type {
   GeoJSONSourceSpecification,
   LineLayerSpecification,
 } from 'maplibre-gl';
+import { isLatLon } from '$shared/geo';
 import { HOUR_MS } from '$shared/lib';
 import {
   emptyFeatureCollection,
@@ -33,17 +34,6 @@ const GAP_SECONDS = 15 * 60;
 interface Deps {
   fetchValues: typeof fetchHistoryValuesAcrossProviders;
   now: () => number;
-}
-
-function isLatLon(value: unknown): value is { latitude: number; longitude: number } {
-  const v = value as { latitude?: unknown; longitude?: unknown } | null;
-  return (
-    v != null &&
-    typeof v.latitude === 'number' &&
-    Number.isFinite(v.latitude) &&
-    typeof v.longitude === 'number' &&
-    Number.isFinite(v.longitude)
-  );
 }
 
 export interface HistoryTrackOverlay extends OverlayModule {
@@ -149,8 +139,9 @@ export function createHistoryTrackOverlay(
     },
     sync(ctx) {
       if (!visible) return;
-      if (deps.now() < nextFetchAt) return;
-      nextFetchAt = deps.now() + REFRESH_MS;
+      const now = deps.now();
+      if (now < nextFetchAt) return;
+      nextFetchAt = now + REFRESH_MS;
       void refresh(ctx);
     },
     setVisible(ctx, next) {

@@ -19,6 +19,19 @@ describe('OwnVessel', () => {
     expect(vessel.sogMps).toBe(3.5);
   });
 
+  it('exposes apparent wind in m/s and outside pressure in Pascals (SI)', () => {
+    const store = new SignalKStore();
+    const vessel = new OwnVessel(store);
+    store.applyFrame(
+      frame({
+        'environment.wind.speedApparent': 7.2,
+        'environment.outside.pressure': 101325,
+      }),
+    );
+    expect(vessel.windSpeedApparentMps).toBe(7.2);
+    expect(vessel.outsidePressurePa).toBe(101325);
+  });
+
   it('exposes course over ground and heading in radians (SI)', () => {
     const store = new SignalKStore();
     const vessel = new OwnVessel(store);

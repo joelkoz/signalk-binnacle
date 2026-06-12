@@ -69,7 +69,7 @@ function commitRadius(entered: number): void {
 // armed-confirm protection: the first tap swaps the controls row for an inline confirm.
 let raiseArmed = $state(false);
 $effect(() => {
-  if (!watching) raiseArmed = false;
+  if (!watching && raiseArmed) raiseArmed = false;
 });
 
 // Capture the real swing: the live distance plus a safety margin becomes the new radius.

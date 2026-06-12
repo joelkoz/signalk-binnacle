@@ -91,7 +91,9 @@ export function createWaypointOverlay(
 
   async function upgradeToSymbol(ctx: OverlayContext): Promise<void> {
     if (!registry || !symbol) return;
-    const ok = await registry.ensure(ctx.map, symbol, paint);
+    // A rejected load counts as a failed upgrade, not an unhandled rejection: both call sites
+    // fire and forget, and the built-in marker keeps rendering either way.
+    const ok = await registry.ensure(ctx.map, symbol, paint).catch(() => false);
     const entry = registry.entry(symbol.uuid);
     if (!ok || !entry || !ctx.map.getLayer(SYMBOL_MARKER_LAYER)) return;
     ctx.map.setLayoutProperty(SYMBOL_MARKER_LAYER, 'icon-offset', entry.offset);

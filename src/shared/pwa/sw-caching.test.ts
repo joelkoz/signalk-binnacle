@@ -4,6 +4,7 @@ import {
   isBasemapStyle,
   isChartTile,
   isCoopsRequest,
+  isOpenMeteo,
   isOverlayTile,
   isRadarIndex,
   isRadarTile,
@@ -46,6 +47,13 @@ describe('service worker route matchers', () => {
       isRadarTile(ctx('https://tilecache.rainviewer.com/v2/radar/1/256/5/1/1/1/1_1.png')),
     ).toBe(true);
     expect(isRadarTile(ctx('https://api.rainviewer.com/public/weather-maps.json'))).toBe(false);
+  });
+
+  it('matches Open-Meteo subdomains and rejects lookalike hosts', () => {
+    expect(isOpenMeteo(ctx('https://api.open-meteo.com/v1/forecast?latitude=44'))).toBe(true);
+    expect(isOpenMeteo(ctx('https://marine-api.open-meteo.com/v1/marine'))).toBe(true);
+    expect(isOpenMeteo(ctx('https://evilopen-meteo.com/v1/forecast'))).toBe(false);
+    expect(isRadarIndex(ctx('https://notrainviewer.com/maps.json'))).toBe(false);
   });
 
   it('never routes the Signal K APIs and never caches opaque responses', () => {

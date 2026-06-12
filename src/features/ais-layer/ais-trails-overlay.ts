@@ -84,9 +84,10 @@ export function createAisTrailsOverlay(
     const shown = self ? trails.filter((trail) => trail.context !== self) : trails;
     // Context, point count, and both end points per trail: enough to see a vessel move (the tail
     // advances) or the retained window slide (the head changes), at a fraction of a deep compare.
-    const signature = shown
-      .map((t) => `${t.context};${t.line.length};${t.line[0]};${t.line[t.line.length - 1]}`)
-      .join('|');
+    let signature = '';
+    for (const t of shown) {
+      signature += `${t.context};${t.line.length};${t.line[0]};${t.line[t.line.length - 1]}|`;
+    }
     if (signature === renderedSignature) return;
     renderedSignature = signature;
     setData(ctx, featureCollection(shown));

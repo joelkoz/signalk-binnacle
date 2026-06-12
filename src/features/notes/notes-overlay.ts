@@ -205,11 +205,15 @@ export function createNotesOverlay(
     const pending = [...pendingSymbols.values()];
     pendingSymbols.clear();
     for (const symbol of pending) {
-      void registry.ensure(ctx.map, symbol, themePaint).then((ok) => {
-        if (!ok || renderedNotes !== notes) return;
-        renderedNotes = undefined;
-        render(ctx, notes);
-      });
+      void registry
+        .ensure(ctx.map, symbol, themePaint)
+        .then((ok) => {
+          if (!ok || renderedNotes !== notes) return;
+          renderedNotes = undefined;
+          render(ctx, notes);
+        })
+        // A rejected load behaves like a resolved false: the category disc stays.
+        .catch(() => undefined);
     }
   }
 

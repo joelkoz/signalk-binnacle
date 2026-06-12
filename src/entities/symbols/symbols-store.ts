@@ -14,11 +14,11 @@ const AMBIGUOUS = Symbol('ambiguous');
 export class SymbolsStore {
   #symbols: readonly SkSymbol[] = [];
   readonly rasterize: RasterizeSymbol;
-  private readonly base: string;
-  private token: string | undefined;
-  private readonly byQualified = new Map<string, SkSymbol>();
-  private readonly byId = new Map<string, SkSymbol | typeof AMBIGUOUS>();
-  private readonly svgTexts = new Map<string, Promise<string | undefined>>();
+  readonly #base: string;
+  #token: string | undefined;
+  readonly #byQualified = new Map<string, SkSymbol>();
+  readonly #byId = new Map<string, SkSymbol | typeof AMBIGUOUS>();
+  readonly #svgTexts = new Map<string, Promise<string | undefined>>();
 
   constructor(
     base: string,
@@ -26,8 +26,8 @@ export class SymbolsStore {
     symbols: readonly SkSymbol[] = [],
     rasterize: RasterizeSymbol = rasterizeSymbolSvg,
   ) {
-    this.base = base;
-    this.token = token;
+    this.#base = base;
+    this.#token = token;
     this.rasterize = rasterize;
     this.setSymbols(symbols);
   }
@@ -35,7 +35,7 @@ export class SymbolsStore {
   // The asset fetches authenticate with whatever token is current; set when access resolves,
   // since the store is constructed before auth for the same reason setSymbols exists.
   setAuth(token: string | undefined): void {
-    this.token = token;
+    this.#token = token;
   }
 
   // Replace the symbol set. The store is constructed empty before auth resolves (the chart mounts
@@ -43,15 +43,15 @@ export class SymbolsStore {
   // overlays hold one stable store reference and resolve against whatever is known at render time.
   setSymbols(symbols: readonly SkSymbol[]): void {
     this.#symbols = symbols;
-    this.byQualified.clear();
-    this.byId.clear();
+    this.#byQualified.clear();
+    this.#byId.clear();
     for (const symbol of symbols) {
       for (const alias of symbol.aliases) {
-        this.byQualified.set(alias, symbol);
+        this.#byQualified.set(alias, symbol);
         const id = alias.slice(alias.indexOf(':') + 1);
-        const existing = this.byId.get(id);
-        if (existing && existing !== symbol) this.byId.set(id, AMBIGUOUS);
-        else this.byId.set(id, symbol);
+        const existing = this.#byId.get(id);
+        if (existing && existing !== symbol) this.#byId.set(id, AMBIGUOUS);
+        else this.#byId.set(id, symbol);
       }
     }
   }
@@ -84,22 +84,22 @@ export class SymbolsStore {
   // The symbol's SVG text, fetched once per uuid and cached (theme re-rasters reuse it). The
   // asset url is server-relative per the provider docs, but an absolute url passes through.
   svgText(symbol: SkSymbol): Promise<string | undefined> {
-    const cached = this.svgTexts.get(symbol.uuid);
+    const cached = this.#svgTexts.get(symbol.uuid);
     if (cached) return cached;
-    const url = /^https?:/.test(symbol.url) ? symbol.url : `${this.base}${symbol.url}`;
+    const url = /^https?:/.test(symbol.url) ? symbol.url : `${this.#base}${symbol.url}`;
     const loading = this.loadSvgText(url);
-    this.svgTexts.set(symbol.uuid, loading);
+    this.#svgTexts.set(symbol.uuid, loading);
     // A transient failure (an expired token, a flaky link) must not be negative-cached for the
     // session: dropping the entry lets the next consumer retry, while a success stays cached.
     void loading.then((text) => {
-      if (text === undefined) this.svgTexts.delete(symbol.uuid);
+      if (text === undefined) this.#svgTexts.delete(symbol.uuid);
     });
     return loading;
   }
 
   private async loadSvgText(url: string): Promise<string | undefined> {
     try {
-      const response = await fetch(url, withTimeout(authInit(this.token)));
+      const response = await fetch(url, withTimeout(authInit(this.#token)));
       if (!response.ok) return undefined;
       const text = await response.text();
       // A 200 that is not SVG (a proxy error page, a misrouted asset) must not reach the
@@ -112,8 +112,8 @@ export class SymbolsStore {
 
   private lookup(idOrAlias: string): SkSymbol | undefined {
     if (idOrAlias.startsWith('default:')) return undefined;
-    if (idOrAlias.includes(':')) return this.byQualified.get(idOrAlias);
-    const hit = this.byId.get(idOrAlias);
+    if (idOrAlias.includes(':')) return this.#byQualified.get(idOrAlias);
+    const hit = this.#byId.get(idOrAlias);
     return hit === AMBIGUOUS ? undefined : hit;
   }
 }

@@ -124,7 +124,8 @@ const caution = $derived(thresholdsCaution(t));
       <span class="caps-label">Mutes</span>
       <button
         type="button"
-        class="mute-row"
+        class="btn mute-row"
+        class:is-on={collisionMuted}
         aria-pressed={collisionMuted}
         onclick={onToggleCollisionMute}
       >
@@ -140,7 +141,8 @@ const caution = $derived(thresholdsCaution(t));
       {/if}
       <button
         type="button"
-        class="mute-row"
+        class="btn mute-row"
+        class:is-on={arrivalMuted}
         aria-pressed={arrivalMuted}
         onclick={onToggleArrivalMute}
       >
@@ -281,28 +283,11 @@ const caution = $derived(thresholdsCaution(t));
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
+/* On the shared .btn base; a mute reads as a row, not a centered button. */
 .mute-row {
-  display: flex;
-  align-items: center;
+  justify-content: flex-start;
   gap: var(--space-2);
-  min-block-size: var(--control-size);
-  padding: 0.3rem var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
   text-align: start;
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast);
-}
-.mute-row[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent-tint);
-  color: var(--accent);
 }
 .group {
   display: flex;

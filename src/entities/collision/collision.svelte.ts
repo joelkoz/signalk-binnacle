@@ -72,6 +72,9 @@ function classify(
   ) {
     return 'danger';
   }
+  // Reached from previous danger as well as previous warning: a danger contact that has drifted
+  // outside the danger margin but still sits inside the warning margin steps down one level
+  // rather than snapping straight to clear.
   if (
     cpaMeters <= t.warningCpaMeters * DOWNGRADE_MARGIN &&
     tcpaSeconds <= t.warningTcpaSeconds * DOWNGRADE_MARGIN
