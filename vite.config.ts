@@ -63,6 +63,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
   test: {
+    // ICU warm-up for every worker; see the file's comment.
+    setupFiles: ['./vitest.setup.ts'],
+    // Headroom for oversubscribed CI runners (the v0.6.0 Windows Node 22 machine spent 63 s just
+    // importing the suite); a hung test still fails, only slower.
+    testTimeout: 15_000,
     projects: [
       {
         extends: true,
