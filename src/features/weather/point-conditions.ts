@@ -1,3 +1,4 @@
+import { quantizeCellDeg } from '$shared/geo';
 import { HOUR_MS } from '$shared/lib';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
 import {
@@ -44,16 +45,11 @@ export interface PointConditionsLoader {
 const POINT_TTL_MS = HOUR_MS;
 // The boat occupies one or two cells at a time; eight covers a day's passage of distinct spots.
 const MAX_POINT_ENTRIES = 8;
-// A tenth of a degree (about 11 km): weather is one answer within a cell, so GPS drift at anchor
-// maps to one key.
-const QUANTIZE_DEG = 0.1;
 // Fetch more forecast steps than the panel shows so the rows survive scrubbing past the first few.
 const FORECAST_COUNT = 12;
 
-const quantize = (v: number): string => (Math.round(v / QUANTIZE_DEG) * QUANTIZE_DEG).toFixed(1);
-
 export function pointConditionsKey(provider: string, lat: number, lon: number): string {
-  return `${provider}:${quantize(lat)},${quantize(lon)}`;
+  return `${provider}:${quantizeCellDeg(lat)},${quantizeCellDeg(lon)}`;
 }
 
 const realDeps: LoaderDeps = {

@@ -90,6 +90,8 @@ export function parseTidesResource(
 ): TideReading | undefined {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
   const record = body as Record<string, unknown>;
+  // From today's UTC midnight, not from nowMs, matching the CO-OPS day window so a persisted
+  // reading replays identically from either source; upcomingEvents trims to now at render time.
   const now = new Date(nowMs);
   const windowStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const windowEnd = windowStart + WINDOW_HOURS * HOUR_MS;

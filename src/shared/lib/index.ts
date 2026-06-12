@@ -35,6 +35,7 @@ export {
   knotsToMetersPerSecond,
   landDistanceUnit,
   lengthUnit,
+  METERS_PER_MILE,
   MINUTE_MS,
   metersPerSecondToKnots,
   metersToFeet,

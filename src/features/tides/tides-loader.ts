@@ -6,6 +6,7 @@ import type {
   TideStation,
   TidesStore,
 } from '$entities/tides';
+import { quantizeCellDeg } from '$shared/geo';
 import { DAY_MS, MINUTE_MS } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
 import { createExpiringStore, type ExpiringStore, MemoryCache } from '$shared/storage';
@@ -63,15 +64,12 @@ const SKIP_RADIUS_M = 3000;
 // The persisted station lists outlive the in-memory daily refresh so an offline reload still has
 // them; they are nearly static, so a week-old list is still right.
 const STATIONS_PERSIST_MS = 7 * DAY_MS;
-// Two station lists, up to MAX_EVENT_ENTRIES of each event kind, and a few plugin readings.
-const MAX_PERSIST_ENTRIES = 56;
-// Plugin readings answer for the vessel, so a tenth of a degree (about 11 km) is one spot.
-const PLUGIN_QUANT_DEG = 0.1;
+// Two station lists, a day's events for up to MAX_EVENT_ENTRIES stations of each kind, and a
+// few plugin readings.
+const MAX_PLUGIN_PERSIST_ENTRIES = 6;
+const MAX_PERSIST_ENTRIES = 2 + 2 * MAX_EVENT_ENTRIES + MAX_PLUGIN_PERSIST_ENTRIES;
 const TIDE_STATIONS_KEY = 'stations:tide';
 const CURRENT_STATIONS_KEY = 'stations:current';
-
-const quantDeg = (v: number): string =>
-  (Math.round(v / PLUGIN_QUANT_DEG) * PLUGIN_QUANT_DEG).toFixed(1);
 
 // Persisted predictions expire at the end of the 48-hour window the day's fetch covered. The day
 // in the key already retires them at the UTC-midnight rollover; the expiry only bounds how long a
@@ -252,7 +250,7 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
         // position, so when the viewed point is beyond the same usefulness radius CO-OPS stations
         // get, fall through too: a pan to a far coast should show that coast, not the boat's tides.
         if (deps.pluginAvailable()) {
-          const pluginKey = `plugin:${quantDeg(lat)},${quantDeg(lon)}:${day}`;
+          const pluginKey = `plugin:${quantizeCellDeg(lat)},${quantizeCellDeg(lon)}:${day}`;
           let pluginTide = await deps.pluginTides(lat, lon).catch(() => undefined);
           const fromNetwork = pluginTide !== undefined;
           if (!pluginTide) {
@@ -260,7 +258,18 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
             // spot before conceding to CO-OPS, which is just as unreachable with the network down.
             const stored = await deps.persist.get(pluginKey);
             if (stored && stored.expires > nowMs) {
-              pluginTide = stored.value as TideReading;
+              // The key quantizes to a 0.1 degree cell, so the stored distance was measured from
+              // a point up to several km away; remeasure from here before the radius gate.
+              const replayed = stored.value as TideReading;
+              pluginTide = {
+                ...replayed,
+                distanceMeters: haversineMeters(
+                  lat,
+                  lon,
+                  replayed.station.latitude,
+                  replayed.station.longitude,
+                ),
+              };
               void deps.persist.prune(nowMs);
             }
           }
@@ -286,21 +295,17 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
           store.setNoCoverage();
           return;
         }
-        const events = await eventsFor(
-          tideEventCache,
-          'tide',
-          deps.tideEvents,
-          nearTide.station.id,
-          nowMs,
-          day,
-        );
+        // The tide events and the current-station lookup are independent round trips; running
+        // them concurrently halves the cold-start wait on a slow boat link.
+        const [events, current] = await Promise.all([
+          eventsFor(tideEventCache, 'tide', deps.tideEvents, nearTide.station.id, nowMs, day),
+          nearestCurrent(lat, lon, nowMs, day),
+        ]);
         const tide: TideReading = {
           station: nearTide.station,
           distanceMeters: nearTide.distanceMeters,
           events,
         };
-
-        const current = await nearestCurrent(lat, lon, nowMs, day);
         store.setReadings(tide, current, 'noaa-coops');
       } catch {
         cooldownUntil = deps.now() + COOLDOWN_MS;

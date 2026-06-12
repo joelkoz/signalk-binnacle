@@ -1,9 +1,14 @@
 import type { CurrentEvent, TideEvent, TidesSource } from '$entities/tides';
-import { formatKnots, landDistanceUnit, metersToFeet, type UnitsMode } from '$shared/lib';
+import {
+  formatKnots,
+  landDistanceUnit,
+  METERS_PER_MILE,
+  metersToFeet,
+  type UnitsMode,
+} from '$shared/lib';
 
 // The display edge: SI in, formatted strings out. Tide heights are shown in both meters and feet,
 // with the preferred unit first, current rates in knots, the conventional units a mariner reads.
-const METERS_PER_MILE = 1609.344;
 
 function heightMeters(meters: number): string {
   return `${meters.toFixed(2)} m`;

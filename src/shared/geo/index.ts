@@ -8,3 +8,4 @@ export {
   latLonToLonLat,
   lonLatToLatLon,
 } from './geo-guards';
+export { COORD_CELL_DEG, quantizeCellDeg } from './quantize';

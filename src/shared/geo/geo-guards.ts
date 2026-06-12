@@ -4,11 +4,13 @@ export interface LatLon {
 }
 
 export function isLatLon(value: unknown): value is LatLon {
+  // Finite, not just number: JSON.parse turns an extreme literal into Infinity, and a non-finite
+  // coordinate is never valid for any caller.
   return (
     typeof value === 'object' &&
     value !== null &&
-    typeof (value as LatLon).latitude === 'number' &&
-    typeof (value as LatLon).longitude === 'number'
+    Number.isFinite((value as LatLon).latitude) &&
+    Number.isFinite((value as LatLon).longitude)
   );
 }
 

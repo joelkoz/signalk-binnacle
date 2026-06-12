@@ -119,7 +119,7 @@ export type UnitsMode = 'metric' | 'imperial';
 const METERS_PER_FOOT = 0.3048;
 const MM_PER_INCH = 25.4;
 const PA_PER_INHG = 3386.389;
-const METERS_PER_MILE = 1609.344;
+export const METERS_PER_MILE = 1609.344;
 // Imperial readouts hand a short range to nautical miles at 1000 ft (the conventional plotter
 // switch point); metric ones at one nautical mile, where whole meters stop reading well.
 const IMPERIAL_NM_FLOOR_METERS = feetToMeters(1000);
