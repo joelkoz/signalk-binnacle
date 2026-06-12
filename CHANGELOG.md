@@ -4,9 +4,9 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<a id="unreleased"></a>
+<a id="v060"></a>
 
-## [Unreleased]
+## [0.6.0] - 2026-06-12
 
 A reliability and correctness pass across the whole app: course following, the collision and anchor
 watches, weather, charts, tides, and profiles, with the safety alarms now holding up in a
@@ -96,6 +96,8 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
   so Escape always closes the surface on top and never one underneath.
 - Layer drag-to-reorder now stays within the layer's own category instead of crossing into the
   next section.
+- Opening the Tides panel on a cold start is faster: the tide predictions and the current-station
+  lookup now fetch concurrently instead of back to back.
 
 ### Fixed
 
@@ -144,6 +146,22 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
   notification broadcast no longer re-renders the panel.
 - AIS wakes now clear after a few minutes of failed refreshes instead of freezing in place, and
   waypoint markers have their own color in each theme.
+- The weather panel's layer pills stay on one scrollable row at every window width instead of
+  wrapping into a second header row.
+- A trend history load that resolves out of order can no longer overwrite a newer result, and a
+  failed load shows its failure note instead of loading forever.
+- A trend metric requested twice on one path with different aggregates now maps to its own
+  column instead of mirroring the first.
+- A tide reading replayed from the offline cache remeasures the station distance from the
+  current position, so a reading cached a few kilometers away cannot misjudge the coverage
+  radius or misstate the range.
+- Muting the collision alarm from the danger strip now reports a refused boat-wide silence in
+  the Alarms panel, matching the panel's own Silence and Acknowledge.
+- Losing authorization mid-session no longer makes the collision notifier abandon its server
+  notification id; the v1 delta fallback carries the change until the server accepts again.
+- A unit preset changed on the server while the link was down is picked up on reconnect.
+- The offline cache's third-party host matchers accept only the real weather and radar domains
+  and their subdomains, not lookalike hostnames that merely end in the same letters.
 
 ### Internal
 
@@ -151,6 +169,12 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
   unused weather view persistence were removed, and assorted hot-path allocations were trimmed.
 - Shared bbox helpers, a shared test fetch stub, the shared input primitive, and one global
   segmented-control rule replaced per-feature copies.
+- The notification mirror compares the four status flags directly instead of serializing the
+  status object on every delta, a coordinate-cell quantizer shared by the tides and weather
+  caches replaced two copies, an IndexedDB store that degrades to memory now logs one
+  diagnostic breadcrumb, and the alarm mute rows sit on the shared button base. New tests cover
+  the session trend recorder, the notification dedup, the refused silence and acknowledge
+  paths, and the history provider fallbacks.
 
 <a id="v050"></a>
 

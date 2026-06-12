@@ -15,26 +15,34 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.5.0
+## What's new in 0.6.0
 
-A safer man-overboard flow and a sharper weather panel:
+Offline that actually holds up, a launcher menu, your units everywhere, and 24 hour trends:
 
-- **MOB confirm, redesigned.** Pressing MOB opens a centered dialog with one big Mark man
-  overboard button. The position is captured the instant you press, so the seconds spent
-  confirming no longer carry the mark away from the person, and without a GPS fix the boat-wide
-  alarm still raises. The recovery strip now shows the wall-clock Marked time for the log.
-- **Weather opens at now.** The forecast slider seeds to the step nearest now (it used to open up
-  to a day in the past), a tick marks now on the track, labels carry the time zone, and the
-  conditions panel tracks the slider when a weather provider is configured.
-- **More decision data.** Gusts without a provider, barometric tendency ("falling 1.2 hPa/3 h"),
-  wave and swell direction, visibility, and water temperature, with each reading tagged Observed
-  or Forecast and a footer stating the source and fetch time.
-- **Radar honesty.** The legend names the frame being painted, nowcast frames are labeled,
-  offline radar is flagged as cached, the radar hides while the slider is away from now, and
-  warnings sort most severe first with their source and validity window.
-- **A new app icon**, plus a themed map attribution bar that no longer glows white at night.
+- **Offline charts everywhere.** Viewed PMTiles chart areas are cached as blocks in browser
+  storage at the protocol layer, so they render offline in every context, including the
+  plain-http default where no service worker can run. Over https, plugin chart tiles, the
+  overlays, the base style, and tide predictions gain service-worker caching, and when the base
+  style itself is unreachable the map starts on a minimal water fallback instead of staying
+  blank. Tides, chart notes, and the conditions panel survive an offline reload, each item
+  declaring its own age.
+- **Your units, everywhere.** Every readout follows the Signal K server's imperial-or-metric
+  unit preference, converting at the display edge; knots, nautical miles, and bearings stay
+  nautical.
+- **A launcher menu and an Alarms panel.** The menu is now large icon tiles grouped Navigate,
+  Conditions, Safety, and Settings, and a new Alarms panel collects every active alert on the
+  boat with one-tap Silence and Acknowledge that propagate to every station.
+- **Trends and track history.** Depth, apparent wind, pressure, and speed over the last 24 hours
+  as themed graphs from the server's v2 History API, falling back to live session sampling
+  without a provider, plus a dashed 24 hour track-history chart layer.
+- **Standard waypoints, worldwide tides, AIS trails, and chart symbols.** Waypoints live in the
+  server's own resources, tides ride the signalk-tides plugin with NOAA CO-OPS as the fallback,
+  AIS targets get faded wakes from the tracks plugin, and signalk-symbol-manager artwork renders
+  on notes and waypoints, remapped into the red band at night.
+- **Background-tab safety.** Delta batching and AIS pruning moved off the render loop, so live
+  data, the collision watch, and the anchor alarm keep working while the browser tab is hidden.
 
-See the [changelog](CHANGELOG.md#v050) for the full list.
+See the [changelog](CHANGELOG.md#v060) for the full list.
 
 ## What it does
 
@@ -53,8 +61,9 @@ Binnacle ships its full feature set as a Signal K webapp:
 
 - **Charts and layers:** a GPU vector base map, server charts, four streaming bathymetry and ENC
   sources (NOAA ENC, BlueTopo, and EMODnet each add a nested survey-quality facet; GEBCO is global
-  base bathymetry), and your own imported PMTiles, in a collapsible, categorized Layers panel with
-  per-layer toggle, fade, and drag-reorder.
+  base bathymetry), and your own PMTiles charts added by URL or served from the server's charts
+  folder, in a collapsible, categorized Layers panel with per-layer toggle, fade, and drag-reorder.
+  A 24 hour **track history** layer draws the server-recorded past day under the live track.
 - **Overlays:** free, key-free OpenSeaMap seamarks, marine protected areas, maritime boundaries, and
   NASA GIBS ocean conditions (sea-surface temperature and sea ice), each with its source attribution.
 - **Routing:** draw and save routes as Signal K resources, or tap **Go to here** (long-press or
@@ -69,11 +78,14 @@ Binnacle ships its full feature set as a Signal K webapp:
   server when you are logged in.
 - **Weather:** a zoom-capped mini-map with animated WebGL wind, pressure isobars, waves,
   precipitation, cloud, and radar, a tap-for-value readout, and a conditions and warnings panel.
-- **Tides:** the nearest NOAA tide station's next high and low with a 48-hour curve, and the nearest
-  tidal-current station's next flood or ebb, for US waters.
+- **Tides:** the nearest tide station's next high and low with a 48-hour curve and the nearest
+  tidal-current station's next flood or ebb. NOAA CO-OPS covers US waters out of the box; the
+  signalk-tides plugin extends coverage worldwide when the server runs it.
 - **Lookout:** a collision watch with CPA and TCPA, chart-highlight rings, an audible alarm, and a
   published Signal K notification, plus a sortable **AIS target list** (by range, CPA, or name) with
-  live range and bearing and tap-to-locate on the chart.
+  live range and bearing, tap-to-locate, and faded **target trails** from the tracks plugin. An
+  **Alarms panel** collects every active alert on the boat (engine, autopilot, any plugin) with
+  one-tap Silence and Acknowledge that propagate to every station.
 - **Anchor watch:** drop the anchor at the boat, set the swing radius (or capture it from the live
   distance), and get a drag alarm that latches until acknowledged. It drives the
   signalk-anchoralarm-plugin when installed (so the alarm keeps running with the browser closed) and
@@ -87,8 +99,15 @@ Binnacle ships its full feature set as a Signal K webapp:
   the last point.
 - **Tracks:** record, save, show, and export your voyage track as GeoJSON, save a track as a reusable
   route, reverse a route for the return leg, or navigate home by retracing your track.
+- **Waypoints:** drop one from a long press, see them as named markers, and locate, go to, rename, or
+  delete them from the Waypoints panel; they live in the server's waypoint resources, so they
+  interoperate with every other Signal K client.
+- **Trends:** depth, apparent wind, barometric pressure, and speed over the last 24 hours as themed
+  graphs from the server's v2 History API, or live session sampling without a history provider.
 - **Points of interest:** Crow's Nest, ActiveCaptain, and other notes as themed markers with a
-  structured detail panel.
+  structured detail panel, plus custom chart symbols from the signalk-symbol-manager plugin.
+- **Your units:** every readout follows the server's imperial-or-metric unit preference; knots,
+  nautical miles, and bearings stay nautical.
 - **Themes and offline:** day, dusk, and night-red themes, offline caching, and self-hosted assets.
 
 See the [changelog](CHANGELOG.md) for the full list.
@@ -118,8 +137,10 @@ Binnacle is built on a current web stack and engineered to run on modest helm ha
   alarms keep flowing while the tab is in the background.
 - **Minimal network and render work.** Binnacle subscribes to exactly what it draws, keeps everything
   in SI internally, and converts only at the display edge.
-- **Offline caching.** Self-hosted fonts and assets (no CDN for app code), a service-worker runtime
-  cache for the base map and chart tiles, and an IndexedDB weather cache.
+- **Offline caching.** Self-hosted fonts and assets (no CDN for app code). PMTiles chart areas are
+  cached as blocks in IndexedDB at the protocol layer, so they work offline even over plain http;
+  tides, notes, weather, and the vessel conditions persist the same way. Over https a service
+  worker additionally caches the base map, plugin chart tiles, the overlays, and predictions.
 
 ## Requirements
 
@@ -150,12 +171,14 @@ SSL is not required. Binnacle runs fully over plain HTTP, which is how the Signa
 by default: the chart, AIS, weather, points of interest, tracks, and the Lookout alarms all work
 without it.
 
-What SSL enables is the service-worker layer of offline caching. Browsers expose the service worker
+Much of the offline caching works without SSL. PMTiles chart areas, the weather forecast, tides,
+chart notes, and the vessel conditions are cached in IndexedDB, which is not secure-context gated,
+so even over plain HTTP a reload replays the last data and previously viewed PMTiles charts keep
+rendering offline. What SSL adds is the service-worker layer: browsers expose the service worker
 and cache-storage APIs only in a secure context (HTTPS or `http://localhost`), so caching the base
-map and chart tiles for full offline map rendering activates only when the server is reached over
-HTTPS. Over plain HTTP the app degrades cleanly to online-only with no loss of live function. The
-weather forecast is cached separately in IndexedDB, which is not secure-context gated, so even over
-plain HTTP a reload reuses the last forecast rather than re-fetching.
+map, plugin-served chart tiles, and the streaming overlays activates only when the server is
+reached over HTTPS. Over plain HTTP those degrade cleanly to online-only with no loss of live
+function.
 
 There are two good ways to add HTTPS to Signal K:
 

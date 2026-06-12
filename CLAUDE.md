@@ -246,13 +246,14 @@ last year, and a stable API surface.
   conventions (detect-and-degrade clients in the slice, SI store, display-edge conversion). A
   feature that looks or behaves differently from its siblings is not done.
 
-## Release policy: 0.5.x patches only (user rule, 2026-06-12, until revoked)
+## Release policy: patches only, minor bumps are the owner's call (user rule, 2026-06-12, until revoked)
 
 Binnacle is in beta and the owner is not concerned about breaking changes yet. Every release is
-a PATCH against 0.5.x (0.5.1, 0.5.2, ...) until the owner explicitly says otherwise, regardless
-of how large the changes are or whether they remove features. Do not bump the minor or major on
-semver instinct; the version line is the owner's call. The pre-push release checklist in the
-global rules still applies in full to every patch.
+a PATCH against the current minor (0.6.1, 0.6.2, ...) until the owner explicitly says otherwise,
+regardless of how large the changes are or whether they remove features. Do not bump the minor
+or major on semver instinct; the version line is the owner's call (the owner called 0.6.0
+explicitly on 2026-06-12). The pre-push release checklist in the global rules still applies in
+full to every release.
 
 ## Build policy (every major step)
 
