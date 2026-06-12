@@ -1,4 +1,5 @@
 import type { ProfileSettings } from '$entities/profile';
+import type { UnitsMode } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
 import type { PersistedValue, Thresholds, TrackSettings } from '$shared/settings';
 import type { ThemeController } from '$shared/ui';
@@ -16,6 +17,8 @@ export interface ProfileBindingDeps {
   trackSettings: PersistedValue<TrackSettings>;
   planningSpeedKn: PersistedValue<number>;
   arrivalMuted: PersistedValue<boolean>;
+  // The local units fallback (the server preference, when resolved, wins outside profiles).
+  unitsLocal: PersistedValue<UnitsMode>;
 }
 
 export interface ProfileBindings {
@@ -82,6 +85,14 @@ export function createProfileBindings(deps: ProfileBindingDeps): ProfileBindings
       read: () => ({ arrivalMuted: deps.arrivalMuted.value }),
       write: (s) => deps.arrivalMuted.set(s.arrivalMuted),
       track: () => void deps.arrivalMuted.value,
+    },
+    units: {
+      read: () => ({ units: deps.unitsLocal.value }),
+      // Optional for compatibility: a profile saved before the field existed leaves units alone.
+      write: (s) => {
+        if (s.units) deps.unitsLocal.set(s.units);
+      },
+      track: () => void deps.unitsLocal.value,
     },
   } satisfies {
     [K in keyof Omit<ProfileSettings, 'mode'>]: {

@@ -1,9 +1,17 @@
 import { bilinearAt, type TimeBracket, timeBracket, type WeatherGrid } from '$entities/weather';
-import { HOUR_MS, lerp } from '$shared/lib';
+import { HOUR_MS, lerp, precipRateUnit, type UnitsMode } from '$shared/lib';
 
 // Below this rate (mm/h) precipitation is not worth showing in a readout: a trace that rounds to
 // nothing. Shared by the readouts that gate a rain line on it so the threshold is defined once.
 export const RAIN_VISIBLE_MM_H = 0.1;
+
+// The unit label beside a precipitation value: the rate unit for the free grid's mm/h, the bare
+// amount unit for a provider's accumulation volume. Defined once so the tap readout and the
+// conditions panel cannot label the same value differently.
+export function precipUnitLabel(isRate: boolean | undefined, mode: UnitsMode): string {
+  if (isRate) return precipRateUnit(mode);
+  return mode === 'imperial' ? 'in' : 'mm';
+}
 
 export interface WeatherReadout {
   speedMs: number;

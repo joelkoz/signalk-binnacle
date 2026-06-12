@@ -11,6 +11,7 @@ import {
 } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { fly } from 'svelte/transition';
+import type { UnitsStore } from '$entities/units';
 import { type Bbox, boundsToBbox, type WeatherStore } from '$entities/weather';
 import { LayersView } from '$features/layers-panel';
 import {
@@ -27,6 +28,7 @@ import {
   GRID_SOURCE_LABEL,
   NEAR_NOW_MS,
   nearestInTimeBounded,
+  precipUnitLabel,
   RAIN_VISIBLE_MM_H,
   radarScrubbedAway,
   readoutAtBracket,
@@ -48,11 +50,15 @@ import {
   formatClockTime,
   formatDayClock,
   formatFixed,
-  formatHectopascalsOr,
   formatKnotsOr,
+  formatLengthOr,
+  formatPrecipRateOr,
+  formatPressureOr,
   HOUR_MS,
+  lengthUnit,
   MINUTE_MS,
   prefersReducedMotion,
+  pressureUnit,
 } from '$shared/lib';
 import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shared/map';
 import type { MapView } from '$shared/settings';
@@ -64,6 +70,8 @@ interface Props {
   // The shared, cached weather loader (Open-Meteo plus RainViewer), constructed in App.
   loader: WeatherLoader;
   theme: Theme;
+  // The imperial-versus-metric display preference; wind stays in knots regardless.
+  units: UnitsStore;
   // Where the nav chart is looking; the panel always opens there rather than keeping its own view.
   initialView?: MapView;
   // The panel's own weather-layer visibility, separate from the nav chart's layers.
@@ -90,6 +98,7 @@ const {
   store,
   loader,
   theme,
+  units,
   initialView,
   savedLayers,
   onLayersChange,
@@ -186,12 +195,12 @@ const radarNote = $derived.by<string>(() => {
   const rel = dMin === 0 ? 'now' : dMin > 0 ? `+${dMin} min (nowcast)` : `${dMin} min`;
   return `frame ${rel} · short-term nowcast`;
 });
-// Keyed on items and theme only: the live radar note is substituted at render time, so the 600 ms
-// frame beat updates one text node instead of rebuilding every legend gradient.
+// Keyed on items, theme, and the unit mode only: the live radar note is substituted at render
+// time, so the 600 ms frame beat updates one text node instead of rebuilding every legend gradient.
 const legends = $derived<WeatherLegend[]>(
   items
     .filter((i) => i.visible)
-    .map((i) => weatherLegend(i.id, theme))
+    .map((i) => weatherLegend(i.id, theme, units.mode))
     .filter((l): l is WeatherLegend => l !== undefined),
 );
 
@@ -534,10 +543,12 @@ onDestroy(() => {
               gust <b>{formatKnotsOr(readout.gustMs, 0)}</b> kn
             {/if}
             {#if showField(WEATHER_LAYER_IDS.pressure) && readout.pressurePa !== undefined}
-              &middot; <b>{formatHectopascalsOr(readout.pressurePa)}</b> hPa
+              &middot; <b>{formatPressureOr(readout.pressurePa, units.mode)}</b>
+              {pressureUnit(units.mode)}
             {/if}
             {#if showField(WEATHER_LAYER_IDS.waves) && readout.waveHeightM !== undefined}
-              &middot; waves <b>{formatFixed(readout.waveHeightM, 1)}</b> m
+              &middot; waves <b>{formatLengthOr(readout.waveHeightM, units.mode)}</b>
+              {lengthUnit(units.mode)}
               {#if readout.wavePeriodS !== undefined}
                 / <b>{formatFixed(readout.wavePeriodS, 1)}</b> s
               {/if}
@@ -546,8 +557,8 @@ onDestroy(() => {
               {/if}
             {/if}
             {#if (showField(WEATHER_LAYER_IDS.precip) || showField(WEATHER_LAYER_IDS.radar)) && readout.precipitationMm !== undefined && readout.precipitationMm >= RAIN_VISIBLE_MM_H}
-              &middot; rain <b>{formatFixed(readout.precipitationMm, 1)}</b>
-              {readout.precipIsRate ? 'mm/h' : 'mm'}
+              &middot; rain <b>{formatPrecipRateOr(readout.precipitationMm, units.mode)}</b>
+              {precipUnitLabel(readout.precipIsRate, units.mode)}
             {/if}
           </span>
           {#if readoutSource}
@@ -576,7 +587,14 @@ onDestroy(() => {
         role="region"
         aria-label="Conditions and forecast"
       >
-        <WeatherConditions origin={serverOrigin()} {token} {providerName} {position} {store} />
+        <WeatherConditions
+          origin={serverOrigin()}
+          {token}
+          {providerName}
+          {position}
+          {store}
+          {units}
+        />
       </div>
     {/if}
     {#if !anyActive}

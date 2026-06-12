@@ -53,6 +53,9 @@ export function isProfileSettings(value: unknown): value is ProfileSettings {
   // alarmMuted was dropped from the schema (it is now session-only); an older export that still
   // carries it validates fine, the extra field is simply ignored.
   if (typeof value.arrivalMuted !== 'boolean') return false;
+  if (value.units !== undefined && value.units !== 'metric' && value.units !== 'imperial') {
+    return false;
+  }
   if (value.mode !== undefined && typeof value.mode !== 'string') return false;
   return true;
 }

@@ -7,13 +7,15 @@ import {
   capturedRadius,
   MIN_RADIUS_M,
 } from '$entities/anchor';
+import type { UnitsStore } from '$entities/units';
 import type { OwnVessel } from '$entities/vessel';
-import { formatFixed, PLACEHOLDER } from '$shared/lib';
+import { feetToMeters, formatLengthOr, lengthUnit, metersToFeet, PLACEHOLDER } from '$shared/lib';
 import { InlineConfirm, SlideOver, UnitField } from '$shared/ui';
 
 interface Props {
   anchor: AnchorWatch;
   vessel: OwnVessel;
+  units: UnitsStore;
   // A failed server call (set radius, move, raise), shown until the next anchor action.
   error?: string;
   onDrop: () => void;
@@ -23,10 +25,28 @@ interface Props {
   onBack?: () => void;
 }
 
-const { anchor, vessel, error, onDrop, onRaise, onSetRadius, onClose, onBack }: Props = $props();
+const { anchor, vessel, units, error, onDrop, onRaise, onSetRadius, onClose, onBack }: Props =
+  $props();
 
 const watching = $derived(anchor.watching);
 const distance = $derived(anchor.distanceMeters);
+const mode = $derived(units.mode);
+const unit = $derived(lengthUnit(mode));
+// The radius field deals in the display unit; the entity stays meters, so imperial entries
+// convert at the edges and round to whole display units.
+const radiusDisplay = $derived.by(() => {
+  const meters = anchor.radiusMeters ?? anchor.preferredRadiusMeters;
+  return Math.round(mode === 'imperial' ? (metersToFeet(meters) ?? 0) : meters);
+});
+const minRadiusDisplay = $derived(
+  mode === 'imperial' ? Math.round(metersToFeet(MIN_RADIUS_M) ?? 0) : MIN_RADIUS_M,
+);
+const distanceText = $derived(formatLengthOr(distance, mode, 0));
+const radiusText = $derived(watching ? formatLengthOr(anchor.radiusMeters, mode, 0) : PLACEHOLDER);
+const depthText = $derived(formatLengthOr(vessel.depthMeters, mode, 1));
+const captureTitle = $derived(
+  `Set the radius to the current distance plus a ${formatLengthOr(CAPTURE_MARGIN_M, mode, 0)} ${unit} margin`,
+);
 
 const MODE_STATUS: Record<AnchorMode, string> = {
   server: 'Watching on the server. The alarm keeps running when Binnacle is closed.',
@@ -39,7 +59,9 @@ const statusLine = $derived(
 
 // Below-minimum entries clamp up, matching the entity; UnitField snaps the text back to the
 // effective radius after the commit, so a rejected entry never sits in the box looking accepted.
-function commitRadius(meters: number): void {
+// The entry arrives in the display unit and converts to meters before the clamp.
+function commitRadius(entered: number): void {
+  const meters = mode === 'imperial' ? feetToMeters(entered) : entered;
   onSetRadius(Math.max(MIN_RADIUS_M, meters));
 }
 
@@ -62,33 +84,28 @@ function captureFromDistance(): void {
     <p class="status" class:status--alarm={anchor.dragging} role="status">{statusLine}</p>
     <dl class="stat-grid">
       <dt>Distance</dt>
-      <dd><span class="num">{formatFixed(distance, 0)}</span><span class="unit">m</span></dd>
+      <dd><span class="num">{distanceText}</span><span class="unit">{unit}</span></dd>
       <dt>Radius</dt>
-      <dd>
-        <span class="num">{watching ? formatFixed(anchor.radiusMeters, 0) : PLACEHOLDER}</span>
-        <span class="unit">m</span>
-      </dd>
+      <dd><span class="num">{radiusText}</span><span class="unit">{unit}</span></dd>
       {#if vessel.depthMeters !== undefined}
         <dt>Depth</dt>
-        <dd>
-          <span class="num">{formatFixed(vessel.depthMeters, 1)}</span><span class="unit">m</span>
-        </dd>
+        <dd><span class="num">{depthText}</span><span class="unit">{unit}</span></dd>
       {/if}
     </dl>
     <UnitField
       label="Watch radius"
-      unit="m"
-      min={MIN_RADIUS_M}
+      {unit}
+      min={minRadiusDisplay}
       step={1}
-      ariaLabel="Watch radius in meters"
-      value={Math.round(anchor.radiusMeters ?? anchor.preferredRadiusMeters)}
+      ariaLabel="Watch radius in {mode === 'imperial' ? 'feet' : 'meters'}"
+      value={radiusDisplay}
       onCommit={commitRadius}
     />
     <button
       type="button"
       class="btn btn-ghost"
       disabled={!watching || distance == null}
-      title="Set the radius to the current distance plus a {CAPTURE_MARGIN_M} m margin"
+      title={captureTitle}
       onclick={captureFromDistance}
     >
       <Crosshair size={16} aria-hidden="true" />

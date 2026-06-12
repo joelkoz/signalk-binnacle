@@ -108,11 +108,114 @@ export function formatNmOr(meters: number | null | undefined, digits = 2): strin
   return formatFixed(metersToNauticalMiles(meters), digits);
 }
 
-// A short-range distance with its unit built in: whole meters under one nautical mile, nautical
-// miles beyond. The MOB and measure readouts deal in recovery and harbor scales where "0.05 nm"
-// reads worse than "93 m", and the unit switches so the caller cannot label it statically.
-export function formatMetersOrNm(meters: number | null | undefined): string {
+// ----- Unit-preference-aware display -----
+// Nautical units (knots, nautical miles, degrees) are unconditional at sea; the imperial-versus-
+// metric preference affects only the categories below: short lengths and depths (meters or feet),
+// temperature, pressure, precipitation rate, and land-scale distance. The mode comes from the
+// server's unit preferences (the entities/units store), and every affected readout takes it as an
+// argument so the formatters stay pure.
+export type UnitsMode = 'metric' | 'imperial';
+
+const METERS_PER_FOOT = 0.3048;
+const MM_PER_INCH = 25.4;
+const PA_PER_INHG = 3386.389;
+const METERS_PER_MILE = 1609.344;
+// Imperial readouts hand a short range to nautical miles at 1000 ft (the conventional plotter
+// switch point); metric ones at one nautical mile, where whole meters stop reading well.
+const IMPERIAL_NM_FLOOR_METERS = 1000 * METERS_PER_FOOT;
+
+export function metersToFeet(value: number | null | undefined): number | undefined {
+  return value == null ? undefined : value / METERS_PER_FOOT;
+}
+
+export function feetToMeters(value: number): number {
+  return value * METERS_PER_FOOT;
+}
+
+// The unit label for a mode-dependent length (depth, wave and tide height, anchor distance).
+export function lengthUnit(mode: UnitsMode): 'm' | 'ft' {
+  return mode === 'imperial' ? 'ft' : 'm';
+}
+
+// A mode-aware length reading (value only; the caller renders lengthUnit beside it).
+export function formatLengthOr(
+  meters: number | null | undefined,
+  mode: UnitsMode,
+  digits = 1,
+): string {
+  const value = mode === 'imperial' ? metersToFeet(meters) : meters;
+  return formatFixed(value, digits);
+}
+
+export function temperatureUnit(mode: UnitsMode): string {
+  return mode === 'imperial' ? '°F' : '°C';
+}
+
+export function kelvinToFahrenheit(value: number | null | undefined): number | undefined {
+  const celsius = kelvinToCelsius(value);
+  return celsius == null ? undefined : celsius * (9 / 5) + 32;
+}
+
+export function formatTemperatureOr(
+  kelvin: number | null | undefined,
+  mode: UnitsMode,
+  digits = 0,
+): string {
+  const value = mode === 'imperial' ? kelvinToFahrenheit(kelvin) : kelvinToCelsius(kelvin);
+  return formatFixed(value, digits);
+}
+
+export function pressureUnit(mode: UnitsMode): 'hPa' | 'inHg' {
+  return mode === 'imperial' ? 'inHg' : 'hPa';
+}
+
+// Pressure to the conventional precision per unit: whole hectopascals, hundredths of inHg.
+export function formatPressureOr(pascals: number | null | undefined, mode: UnitsMode): string {
+  if (mode === 'imperial') {
+    return formatFixed(pascals == null ? undefined : pascals / PA_PER_INHG, 2);
+  }
+  return formatHectopascalsOr(pascals);
+}
+
+export function precipRateUnit(mode: UnitsMode): 'mm/h' | 'in/h' {
+  return mode === 'imperial' ? 'in/h' : 'mm/h';
+}
+
+// Precipitation rate from the store's mm per hour: tenths of a millimeter, hundredths of an inch.
+export function formatPrecipRateOr(mmPerHour: number | null | undefined, mode: UnitsMode): string {
+  if (mode === 'imperial') {
+    return formatFixed(mmPerHour == null ? undefined : mmPerHour / MM_PER_INCH, 2);
+  }
+  return formatFixed(mmPerHour, 1);
+}
+
+// Land-scale distance (a tide station's range from the boat): kilometers or statute miles.
+export function landDistanceUnit(mode: UnitsMode): 'km' | 'mi' {
+  return mode === 'imperial' ? 'mi' : 'km';
+}
+
+export function formatLandDistanceOr(
+  meters: number | null | undefined,
+  mode: UnitsMode,
+  digits = 1,
+): string {
   if (meters == null) return PLACEHOLDER;
+  const value = mode === 'imperial' ? meters / METERS_PER_MILE : meters / 1000;
+  return value.toFixed(digits);
+}
+
+// A short-range distance with its unit built in: whole meters (or feet) below the hand-off, then
+// nautical miles. The MOB and measure readouts deal in recovery and harbor scales where "0.05 nm"
+// reads worse than "93 m", and the unit switches so the caller cannot label it statically.
+export function formatMetersOrNm(
+  meters: number | null | undefined,
+  mode: UnitsMode = 'metric',
+): string {
+  if (meters == null) return PLACEHOLDER;
+  if (mode === 'imperial') {
+    if (meters < IMPERIAL_NM_FLOOR_METERS) return `${Math.round(meters / METERS_PER_FOOT)} ft`;
+    return `${formatNm(meters)} nm`;
+  }
   if (meters < METERS_PER_NAUTICAL_MILE) return `${Math.round(meters)} m`;
   return `${formatNm(meters)} nm`;
 }

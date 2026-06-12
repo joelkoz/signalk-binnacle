@@ -1,4 +1,13 @@
-import { formatFixed, formatKnotsOr, knotsToMetersPerSecond } from '$shared/lib';
+import {
+  formatFixed,
+  formatKnotsOr,
+  formatLengthOr,
+  formatPrecipRateOr,
+  knotsToMetersPerSecond,
+  lengthUnit,
+  precipRateUnit,
+  type UnitsMode,
+} from '$shared/lib';
 import type { Theme } from '$shared/ui';
 import { cloudColor } from './cloud-colormap';
 import { type Rgba, rgbaCss } from './color-ramp';
@@ -63,8 +72,14 @@ function rampLegend(
 }
 
 // The legend for a weather layer: a continuous ramp for the field and arrow layers, or discrete
-// swatches for the isobars and the radar. Returns undefined for an unknown layer id.
-export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | undefined {
+// swatches for the isobars and the radar. Wind stays in knots regardless of the unit preference
+// (nautical units are unconditional at sea); the wave and rain legends follow the mode. Returns
+// undefined for an unknown layer id.
+export function weatherLegend(
+  layerId: string,
+  theme: Theme,
+  mode: UnitsMode,
+): WeatherLegend | undefined {
   switch (layerId) {
     case WEATHER_LAYER_IDS.wind:
       return rampLegend(
@@ -75,6 +90,8 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
         (s) => formatKnotsOr(s, 0),
       );
     case WEATHER_LAYER_IDS.pressure:
+      // Isobars are conventionally hectopascals on every chart, so the isobar legend and the
+      // on-map labels stay hPa in either mode; only the pressure readouts convert.
       return {
         id: layerId,
         title: 'Pressure',
@@ -85,18 +102,19 @@ export function weatherLegend(layerId: string, theme: Theme): WeatherLegend | un
     case WEATHER_LAYER_IDS.waves:
       return rampLegend(
         layerId,
-        'Waves (m)',
+        `Waves (${lengthUnit(mode)})`,
         WAVE_STOPS,
         (h) => waveColor(h, theme),
-        (h) => formatFixed(h, 1),
+        // Whole feet: a tenth of a foot on model waves is false precision.
+        (h) => formatLengthOr(h, mode, mode === 'imperial' ? 0 : 1),
       );
     case WEATHER_LAYER_IDS.precip:
       return rampLegend(
         layerId,
-        'Rain (mm/h)',
+        `Rain (${precipRateUnit(mode)})`,
         PRECIP_STOPS,
         (p) => precipColor(p, theme),
-        (p) => formatFixed(p, 1),
+        (p) => formatPrecipRateOr(p, mode),
       );
     case WEATHER_LAYER_IDS.cloud:
       return rampLegend(

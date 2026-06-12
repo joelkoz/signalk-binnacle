@@ -5,7 +5,8 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { CurrentReading, TideReading, TidesStore } from '$entities/tides';
-import { formatClockTime, MINUTE_MS } from '$shared/lib';
+import type { UnitsStore } from '$entities/units';
+import { formatClockTime, MINUTE_MS, type UnitsMode } from '$shared/lib';
 import {
   emptyFeatureCollection,
   mapThemePaint,
@@ -30,11 +31,11 @@ interface TidesOverlay extends OverlayModule {
 }
 
 // The marker label: the station name, then the next high or low with its height and time.
-function tideLabel(reading: TideReading, nowMs: number): string {
+function tideLabel(reading: TideReading, nowMs: number, mode: UnitsMode): string {
   const next = upcomingEvents(reading.events, nowMs)[0];
   if (!next) return reading.station.name;
   const tag = next.kind === 'high' ? 'High' : 'Low';
-  return `${reading.station.name}\n${tag} ${formatTideHeight(next.heightMeters)} ${formatClockTime(next.timeMs)}`;
+  return `${reading.station.name}\n${tag} ${formatTideHeight(next.heightMeters, mode)} ${formatClockTime(next.timeMs)}`;
 }
 
 function currentLabel(reading: CurrentReading, nowMs: number): string {
@@ -48,13 +49,14 @@ function features(
   tide: TideReading | undefined,
   current: CurrentReading | undefined,
   nowMs: number,
+  mode: UnitsMode,
 ): GeoJSON.FeatureCollection {
   const list: GeoJSON.Feature[] = [];
   if (tide) {
     list.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [tide.station.longitude, tide.station.latitude] },
-      properties: { label: tideLabel(tide, nowMs) },
+      properties: { label: tideLabel(tide, nowMs, mode) },
     });
   }
   if (current) {
@@ -73,14 +75,16 @@ function features(
 // A small overlay marking the nearest tide and tidal-current stations, each labeled with its next
 // event. It is driven by the store (the loader pushes readings in), not by the viewport, and only
 // rebuilds when the readings change. Point and text layers, so they theme cleanly to night-red.
-export function createTidesOverlay(store: TidesStore): TidesOverlay {
+export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesOverlay {
   let lastTide: TideReading | undefined;
   let lastCurrent: CurrentReading | undefined;
   let seeded = false;
   // The minute the labels were last baked for. The "next event" text depends on the clock, not
   // just the readings, so a label is refreshed when the minute turns over rather than showing a
-  // past event for hours on a stationary boat.
+  // past event for hours on a stationary boat. The unit preference is baked in the same way, so
+  // a mode flip refreshes the labels too.
   let lastLabelMinute = -1;
+  let lastMode: UnitsMode | undefined;
 
   return {
     id: 'tides',
@@ -133,17 +137,25 @@ export function createTidesOverlay(store: TidesStore): TidesOverlay {
     sync(ctx) {
       const tide = store.tide;
       const current = store.current;
+      const mode = units.mode;
       const nowMs = Date.now();
       const minute = Math.floor(nowMs / MINUTE_MS);
-      if (seeded && tide === lastTide && current === lastCurrent && minute === lastLabelMinute) {
+      if (
+        seeded &&
+        tide === lastTide &&
+        current === lastCurrent &&
+        minute === lastLabelMinute &&
+        mode === lastMode
+      ) {
         return;
       }
       seeded = true;
       lastTide = tide;
       lastCurrent = current;
       lastLabelMinute = minute;
+      lastMode = mode;
       const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      source?.setData(features(tide, current, nowMs));
+      source?.setData(features(tide, current, nowMs, mode));
     },
     setVisible(ctx, visible) {
       const value = visible ? 'visible' : 'none';

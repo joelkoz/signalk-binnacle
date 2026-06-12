@@ -1,13 +1,14 @@
 <script lang="ts">
 import { onDestroy } from 'svelte';
 import type { TidesStore } from '$entities/tides';
+import type { UnitsStore } from '$entities/units';
 import { formatClockTime } from '$shared/lib';
 import { SlideOver } from '$shared/ui';
 import {
   formatCurrentRate,
   formatStationDistance,
   formatTideHeight,
-  formatTideHeightFeet,
+  formatTideHeightSecondary,
   nextCurrentEvent,
   nowFraction,
   tideCurvePoints,
@@ -16,6 +17,7 @@ import {
 
 interface Props {
   store: TidesStore;
+  units: UnitsStore;
   // Whether the tide-station layer is shown on the chart; the toggle row only renders when the
   // host wires onToggleStations, so the panel works without the layer.
   stationsShown?: boolean;
@@ -24,10 +26,13 @@ interface Props {
   onBack?: () => void;
 }
 
-const { store, stationsShown = false, onToggleStations, onClose, onBack }: Props = $props();
+const { store, units, stationsShown = false, onToggleStations, onClose, onBack }: Props = $props();
 
 const tide = $derived(store.tide);
 const current = $derived(store.current);
+const stationDistanceText = $derived(
+  tide ? formatStationDistance(tide.distanceMeters, units.mode) : '',
+);
 // A live clock so "next" events and the now-marker stay current while the panel is open, not frozen
 // at the last refresh (a stationary boat may not trigger a reload for hours). Ticks once a minute,
 // which is fine for tide and current events that turn over hours apart.
@@ -96,7 +101,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
   {:else if tide}
     <div class="station">
       <span class="name" title={tide.station.name}>{tide.station.name}</span>
-      <span class="dist caps-label">{formatStationDistance(tide.distanceMeters)} away</span>
+      <span class="dist caps-label">{stationDistanceText} away</span>
     </div>
 
     <dl class="stats">
@@ -104,8 +109,8 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
       <dd>
         {#if nextHigh}
           <span class="num">{formatClockTime(nextHigh.timeMs)}</span>,
-          {formatTideHeight(nextHigh.heightMeters)}
-          ({formatTideHeightFeet(nextHigh.heightMeters)})
+          {formatTideHeight(nextHigh.heightMeters, units.mode)}
+          ({formatTideHeightSecondary(nextHigh.heightMeters, units.mode)})
         {:else}
           <span class="num">--</span>
         {/if}
@@ -114,8 +119,8 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
       <dd>
         {#if nextLow}
           <span class="num">{formatClockTime(nextLow.timeMs)}</span>,
-          {formatTideHeight(nextLow.heightMeters)}
-          ({formatTideHeightFeet(nextLow.heightMeters)})
+          {formatTideHeight(nextLow.heightMeters, units.mode)}
+          ({formatTideHeightSecondary(nextLow.heightMeters, units.mode)})
         {:else}
           <span class="num">--</span>
         {/if}

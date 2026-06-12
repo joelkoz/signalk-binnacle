@@ -6,8 +6,9 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { MeasureStore } from '$entities/measure';
+import type { UnitsStore } from '$entities/units';
 import type { LatLon } from '$shared/geo';
-import { formatMetersOrNm } from '$shared/lib';
+import { formatMetersOrNm, type UnitsMode } from '$shared/lib';
 import {
   emptyFeatureCollection,
   mapThemePaint,
@@ -23,7 +24,7 @@ const VERTEX_LAYER = 'binnacle-measure-vertex';
 const LABEL_LAYER = 'binnacle-measure-label';
 const LAYERS = [LINE_LAYER, VERTEX_LAYER, LABEL_LAYER];
 
-function features(measure: MeasureStore): GeoJSON.FeatureCollection {
+function features(measure: MeasureStore, mode: UnitsMode): GeoJSON.FeatureCollection {
   const points = measure.points;
   if (points.length === 0) return emptyFeatureCollection();
   const coordinates = points.map<[number, number]>((point) => [point.longitude, point.latitude]);
@@ -34,7 +35,7 @@ function features(measure: MeasureStore): GeoJSON.FeatureCollection {
       // The running total rides on the last vertex, so the chart answers "how far" at the
       // cursor without a glance down at the strip.
       index === coordinates.length - 1 && coordinates.length > 1
-        ? { label: formatMetersOrNm(measure.totalMeters) }
+        ? { label: formatMetersOrNm(measure.totalMeters, mode) }
         : {},
   }));
   if (coordinates.length > 1) {
@@ -53,9 +54,11 @@ export interface MeasureOverlay extends OverlayModule {
 
 // The on-chart measurement: tapped vertices, the dashed line through them, and the running total
 // labeled at the last point. Renders nothing while no measurement is in progress.
-export function createMeasureOverlay(measure: MeasureStore): MeasureOverlay {
+export function createMeasureOverlay(measure: MeasureStore, units: UnitsStore): MeasureOverlay {
   let paint = mapThemePaint('day');
   let lastPoints: readonly LatLon[] | undefined;
+  // The total label bakes in the unit preference, so a mode flip redraws like a point change.
+  let lastMode: UnitsMode | undefined;
 
   return {
     id: 'measure',
@@ -129,9 +132,11 @@ export function createMeasureOverlay(measure: MeasureStore): MeasureOverlay {
     },
     sync(ctx) {
       const points = measure.points;
-      if (points === lastPoints) return;
+      const mode = units.mode;
+      if (points === lastPoints && mode === lastMode) return;
       lastPoints = points;
-      (ctx.map.getSource(SRC) as GeoJSONSource | undefined)?.setData(features(measure));
+      lastMode = mode;
+      (ctx.map.getSource(SRC) as GeoJSONSource | undefined)?.setData(features(measure, mode));
     },
     setVisible(ctx, visible) {
       setLayersVisibility(ctx.map, LAYERS, visible);

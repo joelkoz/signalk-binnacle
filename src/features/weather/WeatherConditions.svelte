@@ -1,16 +1,22 @@
 <script lang="ts">
 import { TriangleAlert } from '@lucide/svelte';
+import type { UnitsStore } from '$entities/units';
 import type { WeatherStore } from '$entities/weather';
 import {
   formatBearingOr,
   formatDayClock,
   formatFixed,
-  formatHectopascalsOr,
   formatKnotsOr,
+  formatLengthOr,
   formatMetersOrNm,
+  formatPrecipRateOr,
+  formatPressureOr,
+  formatTemperatureOr,
   HOUR_MS,
-  kelvinToCelsius,
+  lengthUnit,
   PA_PER_HPA,
+  pressureUnit,
+  temperatureUnit,
 } from '$shared/lib';
 import { GRID_SOURCE_LABEL } from './fills';
 import {
@@ -26,6 +32,7 @@ import {
 } from './signalk-weather';
 import {
   PRESSURE_TREND_WINDOW_MS,
+  precipUnitLabel,
   pressureTrendPa,
   RAIN_VISIBLE_MM_H,
   readoutAt,
@@ -40,9 +47,11 @@ interface Props {
   providerName?: string;
   position?: { latitude: number; longitude: number };
   store: WeatherStore;
+  // The imperial-versus-metric display preference; wind stays in knots regardless.
+  units: UnitsStore;
 }
 
-const { origin, token, providerName, position, store }: Props = $props();
+const { origin, token, providerName, position, store, units }: Props = $props();
 
 const FORECAST_STEPS = 6;
 const FREE_STEP_MS = 6 * HOUR_MS;
@@ -175,7 +184,13 @@ const tendencyText = $derived.by<string | undefined>(() => {
   const hours = PRESSURE_TREND_WINDOW_MS / HOUR_MS;
   if (Math.abs(dHpa) < 0.5) return 'steady';
   const word = dHpa > 0 ? 'rising' : 'falling';
-  return `${word} ${formatFixed(Math.abs(dHpa), 1)} hPa/${hours} h`;
+  // Metric keeps a tenth of a hectopascal: formatPressureOr's whole hPa would round a real
+  // 0.7 hPa/3 h trend up to 1. Imperial uses the formatter's hundredths of inHg.
+  const value =
+    units.mode === 'imperial'
+      ? formatPressureOr(Math.abs(dPa), 'imperial')
+      : formatFixed(Math.abs(dHpa), 1);
+  return `${word} ${value} ${pressureUnit(units.mode)}/${hours} h`;
 });
 
 // Parsed once per fetch, so scrubbing (700 ms ticks during playback) filters a stable array
@@ -234,8 +249,10 @@ const sortedWarnings = $derived(
 
 const knots = (v: number | undefined) => formatKnotsOr(v, 0);
 const bearing = formatBearingOr;
-const hpa = formatHectopascalsOr;
-const degC = (v: number | undefined) => formatFixed(kelvinToCelsius(v), 0);
+const pressure = (v: number | undefined) => formatPressureOr(v, units.mode);
+const temp = (v: number | undefined) => formatTemperatureOr(v, units.mode);
+const height = (v: number | undefined) => formatLengthOr(v, units.mode);
+const precip = (v: number | undefined) => formatPrecipRateOr(v, units.mode);
 const pct = (v: number | undefined) => formatFixed(v === undefined ? undefined : v * 100, 0);
 
 function stepLabel(timeMs: number): string {
@@ -298,8 +315,8 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
           <div>
             <dt>Pressure</dt>
             <dd>
-              <b>{hpa(current.pressurePa)}</b>
-              hPa
+              <b>{pressure(current.pressurePa)}</b>
+              {pressureUnit(units.mode)}
               {#if tendencyText}
                 <span class="trend">{tendencyText}</span>
               {/if}
@@ -309,19 +326,19 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
         {#if current.airTempK !== undefined}
           <div>
             <dt>Air</dt>
-            <dd><b>{degC(current.airTempK)}</b>&deg;C</dd>
+            <dd><b>{temp(current.airTempK)}</b>{temperatureUnit(units.mode)}</dd>
           </div>
         {/if}
         {#if current.waterTempK !== undefined}
           <div>
             <dt>Water</dt>
-            <dd><b>{degC(current.waterTempK)}</b>&deg;C</dd>
+            <dd><b>{temp(current.waterTempK)}</b>{temperatureUnit(units.mode)}</dd>
           </div>
         {/if}
         {#if current.visibilityM !== undefined}
           <div>
             <dt>Visibility</dt>
-            <dd><b>{formatMetersOrNm(current.visibilityM)}</b></dd>
+            <dd><b>{formatMetersOrNm(current.visibilityM, units.mode)}</b></dd>
           </div>
         {/if}
         {#if current.cloudFraction !== undefined}
@@ -334,8 +351,8 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
           <div>
             <dt>Waves</dt>
             <dd>
-              <b>{formatFixed(current.waveHeightM, 1)}</b>
-              m
+              <b>{height(current.waveHeightM)}</b>
+              {lengthUnit(units.mode)}
               {#if current.wavePeriodS !== undefined}
                 / <b>{formatFixed(current.wavePeriodS, 1)}</b> s
               {/if}
@@ -349,8 +366,8 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
           <div>
             <dt>Swell</dt>
             <dd>
-              <b>{formatFixed(current.swellHeightM, 1)}</b>
-              m
+              <b>{height(current.swellHeightM)}</b>
+              {lengthUnit(units.mode)}
               {#if current.swellPeriodS !== undefined}
                 / <b>{formatFixed(current.swellPeriodS, 1)}</b> s
               {/if}
@@ -364,8 +381,8 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
           <div>
             <dt>Rain</dt>
             <dd>
-              <b>{formatFixed(current.precipitationMm, 1)}</b>
-              {current.precipIsRate ? 'mm/h' : 'mm'}
+              <b>{precip(current.precipitationMm)}</b>
+              {precipUnitLabel(current.precipIsRate, units.mode)}
             </dd>
           </div>
         {/if}
@@ -390,8 +407,8 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
             </span>
             {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}
               <span class="f-rain">
-                <b>{formatFixed(step.precipitationMm, 1)}</b>
-                {step.precipIsRate ? 'mm/h' : 'mm'}
+                <b>{precip(step.precipitationMm)}</b>
+                {precipUnitLabel(step.precipIsRate, units.mode)}
               </span>
             {/if}
           </li>

@@ -1,12 +1,14 @@
 <script lang="ts">
 import { onDestroy } from 'svelte';
 import type { MobStore } from '$entities/mob';
+import type { UnitsStore } from '$entities/units';
 import { formatBearingOr, formatClockTime, formatMetersOrNm } from '$shared/lib';
 import { ConfirmArm } from '$shared/ui';
 import { formatElapsed } from './mob-format';
 
 interface Props {
   mob: MobStore;
+  units: UnitsStore;
   // Set the Signal K course destination to the mark, the deliberate second tap (never automatic,
   // since a coupled autopilot may follow the course).
   onSteer: () => void;
@@ -14,7 +16,7 @@ interface Props {
   onCancel: () => void;
 }
 
-const { mob, onSteer, onCancel }: Props = $props();
+const { mob, units, onSteer, onCancel }: Props = $props();
 
 // Cancel wipes the splash point boat-wide, so it arms a confirm step instead of firing on a
 // single tap; the arm times out back to plain Cancel on its own.
@@ -48,7 +50,7 @@ function tapCancel(): void {
     </div>
     <div class="row">
       <span class="metric">Bearing <b>{formatBearingOr(mob.bearingRad)}</b>&deg;T</span>
-      <span class="metric">Range <b>{formatMetersOrNm(mob.distanceMeters)}</b></span>
+      <span class="metric">Range <b>{formatMetersOrNm(mob.distanceMeters, units.mode)}</b></span>
       {#if mob.elapsedSeconds !== undefined}
         <span class="metric">Elapsed <b>{formatElapsed(mob.elapsedSeconds)}</b></span>
       {/if}

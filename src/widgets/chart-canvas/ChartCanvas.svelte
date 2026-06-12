@@ -8,6 +8,7 @@ import type { MobStore } from '$entities/mob';
 import type { RouteStore } from '$entities/route';
 import type { TidesStore } from '$entities/tides';
 import type { TrackRecorder } from '$entities/track';
+import type { UnitsStore } from '$entities/units';
 import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
 import { createAisOverlay } from '$features/ais-layer';
@@ -22,7 +23,7 @@ import { createMobOverlay, MOB_OVERLAY_ID } from '$features/mob';
 import { createMpaOverlay, MPA_SOURCES } from '$features/mpa-overlays';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { buildOceanSources, createOceanOverlay } from '$features/ocean-conditions';
-import { createRouteEditor, type RouteEditor } from '$features/route-edit';
+import type { RouteEditor } from '$features/route-edit';
 import { createRouteOverlay } from '$features/route-layer';
 import { createSeamarkOverlay, SEAMARK_SOURCES } from '$features/seamark-overlay';
 import { createTidesOverlay } from '$features/tides';
@@ -60,6 +61,8 @@ interface Props {
   routeStore: RouteStore;
   // The tides store, drawn as nearest-station markers and fed by the tides loader in App.
   tides: TidesStore;
+  // The display-unit preference, threaded into the overlays that label distances and heights.
+  units: UnitsStore;
   // The active theme, so the on-chart route editor restyles its draw layers per theme.
   theme: Theme;
   trackSettings: PersistedValue<TrackSettings>;
@@ -98,6 +101,7 @@ const {
   anchor,
   mob,
   measure,
+  units,
   collision,
   recorder,
   routeStore,
@@ -205,9 +209,9 @@ onMount(() => {
       // One list feeds both registration and the per-frame tick, so the two cannot drift. The order
       // sets z within each band (tides under the safety overlays, the own vessel on top).
       const dynamicOverlays = [
-        createTidesOverlay(tides),
+        createTidesOverlay(tides, units),
         createAnchorOverlay(anchor, vessel, onAnchorMoved),
-        createMeasureOverlay(measure),
+        createMeasureOverlay(measure, units),
         createRouteOverlay(routeStore),
         notesOverlay,
         createAisOverlay(aisTargets, store),
@@ -231,15 +235,26 @@ onMount(() => {
 
       // The Terra Draw route editor draws into its own layers anchored in the routes band. It writes
       // edits back into the working route, which the panel reads for its live distance and count.
-      routeEditor = createRouteEditor({
-        map,
-        beforeId: ctx.beforeIdFor('routes'),
-        theme,
-        onChange: (waypoints) => {
-          const working = routeStore.working;
-          if (working) routeStore.setWorking({ ...working, waypoints });
-        },
-      });
+      // Loaded on first use, not at startup: Terra Draw and its adapter are a few hundred kB that
+      // route editing alone needs, so deferring them cuts cold-load parse on Pi-class clients.
+      const editorBeforeId = ctx.beforeIdFor('routes');
+      let editorLoading: Promise<RouteEditor | undefined> | undefined;
+      const loadRouteEditor = (): Promise<RouteEditor | undefined> => {
+        editorLoading ??= import('$features/route-edit').then(({ createRouteEditor }) => {
+          if (isDestroyed()) return undefined;
+          routeEditor = createRouteEditor({
+            map,
+            beforeId: editorBeforeId,
+            theme,
+            onChange: (waypoints) => {
+              const working = routeStore.working;
+              if (working) routeStore.setWorking({ ...working, waypoints });
+            },
+          });
+          return routeEditor;
+        });
+        return editorLoading;
+      };
 
       const view = new LayersView(manager);
       view.refresh();
@@ -294,7 +309,9 @@ onMount(() => {
           });
         },
         clearNoteSelection: () => notesOverlay.deselect(ctx),
-        startRouteEdit: (route) => routeEditor?.start(route),
+        startRouteEdit: (route) => {
+          void loadRouteEditor().then((editor) => editor?.start(route));
+        },
         stopRouteEdit: () => routeEditor?.stop(),
         applyLayers: (settings, order) => {
           manager.applySnapshot(settings, order);

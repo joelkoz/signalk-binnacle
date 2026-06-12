@@ -1,30 +1,37 @@
 import type { CurrentEvent, TideEvent } from '$entities/tides';
-import { formatKnots } from '$shared/lib';
+import { formatKnots, landDistanceUnit, metersToFeet, type UnitsMode } from '$shared/lib';
 
 // The display edge: SI in, formatted strings out. Tide heights are shown in both meters and feet,
-// current rates in knots, the conventional units a mariner reads.
-const METERS_TO_FEET = 3.280839895;
+// with the preferred unit first, current rates in knots, the conventional units a mariner reads.
+const METERS_PER_MILE = 1609.344;
 
-function metersToFeet(meters: number): number {
-  return meters * METERS_TO_FEET;
-}
-
-export function formatTideHeight(meters: number): string {
+function heightMeters(meters: number): string {
   return `${meters.toFixed(2)} m`;
 }
 
-export function formatTideHeightFeet(meters: number): string {
-  return `${metersToFeet(meters).toFixed(1)} ft`;
+function heightFeet(meters: number): string {
+  return `${(metersToFeet(meters) ?? 0).toFixed(1)} ft`;
+}
+
+export function formatTideHeight(meters: number, mode: UnitsMode): string {
+  return mode === 'imperial' ? heightFeet(meters) : heightMeters(meters);
+}
+
+// The other unit, shown in parentheses beside the primary height.
+export function formatTideHeightSecondary(meters: number, mode: UnitsMode): string {
+  return mode === 'imperial' ? heightMeters(meters) : heightFeet(meters);
 }
 
 export function formatCurrentRate(mps: number): string {
   return `${formatKnots(mps)} kn`;
 }
 
-// The distance to the nearest station for the proximity readout, in kilometers with a "<1 km" floor.
-export function formatStationDistance(meters: number): string {
-  const km = meters / 1000;
-  return km < 1 ? '<1 km' : `${Math.round(km)} km`;
+// The distance to the nearest station for the proximity readout: whole kilometers or statute
+// miles, with a "<1" floor.
+export function formatStationDistance(meters: number, mode: UnitsMode): string {
+  const value = mode === 'imperial' ? meters / METERS_PER_MILE : meters / 1000;
+  const unit = landDistanceUnit(mode);
+  return value < 1 ? `<1 ${unit}` : `${Math.round(value)} ${unit}`;
 }
 
 // The high and low events at or after a reference time, soonest first, for the next-tide readout.

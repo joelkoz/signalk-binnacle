@@ -1,11 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TidesStore } from '$entities/tides';
+import type { UnitsStore } from '$entities/units';
+import type { UnitsMode } from '$shared/lib';
 import type { OverlayContext } from '$shared/map';
 import { createFakeMap } from '$shared/testing/fake-map';
 import { createTidesOverlay } from './tides-overlay';
 
 function ctxFor(map: ReturnType<typeof createFakeMap>): OverlayContext {
   return { map: map as never, beforeIdFor: () => undefined };
+}
+
+function unitsStub(mode: UnitsMode = 'metric'): { mode: UnitsMode } {
+  return { mode };
 }
 
 const station = { id: 'T1', name: 'Tide', latitude: 27.7, longitude: -82.7 };
@@ -31,7 +37,8 @@ describe('tides overlay', () => {
       },
       undefined,
     );
-    const overlay = createTidesOverlay(store);
+    const units = unitsStub();
+    const overlay = createTidesOverlay(store, units as unknown as UnitsStore);
     const map = createFakeMap();
     const ctx = ctxFor(map);
     overlay.add(ctx);
@@ -42,15 +49,18 @@ describe('tides overlay', () => {
         .properties.label;
     expect(label()).toContain('High');
     const before = source?.data;
-    overlay.sync(ctx); // same minute, same readings: no rebuild
+    overlay.sync(ctx); // same minute, same readings, same units: no rebuild
     expect(source?.data).toBe(before);
+    units.mode = 'imperial'; // a preference flip refreshes the labels within the minute
+    overlay.sync(ctx);
+    expect(label()).toContain('ft');
     vi.setSystemTime(t0 + 60_000); // the next minute, with the high now in the past
     overlay.sync(ctx);
     expect(label()).toContain('Low');
   });
 
   it('dims the circle stroke along with the rest of the layer opacity', () => {
-    const overlay = createTidesOverlay(new TidesStore());
+    const overlay = createTidesOverlay(new TidesStore(), unitsStub() as unknown as UnitsStore);
     const map = createFakeMap();
     const ctx = ctxFor(map);
     overlay.add(ctx);

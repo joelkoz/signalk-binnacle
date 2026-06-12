@@ -30,6 +30,7 @@ function makeDeps(): ProfileBindingDeps {
     trackSettings: pv({ intervalSeconds: 10, minMeters: 10, colorMode: 'speed' }),
     planningSpeedKn: pv(5),
     arrivalMuted: pv(false),
+    unitsLocal: pv('metric'),
   } as unknown as ProfileBindingDeps;
 }
 
@@ -37,7 +38,12 @@ describe('createProfileBindings', () => {
   it('captures every portable setting into one bundle', () => {
     const bindings = createProfileBindings(makeDeps());
     const bundle = bindings.capture();
-    expect(bundle).toMatchObject({ theme: 'day', planningSpeedKn: 5, arrivalMuted: false });
+    expect(bundle).toMatchObject({
+      theme: 'day',
+      planningSpeedKn: 5,
+      arrivalMuted: false,
+      units: 'metric',
+    });
     expect(bundle.layerOrder).toEqual([]);
     expect(bundle.trackSettings.colorMode).toBe('speed');
   });
@@ -50,9 +56,20 @@ describe('createProfileBindings', () => {
       theme: 'night-red',
       planningSpeedKn: 7,
       arrivalMuted: true,
+      units: 'imperial',
     });
     expect(deps.theme.theme).toBe('night-red');
     expect(deps.planningSpeedKn.value).toBe(7);
     expect(deps.arrivalMuted.value).toBe(true);
+    expect(deps.unitsLocal.value).toBe('imperial');
+  });
+
+  it('a bundle without a units field leaves the local units alone', () => {
+    const deps = makeDeps();
+    const bindings = createProfileBindings(deps);
+    const bundle = bindings.capture();
+    bundle.units = undefined;
+    bindings.apply(bundle);
+    expect(deps.unitsLocal.value).toBe('metric');
   });
 });

@@ -25,6 +25,7 @@ import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$enti
 import { RouteStore, remainingRouteDistanceMeters, reverseRoute } from '$entities/route';
 import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
+import { UnitsStore } from '$entities/units';
 import { type UserChartSource, UserCharts, userChartToSignalK } from '$entities/user-charts';
 import { OwnVessel } from '$entities/vessel';
 import { WeatherStore } from '$entities/weather';
@@ -114,8 +115,10 @@ import {
   formatFixed,
   formatKnotsOr,
   formatLatitude,
+  formatLengthOr,
   formatLongitude,
   formatTcpaMin,
+  lengthUnit,
   uuidv4,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
@@ -318,6 +321,10 @@ const layerCategoriesOpen = new PersistedValue<Record<string, boolean>>(
 
 // Profiles: named bundles of the portable settings (theme, layers, opacity, order, weather layers,
 // thresholds, track and planning settings, alarm mutes) the navigator saves and switches between.
+// The display-unit preference: follows the server's unit preferences when they resolve, with a
+// locally persisted fallback that profiles can carry. The store stays SI; only readouts consult it.
+const units = new UnitsStore();
+
 const profileStore = new ProfileStore();
 // True only while a profile is being applied, so the dirty-tracking effect below does not flag the
 // active profile as edited by its own apply writes. A plain flag, not reactive, read inside the effect.
@@ -342,6 +349,7 @@ const profileBindings = createProfileBindings({
   trackSettings,
   planningSpeedKn,
   arrivalMuted,
+  unitsLocal: units.localSetting,
 });
 
 function captureProfileSettings(): ProfileSettings {
@@ -1348,6 +1356,9 @@ async function refreshWeatherProvider(token: string | undefined): Promise<void> 
 $effect(() => {
   if (auth.status !== 'authenticated' && auth.status !== 'unsecured') return;
   void refreshWeatherProvider(auth.token ?? undefined);
+  // Resolve the server's unit preferences with the same trigger: per-user resolution rides on the
+  // session credentials that exist once access has resolved.
+  void units.syncFromServer(serverOrigin());
 });
 
 onMount(() => {
@@ -1430,6 +1441,7 @@ onDestroy(() => {
   </header>
   <section class="chart-host" aria-label="Chart">
     <ChartCanvas
+      {units}
       {store}
       {vessel}
       {aisTargets}
@@ -1476,14 +1488,14 @@ onDestroy(() => {
         onStop={onStopCourse}
         onSkip={routeStore.activeId !== undefined ? onSkipPoint : undefined}
       />
-      <MeasureStrip {measure} />
-      <AnchorStrip {anchor} onRaise={() => void onRaiseAnchor()} />
+      <MeasureStrip {measure} {units} />
+      <AnchorStrip {anchor} {units} onRaise={() => void onRaiseAnchor()} />
       <DangerStrip
         {collision}
         muted={collisionMute.active}
         onToggleMute={() => collisionMute.toggle()}
       />
-      <MobStrip {mob} onSteer={onMobSteer} onCancel={onMobCancel} />
+      <MobStrip {mob} {units} onSteer={onMobSteer} onCancel={onMobCancel} />
     </div>
     {#if selectedNote && noteLoader}
       <div class="note-panel-slot">
@@ -1557,6 +1569,7 @@ onDestroy(() => {
       <div class="panel-slot">
         <TidesPanel
           store={tidesStore}
+          {units}
           stationsShown={layerSettings.value.tides?.visible ?? false}
           onToggleStations={(shown) => setLayerVisible('tides', shown)}
           onClose={closePanel}
@@ -1567,6 +1580,7 @@ onDestroy(() => {
     {#if activePanel === 'ais'}
       <div class="panel-slot">
         <AisListPanel
+          {units}
           {aisTargets}
           {vessel}
           {collision}
@@ -1579,6 +1593,7 @@ onDestroy(() => {
     {#if activePanel === 'anchor'}
       <div class="panel-slot">
         <AnchorPanel
+          {units}
           {anchor}
           {vessel}
           error={anchorError}
@@ -1630,6 +1645,7 @@ onDestroy(() => {
     {#if weatherPanelOpen}
       <WeatherMap
         store={weather}
+        {units}
         loader={weatherLoader}
         theme={theme.theme}
         initialView={mapView ?? savedView}
@@ -1683,10 +1699,10 @@ onDestroy(() => {
           {#if anchor.fixLost}
             Anchor <b>no GPS</b>
           {:else}
-            Anchor <b>{formatFixed(anchor.distanceMeters, 0)}</b>/<b
-              >{formatFixed(anchor.radiusMeters, 0)}</b
+            Anchor <b>{formatLengthOr(anchor.distanceMeters, units.mode, 0)}</b>/<b
+              >{formatLengthOr(anchor.radiusMeters, units.mode, 0)}</b
             >
-            m
+            {lengthUnit(units.mode)}
           {/if}
         </span>
       {/if}

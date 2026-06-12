@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { AisTargets } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
+import type { UnitsStore } from '$entities/units';
 import type { OwnVessel } from '$entities/vessel';
 import type { LatLon } from '$shared/geo';
 import {
@@ -17,13 +18,14 @@ interface Props {
   aisTargets: AisTargets;
   vessel: OwnVessel;
   collision: CollisionAssessment;
+  units: UnitsStore;
   // Fly the chart to a tapped target.
   onLocate: (position: LatLon) => void;
   onClose: () => void;
   onBack?: () => void;
 }
 
-const { aisTargets, vessel, collision, onLocate, onClose, onBack }: Props = $props();
+const { aisTargets, vessel, collision, units, onLocate, onClose, onBack }: Props = $props();
 
 let sort = $state<AisSort>('range');
 
@@ -77,7 +79,9 @@ const rows = $derived(
                 {row.label}
               </span>
               <span class="metrics">
-                <span class="metric">Range <b>{formatMetersOrNm(row.rangeMeters)}</b></span>
+                <span class="metric">
+                  Range <b>{formatMetersOrNm(row.rangeMeters, units.mode)}</b>
+                </span>
                 <span class="metric">Brg <b>{formatBearingOr(row.bearingRad)}</b>&deg;T</span>
                 <span class="metric">SOG <b>{formatKnotsOr(row.sogMps)}</b> kn</span>
                 {#if row.cpaMeters !== undefined}

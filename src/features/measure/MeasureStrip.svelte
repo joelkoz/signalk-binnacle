@@ -1,13 +1,15 @@
 <script lang="ts">
 import type { MeasureStore } from '$entities/measure';
+import type { UnitsStore } from '$entities/units';
 import { formatBearingOr, formatMetersOrNm } from '$shared/lib';
 import { registerDismiss } from '$shared/ui';
 
 interface Props {
   measure: MeasureStore;
+  units: UnitsStore;
 }
 
-const { measure }: Props = $props();
+const { measure, units }: Props = $props();
 
 // An active measurement is a dismissable like the slide-overs and the app menu, so it joins the
 // shared Escape stack: one Escape ends only the topmost surface, with no listener-order games.
@@ -45,12 +47,16 @@ $effect(() => {
     </div>
     {#if measure.lastLeg}
       <div class="row">
-        <span class="metric"> Leg <b>{formatMetersOrNm(measure.lastLeg.distanceMeters)}</b> </span>
+        <span class="metric">
+          Leg <b>{formatMetersOrNm(measure.lastLeg.distanceMeters, units.mode)}</b>
+        </span>
         <span class="metric"
           >Bearing <b>{formatBearingOr(measure.lastLeg.bearingRad)}</b>&deg;T</span
         >
         {#if measure.legs.length > 1}
-          <span class="metric">Total <b>{formatMetersOrNm(measure.totalMeters)}</b></span>
+          <span class="metric">
+            Total <b>{formatMetersOrNm(measure.totalMeters, units.mode)}</b>
+          </span>
         {/if}
       </div>
     {/if}

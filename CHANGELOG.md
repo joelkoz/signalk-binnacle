@@ -10,7 +10,25 @@ All notable changes to Binnacle are documented here. The format follows
 
 A reliability and correctness pass across the whole app: course following, the collision and anchor
 watches, weather, charts, tides, and profiles, with the safety alarms now holding up in a
-backgrounded browser tab.
+backgrounded browser tab. Plus: the app menu is a new tile launcher, every readout follows the
+server's imperial-or-metric unit preference, and route editing loads on demand.
+
+### Added
+
+- Imperial and metric display units across the whole app, following the Signal K server's unit
+  preferences (Server Config, Unit Preferences) with a per-profile local fallback on older
+  servers. Depth, anchor distances and radius, MOB range, measured legs, tide heights and station
+  range, temperatures, pressure, precipitation, wave heights, and visibility all convert; knots,
+  nautical miles, bearings, and the hPa isobar convention stay nautical.
+- The app menu is now a launcher: large icon tiles grouped Navigate, Conditions, Safety, and
+  Settings over a dimming scrim, bottom-anchored on phones for one-handed reach, with Forecast
+  now findable in the menu. Both alarm mutes moved into a new Alarms panel beside the collision
+  thresholds.
+- The measure layer supports opacity like every other overlay, starting Measure re-shows a hidden
+  measure layer, the Tides panel cross-links its stations layer with a show-on-chart toggle, and
+  layer opacity sliders have a floor so a checked safety layer can never be dimmed invisible.
+- The Terra Draw route editor loads on first use instead of at startup, trimming the initial
+  bundle by about 137 kB for faster cold loads on Pi-class displays.
 
 ### Changed
 

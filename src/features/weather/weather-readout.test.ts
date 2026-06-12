@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WeatherGrid } from '$entities/weather';
-import { pressureTrendPa, readoutAt, readoutAtBracket } from './weather-readout';
+import { precipUnitLabel, pressureTrendPa, readoutAt, readoutAtBracket } from './weather-readout';
 
 const grid: WeatherGrid = {
   lats: [0, 1],
@@ -98,5 +98,18 @@ describe('pressureTrendPa', () => {
   it('refuses a window the series cannot cover', () => {
     // A shorter window must never be passed off as the 3-hour tendency.
     expect(pressureTrendPa(trendGrid, 0.5, 0.5, HOUR)).toBeUndefined();
+  });
+});
+
+describe('precipUnitLabel', () => {
+  it('labels the free grid rate per hour and the provider volume as a bare amount', () => {
+    expect(precipUnitLabel(true, 'metric')).toBe('mm/h');
+    expect(precipUnitLabel(false, 'metric')).toBe('mm');
+    expect(precipUnitLabel(true, 'imperial')).toBe('in/h');
+    expect(precipUnitLabel(false, 'imperial')).toBe('in');
+  });
+
+  it('treats a missing flag as a volume, the conservative read', () => {
+    expect(precipUnitLabel(undefined, 'metric')).toBe('mm');
   });
 });

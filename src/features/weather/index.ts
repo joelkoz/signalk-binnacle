@@ -23,5 +23,10 @@ export { default as WeatherConditions } from './WeatherConditions.svelte';
 export { createWavesOverlay } from './waves-overlay';
 export type { ForecastOptions } from './weather-client';
 export { createWeatherLoader, type WeatherLoader } from './weather-loader';
-export { RAIN_VISIBLE_MM_H, readoutAtBracket, type WeatherReadout } from './weather-readout';
+export {
+  precipUnitLabel,
+  RAIN_VISIBLE_MM_H,
+  readoutAtBracket,
+  type WeatherReadout,
+} from './weather-readout';
 export { createWindOverlay } from './wind-overlay';

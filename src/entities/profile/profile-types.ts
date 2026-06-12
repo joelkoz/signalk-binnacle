@@ -1,3 +1,4 @@
+import type { UnitsMode } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
 import type { Thresholds, TrackSettings } from '$shared/settings';
 import type { Theme } from '$shared/ui';
@@ -18,6 +19,9 @@ export interface ProfileSettings {
   // safety state (see CollisionMute), never persisted or carried across a profile switch. Arrival mute
   // is a benign convenience preference, so it stays.
   arrivalMuted: boolean;
+  // The LOCAL units fallback only; optional so profiles saved before it existed stay valid. When the
+  // server's unit preferences resolve, they win and this field is inert.
+  units?: UnitsMode;
   mode?: string;
 }
 

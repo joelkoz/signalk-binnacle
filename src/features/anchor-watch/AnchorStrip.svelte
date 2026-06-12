@@ -1,15 +1,17 @@
 <script lang="ts">
 import { onDestroy } from 'svelte';
 import type { AnchorWatch } from '$entities/anchor';
-import { formatFixed } from '$shared/lib';
+import type { UnitsStore } from '$entities/units';
+import { formatLengthOr, lengthUnit } from '$shared/lib';
 import { ConfirmArm } from '$shared/ui';
 
 interface Props {
   anchor: AnchorWatch;
+  units: UnitsStore;
   onRaise: () => void;
 }
 
-const { anchor, onRaise }: Props = $props();
+const { anchor, units, onRaise }: Props = $props();
 
 // Raise ends the watch and silences the alarm in one motion, so it arms a confirm step instead
 // of firing on a single tap; the arm times out back to plain Raise on its own.
@@ -45,8 +47,14 @@ function tapRaise(): void {
       {/if}
     </div>
     <div class="row">
-      <span class="metric">Off anchor <b>{formatFixed(anchor.distanceMeters, 0)}</b> m</span>
-      <span class="metric">Radius <b>{formatFixed(anchor.radiusMeters, 0)}</b> m</span>
+      <span class="metric">
+        Off anchor <b>{formatLengthOr(anchor.distanceMeters, units.mode, 0)}</b>
+        {lengthUnit(units.mode)}
+      </span>
+      <span class="metric">
+        Radius <b>{formatLengthOr(anchor.radiusMeters, units.mode, 0)}</b>
+        {lengthUnit(units.mode)}
+      </span>
     </div>
   </aside>
 {/if}

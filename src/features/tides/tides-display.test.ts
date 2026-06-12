@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { CurrentEvent, TideEvent } from '$entities/tides';
 import {
   formatCurrentRate,
+  formatStationDistance,
   formatTideHeight,
-  formatTideHeightFeet,
+  formatTideHeightSecondary,
   nextCurrentEvent,
   nowFraction,
   tideCurvePoints,
@@ -16,9 +17,18 @@ const events: TideEvent[] = [
 ];
 
 describe('tides-display', () => {
-  it('formats heights in meters and feet', () => {
-    expect(formatTideHeight(1.234)).toBe('1.23 m');
-    expect(formatTideHeightFeet(1)).toBe('3.3 ft');
+  it('puts the preferred height unit first and the other in support', () => {
+    expect(formatTideHeight(1.234, 'metric')).toBe('1.23 m');
+    expect(formatTideHeightSecondary(1.234, 'metric')).toBe('4.0 ft');
+    expect(formatTideHeight(1, 'imperial')).toBe('3.3 ft');
+    expect(formatTideHeightSecondary(1, 'imperial')).toBe('1.00 m');
+  });
+
+  it('formats the station distance in whole kilometers or miles with a floor', () => {
+    expect(formatStationDistance(500, 'metric')).toBe('<1 km');
+    expect(formatStationDistance(12_400, 'metric')).toBe('12 km');
+    expect(formatStationDistance(1500, 'imperial')).toBe('<1 mi');
+    expect(formatStationDistance(12_400, 'imperial')).toBe('8 mi');
   });
 
   it('formats a current rate in knots from SI m/s', () => {
