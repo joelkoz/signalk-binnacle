@@ -43,6 +43,7 @@ function commit(event: Event): void {
 <label class="field">
   <span class="name">{label}</span>
   <input
+    class="input"
     type="number"
     {min}
     {max}
@@ -69,12 +70,9 @@ function commit(event: Event): void {
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
+/* The box comes from the shared .input primitive (44px tap target, raised fill); only the mono
+   numerals, the width, and the accent are field-specific. */
 .field input {
-  padding: 0.3rem var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-md);

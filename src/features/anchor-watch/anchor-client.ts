@@ -52,7 +52,7 @@ export function setServerRadius(
 }
 
 export function raiseServerAnchor(base: string, token: string | undefined): Promise<boolean> {
-  return postAnchorCommand(`${base}${PLUGIN_BASE}/raiseAnchor`, token, {});
+  return postAnchorCommand(`${base}${PLUGIN_BASE}/raiseAnchor`, token);
 }
 
 // Correct the drop point after a drag-to-adjust on the chart, via the plugin's PUT handler on the

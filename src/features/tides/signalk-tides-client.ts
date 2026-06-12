@@ -77,6 +77,9 @@ function parseStation(raw: unknown, lat: number, lon: number): TideStation {
   };
 }
 
+// CAVEAT: the Resources API merges multiple providers of one type with a shallow Object.assign,
+// so this top-level parse assumes the single signalk-tides provider; a second tides provider on
+// one server would corrupt the merged shape upstream of us.
 // Parse a tides-resource body into a TideReading, or undefined when it carries no usable events
 // in the window, so the loader can fall back to CO-OPS. Exported for tests.
 export function parseTidesResource(

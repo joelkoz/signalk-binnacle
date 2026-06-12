@@ -1,5 +1,7 @@
 import type { RangeResponse, Source } from 'pmtiles';
+import { DAY_MS } from '$shared/lib';
 import { degradeToMemory, openIdbDatabase, reqPromise, txDone } from '$shared/storage';
+import { isAbort } from './abort';
 
 // A protocol-layer block cache for PMTiles archives. The HTTP layer cannot give these
 // archives durable caching: range reads answer 206 Partial Content, which the Cache API
@@ -15,7 +17,7 @@ const ARCHIVES = 'archives';
 
 const BLOCK_SIZE = 64 * 1024;
 const MAX_BYTES = 256 * 1024 * 1024;
-const TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const TTL_MS = 30 * DAY_MS;
 // The in-memory fallback (private mode, degraded IndexedDB) keeps a much smaller budget:
 // enough for a session's working set without growing the heap toward the archive size.
 const MEMORY_MAX_BYTES = 16 * 1024 * 1024;
@@ -125,7 +127,14 @@ export function createBlockStore(options: BlockStoreOptions = {}): BlockStore {
   const memory = memoryBlockStore(memoryMaxBytes, ttlMs);
   if (!factory) return memory;
 
-  const idb = degradeToMemory();
+  // Offline at sea, a silent fall to the small memory mirror is the difference between charts
+  // and blank tiles; one warning makes the degrade diagnosable without spamming per block.
+  const idb = degradeToMemory((error) => {
+    console.warn(
+      '[charts] block cache fell back to memory; cached chart areas are limited to this session',
+      error,
+    );
+  });
   const db = openIdbDatabase(factory, DB_NAME, 1, (conn) => {
     conn.createObjectStore(BLOCKS);
     conn.createObjectStore(META);
@@ -266,12 +275,6 @@ export interface BlockCacheOptions {
   blockSize?: number;
   pruneEvery?: number;
   now?: () => number;
-}
-
-// Duplicated from pmtiles.ts rather than imported, because pmtiles.ts imports this module
-// and a back-import would be a cycle.
-function isAbort(error: unknown, signal?: AbortSignal): boolean {
-  return signal?.aborted === true || (error instanceof DOMException && error.name === 'AbortError');
 }
 
 function toRuns(indexes: number[]): Array<{ start: number; count: number }> {

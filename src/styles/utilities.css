@@ -68,6 +68,11 @@
 .segmented .btn + .btn {
   border-inline-start: 0;
 }
+/* Off segments sit quiet so the one .is-on segment carries the state at a glance. */
+.segmented .btn:not(.is-on) {
+  background: transparent;
+  color: var(--text-muted);
+}
 
 /* One button vocabulary for the panels: the bordered base, plus a filled-primary and a danger
    modifier, so panels share these instead of each re-declaring the accent fill and hover feel. */

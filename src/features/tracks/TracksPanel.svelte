@@ -244,10 +244,6 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 .color-mode .btn {
   flex: 1;
 }
-.color-mode .btn:not(.is-on) {
-  background: transparent;
-  color: var(--text-muted);
-}
 /* The current-track stats use the global .stat-grid system in app.css. */
 /* The saved-track card list, name, stats, and actions come from the global .saved system in app.css. */
 /* The armed confirms (saved-track delete, live-track discard) come from the shared InlineConfirm

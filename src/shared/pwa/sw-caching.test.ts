@@ -49,9 +49,14 @@ describe('service worker route matchers', () => {
   });
 
   it('never routes the Signal K APIs and never caches opaque responses', () => {
-    const api = ctx('https://boat/signalk/v2/api/resources/routes', true);
+    const apis = [
+      ctx('https://boat/signalk/v2/api/resources/routes', true),
+      ctx('https://boat/signalk/v1/api/vessels/self', true),
+    ];
     for (const entry of runtimeCaching) {
-      expect((entry.urlPattern as (c: typeof api) => boolean)(api)).toBe(false);
+      for (const api of apis) {
+        expect((entry.urlPattern as (c: typeof api) => boolean)(api)).toBe(false);
+      }
       const statuses = entry.options.cacheableResponse.statuses;
       expect(statuses).toEqual([200]);
     }

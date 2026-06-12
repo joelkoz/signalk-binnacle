@@ -111,12 +111,6 @@ const rows = $derived(
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-/* The segment join comes from the global .segmented treatment; only the off-segment quiet fill,
-   matching the Tracks color-mode toggle, is local. */
-.sort .btn:not(.is-on) {
-  background: transparent;
-  color: var(--text-muted);
-}
 .targets {
   list-style: none;
   margin: 0;

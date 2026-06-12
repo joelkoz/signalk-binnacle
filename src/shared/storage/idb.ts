@@ -83,15 +83,19 @@ interface DegradeToMemory {
   write(toIdb: () => Promise<unknown>, toMemory: () => Promise<void>): Promise<void>;
 }
 
-export function degradeToMemory(): DegradeToMemory {
+export function degradeToMemory(onDegrade?: (error: unknown) => void): DegradeToMemory {
   let degraded = false;
+  const degrade = (error: unknown): void => {
+    degraded = true;
+    onDegrade?.(error);
+  };
   return {
     read: async (fromIdb, fromMemory) => {
       if (degraded) return fromMemory();
       try {
         return await fromIdb();
-      } catch {
-        degraded = true;
+      } catch (error) {
+        degrade(error);
         return fromMemory();
       }
     },
@@ -101,8 +105,8 @@ export function degradeToMemory(): DegradeToMemory {
       if (degraded) return;
       try {
         await toIdb();
-      } catch {
-        degraded = true;
+      } catch (error) {
+        degrade(error);
       }
     },
   };

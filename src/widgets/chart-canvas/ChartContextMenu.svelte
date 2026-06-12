@@ -10,7 +10,8 @@ interface Props {
   width: number;
   height: number;
   onGoToHere: () => void;
-  // Optional: rendered only when waypoint dropping is wired (it needs a write-capable server).
+  // Optional: absent when the app does not wire dropping. Write access is unknowable client-side,
+  // so a refused save surfaces as the Waypoints panel error rather than hiding the item.
   onDropWaypoint?: () => void;
   onClose: () => void;
 }
@@ -18,7 +19,8 @@ interface Props {
 const { x, y, width, height, onGoToHere, onDropWaypoint, onClose }: Props = $props();
 
 const MENU_WIDTH = 170;
-const MENU_HEIGHT = 92;
+const ITEM_HEIGHT = 44;
+const MENU_PADDING = 4;
 const EDGE = 8;
 
 // Clamp the anchor so the menu (centered on x) stays a margin clear of both side edges.
@@ -29,7 +31,9 @@ const left = $derived(
   ),
 );
 // Prefer above the press so a finger does not cover the menu; drop below near the top edge.
-const above = $derived(y > MENU_HEIGHT + EDGE * 2 || y > height / 2);
+const itemCount = $derived(onDropWaypoint ? 2 : 1);
+const menuHeight = $derived(itemCount * ITEM_HEIGHT + MENU_PADDING);
+const above = $derived(y > menuHeight + EDGE * 2 || y > height / 2);
 const top = $derived(above ? y - EDGE : y + EDGE);
 
 function onKeydown(event: KeyboardEvent): void {

@@ -28,3 +28,23 @@ export function normalizeBounds(bbox: Bbox4): CornerBounds | null {
     [e, n],
   ];
 }
+
+// Expand a viewport bbox outward by `fraction` on each side, clamped to the world and the Web
+// Mercator latitude limit, so one padded fetch covers more than the visible area and a small pan
+// reuses it. Shared by the notes and AIS-trails overlays.
+export function padBbox([west, south, east, north]: Bbox4, fraction: number): Bbox4 {
+  const dx = (east - west) * fraction;
+  const dy = (north - south) * fraction;
+  return [
+    Math.max(-180, west - dx),
+    Math.max(-85, south - dy),
+    Math.min(180, east + dx),
+    Math.min(85, north + dy),
+  ];
+}
+
+export function bboxContains(outer: Bbox4, inner: Bbox4): boolean {
+  return (
+    outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3]
+  );
+}

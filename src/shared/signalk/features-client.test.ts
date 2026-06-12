@@ -1,19 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { stubFetch } from '$shared/testing/fetch-stub';
 import { fetchServerFeatures } from './features-client';
 
 const BASE = 'https://boat.example';
-
-function stubFetch(response: { ok: boolean; body?: unknown } | 'reject') {
-  const mock = vi.fn(async (_url: string, _init?: RequestInit) => {
-    if (response === 'reject') throw new TypeError('network down');
-    return {
-      ok: response.ok,
-      json: async () => response.body,
-    } as Response;
-  });
-  vi.stubGlobal('fetch', mock);
-  return mock;
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();

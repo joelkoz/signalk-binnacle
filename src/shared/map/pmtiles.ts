@@ -1,5 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import { PMTiles, Protocol, type RangeResponse, type Source } from 'pmtiles';
+import { isAbort } from './abort';
 import { BlockCachedSource, type BlockStore, createBlockStore } from './pmtiles-block-cache';
 
 let protocol: Protocol | undefined;
@@ -11,10 +12,6 @@ let protocol: Protocol | undefined;
 // is not retried: MapLibre aborts in-flight tiles on view change by design.
 const MAX_RETRIES = 2;
 const RETRY_BACKOFF_MS = [200, 500];
-
-function isAbort(error: unknown, signal?: AbortSignal): boolean {
-  return signal?.aborted === true || (error instanceof DOMException && error.name === 'AbortError');
-}
 
 // A PMTiles source that fetches ranges with `cache: 'no-store'`. A large PMTiles
 // archive served with a weak ETag over range requests makes Chrome fail the HTTP

@@ -72,9 +72,21 @@ export class SymbolIconRegistry {
     }
   }
 
+  private warnedDegrade = false;
+
   private async load(map: MapLibreMap, symbol: SkSymbol): Promise<boolean> {
     const ok = await this.refresh(map, symbol);
-    if (!ok) this.states.set(symbol.uuid, { status: 'failed' });
+    if (!ok) {
+      this.states.set(symbol.uuid, { status: 'failed' });
+      // Per-symbol degrade to the built-in icon is by design; a SYSTEMATIC failure (every asset
+      // 401ing) must be diagnosable, so the first one logs once per registry.
+      if (!this.warnedDegrade) {
+        this.warnedDegrade = true;
+        console.info(
+          '[symbols] a provided symbol failed to load; built-in icons are used where that happens',
+        );
+      }
+    }
     return ok;
   }
 

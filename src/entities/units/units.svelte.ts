@@ -42,6 +42,9 @@ export class UnitsStore {
   }
 
   // Where the active mode came from, so settings UI can say "following the server preference".
+  // Known edge: a resolved server mode is kept through later failures (stability over churn), so
+  // after reconnecting to a DIFFERENT server that lacks unit preferences, 'server' describes the
+  // prior server's preset until a successful re-sync.
   get source(): 'server' | 'local' {
     return this.#server !== undefined ? 'server' : 'local';
   }
@@ -79,6 +82,14 @@ export class UnitsStore {
       fetchFn,
     );
     const mode = modeFromPreset(active);
-    if (mode) this.#server = mode;
+    if (mode) {
+      this.#server = mode;
+    } else if (active) {
+      // A preset the server returned but this heuristic cannot classify reads exactly like "no
+      // server preference"; one line makes "why is my boat metric" debuggable.
+      console.info(
+        '[units] the server unit preset was fetched but not recognized; using the local setting',
+      );
+    }
   }
 }

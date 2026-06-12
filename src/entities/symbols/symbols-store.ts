@@ -12,7 +12,7 @@ const AMBIGUOUS = Symbol('ambiguous');
 // every consumer keeps its built-in icons. Also loads and caches the symbols' SVG asset text,
 // shared across the per-overlay icon registries so a symbol both features use fetches once.
 export class SymbolsStore {
-  symbols: readonly SkSymbol[] = [];
+  #symbols: readonly SkSymbol[] = [];
   readonly rasterize: RasterizeSymbol;
   private readonly base: string;
   private token: string | undefined;
@@ -42,7 +42,7 @@ export class SymbolsStore {
   // immediately; the symbols fetch needs credentials), then filled when the fetch lands, so the
   // overlays hold one stable store reference and resolve against whatever is known at render time.
   setSymbols(symbols: readonly SkSymbol[]): void {
-    this.symbols = symbols;
+    this.#symbols = symbols;
     this.byQualified.clear();
     this.byId.clear();
     for (const symbol of symbols) {
@@ -69,8 +69,12 @@ export class SymbolsStore {
     return symbol;
   }
 
+  get symbols(): readonly SkSymbol[] {
+    return this.#symbols;
+  }
+
   forRole(role: string): SkSymbol[] {
-    return this.symbols.filter((symbol) => symbol.roles.includes(role));
+    return this.#symbols.filter((symbol) => symbol.roles.includes(role));
   }
 
   createIconRegistry(): SymbolIconRegistry {
@@ -85,6 +89,11 @@ export class SymbolsStore {
     const url = /^https?:/.test(symbol.url) ? symbol.url : `${this.base}${symbol.url}`;
     const loading = this.loadSvgText(url);
     this.svgTexts.set(symbol.uuid, loading);
+    // A transient failure (an expired token, a flaky link) must not be negative-cached for the
+    // session: dropping the entry lets the next consumer retry, while a success stays cached.
+    void loading.then((text) => {
+      if (text === undefined) this.svgTexts.delete(symbol.uuid);
+    });
     return loading;
   }
 

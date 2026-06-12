@@ -122,7 +122,7 @@ const PA_PER_INHG = 3386.389;
 const METERS_PER_MILE = 1609.344;
 // Imperial readouts hand a short range to nautical miles at 1000 ft (the conventional plotter
 // switch point); metric ones at one nautical mile, where whole meters stop reading well.
-const IMPERIAL_NM_FLOOR_METERS = 1000 * METERS_PER_FOOT;
+const IMPERIAL_NM_FLOOR_METERS = feetToMeters(1000);
 
 export function metersToFeet(value: number | null | undefined): number | undefined {
   return value == null ? undefined : value / METERS_PER_FOOT;
@@ -213,7 +213,7 @@ export function formatMetersOrNm(
 ): string {
   if (meters == null) return PLACEHOLDER;
   if (mode === 'imperial') {
-    if (meters < IMPERIAL_NM_FLOOR_METERS) return `${Math.round(meters / METERS_PER_FOOT)} ft`;
+    if (meters < IMPERIAL_NM_FLOOR_METERS) return `${Math.round(metersToFeet(meters) ?? 0)} ft`;
     return `${formatNm(meters)} nm`;
   }
   if (meters < METERS_PER_NAUTICAL_MILE) return `${Math.round(meters)} m`;

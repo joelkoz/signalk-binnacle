@@ -30,16 +30,16 @@ export interface AnchorTransport {
   reposition?(rodeLengthMeters: number, anchorDepthMeters: number): Promise<boolean>;
 }
 
-const never = () => Promise.resolve(false);
+const refuse = () => Promise.resolve(false);
 
 // The inert transport for before the features answer arrives (or after the caller has given up on
 // the server entirely): every action reports failure, so callers degrade to the client-side watch.
 export const NO_ANCHOR_TRANSPORT: AnchorTransport = {
   kind: 'none',
-  drop: never,
-  raise: never,
-  setRadius: never,
-  setPosition: never,
+  drop: refuse,
+  raise: refuse,
+  setRadius: refuse,
+  setPosition: refuse,
 };
 
 export function resolveAnchorTransport(
