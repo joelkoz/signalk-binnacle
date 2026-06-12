@@ -56,6 +56,11 @@ Read it before doing architectural work.
 - Type-check: `svelte-check --tsconfig ./tsconfig.app.json` (the leaf app config, not the
   solution-style root `tsconfig.json`, which is for `tsc -b` and dependency-cruiser path
   resolution only).
+- Additional libraries are allowed when they genuinely beat building in-house (user rule,
+  2026-06-12), but only after EXTENSIVE research for the best one: compare the real candidates on
+  maintenance activity, weekly downloads, bundle cost, API fit, license, and issue health, and
+  record the comparison in the commit or PR description. Never adopt the first search hit; never
+  add a dependency a few dozen lines of owned code would cover better.
 - Keep every dependency at its latest compatible version. The stack is on Vite 8, TypeScript 6,
   Svelte 5, MapLibre GL JS 5.24 (used directly, not svelte-maplibre-gl), pmtiles 4, Comlink 4,
   and `@signalk/server-api` 2.

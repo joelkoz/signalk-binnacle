@@ -4,11 +4,26 @@ export interface PwaController {
   update: () => void;
 }
 
+// One-time migration: the old 'binnacle-pmtiles' worker cache was provably inert (PMTiles range
+// reads answer 206, which the Cache API refuses to store), so any orphan it left is deleted.
+// PMTiles caching lives in the IndexedDB block cache now. cleanupOutdatedCaches only sweeps the
+// precache, so app code owns this deletion.
+function deleteOrphanCaches(): void {
+  if (typeof caches === 'undefined') return;
+  void caches.delete('binnacle-pmtiles').catch(() => {
+    // Best-effort: a failure leaves a dead cache behind, nothing more.
+  });
+}
+
 // Registers the service worker (prompt mode). onNeedRefresh fires when a new build is waiting so the
 // UI can offer a reload, and update(true) activates it. On plain http (no secure context) registerSW
 // no-ops, so this degrades cleanly. A registration error in a secure context is logged rather than
 // swallowed, so a genuine HTTPS failure is observable instead of silently invisible.
 export function registerPwa(onNeedRefresh?: () => void): PwaController {
+  deleteOrphanCaches();
+  // Ask the browser not to evict this origin's storage under pressure: the tile and chart caches
+  // are the offline navigation data. Browsers may decline silently; that is fine.
+  void navigator.storage?.persist?.().catch(() => undefined);
   const updateSW = registerSW({
     onNeedRefresh: () => onNeedRefresh?.(),
     onRegisterError: (error) => {

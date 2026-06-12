@@ -12,6 +12,7 @@ import {
   nextCurrentEvent,
   nowFraction,
   tideCurvePoints,
+  tideSourceNote,
   upcomingEvents,
 } from './tides-display';
 
@@ -50,6 +51,7 @@ const nextLow = $derived(upcoming.find((e) => e.kind === 'low'));
 const curve = $derived(tide ? tideCurvePoints(tide.events) : []);
 const nowFrac = $derived(tide ? nowFraction(tide.events, now) : undefined);
 const nextCurrent = $derived(current ? nextCurrentEvent(current.events, now) : undefined);
+const sourceNote = $derived(tideSourceNote(store.source));
 // The rate and set as one string, so no stray whitespace creeps in between the rate and the comma.
 const currentRate = $derived(
   nextCurrent
@@ -161,6 +163,9 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
       </p>
     {/if}
 
+    {#if sourceNote}
+      <p class="muted-note source-note">{sourceNote}</p>
+    {/if}
     <p class="footnote">Heights above MLLW, times in the device's local time.</p>
   {:else if store.status === 'error'}
     <p class="status stale" role="status">Could not load tide predictions. Check the connection.</p>
@@ -245,6 +250,10 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
 }
 .status.stale {
   color: var(--warning);
+}
+/* The provenance note sits with the footnote, so it drops to the same fine-print scale. */
+.source-note {
+  font-size: var(--text-xs);
 }
 .footnote {
   margin: 0;

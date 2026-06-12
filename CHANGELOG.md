@@ -47,6 +47,20 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
   into the red band so the theme's no-color rule holds. Without the plugin, every icon stays
   built-in.
 
+- Worldwide tides through the signalk-tides plugin when the server runs it (NOAA, Neaps,
+  WorldTides, or StormGlass per its configuration), with the NOAA CO-OPS path unchanged as the
+  fallback; the Tides panel says which source served.
+- AIS target trails from the tracks plugin: faded wakes behind moving targets, themed for all
+  three themes, fetched only when the plugin is present and the layer is visible.
+- Offline charts that actually work: PMTiles archives are cached as blocks in browser storage at
+  the protocol layer, so previously viewed chart areas render offline in every context, including
+  the plain-http default where no service worker can run (the old service-worker chart cache
+  provably never stored anything: range responses cannot enter the Cache API). Plugin-served
+  raster chart tiles, the seamark, bathymetry, boundary, and ice overlays, the base-map style,
+  and CO-OPS predictions gain service-worker caching over https, with per-cache bounds and quota
+  protection; opaque cross-origin responses are no longer cached (each one padded several MB of
+  quota).
+
 ### Removed
 
 - The browser-local PMTiles file upload. Chart files belong on the server: install the

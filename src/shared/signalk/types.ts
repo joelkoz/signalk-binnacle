@@ -64,6 +64,9 @@ export interface SKFrame {
   ais?: Map<string, Map<string, Value>>;
   connection: ConnectionState;
   epoch: number;
+  // The server-assigned own-vessel context from hello (vessels.urn:...), once known, so the main
+  // thread can exclude self from context-keyed REST responses (the AIS trails).
+  selfContext?: string;
 }
 
 // An accumulated AIS target: the latest value seen per path, plus the epoch of

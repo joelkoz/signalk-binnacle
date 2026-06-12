@@ -34,3 +34,7 @@ export interface CurrentReading {
 }
 
 export type TidesStatus = 'idle' | 'loading' | 'ready' | 'error' | 'no-coverage';
+
+// Which source served the readings: the signalk-tides server plugin when installed, else NOAA
+// CO-OPS fetched browser-side. The panel surfaces it as a quiet provenance note.
+export type TidesSource = 'signalk-tides' | 'noaa-coops';

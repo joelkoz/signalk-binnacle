@@ -1,13 +1,14 @@
 import maplibregl from 'maplibre-gl';
 import { PMTiles, Protocol, type RangeResponse, type Source } from 'pmtiles';
+import { BlockCachedSource, type BlockStore, createBlockStore } from './pmtiles-block-cache';
 
 let protocol: Protocol | undefined;
 
-// Range reads are retried because the archive is uncached (cache: 'no-store', see below),
-// so a chart tile depends on a live range read every time. Over a real network a transient
-// drop or a server hiccup under a burst of reads (e.g. a zoom that pulls in new tiles)
-// would otherwise blank that tile until a later zoom re-requests it. A caller abort is not
-// retried: MapLibre aborts in-flight tiles on view change by design.
+// Range reads are retried because the archive bypasses the HTTP cache (cache: 'no-store',
+// see below), so a block-cache miss depends on a live range read. Over a real network a
+// transient drop or a server hiccup under a burst of reads (e.g. a zoom that pulls in new
+// tiles) would otherwise blank that tile until a later zoom re-requests it. A caller abort
+// is not retried: MapLibre aborts in-flight tiles on view change by design.
 const MAX_RETRIES = 2;
 const RETRY_BACKOFF_MS = [200, 500];
 
@@ -18,9 +19,10 @@ function isAbort(error: unknown, signal?: AbortSignal): boolean {
 // A PMTiles source that fetches ranges with `cache: 'no-store'`. A large PMTiles
 // archive served with a weak ETag over range requests makes Chrome fail the HTTP
 // disk-cache write (ERR_CACHE_WRITE_FAILURE), which rejects the whole fetch and blanks
-// the chart. Bypassing the HTTP cache for these range reads avoids that; the offline
-// service-worker cache (a later spec) is what gives these archives durable caching.
-// Exported for testing the retry behavior.
+// the chart. Bypassing the HTTP cache for these range reads avoids that. The service
+// worker can never cache them either (range reads answer 206, which the Cache API
+// refuses to store), so durable caching is the IndexedDB block cache that wraps this
+// source (pmtiles-block-cache.ts). Exported for testing the retry behavior.
 export class NoStoreSource implements Source {
   // The protocol keys instances by getKey(). Both of its lookup paths use the bare http
   // url: the TileJSON request strips the pmtiles:// scheme, and the tile-request regex
@@ -90,18 +92,31 @@ export function registerPmtilesProtocol(): void {
   maplibregl.addProtocol('pmtiles', protocol.tile);
 }
 
-// Register a PMTiles archive with the no-store source so MapLibre resolves
+let blockStore: BlockStore | undefined;
+
+// The source for an archive url: a network archive's no-store source is wrapped in the
+// IndexedDB block cache; a blob: archive is already local bytes (the user-chart blob in
+// IndexedDB), so block-caching it would only duplicate them. Exported for testing.
+export function createArchiveSource(httpUrl: string): Source {
+  const inner = new NoStoreSource(httpUrl);
+  if (httpUrl.startsWith('blob:')) return inner;
+  blockStore ??= createBlockStore();
+  return new BlockCachedSource(inner, blockStore);
+}
+
+// Register a PMTiles archive with the block-cached no-store source so MapLibre resolves
 // `pmtiles://<httpUrl>` to it instead of the default cache-writing fetch source.
 export function registerPmtilesArchive(httpUrl: string): void {
   if (!protocol) registerPmtilesProtocol();
-  const source = new NoStoreSource(httpUrl);
-  if (protocol?.get(source.getKey())) return;
-  protocol?.add(new PMTiles(source));
+  if (protocol?.get(httpUrl)) return;
+  protocol?.add(new PMTiles(createArchiveSource(httpUrl)));
 }
 
 // Drop a registered archive when its chart is removed, or each user-chart delete would leak a
 // PMTiles instance (for a blob: URL, a permanently dead one). The protocol exposes add and get
-// but no remove, so this reaches into its keyed instance map directly.
+// but no remove, so this reaches into its keyed instance map directly. The archive's cached
+// blocks are dropped too, best-effort, so a deleted chart stops holding cache budget.
 export function unregisterPmtilesArchive(httpUrl: string): void {
   protocol?.tiles.delete(httpUrl);
+  void blockStore?.purgeArchive(httpUrl);
 }

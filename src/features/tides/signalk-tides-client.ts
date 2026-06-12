@@ -1,0 +1,123 @@
+import type { TideEvent, TideReading, TideStation } from '$entities/tides';
+import { HOUR_MS, withTimeout } from '$shared/lib';
+import { haversineMeters } from '$shared/nav';
+import { authInit } from '$shared/signalk';
+
+// The signalk-tides plugin (npm package signalk-tides, plugin id "tides") registers a "tides"
+// resource that answers GET /signalk/v2/api/resources/tides with tide extremes for the vessel's
+// position. The 1.x response is { station: { name, position: { latitude, longitude } }, extremes:
+// [{ time, type: "High" | "Low", value }] }; the 2.x response is { station: { id, name, latitude,
+// longitude }, extremes: [{ time, label: "High" | "Low", level, high, low }] }. Both carry heights
+// in meters and ISO timestamps, so the parse accepts either shape.
+export const SIGNALK_TIDES_PLUGIN_ID = 'tides';
+
+const RESOURCE_PATH = '/signalk/v2/api/resources/tides';
+// The plugin answers with about a week of extremes. Trim to the CO-OPS window (the current UTC
+// day plus 48 hours) so the panel's curve and next-event readouts read the same whichever source
+// served them.
+const WINDOW_HOURS = 48;
+const SYNTHETIC_STATION = 'Local tides (signalk-tides)';
+
+export interface SignalkTidesOptions {
+  origin?: string;
+  token?: string;
+  now?: () => number;
+}
+
+function asNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function eventKind(raw: Record<string, unknown>): 'high' | 'low' | undefined {
+  const label = raw.type ?? raw.label;
+  if (typeof label === 'string') {
+    const lower = label.toLowerCase();
+    if (lower === 'high') return 'high';
+    if (lower === 'low') return 'low';
+  }
+  if (raw.high === true) return 'high';
+  if (raw.low === true) return 'low';
+  return undefined;
+}
+
+function parseExtremes(raw: unknown): TideEvent[] {
+  if (!Array.isArray(raw)) return [];
+  const events: TideEvent[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const record = entry as Record<string, unknown>;
+    const kind = eventKind(record);
+    const heightMeters = asNumber(record.value ?? record.level);
+    const timeMs = typeof record.time === 'string' ? Date.parse(record.time) : Number.NaN;
+    if (!kind || heightMeters === undefined || !Number.isFinite(timeMs)) continue;
+    events.push({ timeMs, heightMeters, kind });
+  }
+  return events.sort((a, b) => a.timeMs - b.timeMs);
+}
+
+function parseStation(raw: unknown, lat: number, lon: number): TideStation {
+  const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const position =
+    record.position && typeof record.position === 'object'
+      ? (record.position as Record<string, unknown>)
+      : undefined;
+  const latitude = asNumber(record.latitude ?? position?.latitude);
+  const longitude = asNumber(record.longitude ?? position?.longitude);
+  return {
+    id: typeof record.id === 'string' && record.id.length > 0 ? record.id : SIGNALK_TIDES_PLUGIN_ID,
+    name:
+      typeof record.name === 'string' && record.name.length > 0 ? record.name : SYNTHETIC_STATION,
+    latitude: latitude ?? lat,
+    longitude: longitude ?? lon,
+  };
+}
+
+// Parse a tides-resource body into a TideReading, or undefined when it carries no usable events
+// in the window, so the loader can fall back to CO-OPS. Exported for tests.
+export function parseTidesResource(
+  body: unknown,
+  lat: number,
+  lon: number,
+  nowMs: number,
+): TideReading | undefined {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
+  const record = body as Record<string, unknown>;
+  const now = new Date(nowMs);
+  const windowStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const windowEnd = windowStart + WINDOW_HOURS * HOUR_MS;
+  const events = parseExtremes(record.extremes).filter(
+    (event) => event.timeMs >= windowStart && event.timeMs <= windowEnd,
+  );
+  if (events.length === 0) return undefined;
+  const station = parseStation(record.station, lat, lon);
+  return {
+    station,
+    distanceMeters: haversineMeters(lat, lon, station.latitude, station.longitude),
+    events,
+  };
+}
+
+// Fetch the plugin's tide reading for the vessel's position. Never throws: any failure (plugin
+// mid-start, no position yet, auth, network) returns undefined so the loader falls back to CO-OPS
+// rather than surfacing an error a working fallback would have absorbed.
+export async function fetchSignalkTidesReading(
+  lat: number,
+  lon: number,
+  options: SignalkTidesOptions = {},
+): Promise<TideReading | undefined> {
+  try {
+    const response = await fetch(
+      `${options.origin ?? ''}${RESOURCE_PATH}`,
+      withTimeout(authInit(options.token)),
+    );
+    if (!response.ok) return undefined;
+    return parseTidesResource(await response.json(), lat, lon, options.now?.() ?? Date.now());
+  } catch {
+    return undefined;
+  }
+}

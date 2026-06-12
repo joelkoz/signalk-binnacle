@@ -20,6 +20,12 @@ function deps(overrides: Record<string, unknown> = {}) {
   };
 }
 
+const pluginReading = {
+  station: { id: 'tides', name: 'Local tides (signalk-tides)', latitude: 27.7, longitude: -82.7 },
+  distanceMeters: 0,
+  events: tideEvents,
+};
+
 describe('createTidesLoader', () => {
   it('loads the nearest tide and current readings and sets ready', async () => {
     const loader = createTidesLoader(deps());
@@ -28,6 +34,81 @@ describe('createTidesLoader', () => {
     expect(store.status).toBe('ready');
     expect(store.tide?.station.id).toBe('T1');
     expect(store.current?.station.id).toBe('C1');
+    expect(store.source).toBe('noaa-coops');
+  });
+
+  it('never consults the plugin when it is not available', async () => {
+    const pluginTides = vi.fn(async () => pluginReading);
+    const loader = createTidesLoader(deps({ pluginTides }));
+    const store = new TidesStore();
+    await loader.load(store, 27.7, -82.7);
+    expect(pluginTides).not.toHaveBeenCalled();
+    expect(store.source).toBe('noaa-coops');
+  });
+
+  it('prefers the plugin reading when available and keeps the CO-OPS current', async () => {
+    const d = deps({ pluginAvailable: () => true, pluginTides: vi.fn(async () => pluginReading) });
+    const loader = createTidesLoader(d);
+    const store = new TidesStore();
+    await loader.load(store, 27.7, -82.7);
+    expect(store.status).toBe('ready');
+    expect(store.tide).toBe(pluginReading);
+    expect(store.source).toBe('signalk-tides');
+    expect(store.current?.station.id).toBe('C1');
+    expect(d.tideEvents).not.toHaveBeenCalled();
+  });
+
+  it('falls back to CO-OPS when the plugin answers with nothing', async () => {
+    const pluginTides = vi.fn(async () => undefined);
+    const loader = createTidesLoader(deps({ pluginAvailable: () => true, pluginTides }));
+    const store = new TidesStore();
+    await loader.load(store, 27.7, -82.7);
+    expect(pluginTides).toHaveBeenCalledTimes(1);
+    expect(store.status).toBe('ready');
+    expect(store.tide?.station.id).toBe('T1');
+    expect(store.source).toBe('noaa-coops');
+  });
+
+  it('falls back to CO-OPS when the plugin station is far from the viewed point', async () => {
+    // The plugin answers for the vessel; a view panned to another coast should show that coast.
+    const farReading = { ...pluginReading, distanceMeters: 250_000 };
+    const loader = createTidesLoader(
+      deps({ pluginAvailable: () => true, pluginTides: vi.fn(async () => farReading) }),
+    );
+    const store = new TidesStore();
+    await loader.load(store, 27.7, -82.7);
+    expect(store.tide?.station.id).toBe('T1');
+    expect(store.source).toBe('noaa-coops');
+  });
+
+  it('falls back to CO-OPS when the plugin fetch rejects', async () => {
+    const pluginTides = vi.fn(async () => {
+      throw new Error('plugin down');
+    });
+    const loader = createTidesLoader(deps({ pluginAvailable: () => true, pluginTides }));
+    const store = new TidesStore();
+    await loader.load(store, 27.7, -82.7);
+    expect(store.status).toBe('ready');
+    expect(store.tide?.station.id).toBe('T1');
+    expect(store.source).toBe('noaa-coops');
+  });
+
+  it('keeps the plugin tide when the CO-OPS current lookup fails', async () => {
+    const loader = createTidesLoader(
+      deps({
+        pluginAvailable: () => true,
+        pluginTides: vi.fn(async () => pluginReading),
+        currentStations: vi.fn(async () => {
+          throw new Error('network');
+        }),
+      }),
+    );
+    const store = new TidesStore();
+    await loader.load(store, 27.7, -82.7);
+    expect(store.status).toBe('ready');
+    expect(store.tide).toBe(pluginReading);
+    expect(store.current).toBeUndefined();
+    expect(store.source).toBe('signalk-tides');
   });
 
   it('reuses cached station lists and events on a second nearby load', async () => {
@@ -63,6 +144,7 @@ describe('createTidesLoader', () => {
     const store = new TidesStore();
     await loader.load(store, 27.7, -82.7);
     expect(store.status).toBe('no-coverage');
+    expect(store.source).toBeUndefined();
   });
 
   it('keeps prior data and flags an error on a fetch failure', async () => {

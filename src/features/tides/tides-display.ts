@@ -1,4 +1,4 @@
-import type { CurrentEvent, TideEvent } from '$entities/tides';
+import type { CurrentEvent, TideEvent, TidesSource } from '$entities/tides';
 import { formatKnots, landDistanceUnit, metersToFeet, type UnitsMode } from '$shared/lib';
 
 // The display edge: SI in, formatted strings out. Tide heights are shown in both meters and feet,
@@ -32,6 +32,13 @@ export function formatStationDistance(meters: number, mode: UnitsMode): string {
   const value = mode === 'imperial' ? meters / METERS_PER_MILE : meters / 1000;
   const unit = landDistanceUnit(mode);
   return value < 1 ? `<1 ${unit}` : `${Math.round(value)} ${unit}`;
+}
+
+// The quiet provenance line under the readings: which source served the tide prediction.
+export function tideSourceNote(source: TidesSource | undefined): string {
+  if (source === 'signalk-tides') return 'Predictions from the signalk-tides plugin.';
+  if (source === 'noaa-coops') return 'Predictions from NOAA CO-OPS.';
+  return '';
 }
 
 // The high and low events at or after a reference time, soonest first, for the next-tide readout.

@@ -6,6 +6,21 @@ interface IdbRunner {
   run<R>(mode: IDBTransactionMode, op: (store: IDBObjectStore) => IDBRequest): Promise<R>;
 }
 
+export function reqPromise<R>(req: IDBRequest<R>): Promise<R> {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export function txDone(tx: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
 // A lazy, memoized IndexedDB opener: opens on first call and reuses the connection, rejecting (not
 // hanging) when a second tab blocks the upgrade. Shared so the single-store and dual-store stores
 // open the database the same way.

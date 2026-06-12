@@ -1,4 +1,4 @@
-import { degradeToMemory, openIdbDatabase } from './idb';
+import { degradeToMemory, openIdbDatabase, reqPromise, txDone } from './idb';
 
 // A persistent, time-to-live key-value store backed by IndexedDB, for caching fetched data across
 // reloads and over plain HTTP. CacheStorage and service workers are secure-context only (so they are
@@ -30,21 +30,6 @@ interface Options {
 const VALUES = 'values';
 const META = 'meta';
 const DEFAULT_MAX = 48;
-
-function reqPromise<R>(req: IDBRequest<R>): Promise<R> {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-function txDone(tx: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
-  });
-}
 
 function memoryStore<T>(maxEntries: number): ExpiringStore<T> {
   const map = new Map<string, ExpiringEntry<T>>();

@@ -90,7 +90,12 @@ import {
   setDestination,
 } from '$features/routing';
 import { ThemeToggle } from '$features/theme-toggle';
-import { createTidesLoader, TidesPanel } from '$features/tides';
+import {
+  createTidesLoader,
+  fetchSignalkTidesReading,
+  SIGNALK_TIDES_PLUGIN_ID,
+  TidesPanel,
+} from '$features/tides';
 import { type SavedTracksSource, trackToRoute } from '$features/track-layer';
 import {
   deleteTrack,
@@ -307,7 +312,14 @@ const routeProgress = $derived.by<RouteProgress | undefined>(() => {
 // Tides and tidal currents from NOAA CO-OPS (US waters). The store feeds the panel and the nearest
 // station markers; the loader caches the station lists and predictions for the session.
 const tidesStore = new TidesStore();
-const tidesLoader = createTidesLoader();
+// Tide data prefers the signalk-tides plugin when the server runs it (worldwide coverage from
+// its configured source), falling back to NOAA CO-OPS exactly as before; a stock server never
+// sees a plugin call.
+const tidesLoader = createTidesLoader({
+  pluginAvailable: () => serverFeatures?.plugins.has(SIGNALK_TIDES_PLUGIN_ID) ?? false,
+  pluginTides: (lat, lon) =>
+    fetchSignalkTidesReading(lat, lon, { origin: serverOrigin(), token: chartsToken }),
+});
 
 // Weather forecast, fetched browser-side from Open-Meteo. It lives in a dedicated mini-map panel
 // (the Forecast button), not on the nav chart, so the chart stays clean and the weather can never
@@ -1586,6 +1598,7 @@ onDestroy(() => {
       waypoints={waypointsStore}
       symbols={symbolsStore}
       onDropWaypoint={(position) => void onDropWaypoint(position)}
+      aisTrailsAvailable={() => serverFeatures?.plugins.has('tracks') ?? false}
       {store}
       {vessel}
       {aisTargets}

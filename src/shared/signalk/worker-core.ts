@@ -43,7 +43,13 @@ export class WorkerCore {
     });
     this.#registry = new SubscriptionRegistry((message) => this.#connection?.send(message));
     this.#batcher.onFlush = (self, ais, epoch) => {
-      this.#onFrame?.({ self, ais, connection: this.#connectionState, epoch });
+      this.#onFrame?.({
+        self,
+        ais,
+        connection: this.#connectionState,
+        epoch,
+        selfContext: this.#selfContext,
+      });
     };
     this.#connection.connect();
   }

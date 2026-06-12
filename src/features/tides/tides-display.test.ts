@@ -8,6 +8,7 @@ import {
   nextCurrentEvent,
   nowFraction,
   tideCurvePoints,
+  tideSourceNote,
   upcomingEvents,
 } from './tides-display';
 
@@ -59,5 +60,11 @@ describe('tides-display', () => {
   it('locates now within the span, or undefined outside it', () => {
     expect(nowFraction(events, 2000)).toBeCloseTo(0.5);
     expect(nowFraction(events, 500)).toBeUndefined();
+  });
+
+  it('names the source that served the tide prediction, or stays silent without one', () => {
+    expect(tideSourceNote('signalk-tides')).toBe('Predictions from the signalk-tides plugin.');
+    expect(tideSourceNote('noaa-coops')).toBe('Predictions from NOAA CO-OPS.');
+    expect(tideSourceNote(undefined)).toBe('');
   });
 });

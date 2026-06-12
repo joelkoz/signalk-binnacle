@@ -12,6 +12,9 @@ export class PathCell {
 
 export class SignalKStore {
   connection = $state<ConnectionState>(INITIAL_CONNECTION_STATE);
+  // The own-vessel context from hello (vessels.urn:...), once the stream has connected; plain,
+  // not reactive: consumers read it at fetch time, never render from it.
+  selfContext: string | undefined;
   readonly aisTargets = new Map<string, AisTargetState>();
 
   // Bumped on every AIS change, so a consumer can skip rebuilding when nothing moved.
@@ -36,6 +39,7 @@ export class SignalKStore {
   }
 
   applyFrame(frame: SKFrame): void {
+    if (frame.selfContext) this.selfContext = frame.selfContext;
     for (const [path, value] of frame.self) {
       const cell = this.cell(path);
       cell.value = value;

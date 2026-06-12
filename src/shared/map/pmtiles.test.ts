@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { NoStoreSource } from './pmtiles';
+import { createArchiveSource, NoStoreSource } from './pmtiles';
+import { BlockCachedSource } from './pmtiles-block-cache';
 
 function response(status: number, bytes = 4): Response {
   return {
@@ -57,5 +58,19 @@ describe('NoStoreSource.getBytes', () => {
     vi.stubGlobal('fetch', fetchMock);
     await expect(new NoStoreSource('http://x/a.pmtiles').getBytes(0, 4)).rejects.toThrow();
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('createArchiveSource', () => {
+  it('wraps a network archive in the block cache, keyed by the bare url', () => {
+    const source = createArchiveSource('http://x/a.pmtiles');
+    expect(source).toBeInstanceOf(BlockCachedSource);
+    expect(source.getKey()).toBe('http://x/a.pmtiles');
+  });
+
+  it('leaves a blob: archive uncached, since its bytes are already local', () => {
+    const source = createArchiveSource('blob:http://x/123');
+    expect(source).toBeInstanceOf(NoStoreSource);
+    expect(source.getKey()).toBe('blob:http://x/123');
   });
 });

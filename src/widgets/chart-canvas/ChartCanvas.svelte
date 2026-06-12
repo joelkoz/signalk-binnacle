@@ -13,7 +13,7 @@ import type { UnitsStore } from '$entities/units';
 import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
 import type { WaypointsStore } from '$entities/waypoint';
-import { createAisOverlay } from '$features/ais-layer';
+import { createAisOverlay, createAisTrailsOverlay } from '$features/ais-layer';
 import { createAnchorOverlay } from '$features/anchor-watch';
 import { BOUNDARY_SOURCES, createBoundaryOverlay } from '$features/boundaries-overlay';
 import { fetchCharts } from '$features/charts';
@@ -99,6 +99,8 @@ interface Props {
   onGoToHere?: (position: LatLon) => void;
   // Drop a standard waypoint at a long-pressed chart position; absent until the server can write.
   onDropWaypoint?: (position: LatLon) => void;
+  // Whether the server runs the tracks plugin, read per tick so trails light up when known.
+  aisTrailsAvailable?: () => boolean;
   // Commit a drag-to-adjust of the anchor marker (the app PUTs it server-side or moves it locally).
   onAnchorMoved?: (position: LatLon) => void;
 }
@@ -136,6 +138,7 @@ const {
   onUserPan,
   onGoToHere,
   onDropWaypoint,
+  aisTrailsAvailable,
   onAnchorMoved,
 }: Props = $props();
 
@@ -227,6 +230,12 @@ onMount(() => {
         createRouteOverlay(routeStore),
         createWaypointOverlay(waypoints, symbols),
         notesOverlay,
+        createAisTrailsOverlay(
+          origin,
+          chartsToken,
+          aisTrailsAvailable ?? (() => false),
+          () => store.selfContext,
+        ),
         createAisOverlay(aisTargets, store),
         createCollisionOverlay(collision),
         createMobOverlay(mob, vessel),

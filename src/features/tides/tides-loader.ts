@@ -16,6 +16,7 @@ import {
   fetchTideStations,
   utcYmd,
 } from './coops-client';
+import { fetchSignalkTidesReading } from './signalk-tides-client';
 import { nearestStations } from './station-proximity';
 
 interface LoaderDeps {
@@ -24,6 +25,12 @@ interface LoaderDeps {
   tideEvents: (stationId: string) => Promise<TideEvent[]>;
   currentEvents: (stationId: string) => Promise<CurrentEvent[]>;
   now: () => number;
+  // Whether the signalk-tides plugin is installed and enabled on the server. The host wires this
+  // from the server's feature discovery; the default never prefers the plugin, so a stock server
+  // gets CO-OPS exactly as before.
+  pluginAvailable: () => boolean;
+  // The plugin's tide reading for the vessel's position, or undefined when it has nothing to give.
+  pluginTides: (lat: number, lon: number) => Promise<TideReading | undefined>;
 }
 
 export interface TidesLoader {
@@ -53,6 +60,8 @@ const realDeps: LoaderDeps = {
   tideEvents: fetchTideEvents,
   currentEvents: fetchCurrentEvents,
   now: () => Date.now(),
+  pluginAvailable: () => false,
+  pluginTides: (lat, lon) => fetchSignalkTidesReading(lat, lon),
 };
 
 // The per-station event cache rolls over on the UTC day, matching the CO-OPS fetch window (both
@@ -89,6 +98,55 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
     listsAt = nowMs;
   }
 
+  // The nearest current station is often a reference-only point that serves no predictions, so
+  // try the nearest few and take the first that actually returns events.
+  async function nearestCurrent(
+    lat: number,
+    lon: number,
+    nowMs: number,
+    day: string,
+  ): Promise<CurrentReading | undefined> {
+    const nearCurrents = nearestStations(
+      currentList ?? [],
+      lat,
+      lon,
+      CURRENT_TRIES,
+      CURRENT_RADIUS_M,
+    );
+    for (const candidate of nearCurrents) {
+      let currentEntry = currentEventCache.get(candidate.station.id, nowMs);
+      if (!currentEntry || currentEntry.day !== day) {
+        currentEntry = { events: await deps.currentEvents(candidate.station.id), day };
+        currentEventCache.put(candidate.station.id, currentEntry, nowMs);
+      }
+      if (currentEntry.events.length > 0) {
+        return {
+          station: candidate.station,
+          distanceMeters: candidate.distanceMeters,
+          events: currentEntry.events,
+        };
+      }
+    }
+    return undefined;
+  }
+
+  // Tidal currents still come from CO-OPS even when the plugin serves the tide (the plugin carries
+  // only tide heights), but a CO-OPS failure must not take down a plugin-served reading, so this
+  // degrades to no current instead of throwing.
+  async function nearestCurrentSafely(
+    lat: number,
+    lon: number,
+    nowMs: number,
+    day: string,
+  ): Promise<CurrentReading | undefined> {
+    try {
+      await ensureLists(nowMs);
+      return await nearestCurrent(lat, lon, nowMs, day);
+    } catch {
+      return undefined;
+    }
+  }
+
   return {
     async load(store, lat, lon) {
       const nowMs = deps.now();
@@ -100,8 +158,24 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
       inFlight = true;
       store.setLoading();
       try {
-        await ensureLists(nowMs);
         const day = dayKey(nowMs);
+        // Prefer the signalk-tides plugin when the server has it; anything it cannot answer
+        // (mid-start, no position fix, outside its sources' coverage) falls through to CO-OPS,
+        // including a rejection from an injected pluginTides. The plugin answers for the vessel's
+        // position, so when the viewed point is beyond the same usefulness radius CO-OPS stations
+        // get, fall through too: a pan to a far coast should show that coast, not the boat's tides.
+        if (deps.pluginAvailable()) {
+          const pluginTide = await deps.pluginTides(lat, lon).catch(() => undefined);
+          if (pluginTide && pluginTide.distanceMeters <= TIDE_RADIUS_M) {
+            lastLat = lat;
+            lastLon = lon;
+            lastDay = day;
+            const current = await nearestCurrentSafely(lat, lon, nowMs, day);
+            store.setReadings(pluginTide, current, 'signalk-tides');
+            return;
+          }
+        }
+        await ensureLists(nowMs);
         lastLat = lat;
         lastLon = lon;
         lastDay = day;
@@ -121,32 +195,8 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
           events: tideEntry.events,
         };
 
-        // The nearest current station is often a reference-only point that serves no predictions, so
-        // try the nearest few and take the first that actually returns events.
-        let current: CurrentReading | undefined;
-        const nearCurrents = nearestStations(
-          currentList ?? [],
-          lat,
-          lon,
-          CURRENT_TRIES,
-          CURRENT_RADIUS_M,
-        );
-        for (const candidate of nearCurrents) {
-          let currentEntry = currentEventCache.get(candidate.station.id, nowMs);
-          if (!currentEntry || currentEntry.day !== day) {
-            currentEntry = { events: await deps.currentEvents(candidate.station.id), day };
-            currentEventCache.put(candidate.station.id, currentEntry, nowMs);
-          }
-          if (currentEntry.events.length > 0) {
-            current = {
-              station: candidate.station,
-              distanceMeters: candidate.distanceMeters,
-              events: currentEntry.events,
-            };
-            break;
-          }
-        }
-        store.setReadings(tide, current);
+        const current = await nearestCurrent(lat, lon, nowMs, day);
+        store.setReadings(tide, current, 'noaa-coops');
       } catch {
         cooldownUntil = deps.now() + COOLDOWN_MS;
         store.setError();
