@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bboxContains, NotesCache, padBbox } from './notes-cache';
+import { bboxContains, bboxKey, NotesCache, padBbox } from './notes-cache';
 import type { Bbox, NotePoint } from './notes-client';
 
 const note = (id: string): NotePoint => ({
@@ -16,6 +16,13 @@ describe('padBbox', () => {
 
   it('clamps to the world and the mercator latitude limit', () => {
     expect(padBbox([-179, -84, 179, 84], 1)).toEqual([-180, -85, 180, 85]);
+  });
+});
+
+describe('bboxKey', () => {
+  it('is stable for the same bbox and distinct for another', () => {
+    expect(bboxKey([0, 0, 10, 10])).toBe(bboxKey([0, 0, 10, 10]));
+    expect(bboxKey([0, 0, 10, 10])).not.toBe(bboxKey([0, 0, 10, 11]));
   });
 });
 
@@ -58,5 +65,25 @@ describe('NotesCache', () => {
     cache.put(fetchArea, [note('old')], 1000);
     cache.put(fetchArea, [note('new')], 2000);
     expect(cache.get(viewport, 2000)?.[0].id).toBe('new');
+  });
+
+  it('serves an expired entry only when allowExpired is set', () => {
+    const cache = new NotesCache();
+    cache.put(fetchArea, [note('a')], 0);
+    expect(cache.get(viewport, 10 * 60_000)).toBeUndefined();
+    expect(cache.get(viewport, 10 * 60_000, true)).toEqual([note('a')]);
+  });
+
+  it('prefers a fresh entry over an expired one even when allowExpired is set', () => {
+    const cache = new NotesCache();
+    cache.put(fetchArea, [note('stale')], 0);
+    cache.put(fetchArea, [note('fresh')], 4 * 60_000);
+    expect(cache.get(viewport, 6 * 60_000, true)?.[0].id).toBe('fresh');
+  });
+
+  it('never serves an expired entry that does not contain the viewport', () => {
+    const cache = new NotesCache();
+    cache.put(fetchArea, [note('a')], 0);
+    expect(cache.get([50, 50, 51, 51], 10 * 60_000, true)).toBeUndefined();
   });
 });

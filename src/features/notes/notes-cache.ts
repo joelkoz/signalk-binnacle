@@ -1,3 +1,4 @@
+import { bboxContains, padBbox as sharedPadBbox } from '$shared/geo';
 import { MINUTE_MS } from '$shared/lib';
 import type { Bbox, NotePoint } from './notes-client';
 
@@ -17,27 +18,22 @@ interface CacheEntry {
   expires: number;
 }
 
-// Expand a viewport bbox outward by `fraction` on each side, clamped to the world and the Web
-// Mercator latitude limit, so one fetch covers more than the visible area.
-export function padBbox([west, south, east, north]: Bbox, fraction = PAD_FRACTION): Bbox {
-  const dx = (east - west) * fraction;
-  const dy = (north - south) * fraction;
-  return [
-    Math.max(-180, west - dx),
-    Math.max(-85, south - dy),
-    Math.min(180, east + dx),
-    Math.min(85, north + dy),
-  ];
+// The shared pad with this slice's default fraction baked in, re-exported so the overlay and the
+// cache key stay on one definition.
+export function padBbox(bbox: Bbox, fraction = PAD_FRACTION): Bbox {
+  return sharedPadBbox(bbox, fraction);
+}
+
+// The persisted-store key for a fetch area. Joined raw, not quantized: a reload restores the same
+// camera, so the padded bbox reproduces bit-identically; any other view simply misses and fetches.
+export function bboxKey(bbox: Bbox): string {
+  return bbox.join(',');
 }
 
 // Whether `outer` fully contains `inner` (longitude-first). A view crossing the antimeridian has
 // west > east; it fails containment here and falls through to a fetch, which is correct if
 // conservative, and such views are rare on a chart.
-export function bboxContains(outer: Bbox, inner: Bbox): boolean {
-  return (
-    outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3]
-  );
-}
+export { bboxContains };
 
 // A small, bounded, time-limited cache of fetched note sets keyed by the padded area each fetch
 // covered. A viewport that still sits inside a recent fetch reuses it, so panning back, panning a
@@ -46,13 +42,18 @@ export class NotesCache {
   #entries: CacheEntry[] = [];
 
   // The notes from the freshest non-expired fetch whose area still contains the viewport, or
-  // undefined when nothing covers it and a fetch is needed.
-  get(viewport: Bbox, nowMs: number): NotePoint[] | undefined {
+  // undefined when nothing covers it and a fetch is needed. With allowExpired (the caller knows
+  // the app is offline, so a re-fetch cannot succeed), an expired containing entry still answers
+  // rather than letting the POIs vanish at TTL expiry; a fresh entry is still preferred.
+  get(viewport: Bbox, nowMs: number, allowExpired = false): NotePoint[] | undefined {
+    let expired: NotePoint[] | undefined;
     for (let i = this.#entries.length - 1; i >= 0; i--) {
       const entry = this.#entries[i];
-      if (entry.expires > nowMs && bboxContains(entry.bbox, viewport)) return entry.notes;
+      if (!bboxContains(entry.bbox, viewport)) continue;
+      if (entry.expires > nowMs) return entry.notes;
+      if (allowExpired && !expired) expired = entry.notes;
     }
-    return undefined;
+    return expired;
   }
 
   // Record a fetch's area and its notes, dropping expired entries and keeping only the newest

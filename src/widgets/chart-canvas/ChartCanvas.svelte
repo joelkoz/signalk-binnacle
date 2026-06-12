@@ -97,10 +97,14 @@ interface Props {
   onUserPan?: () => void;
   // Set a single "go to here" destination at a chart point the user long-pressed or right-clicked.
   onGoToHere?: (position: LatLon) => void;
-  // Drop a standard waypoint at a long-pressed chart position; absent until the server can write.
+  // Drop a standard waypoint at a long-pressed chart position; a refused save surfaces in the
+  // Waypoints panel (write access is unknowable client-side).
   onDropWaypoint?: (position: LatLon) => void;
   // Whether the server runs the tracks plugin, read per tick so trails light up when known.
   aisTrailsAvailable?: () => boolean;
+  // Connectivity, so the notes overlay can serve expired cached POIs while offline instead of
+  // blanking them at TTL expiry.
+  isOnline?: () => boolean;
   // Commit a drag-to-adjust of the anchor marker (the app PUTs it server-side or moves it locally).
   onAnchorMoved?: (position: LatLon) => void;
 }
@@ -139,6 +143,7 @@ const {
   onGoToHere,
   onDropWaypoint,
   aisTrailsAvailable,
+  isOnline,
   onAnchorMoved,
 }: Props = $props();
 
@@ -220,7 +225,9 @@ onMount(() => {
       // vessel and collision pinned on top, then the navigator's routes and track, then AIS and the
       // safety overlays, the ocean fields, and the charts at the base); the order below sets only the
       // order within a band.
-      const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect, symbols);
+      const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect, symbols, {
+        isOnline: isOnline ?? (() => true),
+      });
       // One list feeds both registration and the per-frame tick, so the two cannot drift. The order
       // sets z within each band (tides under the safety overlays, the own vessel on top).
       const dynamicOverlays = [

@@ -19,11 +19,9 @@ import {
   temperatureUnit,
 } from '$shared/lib';
 import { GRID_SOURCE_LABEL } from './fills';
+import { createPointConditionsLoader } from './point-conditions';
 import {
   conditionsFromSignalK,
-  fetchObservations,
-  fetchPointForecasts,
-  fetchWeatherWarnings,
   NEAR_NOW_MS,
   nearestInTimeBounded,
   type PointConditions,
@@ -56,11 +54,16 @@ const { origin, token, providerName, position, store, units }: Props = $props();
 const FORECAST_STEPS = 6;
 const FREE_STEP_MS = 6 * HOUR_MS;
 
+// Fetches the provider's point answers and persists them, so a panel opened with a failed or
+// absent network replays the last conditions for the spot (within the hour) instead of going blank.
+const pointLoader = createPointConditionsLoader();
+
 let loading = $state(false);
 // The provider's raw answers, kept as data so the conditions DERIVE from them and the selected
-// time: scrubbing the slider re-picks the step without refetching, and a transient provider
-// failure (undefined) falls through to the time-reactive free grid instead of freezing a one-shot
-// sample on screen.
+// time: scrubbing the slider re-picks the step without refetching. A transient provider failure
+// replays the spot's persisted answers while they are within the hour, and past that leaves these
+// undefined so the panel falls through to the time-reactive free grid instead of freezing a
+// one-shot sample on screen.
 let obsData = $state<SignalKWeatherData | undefined>();
 let seriesData = $state<SignalKWeatherData[] | undefined>();
 let warnings = $state<WeatherWarning[]>([]);
@@ -93,7 +96,7 @@ $effect(() => {
     return;
   }
   const [lat, lon] = posCoords(key);
-  void loadProvider(lat, lon);
+  void loadProvider(provider, lat, lon);
 });
 
 function clear(): void {
@@ -104,22 +107,18 @@ function clear(): void {
   loading = false;
 }
 
-async function loadProvider(lat: number, lon: number): Promise<void> {
+async function loadProvider(provider: string, lat: number, lon: number): Promise<void> {
   const mine = ++seq;
   loading = true;
-  const [obs, series, warns] = await Promise.all([
-    fetchObservations(origin, lat, lon, token),
-    fetchPointForecasts(origin, lat, lon, 12, token),
-    fetchWeatherWarnings(origin, lat, lon, token),
-  ]);
+  const point = await pointLoader.load(origin, provider, lat, lon, token);
   if (mine !== seq) return;
-  obsData = obs;
-  seriesData = series;
-  // fetchWeatherWarnings returns undefined on a transient failure and [] only when the provider
+  obsData = point.obs;
+  seriesData = point.series;
+  // The loader leaves warnings undefined on a transient failure and [] only when the provider
   // genuinely reports none. Warnings have no free fallback, so keep the last set on a failure: a
   // slow or rate-limited provider must not flicker an active gale or small-craft advisory off the
   // panel. A real empty result clears them.
-  if (warns) warnings = warns;
+  if (point.warnings) warnings = point.warnings;
   loading = false;
 }
 

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SymbolsStore, symbolIconId } from '$entities/symbols';
 import type { OverlayContext } from '$shared/map';
 import type { SkSymbol } from '$shared/signalk';
+import { createExpiringStore } from '$shared/storage';
 import { createFakeMap } from '$shared/testing/fake-map';
 import { fetchNotes, type NotePoint } from './notes-client';
 import { createNotesOverlay } from './notes-overlay';
@@ -114,6 +115,7 @@ describe('notes overlay', () => {
     const state = { zoom: 12, lng: 0, lat: 0 };
     const ctx = viewCtx(state);
     overlay.sync(ctx);
+    await settle(); // let the async persisted-store miss resolve so the fetch is issued
     state.lng = 30;
     overlay.sync(ctx); // in-flight guard: no second fetch yet
     expect(fetchNotesMock).toHaveBeenCalledTimes(1);
@@ -122,6 +124,7 @@ describe('notes overlay', () => {
     // The map is now stationary at the new center, so without the fast-path reset this sync
     // would skip and the overlay would keep showing the old area forever.
     overlay.sync(ctx);
+    await settle();
     expect(fetchNotesMock).toHaveBeenCalledTimes(2);
   });
 
@@ -185,6 +188,77 @@ describe('notes overlay', () => {
     });
   });
 
+  it('serves a persisted note set to a fresh overlay (a reload) without fetching', async () => {
+    const persist = createExpiringStore<NotePoint[]>('shared', { factory: undefined });
+    fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
+    const first = createNotesOverlay('http://pi', undefined, undefined, undefined, { persist });
+    first.sync(viewCtx({ zoom: 12, lng: 0, lat: 0 }));
+    await settle();
+    expect(fetchNotesMock).toHaveBeenCalledTimes(1);
+
+    const second = createNotesOverlay('http://pi', undefined, undefined, undefined, { persist });
+    second.sync(viewCtx({ zoom: 12, lng: 0, lat: 0 }));
+    await settle();
+    expect(fetchNotesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps serving an expired cached set while offline instead of refetching', async () => {
+    vi.useFakeTimers();
+    try {
+      fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
+      let online = true;
+      const overlay = createNotesOverlay('http://pi', undefined, undefined, undefined, {
+        isOnline: () => online,
+        persist: createExpiringStore<NotePoint[]>('t', { factory: undefined }),
+      });
+      const state = { zoom: 12, lng: 0, lat: 0 };
+      const ctx = viewCtx(state);
+      overlay.sync(ctx);
+      await settle();
+      expect(fetchNotesMock).toHaveBeenCalledTimes(1);
+
+      online = false;
+      vi.advanceTimersByTime(6 * 60_000); // past the in-memory TTL
+      state.lng = 0.05; // a nudge inside the padded fetch area, so the idle fast-path does not skip
+      overlay.sync(ctx);
+      await settle();
+      // Offline, the expired entry still answers and the POIs stay on the chart.
+      expect(fetchNotesMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('refetches an expired set online rather than re-promoting the persisted copy', async () => {
+    vi.useFakeTimers();
+    try {
+      fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
+      const overlay = createNotesOverlay('http://pi', undefined, undefined, undefined, {
+        persist: createExpiringStore<NotePoint[]>('t', { factory: undefined }),
+      });
+      const state = { zoom: 12, lng: 0, lat: 0 };
+      const ctx = viewCtx(state);
+      overlay.sync(ctx);
+      await settle();
+      expect(fetchNotesMock).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(6 * 60_000); // past the in-memory TTL
+      state.lng = 30;
+      overlay.sync(ctx);
+      await settle();
+      expect(fetchNotesMock).toHaveBeenCalledTimes(2);
+
+      // Back at the first area: its persisted copy is still within its week, but this session
+      // already fetched it, so freshness wins and the network is asked again.
+      state.lng = 0;
+      overlay.sync(ctx);
+      await settle();
+      expect(fetchNotesMock).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('retries a failed fetch on a stationary map once the cooldown passes', async () => {
     vi.useFakeTimers();
     try {
@@ -192,12 +266,14 @@ describe('notes overlay', () => {
       const overlay = createNotesOverlay('http://pi', undefined);
       const ctx = viewCtx({ zoom: 12, lng: 0, lat: 0 });
       overlay.sync(ctx);
-      expect(fetchNotesMock).toHaveBeenCalledTimes(1);
       await settle();
+      expect(fetchNotesMock).toHaveBeenCalledTimes(1);
       overlay.sync(ctx); // still cooling down: no refetch
+      await settle();
       expect(fetchNotesMock).toHaveBeenCalledTimes(1);
       vi.advanceTimersByTime(31_000);
       overlay.sync(ctx); // cooldown passed: retried without the map moving
+      await settle();
       expect(fetchNotesMock).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { TidesStore } from '$entities/tides';
-import { createTidesLoader } from './tides-loader';
+import { createExpiringStore } from '$shared/storage';
+import { createTidesLoader, type TidesPersistValue } from './tides-loader';
 
 const tideStation = { id: 'T1', name: 'Tide', latitude: 27.7, longitude: -82.7 };
 const currentStation = { id: 'C1', name: 'Current', latitude: 27.7, longitude: -82.7 };
@@ -9,6 +10,8 @@ const currentEvents = [
   { timeMs: 1000, velocityMps: 0.5, directionDeg: 100, kind: 'flood' as const },
 ];
 
+const freshPersist = () => createExpiringStore<TidesPersistValue>('test', { factory: undefined });
+
 function deps(overrides: Record<string, unknown> = {}) {
   return {
     tideStations: vi.fn(async () => [tideStation]),
@@ -16,6 +19,8 @@ function deps(overrides: Record<string, unknown> = {}) {
     tideEvents: vi.fn(async () => tideEvents),
     currentEvents: vi.fn(async () => currentEvents),
     now: () => 1_000_000,
+    // A fresh in-memory persistent store per test, so persistence never leaks between tests.
+    persist: freshPersist(),
     ...overrides,
   };
 }
@@ -158,5 +163,74 @@ describe('createTidesLoader', () => {
     const store = new TidesStore();
     await loader.load(store, 27.7, -82.7);
     expect(store.status).toBe('error');
+  });
+
+  it('serves persisted stations and events to a fresh loader (a reload) without the network', async () => {
+    const persist = freshPersist();
+    const first = createTidesLoader(deps({ persist }));
+    await first.load(new TidesStore(), 27.7, -82.7);
+
+    const d = deps({ persist });
+    const second = createTidesLoader(d);
+    const store = new TidesStore();
+    await second.load(store, 27.7, -82.7);
+    expect(store.status).toBe('ready');
+    expect(store.tide?.station.id).toBe('T1');
+    expect(store.current?.station.id).toBe('C1');
+    expect(d.tideStations).not.toHaveBeenCalled();
+    expect(d.currentStations).not.toHaveBeenCalled();
+    expect(d.tideEvents).not.toHaveBeenCalled();
+    expect(d.currentEvents).not.toHaveBeenCalled();
+  });
+
+  it('ignores persisted events from a previous UTC day', async () => {
+    const persist = freshPersist();
+    let nowMs = Date.UTC(2026, 5, 8, 23, 0);
+    const first = createTidesLoader(deps({ persist, now: () => nowMs }));
+    await first.load(new TidesStore(), 27.7, -82.7);
+
+    nowMs = Date.UTC(2026, 5, 9, 1, 0);
+    const d = deps({ persist, now: () => nowMs });
+    const second = createTidesLoader(d);
+    await second.load(new TidesStore(), 27.7, -82.7);
+    // The station lists are still good, but the day-keyed predictions must be refetched.
+    expect(d.tideStations).not.toHaveBeenCalled();
+    expect(d.tideEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores expired persisted station lists and refetches them', async () => {
+    const persist = freshPersist();
+    let nowMs = 1_000_000;
+    const first = createTidesLoader(deps({ persist, now: () => nowMs }));
+    await first.load(new TidesStore(), 27.7, -82.7);
+
+    nowMs += 8 * 24 * 60 * 60 * 1000; // past the seven-day station expiry
+    const d = deps({ persist, now: () => nowMs });
+    const second = createTidesLoader(d);
+    const store = new TidesStore();
+    await second.load(store, 27.7, -82.7);
+    expect(store.status).toBe('ready');
+    expect(d.tideStations).toHaveBeenCalledTimes(1);
+  });
+
+  it("replays the day's persisted plugin reading when the plugin fetch fails", async () => {
+    const persist = freshPersist();
+    const first = createTidesLoader(
+      deps({ persist, pluginAvailable: () => true, pluginTides: vi.fn(async () => pluginReading) }),
+    );
+    await first.load(new TidesStore(), 27.7, -82.7);
+
+    const d = deps({
+      persist,
+      pluginAvailable: () => true,
+      pluginTides: vi.fn(async () => undefined),
+    });
+    const second = createTidesLoader(d);
+    const store = new TidesStore();
+    await second.load(store, 27.7, -82.7);
+    expect(store.status).toBe('ready');
+    expect(store.tide?.station.id).toBe('tides');
+    expect(store.source).toBe('signalk-tides');
+    expect(d.tideEvents).not.toHaveBeenCalled();
   });
 });

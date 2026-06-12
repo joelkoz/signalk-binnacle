@@ -8,6 +8,7 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
+import { DAY_MS } from '$shared/lib';
 import {
   DARK_SCRIM,
   emptyFeatureCollection,
@@ -18,9 +19,10 @@ import {
   rgbaCss,
 } from '$shared/map';
 import { type SkSymbol, str } from '$shared/signalk';
+import { createExpiringStore, type ExpiringStore } from '$shared/storage';
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
-import { bboxContains, NotesCache, padBbox } from './notes-cache';
+import { bboxContains, bboxKey, NotesCache, padBbox } from './notes-cache';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
 import { categoryRank, POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
 
@@ -56,6 +58,11 @@ const CLUSTER_RADIUS = 44;
 // After a failed fetch, back off this long before retrying so a stationary map recovers from a
 // transient hiccup without hammering a flaky provider (the tides loader uses the same pattern).
 const RETRY_COOLDOWN_MS = 30_000;
+// Fetched note sets persist across reloads in IndexedDB (which, unlike the service worker, also
+// works over plain http). POIs barely change, so a week-old set is still worth showing; the
+// in-memory TTL drives the real refresh once a set has been seen this session.
+const PERSIST_TTL_MS = 7 * DAY_MS;
+const MAX_PERSIST_ENTRIES = 24;
 
 // The cluster icon: the colored disc of the cluster's highest-ranked member, matched on the
 // aggregated maxRank, so a cluster holding a hazard shows the red hazard disc, a navaid the amber
@@ -73,6 +80,15 @@ const CLUSTER_ICON_IMAGE = [
 interface NotesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
   deselect(ctx: OverlayContext): void;
+}
+
+export interface NotesOverlayOptions {
+  // Whether the app believes it is online (the host wires this from OnlineStatus). Offline, an
+  // expired cached note set still renders so the POIs do not vanish at TTL expiry with no way to
+  // refetch them.
+  isOnline?: () => boolean;
+  // The cross-reload store for fetched note sets; injectable so tests run on the memory fallback.
+  persist?: ExpiringStore<NotePoint[]>;
 }
 
 // The registered map-image id for a note. Navaids resolve to a type- and side-specific
@@ -119,12 +135,21 @@ export function createNotesOverlay(
   token: string | undefined,
   onSelect?: (selection: NoteSelection | undefined) => void,
   symbols?: SymbolsStore,
+  options: NotesOverlayOptions = {},
 ): NotesOverlay {
+  const isOnline = options.isOnline ?? (() => true);
+  const persist =
+    options.persist ??
+    createExpiringStore<NotePoint[]>('binnacle-notes', { maxEntries: MAX_PERSIST_ENTRIES });
   // A viewport-keyed cache of fetched note sets so panning back, panning a little, or zooming in
   // reuses a recent fetch instead of re-hitting the network (the data depends only on the bbox, not
   // the zoom). The raw zoom/center drive a cheap idle fast-path that skips the work when the map has
   // not moved at all, and a single fetch runs at a time.
   const cache = new NotesCache();
+  // Areas already fetched or promoted this session: for those the in-memory TTL governs freshness
+  // and an expiry goes to the network, never back to the week-lived persisted copy, so a stale set
+  // cannot pin itself for its whole persisted life.
+  const promotedKeys = new Set<string>();
   // The exact note array last handed to setData, so a redundant render is skipped and, crucially, a
   // failed fetch keeps it on screen instead of blanking the markers.
   let renderedNotes: NotePoint[] | undefined;
@@ -200,6 +225,30 @@ export function createNotesOverlay(
     renderedNotes = notes;
     setData(ctx, featureCollection(notes, managedIcon));
     ensurePendingIcons(ctx, notes);
+  }
+
+  // Resolve an area's notes from the persisted store (only the first time this session sees the
+  // area, which is the reload case), else from the network, persisting a successful fetch for the
+  // next reload. The in-memory cache write stays with the caller, the weather loader's promote
+  // pattern.
+  async function resolveNotes(key: string, fetchBbox: Bbox): Promise<NotePoint[] | undefined> {
+    if (!promotedKeys.has(key)) {
+      const now = Date.now();
+      const stored = await persist.get(key);
+      if (stored && stored.expires > now) {
+        promotedKeys.add(key);
+        void persist.prune(now);
+        return stored.value;
+      }
+    }
+    const notes = await fetchNotes(serverBase, token, fetchBbox);
+    if (notes) {
+      promotedKeys.add(key);
+      const now = Date.now();
+      await persist.put(key, notes, now + PERSIST_TTL_MS);
+      void persist.prune(now);
+    }
+    return notes;
   }
 
   // Clear the shown markers (below the zoom floor) without discarding the cache, so zooming back in
@@ -428,7 +477,8 @@ export function createNotesOverlay(
       const viewport: Bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
       // A recent fetch whose padded area still covers the viewport serves the markers with no
       // network. This runs before the in-flight guard, so a cache hit renders even mid-fetch.
-      const cached = cache.get(viewport, Date.now());
+      // Offline, an expired entry still answers: stale POIs beat a chart that goes blank.
+      const cached = cache.get(viewport, Date.now(), !isOnline());
       if (cached) {
         render(ctx, cached);
         return;
@@ -442,7 +492,7 @@ export function createNotesOverlay(
       fetching = true;
       // Fetch a padded area so the next small pan or zoom-in reuses this fetch from the cache.
       const fetchBbox = padBbox(viewport);
-      fetchNotes(serverBase, token, fetchBbox)
+      resolveNotes(bboxKey(fetchBbox), fetchBbox)
         .then((notes) => {
           // undefined is a transient failure: keep the markers already shown and retry after a
           // cooldown, even stationary (the fast-path would otherwise pin the failure forever). An
