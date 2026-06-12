@@ -21,8 +21,9 @@ Read it before doing architectural work.
 - Charts: a generic ChartSourceAdapter over the Signal K `/resources/charts` API, plus a
   vector base map. S-57 to vector-tile pipeline and full S-52 styling are a later spec.
 - Real-time: a dedicated Web Worker hosts the Signal K WebSocket client, bridged with Comlink,
-  batching deltas to one flush per animation frame, feeding a path-keyed fine-grained runes
-  store.
+  batching deltas into frame-rate flushes on a worker timer (never requestAnimationFrame, which
+  a hidden tab suspends, so data and alarms keep flowing in a backgrounded tab), feeding a
+  path-keyed fine-grained runes store.
 - Fonts: Inter (UI) and JetBrains Mono (numeric readouts), self-hosted.
 - Icons: lucide-svelte for app chrome. Chart symbols derive from the S-52 Presentation
   Library and OpenBridge, not from a UI icon set.
@@ -145,8 +146,10 @@ must not be repeatable.
   `navigation.course.*` and `navigation.course.calcValues.*` to delta-stream subscribers. But because
   those deltas carry the `SKVersion.v2` flag, they are NOT in the v1 full data model, so under
   `subscribe=none` the server sends no cached value until the next change. The pattern is therefore
-  hydrate the initial snapshot once via a v2 REST GET (`GET /signalk/v2/api/vessels/self/navigation/
-  course` and `/calcValues`) when a course becomes active, then keep it live from the stream. Course
+  hydrate the snapshot via a v2 REST GET (`GET /signalk/v2/api/vessels/self/navigation/
+  course` and `/calcValues`) on every connect and reconnect (so an active course survives a page
+  reload and a course started or cleared from another station is picked up), then keep it live from
+  the stream. Course
   MUTATIONS (activate a route, advance, clear) are v2 REST PUT and DELETE; the stream is read-only for
   course. The course state machine is built into the server core (present on any 2.x server); the
   derived `calcValues` (XTE, VMG, DTW, BTW, ETA) come from a separate course-provider plugin that

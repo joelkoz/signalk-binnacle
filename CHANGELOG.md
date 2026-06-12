@@ -4,6 +4,78 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<a id="unreleased"></a>
+
+## [Unreleased]
+
+A reliability and correctness pass across the whole app: course following, the collision and anchor
+watches, weather, charts, tides, and profiles, with the safety alarms now holding up in a
+backgrounded browser tab.
+
+### Changed
+
+- Delta batching in the stream worker now runs on a timer instead of requestAnimationFrame, and
+  AIS staleness pruning runs on a wall clock instead of the render loop, so live data keeps
+  flowing and the collision and anchor alarms keep evaluating while the tab is hidden.
+- An AIS target that stops reporting is now dropped after seven minutes, so anchored traffic with
+  a slow AIS refresh no longer flickers in and out of the target list.
+- Track recording no longer accumulates points while the boat sits at anchor: session gaps are
+  detected from fix continuity, not motion.
+- Cancelling MOB and raising the anchor are now two-tap confirms, and deleting a profile or a
+  saved track asks first, matching the route delete.
+- Escape handling is one shared topmost stack across the panels, the menu, and the measure tool,
+  so Escape always closes the surface on top and never one underneath.
+- Layer drag-to-reorder now stays within the layer's own category instead of crossing into the
+  next section.
+
+### Fixed
+
+- Editing a route no longer strips its waypoint names.
+- The nav strip no longer shows the next waypoint's arrival time as the whole-route ETA.
+- An active course now survives a page reload: the course state hydrates on first connect, and
+  the route's Active badge tracks the server, including courses started or cleared from another
+  station.
+- Arrival no longer re-alarms from GPS jitter at the arrival circle; the alarm latches until the
+  boat clearly leaves the circle.
+- A failed waypoint skip and a partially failed GPX import are now reported instead of passing
+  silently.
+- At night-red the own vessel, the AIS targets, and the note icons are no longer hidden along
+  with the base map's sprite icons.
+- An acknowledged collision alert re-arms once the situation clears, and a contact's severity
+  downgrade has hysteresis, so the alarm can neither stay silently dismissed nor flap between
+  danger and warning.
+- A target reporting speed without a course is no longer modeled as steaming due north, and
+  contacts with provider-supplied CPA keep classifying during an own-fix dropout.
+- The anchor watch announces a degraded state when GPS is lost, and an anchor-marker drag the
+  system cancels no longer silently relocates the anchor.
+- The MOB strip dashes out bearing and range on a stale fix instead of presenting frozen numbers
+  as live.
+- Wind particle colors now match the legend's absolute scale.
+- Radar frames refetch on schedule: the cache no longer extends its own expiry on every read.
+- A partial forecast no longer stretches stale wave pixels over a new viewport, and overlapping
+  forecast loads can no longer finish out of order.
+- The conditions panel's forecast section falls back to the free grid when a provider returns an
+  empty series, and the weather panel's clock notes stay live during a long open.
+- Deleting a user chart no longer leaves it in the persisted layer state, and renaming one
+  updates its Layers row and its server resource.
+- Tide times are correct when the browser's time zone differs from the station's (predictions
+  are now requested in GMT), tide data refetches after midnight at anchor, and the on-chart tide
+  label no longer shows past events.
+- Tide fetches are skipped entirely while nothing displays them.
+- Note markers recover after a failed or superseded fetch instead of freezing until reload.
+- A transient network failure at startup no longer wipes the stored auth token, and a failed
+  access request retries instead of hanging at "Requesting access".
+- Profiles no longer show "unsaved changes" on every launch, deleting all profiles no longer
+  resurrects the starter profiles, and a synced device no longer marks a profile active without
+  applying it. A failed profile import shows an error.
+
+### Internal
+
+- Map tile, WebGL shader, and PMTiles resources are released on teardown, dead exports and the
+  unused weather view persistence were removed, and assorted hot-path allocations were trimmed.
+
+<a id="v050"></a>
+
 ## [0.5.0] - 2026-06-11
 
 A safety-focused redesign of the man-overboard confirm, a broad weather-panel upgrade (more
@@ -74,6 +146,8 @@ decision data, honest provenance, and accessibility), and a new app icon.
   Enter on the focused mini-map samples the center, and the tap readout can be pinned (hover or
   focus) and dismissed.
 
+<a id="v040"></a>
+
 ## [0.4.0] - 2026-06-10
 
 Four new at-sea features (an anchor watch, a man-overboard button, a measure tool, and an AIS
@@ -123,6 +197,8 @@ target list) plus shell refinements from helm feedback.
   worker, so the publish threw and was lost while the local strip looked fine. The mark is now
   snapshotted into a plain object, with a regression test, and the round trip is verified against
   a live server.
+
+<a id="v031"></a>
 
 ## [0.3.1] - 2026-06-10
 
@@ -176,6 +252,8 @@ and accessibility, plus a few navigation additions.
 ### Fixed
 
 - The wind particle field no longer freezes after switching away from and back to the browser tab.
+
+<a id="v030"></a>
 
 ## [0.3.0] - 2026-06-09
 
@@ -237,30 +315,30 @@ and accessibility, plus a few navigation additions.
 
 ### Internal
 
-- A /simplify pass over the last day's changes: each new overlay slice (seamarks, protected areas,
+- A simplification pass over the overlay work: each new overlay slice (seamarks, protected areas,
   boundaries, ocean conditions) now exposes a band-owning factory, so the chart widget no longer
   hardcodes which map band each draws into (matching the depth-charts sibling). Deduplicated the
   chart zoom-range expression and the tides upcoming-events computation, moved the station-distance
   formatter into the tides display module, and tidied a handful of comments.
-- A /simplify pass over the plotter and UI changes: the saved-item card list moved to one global
+- A simplification pass over the plotter and UI changes: the saved-item card list moved to one global
   `.saved` system in `app.css` consumed by both panels, a shared `downloadBlob` helper backs the
   track and route exporters, the GPX escape and unescape pair moved to one `xml-entities` module, the
   distance-over-speed time uses the shared `etaSeconds` everywhere, the meters-per-degree constant is
   shared from `$shared/nav`, the nav-strip `RouteProgress` type has one definition, the plan-speed
   field uses the shared `.input`, and the whole-route distance derives from the leg table so the total
   and the per-leg numbers cannot drift.
-- A /simplify pass over the contrast work: the route, selection-ring, and AIS dark contrast aids share
+- A simplification pass over the contrast work: the route, selection-ring, and AIS dark contrast aids share
   one `DARK_SCRIM` constant and an `rgbaCss` helper in `$shared/map` instead of three drifting literals,
   and the SlideOver minimize takes one `{ collapsed, onToggle }` object so the state and its toggle are
   always supplied together.
-- A /simplify pass over the profiles feature: the active-card accent edge-bar and "Active" badge moved
+- A simplification pass over the profiles feature: the active-card accent edge-bar and "Active" badge moved
   to the one global `.saved` system in `app.css` consumed by the Routes, Tracks, and Profiles panels, a
   shared `pickTextFile` helper in `$shared/ui` backs both the route GPX import and the profile JSON
   import instead of two hidden-input handlers, the profile importer validates the theme against the
   shared `THEMES` list, and the default profile now auto-applies on a fresh device that has a default
   but no active profile. The server sync also stops pushing after one rejected write, so a read-only
   token attaches for reads but does not fire a doomed write on every later edit.
-- A project-wide modularization pass (six-agent review). The labeled current-item stats grid that the
+- A project-wide modularization pass. The labeled current-item stats grid that the
   Routes editor and the Tracks panel duplicated verbatim is now one global `.stat-grid` system in
   `app.css`. A shared `downloadText(filename, text, type)` helper backs the route GPX, track GeoJSON,
   and profile JSON exporters, so the Blob construction lives in one place. The four weather colormaps
@@ -276,11 +354,12 @@ and accessibility, plus a few navigation additions.
   Tracks, and Profiles cards; the coordinate guards moved to a `shared/geo` slice so geometry no longer
   imports the SignalK transport slice for a type; and the portable profile settings are a single
   declarative registry typed so a forgotten setting fails the build.
-- A six-agent whole-repo cleanup. Correctness fixes (the GPX entity guard, the route label opacity, a
+- A whole-repo cleanup. Correctness fixes (the GPX entity guard, the route label opacity, a
   marine-merge step-count guard, a deferred object-URL revoke, and a wind-arrow bounds guard), a round
   of dead index re-export trimming, the four repeated course hydrate-and-seed sites folded into one
-  helper, and assorted comment and legend fixes. A claimed isobar marching-squares table swap was
-  refuted on cross-verification and left unchanged.
+  helper, and assorted comment and legend fixes.
+
+<a id="v021"></a>
 
 ## [0.2.1] - 2026-06-09
 
@@ -312,11 +391,13 @@ and accessibility, plus a few navigation additions.
 
 - Bounded two more caches to a fixed size: the note-detail memo, and the persistent weather-grid
   store (now matching its in-memory tier).
-- A whole-codebase cleanup pass (six-lane audit): deduplicated the local-date computation shared by
+- A whole-codebase cleanup pass: deduplicated the local-date computation shared by
   the tides fetch window and its session-cache key, sourced the vessel and AIS default colors from
   the day theme token, dropped over-broad slice exports, reset the stream reconnect backoff on an
   explicit disconnect, and tidied several comments, an accessibility region, and a redundant live
   region. No user-facing behavior change beyond the fixes above.
+
+<a id="v020"></a>
 
 ## [0.2.0] - 2026-06-08
 
@@ -389,6 +470,8 @@ and accessibility, plus a few navigation additions.
   storage and chart-adapter export surface, and aligned the route and wave overlay label font and
   arrow color with the other overlays. No user-facing behavior change beyond the fixes above.
 
+<a id="v013"></a>
+
 ## [0.1.3] - 2026-06-08
 
 ### Added
@@ -415,7 +498,7 @@ and accessibility, plus a few navigation additions.
   hours and minutes past an hour (2h 05m) instead of a bare minute count, and the collision strip and
   its spoken summary are graded danger versus caution by the worst contact rather than always
   sounding full danger.
-- The design system was consolidated from a six-lens UI review: one shared lit-toggle, input, slider,
+- The design system was consolidated: one shared lit-toggle, input, slider,
   and button-row vocabulary replaces the per-component copies, the danger and nav strips now stack
   instead of overlapping so course guidance survives a close-quarters contact, and the danger strip
   stays above the weather panel so Mute and Acknowledge are always reachable.
@@ -451,6 +534,8 @@ and accessibility, plus a few navigation additions.
 - Form inputs theme their placeholder text, the day caution color is darker for contrast and is
   clearly distinct from the alarm red, and the Forecast control exposes its dialog to assistive tech.
 
+<a id="v012"></a>
+
 ## [0.1.2] - 2026-06-05
 
 ### Fixed
@@ -466,6 +551,8 @@ and accessibility, plus a few navigation additions.
 - The layer-toggle checkbox no longer shrinks when a layer name is long: it stays square (the name
   ellipsizes instead).
 
+<a id="v011"></a>
+
 ## [0.1.1] - 2026-06-05
 
 ### Changed
@@ -476,6 +563,8 @@ and accessibility, plus a few navigation additions.
   is removed (the screenshots stay in `signalk.screenshots` for the App Store detail page), and the
   duplicate feature inventory is collapsed into one concise list. The title is now "WebGL chart
   plotter for Signal K" across the README, the PWA manifest, and the repository description.
+
+<a id="v010"></a>
 
 ## [0.1.0] - 2026-06-05
 
@@ -709,7 +798,7 @@ and accessibility, plus a few navigation additions.
 
 ### Changed
 
-- A final whole-codebase cleanup (six audit lanes) before the 0.1.0 release, no feature change. The
+- A final whole-codebase cleanup before the 0.1.0 release, no feature change. The
   panel, button, icon, label, and instrument-strip styling moved into shared `app.css` utilities
   (`.icon-btn` with accent and danger modifiers, `.btn-ghost`, `.btn-pill`, a shared bottom-strip
   metrics row, a `.caps-label` for the uppercase section labels, and a 4px-based `--space-*` spacing
@@ -731,8 +820,8 @@ and accessibility, plus a few navigation additions.
   weather provider it reads). A cross-platform webapp CI builds, tests, and packs on Linux, macOS, and
   Windows on Node 22 and 24, and a release publishes to npm with a provenance attestation.
 
-- A five-lens UI review (design tokens, layout, typography, accessibility, and SignalK marine HMI)
-  brought the whole interface to one standard. New tokens defined for all three themes (a large
+- A UI consistency pass covering design tokens, layout, typography,
+  accessibility, and marine HMI conventions brought the whole interface to one standard. New tokens defined for all three themes (a large
   radius, a shared hover and press timing, a caution-tier warning color, and an alarm tint) replace
   the values components used to hand-code. Panel titles are consistent headings, the numeric readouts
   share the mono instrument font, the bottom-strip titles match the panel title scale, and the
@@ -741,9 +830,9 @@ and accessibility, plus a few navigation additions.
   slide-over and overlay panels share one dismiss behavior (Escape closes the topmost, and focus
   returns to the control that opened it).
 
-- Routing cleanup pass (four expert audit lanes: geodesy and the route domain, course guidance and
-  the resource clients, the overlay, editor, and chart wiring, and the routing UI and app wiring), no
-  feature change. The Earth-radius constant and the antimeridian longitude-delta normalize are now
+- Routing cleanup pass covering geodesy and the route domain, course guidance and the resource
+  clients, the overlay, editor, and chart wiring, and the routing UI and app wiring, no feature
+  change. The Earth-radius constant and the antimeridian longitude-delta normalize are now
   shared by the rhumb-line geometry and the collision CPA projection instead of duplicated, a
   `steerSide` helper centralizes the port-versus-starboard cross-track convention, a `clientId` helper
   folds the two copies of the secure-context id fallback, and the route distance no longer allocates a
@@ -756,8 +845,8 @@ and accessibility, plus a few navigation additions.
   the area you are looking at, rather than reopening at its own last position. The zoom is still capped
   to the mini-map's maximum so weather never zooms past its data resolution.
 
-- Second whole-repo cleanup pass (six expert audit lanes: weather, the Signal K data layer, map and
-  charts, notes and tracks, safety and chrome, and app and build infrastructure), no feature change.
+- Second whole-repo cleanup pass covering weather, the Signal K data layer, map and charts, notes
+  and tracks, safety and chrome, and app and build infrastructure, no feature change.
   The wind particle field caches its GPU uniform and attribute locations once at setup instead of
   re-querying them every frame, the layer manager applies the stacking order once per batch when the
   chart and overlays first load rather than restacking after each of a dozen-plus registrations, and
@@ -771,7 +860,7 @@ and accessibility, plus a few navigation additions.
   app uses prompt registration rather than auto-update, so a fresh build never reloads the chart out
   from under you mid-passage; the Update control lets the navigator choose when to apply it.
 
-- Whole-repo cleanup pass (six expert audit lanes, weather-weighted), no behavior change. One shared
+- Whole-repo cleanup pass, weather-weighted, no behavior change. One shared
   `emptyFeatureCollection` in `$shared/map` replaces the per-overlay copies (vessel, track, ais,
   notes, and weather), a shared `headingDegrees` helper folds the vessel and AIS heading fallback,
   the weather mini-map's viewport cache is now bounded, the wind overlay reports both its candidate
@@ -793,12 +882,12 @@ and accessibility, plus a few navigation additions.
   duplicate access-request poll when a tab return fires focus and visibilitychange together, and
   the own-vessel and AIS subscriptions are issued in one call.
 
-- Cleanup pass over the depth-charts work (audit, cross-verify, fix). The two IndexedDB stores now
+- Cleanup pass over the depth-charts work. The two IndexedDB stores now
   share one open-and-transaction helper; the unused PMTiles store list and total-size methods were
   dropped; byte-size formatting moved to a shared `formatBytes`; and a few small dead guards, a
   redundant array copy, and duplicated layer-id lists were tidied.
 
-- Whole-repo cleanup pass (audit, cross-verify, fix). The collision assessment is memoized with
+- Whole-repo cleanup pass. The collision assessment is memoized with
   `$derived`, so the O(targets) CPA loop runs once per real change instead of several times per
   frame (it was recomputed on every animation frame by the overlay and twice per alarm tick). CPA
   and TCPA display formatting is centralized in `shared/lib` (`formatCpaNm`, `formatTcpaMin`). The
@@ -810,7 +899,7 @@ and accessibility, plus a few navigation additions.
   `radiansToDegrees` to `radiansToBearing` (it normalizes to 0..360), exported `SELF_CONTEXT`, and
   added `nauticalMilesToMeters`. No behavior change beyond the perf and robustness fixes.
 
-- Second whole-repo cleanup pass (audit, cross-verify, fix). The vessel, AIS, and collision
+- Second whole-repo cleanup pass. The vessel, AIS, and collision
   entities now expose speed and course in SI (m/s and radians); knots and compass-bearing
   conversion moved to the display edge (the status strip, the vessel and AIS overlays, and a shared
   `formatKnots`), removing a knots-to-m/s and degrees-to-radians round-trip in the collision math.
@@ -908,14 +997,14 @@ and accessibility, plus a few navigation additions.
   `pointer-events: none` reached the button. The override now targets `.bottom-strip`, restoring both
   safety-critical actions.
 
-- Night-red contract violations the UI review found are corrected: the AIS target was orange (it is
+- Night-red contract violations are corrected: the AIS target was orange (it is
   now in the red band, with a test guarding it), and the rain-radar legend showed literal blue and
   green chips at night (now a red intensity ramp). The collision warning severity and an empty track's
   stats are no longer misleading (a distinct warning color in the danger strip and the thresholds, and
   a placeholder instead of a zero), and the weather panel no longer renders with square corners
   because a referenced radius token was undefined.
 
-- Accessibility fixes from the UI review: the slide-over panels close on Escape and restore focus, the
+- Accessibility fixes: the slide-over panels close on Escape and restore focus, the
   layer visibility checkboxes and the threshold inputs have explicit names, the note-detail and
   weather conditions async states announce as status or alert, the add-chart URL field is labeled, the
   chart rename commits on Enter, the layer-reorder handle advertises its arrow-key shortcut, and the

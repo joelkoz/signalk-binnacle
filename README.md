@@ -1,8 +1,10 @@
 # Binnacle
 
+[![npm version](https://img.shields.io/npm/v/signalk-binnacle.svg)](https://www.npmjs.com/package/signalk-binnacle)
+[![npm downloads](https://img.shields.io/npm/dm/signalk-binnacle.svg)](https://www.npmjs.com/package/signalk-binnacle)
 [![CI](https://github.com/NearlCrews/signalk-binnacle/actions/workflows/ci.yml/badge.svg)](https://github.com/NearlCrews/signalk-binnacle/actions/workflows/ci.yml)
 [![SignalK Webapp CI](https://github.com/NearlCrews/signalk-binnacle/actions/workflows/signalk-webapp-ci.yml/badge.svg)](https://github.com/NearlCrews/signalk-binnacle/actions/workflows/signalk-webapp-ci.yml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/NearlCrews/signalk-binnacle/blob/main/LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/nearlcrews)
 
@@ -22,17 +24,17 @@ A safer man-overboard flow and a sharper weather panel:
   confirming no longer carry the mark away from the person, and without a GPS fix the boat-wide
   alarm still raises. The recovery strip now shows the wall-clock Marked time for the log.
 - **Weather opens at now.** The forecast slider seeds to the step nearest now (it used to open up
-  to a day in the past), a tick marks now on the track, and labels carry the time zone.
+  to a day in the past), a tick marks now on the track, labels carry the time zone, and the
+  conditions panel tracks the slider when a weather provider is configured.
 - **More decision data.** Gusts without a provider, barometric tendency ("falling 1.2 hPa/3 h"),
   wave and swell direction, visibility, and water temperature, with each reading tagged Observed
   or Forecast and a footer stating the source and fetch time.
 - **Radar honesty.** The legend names the frame being painted, nowcast frames are labeled,
-  offline radar is flagged as cached, and the radar hides while the slider is away from now.
-- **Conditions track the slider** with a weather provider configured, and warnings sort most
-  severe first with their source and validity window.
+  offline radar is flagged as cached, the radar hides while the slider is away from now, and
+  warnings sort most severe first with their source and validity window.
 - **A new app icon**, plus a themed map attribution bar that no longer glows white at night.
 
-See the [changelog](CHANGELOG.md) for the full list.
+See the [changelog](CHANGELOG.md#v050) for the full list.
 
 ## What it does
 
@@ -91,6 +93,16 @@ Binnacle ships its full feature set as a Signal K webapp:
 
 See the [changelog](CHANGELOG.md) for the full list.
 
+## Screenshots
+
+| The chart with live AIS and the Layers panel | Route planning with a passage plan | An anchorage point-of-interest detail |
+| --- | --- | --- |
+| [![The chart with AIS targets and seamarks, with the Layers panel open](static/screenshots/01-chart.png)](static/screenshots/01-chart.png) | [![The Routes panel with a drawn route, plan speed, and leg times](static/screenshots/02-routes.png)](static/screenshots/02-routes.png) | [![An anchorage note open in the structured detail panel](static/screenshots/03-anchorage.png)](static/screenshots/03-anchorage.png) |
+
+| Profiles | The weather mini-map |
+| --- | --- |
+| [![The Profiles panel with saved setting bundles](static/screenshots/04-profiles.png)](static/screenshots/04-profiles.png) | [![The weather mini-map with precipitation, the time slider, and the conditions panel](static/screenshots/05-weather.png)](static/screenshots/05-weather.png) |
+
 ## Architecture
 
 Binnacle is built on a current web stack and engineered to run on modest helm hardware:
@@ -101,24 +113,36 @@ Binnacle is built on a current web stack and engineered to run on modest helm ha
   vessel and every AIS target render as GPU symbol layers, and wind draws as a WebGL particle field
   advected through the forecast on the graphics card.
 - **Off-main-thread real-time pipeline.** A dedicated Web Worker hosts the Signal K WebSocket client;
-  deltas are coalesced to one flush per animation frame and fed into a path-keyed reactive store, so a
-  busy AIS anchorage updates the readouts without stalling the chart render.
+  deltas are coalesced into frame-rate batches on a worker timer and fed into a path-keyed reactive
+  store, so a busy AIS anchorage updates the readouts without stalling the chart render, and data and
+  alarms keep flowing while the tab is in the background.
 - **Minimal network and render work.** Binnacle subscribes to exactly what it draws, keeps everything
   in SI internally, and converts only at the display edge.
 - **Offline caching.** Self-hosted fonts and assets (no CDN for app code), a service-worker runtime
   cache for the base map and chart tiles, and an IndexedDB weather cache.
-
-## Installation
-
-Binnacle is a Signal K webapp. Install it from the Signal K server's **App Store** (Apps and Plugins,
-then Store): search for Binnacle, install, and open it from the **Webapps** list. The production build
-ships inside the package, so there is nothing to build.
 
 ## Requirements
 
 - Signal K server 2.x.
 - Node.js >= 22 (for building from source).
 - A browser on the helm display, tablet, or phone.
+
+## Installation
+
+Binnacle is a Signal K webapp. The production build ships inside the package, so there is nothing to
+build.
+
+**From the App Store (recommended).** In the Signal K admin UI, open Apps and Plugins, then Store,
+search for Binnacle, and install. Open it from the **Webapps** list.
+
+**With npm.** Install into the server's home directory and restart Signal K:
+
+```bash
+cd ~/.signalk
+npm install signalk-binnacle
+```
+
+**From source.** See [Development](#development) below.
 
 ## Offline operation and SSL (optional)
 
@@ -197,7 +221,36 @@ Apache-2.0. See [LICENSE](LICENSE) for the full text. The software is provided "
 warranty of any kind. It has not been field-tested at scale and is not certified for navigation.
 Treat all on-screen information as advisory, and always carry independent means of position-fixing.
 
+## Acknowledgments
+
+Binnacle is written and maintained by [Nearl Crews](https://github.com/NearlCrews). It stands on
+open data and open source:
+
+- [Signal K Project](https://signalk.org/) for the open marine data standard.
+- [MapLibre GL JS](https://maplibre.org/) for the GPU map renderer, and
+  [OpenFreeMap](https://openfreemap.org/) for the vector base map, built from
+  [OpenStreetMap](https://www.openstreetmap.org/) data under the
+  [Open Database License](https://opendatacommons.org/licenses/odbl/).
+- [Open-Meteo](https://open-meteo.com/) for the forecast and marine wave grids, and
+  [RainViewer](https://www.rainviewer.com/) for precipitation radar.
+- [NOAA](https://www.noaa.gov/) for the ENC chart, BlueTopo bathymetry, the MPA Inventory, and the
+  CO-OPS tide and current predictions; [EMODnet](https://emodnet.ec.europa.eu/) for European
+  bathymetry and protected areas; [GEBCO](https://www.gebco.net/) for global bathymetry;
+  [NASA EOSDIS GIBS](https://www.earthdata.nasa.gov/engage/gibs) for the ocean-conditions imagery;
+  [OpenSeaMap](https://www.openseamap.org/) for the seamark overlay; and the
+  [Flanders Marine Institute (VLIZ)](https://www.vliz.be/) Marine Regions service for the maritime
+  boundaries.
+
+Binnacle pairs well with sibling plugins such as
+[`signalk-crows-nest`](https://github.com/NearlCrews/signalk-crows-nest), which supplies the points
+of interest it renders, and works with any Signal K weather provider, such as
+[`signalk-virtual-weather-sensors`](https://www.npmjs.com/package/signalk-virtual-weather-sensors).
+
 ## Support
 
 Find this project useful? You can support its continued development by
 [buying me a coffee](https://www.buymeacoffee.com/nearlcrews).
+
+- [Report a bug](https://github.com/NearlCrews/signalk-binnacle/issues/new?template=bug_report.yml)
+- [Request a feature](https://github.com/NearlCrews/signalk-binnacle/issues/new?template=feature_request.yml)
+- [Security issues](.github/SECURITY.md)
