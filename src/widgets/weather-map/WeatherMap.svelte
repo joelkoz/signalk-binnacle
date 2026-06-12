@@ -733,12 +733,18 @@ onDestroy(() => {
   padding-block: 0.4rem;
   padding-inline-end: var(--space-2);
 }
+/* One row at every width: wrapping would grow the header and strand pills under the title, so
+   overflow scrolls instead, and the edge fade says there is more to scroll to. */
 .layer-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.3rem;
   flex: 1;
+  min-inline-size: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  mask-image: linear-gradient(to right, black calc(100% - 1.25rem), transparent);
 }
 .bar-sep {
   inline-size: 1px;
@@ -944,14 +950,6 @@ onDestroy(() => {
   color: var(--text-muted);
 }
 @media (max-width: 600px) {
-  /* On a phone the layer toggles scroll on one row rather than wrapping three rows tall and eating
-     the small map area; the edge fade says there is more to scroll to. */
-  .layer-bar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    mask-image: linear-gradient(to right, black calc(100% - 1.25rem), transparent);
-  }
   /* The "Here" conditions become a full-width bottom sheet instead of a 15rem card covering most of
      the small map, lifted clear of the map attribution line. */
   .conditions-slot {
