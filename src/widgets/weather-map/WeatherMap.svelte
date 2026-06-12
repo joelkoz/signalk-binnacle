@@ -1,5 +1,14 @@
 <script lang="ts">
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Pause, Play, X } from '@lucide/svelte';
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Pause,
+  Play,
+  X,
+} from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { fly } from 'svelte/transition';
 import { type Bbox, boundsToBbox, type WeatherStore } from '$entities/weather';
@@ -72,6 +81,8 @@ interface Props {
   position?: { latitude: number; longitude: number };
   // Connectivity, so cached radar is labeled rather than passing as live.
   online?: boolean;
+  // When supplied, a leading back button returns to the menu, matching the slide-over convention.
+  onBack?: () => void;
   onClose: () => void;
 }
 
@@ -87,6 +98,7 @@ const {
   providerName,
   position,
   online = true,
+  onBack,
   onClose,
 }: Props = $props();
 
@@ -436,7 +448,18 @@ onDestroy(() => {
   use:dialog={onClose}
   transition:fly={{ y: 20, duration: prefersReducedMotion() ? 0 : 180, opacity: 0.3 }}
 >
-  <header class="panel-head">
+  <header class="panel-header panel-head">
+    {#if onBack}
+      <button
+        type="button"
+        class="icon-btn icon-btn--accent"
+        aria-label="Back to menu"
+        title="Back to menu"
+        onclick={onBack}
+      >
+        <ArrowLeft size={20} aria-hidden="true" />
+      </button>
+    {/if}
     <h2 class="panel-title">Weather</h2>
     <div class="layer-bar" role="group" aria-label="Weather layers">
       {#each fills as item (item.id)}
@@ -495,7 +518,7 @@ onDestroy(() => {
          reliably (a region inserted together with its content is skipped by some screen readers). -->
     <div class="map-notes">
       <div
-        class="readout"
+        class="map-note map-note--readout"
         class:show={!!readout || readoutPending}
         role="status"
         onpointerenter={holdReadout}
@@ -542,7 +565,7 @@ onDestroy(() => {
           <span class="readout-line">Fetching conditions</span>
         {/if}
       </div>
-      <div class="status-note" class:show={!!statusNote || !!zoomNote} role="status">
+      <div class="map-note map-note--status" class:show={!!statusNote || !!zoomNote} role="status">
         {statusNote || zoomNote}
       </div>
     </div>
@@ -686,12 +709,11 @@ onDestroy(() => {
   z-index: calc(var(--z-panel) + 1);
   overflow: hidden;
 }
+/* On the global .panel-header frame, denser than the slide-over panels so the pill bar fits: a
+   shorter block padding, and the close button keeps its tighter end inset. */
 .panel-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0.4rem var(--space-2) 0.4rem var(--space-3);
-  border-block-end: 1px solid var(--border);
+  padding-block: 0.4rem;
+  padding-inline-end: var(--space-2);
 }
 .layer-bar {
   display: flex;
@@ -732,41 +754,35 @@ onDestroy(() => {
   gap: var(--space-2);
   pointer-events: none;
 }
-.status-note,
-.readout {
-  opacity: 0;
-}
-.status-note.show,
-.readout.show {
-  opacity: 1;
-  pointer-events: auto;
-}
-/* A small status note so an offline open, a rate-limited fetch, a stale fallback, or the zoom cap
-   is explained rather than reading as a blank or silently outdated map. */
-.status-note {
-  align-self: center;
+/* The floating-pill frame shared by the point readout and the status note, hidden until it has
+   something to say. The status modifier is the small centered note that explains an offline open,
+   a rate-limited fetch, a stale fallback, or the zoom cap rather than reading as a blank or
+   silently outdated map; the readout modifier carries the tapped-point conditions. */
+.map-note {
   max-inline-size: calc(100% - var(--space-4));
   padding: 0.3rem 0.6rem;
   background: var(--surface-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-overlay);
-  color: var(--text-muted);
   font-size: var(--text-sm);
+  opacity: 0;
+}
+.map-note.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.map-note--status {
+  align-self: center;
+  color: var(--text-muted);
   text-align: center;
 }
-.readout {
+.map-note--readout {
   position: relative;
-  max-inline-size: calc(100% - var(--space-4));
-  padding: 0.3rem var(--space-5) 0.3rem 0.6rem;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-overlay);
+  padding-inline-end: var(--space-5);
   color: var(--text);
-  font-size: var(--text-sm);
 }
-.readout b {
+.map-note--readout b {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }

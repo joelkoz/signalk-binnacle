@@ -1,0 +1,154 @@
+/* Design tokens: geometry, type, z-order, and the three theme palettes (day is the
+   :root default; dusk and night-red override). Imported first so every later module reads them. */
+
+:root {
+  /* Day is a light theme: native controls (checkboxes, scrollbars) must render light, or an
+     unchecked checkbox shows as a dark-mode black square on the light panel. */
+  color-scheme: light;
+
+  --font-ui: "Inter Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+
+  /* Geometry and type scales (theme-independent), so radii, type sizes, z-order, the touch
+     target, caps tracking, and the disabled dim are one vocabulary across every component. */
+  --radius-sm: 0.3rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-pill: 999px;
+  /* A 4px-based spacing scale for padding, gaps, margins, and insets, so the common spacing values
+     share one rhythm. Off-scale fine-tuning stays a literal: the sanctioned vocabulary is the
+     hairline tier (0.05 to 0.2 rem) plus 0.3, 0.35, 0.4, 0.45, 0.55, and 0.6 rem. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --text-xs: 0.72rem;
+  --text-sm: 0.8rem;
+  --text-base: 0.85rem;
+  --text-md: 0.9rem;
+  --text-lg: 1rem;
+  /* A title tier above the body sizes for panel headings, and a readout tier for the largest hero
+     numbers, the nav and danger strip metrics, so a glance lands on the number, not its caps label.
+     The secondary readouts (the strip SOG and COG, the conditions values) step up only to --text-lg.
+     The instrument gesture is a big mono number over a small quiet label. */
+  --text-xl: 1.15rem;
+  --text-readout: 1.25rem;
+  --z-overlay: 1;
+  --z-panel: 2;
+  --z-menu: 5;
+  /* The MOB confirm is the one true modal: above every panel, strip, and menu. */
+  --z-modal: 6;
+  /* The Forecast panel's height, defined once because two rules compose from it: the panel's own
+     block-size, and the lifted bottom-stack that clears the panel while it is open. */
+  --weather-panel-height: min(74vh, 36rem);
+  /* The touch target for action controls (buttons, the strip pills, icon buttons). A denser size
+     for list rows (menu items, layer toggles), still a comfortable tap target, keeps lists compact
+     without shrinking the primary actions. */
+  --control-size: 2.75rem;
+  --row-size: 2.5rem;
+  --tracking-caps: 0.06em;
+  --disabled-opacity: 0.45;
+  /* One hover and press timing for the whole UI, so interactive feedback feels uniform. */
+  --transition-fast: 0.12s ease;
+
+  --surface: #cfe0ec;
+  --surface-raised: #ffffff;
+  --surface-overlay: rgba(255, 255, 255, 0.92);
+  --border: #aac3d6;
+  --text: #0b2233;
+  --text-muted: #3f586b;
+  /* A deep navy-teal, more confident and instrument-like than a default mid-blue, kept dark enough
+     to carry white --accent-contrast on a filled button and to pass text contrast on the surfaces. */
+  --accent: #0d5a86;
+  --accent-contrast: #ffffff;
+  --select: #ffb300;
+  /* Healthy-state indicator (the connection dot): green by day and dusk; night-red forbids green,
+     so it collapses to a calm dim red told from --alarm and --warning by brightness, the same
+     contract as the navPort lateral mark. */
+  --ok: #2e8a52;
+  --alarm: #c8401f;
+  /* Caution tier, one step below --alarm: a dark amber by day (dark enough to read as text on the
+     light surface and clearly gold rather than red), a lighter amber by dusk, and a dimmer red at
+     night that stays in the red band and is told from the brighter --alarm by brightness, not hue. */
+  --warning: #8a5510;
+  /* Floating-card lift; dropped on night-red, where a black shadow on true black is invisible
+     and the surface border is the only separation. */
+  --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.25);
+  /* A layered elevation for the topmost surfaces (the menu popout, the weather panel, the slide-over
+     panels): a tight contact shadow plus a soft ambient one, so the z-stack reads as real depth. */
+  --shadow-lg: 0 1px 2px rgb(0 0 0 / 0.16), 0 10px 28px rgb(0 0 0 / 0.22);
+  /* A faint top-edge highlight so a large surface catches light like an instrument bezel. White by
+     day and dusk, dropped at night so no non-red pixel appears. Composed after a shadow token. */
+  --edge-light: inset 0 1px 0 rgb(255 255 255 / 0.5);
+  /* Accent-tinted card fills for an active/highlighted state. Defined per theme (not a global
+     color-mix) so night-red stays red on near-black and never drifts toward blue or green. */
+  --accent-tint: color-mix(in srgb, var(--accent) 10%, var(--surface-raised));
+  --accent-tint-strong: color-mix(in srgb, var(--accent) 18%, var(--surface-raised));
+  --alarm-tint: color-mix(in srgb, var(--alarm) 12%, var(--surface-raised));
+  --alarm-tint-strong: color-mix(in srgb, var(--alarm) 22%, var(--surface-raised));
+  /* The modal scrim: light by day so the chart stays readable behind an emergency dialog, darker
+     in the dark themes where removing light helps rather than hurts. */
+  --scrim: rgb(11 34 51 / 0.3);
+}
+
+:root[data-theme="dusk"] {
+  color-scheme: dark;
+
+  --surface: #0f1a24;
+  --surface-raised: #10212e;
+  --surface-overlay: rgba(13, 24, 33, 0.92);
+  --border: #233646;
+  --text: #bcd2e4;
+  --text-muted: #8aa6bd;
+  --accent: #2c6da3;
+  --accent-contrast: #f4fbff;
+  --select: #ffc24d;
+  --ok: #3fae6a;
+  --alarm: #e0703a;
+  --warning: #d9a441;
+  --shadow-overlay: 0 2px 12px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 30px rgb(0 0 0 / 0.5);
+  --edge-light: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --accent-tint: color-mix(in srgb, var(--accent) 16%, var(--surface-raised));
+  --accent-tint-strong: color-mix(in srgb, var(--accent) 26%, var(--surface-raised));
+  --alarm-tint: color-mix(in srgb, var(--alarm) 18%, var(--surface-raised));
+  --alarm-tint-strong: color-mix(in srgb, var(--alarm) 28%, var(--surface-raised));
+  --scrim: rgb(0 0 0 / 0.45);
+}
+
+:root[data-theme="night-red"] {
+  color-scheme: dark;
+
+  --surface: #000000;
+  --surface-raised: #0a0000;
+  --surface-overlay: rgba(8, 0, 0, 0.92);
+  /* A deeper red border than near-black, so panel and card separation stays visible at night where
+     --shadow-overlay is dropped, while keeping the pixel dark. */
+  --border: #5a1813;
+  --text: #c8362a;
+  --text-muted: #b8473a;
+  --accent: #e0473a;
+  --accent-contrast: #1a0000;
+  --select: #ffb39a;
+  --ok: #7a2620;
+  --alarm: #ff6a5a;
+  /* A medium red, dimmer than the brighter --alarm so danger and caution stay distinguishable by
+     brightness alone, with no blue or green. */
+  --warning: #c0563c;
+  --shadow-overlay: none;
+  /* No black shadow and no white edge highlight at night: both are invisible or off-contract on true
+     black. The deeper red --border is the only surface separation, by design. */
+  --shadow-lg: none;
+  --edge-light: none;
+  /* Red mixed into near-black: a faint warm fill that reads as "active" without lifting the
+     brightest pixel and without introducing any non-red hue. */
+  --accent-tint: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+  --accent-tint-strong: color-mix(in srgb, var(--accent) 24%, var(--surface-raised));
+  --alarm-tint: color-mix(in srgb, var(--alarm) 16%, var(--surface-raised));
+  /* Still a dim plane on near-black: the bold --alarm label stays the brightest pixel. */
+  --alarm-tint-strong: color-mix(in srgb, var(--alarm) 26%, var(--surface-raised));
+  /* At night the scrim only removes light from the chart behind the dialog. */
+  --scrim: rgb(0 0 0 / 0.6);
+}

@@ -85,7 +85,7 @@ const {
         type="button"
         class="panel-minimize"
         aria-label={minimize.collapsed ? 'Expand panel' : 'Minimize panel'}
-        aria-pressed={minimize.collapsed}
+        aria-expanded={!minimize.collapsed}
         title={minimize.collapsed ? 'Expand panel' : 'Minimize panel'}
         onclick={minimize.onToggle}
       >

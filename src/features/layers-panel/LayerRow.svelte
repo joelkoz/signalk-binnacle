@@ -73,10 +73,12 @@ const handleLabel = $derived(groupTitle ?? item.title);
   {#if item.supportsOpacity && item.visible}
     <div class="opacity-line">
       <span class="lbl">Opacity</span>
+      <!-- Floored at 0.15: a layer dimmed to zero while its toggle stays checked is a silent
+           failure for safety layers like AIS and the anchor ring, so it stays faintly visible. -->
       <input
         class="opacity range"
         type="range"
-        min="0"
+        min="0.15"
         max="1"
         step="0.05"
         value={item.opacity}

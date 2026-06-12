@@ -39,9 +39,7 @@ function tapCancel(): void {
           Steer to MOB
         </button>
         {#if !mob.acknowledged}
-          <button type="button" class="ack ack--warning" onclick={() => mob.acknowledge()}>
-            Acknowledge
-          </button>
+          <button type="button" class="ack" onclick={() => mob.acknowledge()}>Acknowledge</button>
         {/if}
         <button type="button" class="ack ack--warning" onclick={tapCancel}>
           {cancelArm.armed ? 'Confirm cancel?' : 'Cancel'}

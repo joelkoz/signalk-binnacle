@@ -122,7 +122,7 @@ const eta = $derived.by(() => {
           </button>
         </div>
       {/if}
-      <button type="button" class="ack" onclick={onStop}>Stop</button>
+      <button type="button" class="ack" aria-label="Stop navigation" onclick={onStop}>Stop</button>
     </div>
     <div class="row">
       <span class="metric">DTW <b>{dtw}</b> nm</span>

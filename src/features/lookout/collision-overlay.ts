@@ -65,7 +65,8 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
     id: COLLISION_OVERLAY_ID,
     title: 'Collision risk',
     band: 'safety',
-    supportsOpacity: true,
+    // The overlay is pinned beneath the vessel and an active alarm must never be user-dimmable.
+    supportsOpacity: false,
     layerIds: [LAYER_ID],
     add(ctx) {
       const contacts = collision.assessment.contacts;
@@ -116,9 +117,6 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
     },
     setVisible(ctx, visible) {
       ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');
-    },
-    setOpacity(ctx, opacity) {
-      ctx.map.setPaintProperty(LAYER_ID, 'circle-stroke-opacity', opacity);
     },
     remove(ctx) {
       if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);

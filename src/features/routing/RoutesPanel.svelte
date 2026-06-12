@@ -27,6 +27,7 @@ import {
   promptSaveName,
   SavedList,
   SlideOver,
+  UnitField,
   VisibilityToggle,
 } from '$shared/ui';
 
@@ -155,7 +156,12 @@ $effect(() => {
   {/if}
 
   <div class="panel-controls">
-    <button type="button" class="btn btn-primary" onclick={onNew} disabled={working !== undefined}>
+    <button
+      type="button"
+      class="btn btn-primary btn--grow"
+      onclick={onNew}
+      disabled={working !== undefined}
+    >
       <Plus size={16} aria-hidden="true" />
       New route
     </button>
@@ -178,19 +184,15 @@ $effect(() => {
         <dt>Time</dt>
         <dd><span class="num">{totalTime}</span></dd>
       </dl>
-      <label class="plan-speed">
-        <span>Plan speed</span>
-        <input
-          class="input"
-          type="number"
-          min="0"
-          step="0.5"
-          inputmode="decimal"
-          value={planningSpeed.value}
-          oninput={(e) => planningSpeed.set(Math.max(0, e.currentTarget.valueAsNumber || 0))}
-        >
-        <span class="unit">kn</span>
-      </label>
+      <UnitField
+        label="Plan speed"
+        unit="kn"
+        value={planningSpeed.value}
+        min={0}
+        step={0.5}
+        inputWidth="4rem"
+        onCommit={(speed) => planningSpeed.set(Math.max(0, speed))}
+      />
       {#if workingLegs.length > 0}
         <ol class="legs" aria-label="Legs">
           {#each workingLegs as leg (leg.fromIndex)}
@@ -206,13 +208,13 @@ $effect(() => {
           {/each}
         </ol>
       {/if}
-      <p class="hint">
+      <p class="muted-note">
         Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
       </p>
       <div class="panel-controls">
         <button
           type="button"
-          class="btn btn-primary"
+          class="btn btn-primary btn--grow"
           onclick={promptSave}
           disabled={working.waypoints.length < 2}
         >
@@ -337,10 +339,6 @@ $effect(() => {
 </SlideOver>
 
 <style>
-/* The row layout comes from the shared .panel-controls; New route and Save take the full width. */
-.panel-controls .btn-primary {
-  flex: 1;
-}
 .editing {
   display: flex;
   flex-direction: column;
@@ -351,29 +349,6 @@ $effect(() => {
   border-radius: var(--radius-sm);
   background: var(--accent-tint);
   box-shadow: var(--shadow-overlay);
-}
-.hint {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-/* The planning-speed control above the leg table: a label, a compact number input, and a unit. */
-.plan-speed {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-/* The box comes from the shared global .input; only the compact width and the mono readout are local. */
-.plan-speed input {
-  inline-size: 4rem;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-.plan-speed .unit {
-  color: var(--text-muted);
-  font-size: var(--text-xs);
 }
 /* The leg-by-leg readout for the route under edit: a scrolling list of leg number, distance, bearing,
    and the cumulative passage time to reach that waypoint, mono and tabular so the columns line up. */

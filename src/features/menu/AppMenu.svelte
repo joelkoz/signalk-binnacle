@@ -1,8 +1,8 @@
 <script lang="ts">
-import { Menu } from '@lucide/svelte';
-import { fly } from 'svelte/transition';
+import { Menu, X } from '@lucide/svelte';
+import { scale } from 'svelte/transition';
 import { prefersReducedMotion } from '$shared/lib';
-import { registerDismiss } from '$shared/ui';
+import { focusTrap, registerDismiss } from '$shared/ui';
 import type { MenuItem } from './menu-item';
 
 interface Props {
@@ -16,15 +16,11 @@ interface Props {
 
 const { items = [], label = 'Menu', open, onOpenChange }: Props = $props();
 
-let root = $state<HTMLElement>();
 let trigger = $state<HTMLButtonElement>();
-let popout = $state<HTMLElement>();
-// The id of the item that holds the roving tabindex 0 (the rest are -1), so Tab moves into and out
-// of the menu as one stop while Arrow keys move between items, per the WAI-ARIA menu pattern.
-let activeId = $state('');
+let card = $state<HTMLElement>();
 
-// The items split into contiguous groups by their group label, so each renders inside a role=group
-// with an accessible name and its caps-label header.
+// The items split into contiguous groups by their group label, so each renders as a tile section
+// with its caps-label header. The launcher stays generic: it renders whatever it is given.
 const groups = $derived.by(() => {
   const out: { label: string; items: MenuItem[] }[] = [];
   for (const item of items) {
@@ -36,254 +32,249 @@ const groups = $derived.by(() => {
   return out;
 });
 
-function itemButtons(): HTMLButtonElement[] {
-  return [...(popout?.querySelectorAll<HTMLButtonElement>('.item:not([disabled])') ?? [])];
-}
-function focusItem(button: HTMLButtonElement | null | undefined): void {
-  if (!button) return;
-  activeId = button.dataset.id ?? '';
-  button.focus();
-}
-
-// On open, give the roving focus to the first enabled item. The lookup is a DOM query, not a reactive
-// read, so a disabled-state change while the menu is open (for example mapCommands resolving) does
-// not re-run this and re-steal focus.
-$effect(() => {
-  if (open) focusItem(popout?.querySelector<HTMLButtonElement>('.item:not([disabled])'));
-});
-
 function closeMenu(restoreFocus = false): void {
   onOpenChange(false);
-  // Return focus to the trigger when the menu closes by keyboard or selection, so a keyboard user
-  // lands back on the control that opened it rather than at the top of the document.
+  // Return focus to the trigger when the launcher closes by keyboard or selection, so a keyboard
+  // user lands back on the control that opened it rather than at the top of the document.
   if (restoreFocus) trigger?.focus();
 }
 
 function select(item: MenuItem): void {
   if (item.disabled) return;
   item.onSelect();
-  // A toggle (a menuitemcheckbox, the mutes) flips in place and the menu stays open, matching the
-  // role contract; a plain action dismisses the menu and restores focus to the trigger.
-  if (item.pressed === undefined) closeMenu(true);
+  closeMenu(true);
 }
 
-// Close when a pointer goes down outside the menu (focus follows the pointer).
-function onWindowPointerDown(event: PointerEvent): void {
-  if (open && root && !root.contains(event.target as Node)) closeMenu();
-}
+// On open, move focus to the first enabled tile. A DOM query, not a reactive read, so a
+// disabled-state change while open does not re-run this and re-steal focus.
+$effect(() => {
+  if (open) card?.querySelector<HTMLButtonElement>('.tile:not([disabled])')?.focus();
+});
 
 // While open, sit in the shared dismiss stack from dialog.ts rather than owning a window Escape
-// listener: with the menu open over a slide-over, the stack guarantees one Escape closes only the
-// topmost (the menu), marks the event consumed via preventDefault, and leaves the panel for the
-// next Escape.
+// listener: with the launcher open over a slide-over, the stack guarantees one Escape closes only
+// the topmost (the launcher), marks the event consumed, and leaves the panel for the next Escape.
 $effect(() => {
   if (!open) return;
   return registerDismiss(() => closeMenu(true));
 });
 
-// Arrow keys move the roving focus between enabled items, wrapping; Home and End jump to the ends.
-// Tab dismisses the menu (the WAI-ARIA menu pattern) without preventDefault, so focus moves on.
-function onPopoutKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Tab') {
-    closeMenu();
-    return;
-  }
-  const buttons = itemButtons();
-  if (buttons.length === 0) return;
+// Arrow keys step through the tiles in reading order, wrapping; Home and End jump to the ends.
+// Tab stays inside via the focus trap, since the launcher is modal over its scrim.
+function onCardKeydown(event: KeyboardEvent): void {
+  const tiles = [...(card?.querySelectorAll<HTMLButtonElement>('.tile:not([disabled])') ?? [])];
+  if (tiles.length === 0) return;
   const at = Math.max(
     0,
-    buttons.findIndex((b) => b.dataset.id === activeId),
+    tiles.findIndex((tile) => tile === document.activeElement),
   );
-  if (event.key === 'ArrowDown') {
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
     event.preventDefault();
-    focusItem(buttons[(at + 1) % buttons.length]);
-  } else if (event.key === 'ArrowUp') {
+    tiles[(at + 1) % tiles.length]?.focus();
+  } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
     event.preventDefault();
-    focusItem(buttons[(at - 1 + buttons.length) % buttons.length]);
+    tiles[(at - 1 + tiles.length) % tiles.length]?.focus();
   } else if (event.key === 'Home') {
     event.preventDefault();
-    focusItem(buttons[0]);
+    tiles[0]?.focus();
   } else if (event.key === 'End') {
     event.preventDefault();
-    focusItem(buttons.at(-1));
+    tiles.at(-1)?.focus();
   }
 }
 </script>
 
-<svelte:window onpointerdown={onWindowPointerDown} />
-
-<div class="app-menu" bind:this={root}>
-  <button
-    type="button"
-    class="icon-pill"
-    class:is-on={open}
-    bind:this={trigger}
-    aria-haspopup="true"
-    aria-expanded={open}
-    aria-controls={open ? 'app-menu-popout' : undefined}
+<button
+  type="button"
+  class="icon-pill"
+  class:is-on={open}
+  bind:this={trigger}
+  aria-haspopup="dialog"
+  aria-expanded={open}
+  aria-controls={open ? 'app-menu-launcher' : undefined}
+  aria-label={label}
+  title={label}
+  onclick={() => onOpenChange(!open)}
+>
+  <Menu size={20} aria-hidden="true" />
+</button>
+{#if open}
+  <!-- The scrim is pointer-only chrome (the click mirrors Escape); the dialog itself is the
+       keyboard surface, so the scrim stays out of the accessibility tree. -->
+  <div class="scrim" aria-hidden="true" onpointerdown={() => closeMenu()}></div>
+  <div
+    class="launcher"
+    role="dialog"
+    aria-modal="true"
     aria-label={label}
-    title={label}
-    onclick={() => onOpenChange(!open)}
+    id="app-menu-launcher"
+    tabindex="-1"
+    bind:this={card}
+    use:focusTrap
+    onkeydown={onCardKeydown}
+    transition:scale={{ start: 0.96, duration: prefersReducedMotion() ? 0 : 140, opacity: 0.4 }}
   >
-    <Menu size={20} aria-hidden="true" />
-  </button>
-  {#if open}
-    <div
-      class="popout"
-      role="menu"
-      tabindex="-1"
-      aria-label={label}
-      id="app-menu-popout"
-      bind:this={popout}
-      onkeydown={onPopoutKeydown}
-      transition:fly={{ y: -8, duration: prefersReducedMotion() ? 0 : 140, opacity: 0.2 }}
-    >
-      {#if items.length === 0}
-        <span class="empty">No options</span>
-      {:else}
-        {#each groups as group, gi (gi)}
-          <!-- Every menu item carries a group label, so role="group" always has an accessible name
-               here; the static role is required by the linter's valid-role rule. -->
-          <div class="group" role="group" aria-label={group.label || undefined}>
-            {#if group.label}
-              <div class="group-label caps-label" aria-hidden="true">{group.label}</div>
-            {/if}
+    <header class="launcher-head">
+      <h2 class="panel-title">{label}</h2>
+      <button
+        type="button"
+        class="panel-close"
+        aria-label="Close menu"
+        title="Close menu"
+        onclick={() => closeMenu(true)}
+      >
+        <X size={18} aria-hidden="true" />
+      </button>
+    </header>
+    {#if items.length === 0}
+      <span class="muted-note">No options</span>
+    {:else}
+      {#each groups as group, gi (gi)}
+        <!-- Every menu item carries a group label, so role="group" always has an accessible name
+             here; the static role is required by the linter's valid-role rule. -->
+        <section class="group" role="group" aria-label={group.label || undefined}>
+          {#if group.label}
+            <div class="group-label caps-label" aria-hidden="true">{group.label}</div>
+          {/if}
+          <div class="tiles">
             {#each group.items as item (item.id)}
-              <!-- A plain action is a menuitem; a toggle (the mutes) is a menuitemcheckbox carrying
-                   aria-checked. Split into two static roles so the role is never a dynamic value. -->
-              {#if item.pressed === undefined}
-                <button
-                  type="button"
-                  class="item"
-                  role="menuitem"
-                  data-id={item.id}
-                  tabindex={item.id === activeId ? 0 : -1}
-                  disabled={item.disabled}
-                  onclick={() => select(item)}
-                >
-                  {#if item.icon}
-                    {@const Icon = item.icon}
-                    <Icon size={18} aria-hidden="true" />
-                  {/if}
-                  <span>{item.label}</span>
-                </button>
-              {:else}
-                <button
-                  type="button"
-                  class="item"
-                  role="menuitemcheckbox"
-                  aria-checked={item.pressed}
-                  data-id={item.id}
-                  tabindex={item.id === activeId ? 0 : -1}
-                  disabled={item.disabled}
-                  onclick={() => select(item)}
-                >
-                  {#if item.icon}
-                    {@const Icon = item.icon}
-                    <Icon size={18} aria-hidden="true" />
-                  {/if}
-                  <span>{item.label}</span>
-                </button>
-              {/if}
+              <button
+                type="button"
+                class="tile"
+                class:is-on={item.pressed === true}
+                aria-pressed={item.pressed === undefined ? undefined : item.pressed}
+                disabled={item.disabled}
+                onclick={() => select(item)}
+              >
+                {#if item.icon}
+                  {@const Icon = item.icon}
+                  <Icon size={22} aria-hidden="true" />
+                {/if}
+                <span class="tile-label">{item.label}</span>
+              </button>
             {/each}
           </div>
-        {/each}
-      {/if}
-    </div>
-  {/if}
-</div>
+        </section>
+      {/each}
+    {/if}
+  </div>
+{/if}
 
 <style>
-.app-menu {
-  position: relative;
-  display: inline-flex;
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-menu);
+  background: var(--scrim);
 }
-.popout {
-  position: absolute;
-  inset-block-start: calc(100% + var(--space-2));
-  inset-inline-start: 0;
+/* Centered on desktop; on a phone the card anchors to the lower half of the screen so the whole
+   grid sits in the thumb zone for one-handed use at heel. */
+.launcher {
+  position: fixed;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
   z-index: var(--z-menu);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  inline-size: 20rem;
-  max-inline-size: calc(100vw - var(--space-4));
-  max-block-size: calc(100dvh - 4rem);
+  gap: var(--space-2);
+  inline-size: min(30rem, calc(100vw - var(--space-4)));
+  max-block-size: calc(100dvh - var(--space-6));
   overflow-y: auto;
-  padding: var(--space-2);
+  padding: var(--space-3);
   background: var(--surface-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg), var(--edge-light);
-  transform-origin: top left;
+}
+@media (max-width: 600px) {
+  .launcher {
+    inset-block-start: auto;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    transform: none;
+    inline-size: 100vw;
+    max-inline-size: none;
+    max-block-size: 80dvh;
+    border-inline: 0;
+    border-block-end: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+}
+.launcher-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 .group {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
-/* A hairline between groups so the Navigation and Alarms sections read as distinct clusters. */
 .group + .group {
   margin-block-start: var(--space-1);
   padding-block-start: var(--space-2);
   border-block-start: 1px solid var(--border);
 }
 .group-label {
-  padding-inline: var(--space-2);
+  padding-inline: var(--space-1);
 }
-.item {
+/* Tiles flow in rows, so group membership reads as geometry, not only as a header. minmax keeps
+   every tile comfortably past the 44px target in both axes. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.25rem, 1fr));
+  gap: var(--space-1);
+}
+.tile {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  inline-size: 100%;
-  min-block-size: var(--row-size);
-  padding-block: var(--space-1);
-  padding-inline: var(--space-3);
+  justify-content: center;
+  gap: var(--space-1);
+  min-block-size: 4.5rem;
+  padding: var(--space-2) var(--space-1);
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: var(--text-base);
-  text-align: start;
+  font-size: var(--text-sm);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
     color var(--transition-fast);
 }
-/* The item icons sit quiet (muted) and light up accent on hover, focus, or a checked toggle, so the
-   row the pointer or roving focus is on reads at a glance without a heavy fill. */
-.item :global(svg) {
-  flex-shrink: 0;
+.tile :global(svg) {
   color: var(--text-muted);
   transition: color var(--transition-fast);
 }
-.item:hover:not(:disabled) {
+.tile:hover:not(:disabled) {
   background: var(--accent-tint);
 }
-.item:hover:not(:disabled) :global(svg),
-.item:focus-visible :global(svg) {
+.tile:hover:not(:disabled) :global(svg),
+.tile:focus-visible :global(svg) {
   color: var(--accent);
 }
-.item:active:not(:disabled) {
+.tile:active:not(:disabled) {
   filter: brightness(0.94);
 }
-.item[aria-checked="true"] {
+.tile.is-on {
   color: var(--accent);
   background: var(--accent-tint);
 }
-.item[aria-checked="true"] :global(svg) {
+.tile.is-on :global(svg) {
   color: var(--accent);
 }
-.item:disabled {
+.tile:disabled {
   color: var(--text-muted);
   opacity: var(--disabled-opacity);
   cursor: default;
 }
-.empty {
-  display: block;
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-base);
-  color: var(--text-muted);
+.tile-label {
+  text-align: center;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 </style>

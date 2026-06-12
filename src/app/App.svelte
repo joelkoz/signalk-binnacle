@@ -1,8 +1,6 @@
 <script lang="ts">
 import {
   Anchor,
-  Bell,
-  BellOff,
   CloudSun,
   Layers,
   LocateFixed,
@@ -13,7 +11,6 @@ import {
   SlidersHorizontal,
   Spline,
   UserCog,
-  Volume2,
   VolumeX,
   Waves,
 } from '@lucide/svelte';
@@ -45,11 +42,11 @@ import { AuthBanner } from '$features/auth-banner';
 import { deleteChart, putChart } from '$features/charts';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import {
+  AlarmsPanel,
   CollisionMute,
   CollisionNotifier,
   DangerStrip,
   LookoutAlarm,
-  ThresholdsPanel,
 } from '$features/lookout';
 import { MeasureStrip } from '$features/measure';
 import { AppMenu, type MenuItem } from '$features/menu';
@@ -273,7 +270,7 @@ type LeftPanel =
   | 'tides'
   | 'ais'
   | 'anchor'
-  | 'thresholds'
+  | 'alarms'
   | 'profiles';
 let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
@@ -366,9 +363,10 @@ function applyProfileSettings(s: ProfileSettings): void {
 
 // Mark the active profile edited when any portable setting changes outside of an apply, so the panel
 // and the top-bar switcher can offer to save the change. The primed flag skips the effect's mount
-// run, which would otherwise flag a restored active profile as edited at every launch. markDirty
-// owns the "only when a profile is active" guard; its reads inside the effect are idempotent, so
-// the extra re-runs they cause are harmless.
+// run, which would otherwise flag a restored active profile as edited at every launch. markDirty is
+// untracked: it reads activeId and isDirty, and tracking them would re-run this effect on every
+// profile save or switch and instantly re-flag the just-saved profile as dirty. Only the bound
+// settings may trigger it.
 let dirtyTrackerPrimed = false;
 $effect(() => {
   profileBindings.track();
@@ -376,7 +374,7 @@ $effect(() => {
     dirtyTrackerPrimed = true;
     return;
   }
-  if (!applying) profileStore.markDirty();
+  if (!applying) untrack(() => profileStore.markDirty());
 });
 
 // Starter profiles on first run only (no stored document at all). A one-shot init check, not an
@@ -527,37 +525,72 @@ let mapCommands = $state<MapCommands | undefined>();
 // (dragging the chart) releases it; it does not persist across reloads.
 let following = $state(false);
 
-// The app menu's options, grouped from the data: a Navigation group of panel-openers, then an Alarms
-// group of the two mute toggles and the threshold editor. Center and Follow live on the bottom status
-// strip, not here. Adding an option is a single entry; the menu renders and groups whatever it is given.
+// Show a chart layer at full registration (the persisted snapshot plus the live map), so a feature
+// surface can turn its own layer on: starting Measure must reveal a hidden measure layer (or it
+// records invisible points), and the Tides panel cross-links its stations layer.
+function setLayerVisible(id: string, visible: boolean): void {
+  const current = layerSettings.value[id];
+  if (current?.visible === visible) return;
+  const entry = current ? { ...current, visible } : { visible, opacity: 1 };
+  const next = { ...layerSettings.value, [id]: entry };
+  layerSettings.set(next);
+  mapCommands?.applyLayers(next, layerOrder.value);
+}
+
+// The app menu's options, grouped from the data into four intent groups: Navigate (plan and chart),
+// Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings. Center, Follow,
+// and the Forecast pill live on the bottom status strip too; the menu row makes weather findable.
+// Adding an option is a single entry; the launcher renders and groups whatever it is given.
 const menuItems = $derived<MenuItem[]>([
   {
-    id: 'profiles',
-    label: 'Profiles',
-    icon: UserCog,
-    group: 'Navigation',
-    onSelect: () => openPanel('profiles'),
+    id: 'routes',
+    label: 'Routes',
+    icon: Route,
+    group: 'Navigate',
+    disabled: !mapCommands,
+    onSelect: () => openPanel('routes'),
   },
   {
     id: 'tracks',
     label: 'Tracks',
     icon: Spline,
-    group: 'Navigation',
+    group: 'Navigate',
     onSelect: () => openPanel('tracks'),
   },
   {
-    id: 'routes',
-    label: 'Routes',
-    icon: Route,
-    group: 'Navigation',
-    disabled: !mapCommands,
-    onSelect: () => openPanel('routes'),
+    id: 'measure',
+    label: 'Measure',
+    icon: Ruler,
+    group: 'Navigate',
+    pressed: measure.active,
+    onSelect: () => {
+      // Re-show a hidden measure layer first: an armed tool drawing into an invisible layer
+      // would read as broken.
+      setLayerVisible('measure', true);
+      measure.start();
+    },
+  },
+  {
+    id: 'layers',
+    label: 'Layers and charts',
+    icon: Layers,
+    group: 'Navigate',
+    disabled: !layersView,
+    onSelect: () => openPanel('layers'),
+  },
+  {
+    id: 'forecast',
+    label: 'Forecast',
+    icon: CloudSun,
+    group: 'Conditions',
+    pressed: weatherPanelOpen,
+    onSelect: () => (weatherPanelOpen = !weatherPanelOpen),
   },
   {
     id: 'tides',
     label: 'Tides',
     icon: Waves,
-    group: 'Navigation',
+    group: 'Conditions',
     onSelect: () => {
       openPanel('tides');
       loadTides();
@@ -567,53 +600,29 @@ const menuItems = $derived<MenuItem[]>([
     id: 'ais',
     label: 'AIS targets',
     icon: Radar,
-    group: 'Navigation',
+    group: 'Safety',
     onSelect: () => openPanel('ais'),
-  },
-  {
-    id: 'measure',
-    label: 'Measure distance',
-    icon: Ruler,
-    group: 'Navigation',
-    onSelect: () => measure.start(),
-  },
-  {
-    id: 'layers',
-    label: 'Layers and charts',
-    icon: Layers,
-    group: 'Navigation',
-    disabled: !layersView,
-    onSelect: () => openPanel('layers'),
   },
   {
     id: 'anchor',
     label: 'Anchor watch',
     icon: Anchor,
-    group: 'Alarms',
+    group: 'Safety',
     onSelect: () => openPanel('anchor'),
   },
   {
-    id: 'mute-alarm',
-    label: 'Mute alarm',
-    icon: collisionMute.active ? VolumeX : Volume2,
-    group: 'Alarms',
-    pressed: collisionMute.active,
-    onSelect: () => collisionMute.toggle(),
-  },
-  {
-    id: 'mute-arrival',
-    label: 'Mute arrival',
-    icon: arrivalMuted.value ? BellOff : Bell,
-    group: 'Alarms',
-    pressed: arrivalMuted.value,
-    onSelect: () => arrivalMuted.set(!arrivalMuted.value),
-  },
-  {
-    id: 'collision-thresholds',
-    label: 'Collision thresholds',
+    id: 'alarms',
+    label: 'Alarms',
     icon: SlidersHorizontal,
-    group: 'Alarms',
-    onSelect: () => openPanel('thresholds'),
+    group: 'Safety',
+    onSelect: () => openPanel('alarms'),
+  },
+  {
+    id: 'profiles',
+    label: 'Profiles',
+    icon: UserCog,
+    group: 'Settings',
+    onSelect: () => openPanel('profiles'),
   },
 ]);
 
@@ -1546,7 +1555,13 @@ onDestroy(() => {
     {/if}
     {#if activePanel === 'tides'}
       <div class="panel-slot">
-        <TidesPanel store={tidesStore} onClose={closePanel} onBack={backToMenu} />
+        <TidesPanel
+          store={tidesStore}
+          stationsShown={layerSettings.value.tides?.visible ?? false}
+          onToggleStations={(shown) => setLayerVisible('tides', shown)}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
       </div>
     {/if}
     {#if activePanel === 'ais'}
@@ -1575,9 +1590,18 @@ onDestroy(() => {
         />
       </div>
     {/if}
-    {#if activePanel === 'thresholds'}
+    {#if activePanel === 'alarms'}
       <div class="panel-slot">
-        <ThresholdsPanel {thresholds} onClose={closePanel} onBack={backToMenu} />
+        <AlarmsPanel
+          {thresholds}
+          collisionMuted={collisionMute.active}
+          collisionMuteRemainingMin={collisionMute.active ? muteRemainingMin : undefined}
+          onToggleCollisionMute={() => collisionMute.toggle()}
+          arrivalMuted={arrivalMuted.value}
+          onToggleArrivalMute={() => arrivalMuted.set(!arrivalMuted.value)}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
       </div>
     {/if}
     {#if activePanel === 'profiles'}
@@ -1617,6 +1641,10 @@ onDestroy(() => {
         position={vessel.position}
         online={net.online}
         onClose={() => (weatherPanelOpen = false)}
+        onBack={() => {
+          weatherPanelOpen = false;
+          menuOpen = true;
+        }}
       />
     {/if}
   </section>

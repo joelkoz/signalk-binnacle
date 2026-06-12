@@ -1,7 +1,14 @@
 <script lang="ts">
 import { Check, Download, Save, SquarePen, Star, Trash2, Upload } from '@lucide/svelte';
 import type { Profile } from '$entities/profile';
-import { InlineConfirm, pickTextFile, promptSaveName, SavedList, SlideOver } from '$shared/ui';
+import {
+  InlineConfirm,
+  pickTextFile,
+  promptRename,
+  promptSaveName,
+  SavedList,
+  SlideOver,
+} from '$shared/ui';
 import { type ImportedProfile, parseProfilesJson } from './profile-io';
 
 interface Props {
@@ -68,23 +75,21 @@ function confirmDelete(id: string): void {
   onRemove(id);
 }
 
-function promptRename(profile: Profile): void {
-  const name = window.prompt('Rename profile to', profile.name);
-  if (name === null) return;
-  const trimmed = name.trim();
-  if (trimmed) onRename(profile.id, trimmed);
+function renameProfile(profile: Profile): void {
+  const name = promptRename('Profile', profile.name);
+  if (name !== undefined) onRename(profile.id, name);
 }
 </script>
 
 <SlideOver title="Profiles" bodyFlex closeLabel="Close profiles panel" {onClose} {onBack}>
   <div class="panel-controls">
-    <button type="button" class="btn btn-primary" onclick={promptNew}>
+    <button type="button" class="btn btn-primary btn--grow" onclick={promptNew}>
       <Save size={16} aria-hidden="true" />
       Save current as profile
     </button>
     <button type="button" class="btn" onclick={importProfiles}>
       <Upload size={16} aria-hidden="true" />
-      Import
+      Import JSON
     </button>
   </div>
 
@@ -150,7 +155,7 @@ function promptRename(profile: Profile): void {
             class="icon-btn"
             aria-label="Rename profile"
             title="Rename"
-            onclick={() => promptRename(profile)}
+            onclick={() => renameProfile(profile)}
           >
             <SquarePen size={18} aria-hidden="true" />
           </button>
@@ -168,8 +173,8 @@ function promptRename(profile: Profile): void {
           <button
             type="button"
             class="icon-btn"
-            aria-label="Export profile as a file"
-            title="Export"
+            aria-label="Export JSON"
+            title="Export JSON"
             onclick={() => onExport(profile.id)}
           >
             <Download size={18} aria-hidden="true" />
@@ -190,10 +195,6 @@ function promptRename(profile: Profile): void {
 </SlideOver>
 
 <style>
-/* The save button takes the full width of the controls row, matching the Routes panel's primary. */
-.panel-controls .btn-primary {
-  flex: 1;
-}
 /* The card list, name, actions, the active-card accent treatment, and the "Active" badge all come from
    the shared .saved system in app.css. Only the default tag and the dirty note are profile-specific. */
 /* A quiet caps-label tag marking the default profile, distinct from the filled accent "Active" pill. */

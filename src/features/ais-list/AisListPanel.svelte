@@ -41,22 +41,24 @@ const rows = $derived(
 
 <SlideOver title="AIS targets" subtitle="{rows.length} tracked" {onClose} {onBack}>
   <section class="ais-list">
-    <div class="sort" role="group" aria-label="Sort targets by">
+    <div class="sort">
       <span class="caps-label">Sort by</span>
-      {#each SORTS as option (option.id)}
-        <button
-          type="button"
-          class="btn btn-pill"
-          class:is-on={sort === option.id}
-          aria-pressed={sort === option.id}
-          onclick={() => (sort = option.id)}
-        >
-          {option.label}
-        </button>
-      {/each}
+      <div class="segmented" role="group" aria-label="Sort targets by">
+        {#each SORTS as option (option.id)}
+          <button
+            type="button"
+            class="btn"
+            class:is-on={sort === option.id}
+            aria-pressed={sort === option.id}
+            onclick={() => (sort = option.id)}
+          >
+            {option.label}
+          </button>
+        {/each}
+      </div>
     </div>
     {#if rows.length === 0}
-      <p class="empty">No AIS targets.</p>
+      <p class="muted-note">No AIS targets.</p>
     {:else}
       <ul class="targets">
         {#each rows as row (row.id)}
@@ -105,8 +107,10 @@ const rows = $derived(
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-.empty {
-  margin: 0;
+/* The segment join comes from the global .segmented treatment; only the off-segment quiet fill,
+   matching the Tracks color-mode toggle, is local. */
+.sort .btn:not(.is-on) {
+  background: transparent;
   color: var(--text-muted);
 }
 .targets {

@@ -8,8 +8,8 @@ import {
   MIN_RADIUS_M,
 } from '$entities/anchor';
 import type { OwnVessel } from '$entities/vessel';
-import { formatFixed } from '$shared/lib';
-import { SlideOver } from '$shared/ui';
+import { formatFixed, PLACEHOLDER } from '$shared/lib';
+import { InlineConfirm, SlideOver, UnitField } from '$shared/ui';
 
 interface Props {
   anchor: AnchorWatch;
@@ -37,19 +37,18 @@ const statusLine = $derived(
   anchor.dragging ? 'Dragging: the boat is outside the watch radius.' : MODE_STATUS[anchor.mode],
 );
 
-function commitRadius(input: HTMLInputElement): void {
-  const meters = Number(input.value);
-  if (input.value.trim() === '' || !Number.isFinite(meters)) {
-    // Snap the text back to the effective radius, so a rejected entry never sits in the box
-    // looking accepted.
-    input.value = String(Math.round(anchor.radiusMeters ?? anchor.preferredRadiusMeters));
-    return;
-  }
-  // Below-minimum entries clamp up, matching the entity, and the box shows what was applied.
-  const clamped = Math.max(MIN_RADIUS_M, meters);
-  input.value = String(Math.round(clamped));
-  onSetRadius(clamped);
+// Below-minimum entries clamp up, matching the entity; UnitField snaps the text back to the
+// effective radius after the commit, so a rejected entry never sits in the box looking accepted.
+function commitRadius(meters: number): void {
+  onSetRadius(Math.max(MIN_RADIUS_M, meters));
 }
+
+// Raising ends the watch and silences the alarm in one motion, so the panel matches the strip's
+// armed-confirm protection: the first tap swaps the controls row for an inline confirm.
+let raiseArmed = $state(false);
+$effect(() => {
+  if (!watching) raiseArmed = false;
+});
 
 // Capture the real swing: the live distance plus a safety margin becomes the new radius.
 function captureFromDistance(): void {
@@ -66,7 +65,7 @@ function captureFromDistance(): void {
       <dd><span class="num">{formatFixed(distance, 0)}</span><span class="unit">m</span></dd>
       <dt>Radius</dt>
       <dd>
-        <span class="num">{watching ? formatFixed(anchor.radiusMeters, 0) : '--'}</span>
+        <span class="num">{watching ? formatFixed(anchor.radiusMeters, 0) : PLACEHOLDER}</span>
         <span class="unit">m</span>
       </dd>
       {#if vessel.depthMeters !== undefined}
@@ -76,19 +75,15 @@ function captureFromDistance(): void {
         </dd>
       {/if}
     </dl>
-    <label class="field">
-      <span class="name">Watch radius</span>
-      <input
-        class="input"
-        type="number"
-        min={MIN_RADIUS_M}
-        step="1"
-        aria-label="Watch radius in meters"
-        value={Math.round(anchor.radiusMeters ?? anchor.preferredRadiusMeters)}
-        onchange={(e) => commitRadius(e.currentTarget)}
-      >
-      <span class="unit">m</span>
-    </label>
+    <UnitField
+      label="Watch radius"
+      unit="m"
+      min={MIN_RADIUS_M}
+      step={1}
+      ariaLabel="Watch radius in meters"
+      value={Math.round(anchor.radiusMeters ?? anchor.preferredRadiusMeters)}
+      onCommit={commitRadius}
+    />
     <button
       type="button"
       class="btn btn-ghost"
@@ -99,19 +94,44 @@ function captureFromDistance(): void {
       <Crosshair size={16} aria-hidden="true" />
       Set from current distance
     </button>
-    <div class="controls">
-      {#if watching}
-        <button type="button" class="btn btn-danger" onclick={onRaise}>
-          <Anchor size={16} aria-hidden="true" />
-          Raise anchor
-        </button>
-      {:else}
-        <button type="button" class="btn btn-primary" disabled={!vessel.position} onclick={onDrop}>
-          <Anchor size={16} aria-hidden="true" />
-          Drop anchor here
-        </button>
-      {/if}
-    </div>
+    {#if watching && raiseArmed}
+      <InlineConfirm
+        question="Raise the anchor and end the watch?"
+        confirmLabel="Raise"
+        onConfirm={() => {
+          raiseArmed = false;
+          onRaise();
+        }}
+        onCancel={() => {
+          raiseArmed = false;
+        }}
+      />
+    {:else}
+      <div class="panel-controls">
+        {#if watching}
+          <button
+            type="button"
+            class="btn btn-danger"
+            onclick={() => {
+              raiseArmed = true;
+            }}
+          >
+            <Anchor size={16} aria-hidden="true" />
+            Raise anchor
+          </button>
+        {:else}
+          <button
+            type="button"
+            class="btn btn-primary"
+            disabled={!vessel.position}
+            onclick={onDrop}
+          >
+            <Anchor size={16} aria-hidden="true" />
+            Drop anchor here
+          </button>
+        {/if}
+      </div>
+    {/if}
     {#if !watching && !vessel.position}
       <p class="hint">Waiting for a GPS fix to drop the anchor at.</p>
     {/if}
@@ -139,26 +159,8 @@ function captureFromDistance(): void {
   color: var(--alarm);
   font-weight: 600;
 }
-.field {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.name {
-  color: var(--text-muted);
-}
-.field input {
-  inline-size: 5.5rem;
-  accent-color: var(--accent);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
 .unit {
   color: var(--text-muted);
-}
-.controls {
-  display: flex;
-  gap: var(--space-2);
 }
 .hint {
   margin: 0;

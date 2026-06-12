@@ -1,0 +1,188 @@
+/* The app shells: the edge-docked slide-over panels and the bottom instrument strips. */
+
+/* The edge-docked slide-over panels (routes, layers, tracks, collision thresholds, and the note
+   detail) share one shell: a full-height column on
+   the translucent surface that docks to a screen edge, and collapses to a bottom sheet on a phone.
+   The dock modifier sets which edge it borders. */
+.slide-over {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  inline-size: 22rem;
+  max-inline-size: 100%;
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-lg), var(--edge-light);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  overflow: hidden;
+}
+.slide-over--dock-left {
+  border-inline-end: 1px solid var(--border);
+}
+.slide-over--dock-right {
+  border-inline-start: 1px solid var(--border);
+}
+@media (max-width: 600px) {
+  .slide-over {
+    inline-size: 100%;
+    block-size: auto;
+    max-block-size: 60vh;
+    border-block-start: 1px solid var(--border);
+  }
+  .slide-over--dock-left,
+  .slide-over--dock-right {
+    border-inline: 0;
+  }
+  .panel-minimize {
+    display: inline-flex;
+  }
+  /* Collapse the bottom sheet to its header so the chart underneath is usable while the panel stays
+     open (for example tapping waypoints into a route); the header keeps the expand control. The
+     compound .panel-body selector outranks the single-class .panel-body--flex display on specificity,
+     so the collapse wins regardless of source order. */
+  .panel-body.panel-body--collapsed {
+    display: none;
+  }
+}
+/* The slide-over title row and scrolling body, shared by the edge-docked panels so the header and
+   the body read the same across them. A panel marks its header .panel-header and its scroll area
+   .panel-body, adding --flex when the body lays its content out as a gapped column. */
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.6rem var(--space-3);
+  border-block-end: 1px solid var(--border);
+}
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.panel-body--flex {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* The bottom instrument strips (active route, collision danger) share one shell: a centered card on
+   the translucent surface with a caps title, a pill action button, and mono readouts. Each sets
+   --strip-accent (the route accent or the alarm) for the border and the title. */
+.bottom-strip {
+  inline-size: min(28rem, calc(100% - 1.5rem));
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-overlay);
+  border: 1px solid var(--strip-accent);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+.bottom-strip--accent {
+  --strip-accent: var(--accent);
+}
+.bottom-strip--alarm {
+  --strip-accent: var(--alarm);
+}
+/* The caution grade of the danger strip: the warning hue instead of the full alarm, so a
+   warning-only contact does not paint the strip in the strongest red. */
+.bottom-strip--warning {
+  --strip-accent: var(--warning);
+}
+.bottom-strip .head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: 0.4rem;
+}
+.bottom-strip .title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--strip-accent);
+}
+.bottom-strip .note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+/* The metrics line shared by both strips: baseline-aligned readouts that wrap to a second line
+   rather than overflowing the card when many metrics or a narrow phone leave too little width. */
+.bottom-strip .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--text-base);
+}
+/* A name that ellipsizes rather than wrapping (the active destination, a contact). The strips add
+   their own flex and weight on top. */
+.bottom-strip .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bottom-strip .ack {
+  margin-inline-start: auto;
+  font: inherit;
+  font-size: var(--text-base);
+  padding: var(--space-2) var(--space-3);
+  min-block-size: var(--control-size);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--accent);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+.bottom-strip .ack:hover {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.bottom-strip .ack:active {
+  filter: brightness(0.94);
+}
+/* A caution variant of the strip action (the collision Mute), warning-colored so the two safety
+   buttons (Mute and the accent Acknowledge) do not read as twins. The pressed state tints with the
+   alarm token. */
+.bottom-strip .ack--warning {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.bottom-strip .ack--warning[aria-pressed="true"] {
+  background: var(--alarm-tint);
+}
+/* The trailing action cluster shared by the alarm and tool strips. The shared .ack pill carries its
+   own auto margin for single-action strips, so the cluster neutralizes it and owns the push; the
+   safety strips widen the gap locally so paired safety buttons do not read as twins. */
+.bottom-strip .actions {
+  margin-inline-start: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.bottom-strip .actions .ack {
+  margin-inline-start: 0;
+}
+/* Acknowledged: the alarm is silenced and the operator has it in hand, so the strip dims but keeps
+   its readouts on screen while the condition persists. */
+.bottom-strip.is-ack {
+  opacity: 0.62;
+}
+.bottom-strip .ack-tag {
+  margin-inline-start: auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bottom-strip .metric b {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-readout);
+  font-weight: 600;
+  color: var(--text);
+}

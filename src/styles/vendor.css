@@ -1,0 +1,39 @@
+/* Third-party widget theming (MapLibre attribution); coupled to vendor class names. */
+
+/* Theme the MapLibre attribution control (both the nav chart and the weather mini-map): the
+   library default is a white bar with blue links, which at night-red was the brightest element on
+   screen and broke the no-non-red contract. Tokens keep it correct in all three themes.
+   COUPLED to MapLibre's own class names: if an upgrade renames them this whole block silently
+   stops applying and the white bar returns, so re-verify at night-red on any MapLibre upgrade. */
+.maplibregl-ctrl-attrib {
+  background: var(--surface-overlay);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--text-muted);
+}
+.maplibregl-ctrl-attrib-button {
+  background-color: var(--surface-overlay);
+}
+/* The library draws the compact toggle's "i" glyph with an embedded dark SVG; recolor it to the
+   theme via mask so night-red shows a red glyph on near-black. */
+.maplibregl-ctrl-attrib-button .maplibregl-ctrl-icon {
+  background-image: none;
+  background-color: var(--text-muted);
+  mask:
+    url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0"/></svg>')
+    center / 18px 18px no-repeat;
+}
+
+/* Respect a reduced-motion preference: drop transitions and animations app-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

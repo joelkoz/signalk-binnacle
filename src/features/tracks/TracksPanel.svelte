@@ -126,7 +126,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     />
   {/if}
 
-  <div class="color-mode" role="group" aria-label="Track color">
+  <div class="color-mode segmented" role="group" aria-label="Track color">
     <button
       type="button"
       class="btn"
@@ -239,28 +239,14 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 </SlideOver>
 
 <style>
-/* A segmented toggle built from the shared .btn box, so the lit segment uses the global .is-on
-   accent-tint state every other toggle shares. Only the segment-join (collapsed inner border and
-   squared inner corners) and the off-segment quiet fill are local. */
-.color-mode {
-  display: flex;
-  gap: 0;
-}
+/* The segment join comes from the global .segmented treatment; only the equal segment widths and
+   the off-segment quiet fill are local. */
 .color-mode .btn {
   flex: 1;
 }
 .color-mode .btn:not(.is-on) {
   background: transparent;
   color: var(--text-muted);
-}
-.color-mode .btn:first-child {
-  border-start-end-radius: 0;
-  border-end-end-radius: 0;
-}
-.color-mode .btn:last-child {
-  border-start-start-radius: 0;
-  border-end-start-radius: 0;
-  border-inline-start: 0;
 }
 /* The current-track stats use the global .stat-grid system in app.css. */
 /* The saved-track card list, name, stats, and actions come from the global .saved system in app.css. */

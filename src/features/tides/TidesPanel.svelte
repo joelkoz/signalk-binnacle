@@ -16,11 +16,15 @@ import {
 
 interface Props {
   store: TidesStore;
+  // Whether the tide-station layer is shown on the chart; the toggle row only renders when the
+  // host wires onToggleStations, so the panel works without the layer.
+  stationsShown?: boolean;
+  onToggleStations?: (shown: boolean) => void;
   onClose: () => void;
   onBack?: () => void;
 }
 
-const { store, onClose, onBack }: Props = $props();
+const { store, stationsShown = false, onToggleStations, onClose, onBack }: Props = $props();
 
 const tide = $derived(store.tide);
 const current = $derived(store.current);
@@ -72,6 +76,17 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
 </script>
 
 <SlideOver title="Tides" {onClose} {onBack}>
+  {#if onToggleStations}
+    <button
+      type="button"
+      class="btn stations"
+      class:is-on={stationsShown}
+      aria-pressed={stationsShown}
+      onclick={() => onToggleStations(!stationsShown)}
+    >
+      Show stations on chart
+    </button>
+  {/if}
   {#if !tide && store.status === 'loading'}
     <p class="status" role="status">Finding nearby tide stations...</p>
   {:else if store.status === 'no-coverage'}
@@ -150,6 +165,11 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
 </SlideOver>
 
 <style>
+/* The box, the 44px touch height, and the lit .is-on state come from the global .btn vocabulary;
+   only the full-width row is local. */
+.stations {
+  inline-size: 100%;
+}
 .station {
   display: flex;
   align-items: baseline;

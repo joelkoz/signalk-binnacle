@@ -120,6 +120,15 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   rules that hold a `shared` or `entities` slice to reaching a sibling only through its `index`).
   dependency-cruiser is the single boundary enforcer, because Biome has no import-boundary rule
   equivalent to `eslint-plugin-boundaries`.
+- The global stylesheet is modular too (user rule, keep this style for everything going forward):
+  `src/app.css` is only an ordered `@import` manifest over `src/styles/` modules (tokens, base,
+  utilities, shell, a11y, vendor), and the import order IS the cascade order. New global styling
+  goes into the right module, never back into one monolith; new shared UI behavior goes through
+  the `$shared/ui` primitives (SlideOver, InlineConfirm, UnitField, ConfirmArm, SavedList,
+  VisibilityToggle, the dialog dismiss stack) and the global utility classes (the `.btn` system,
+  `.icon-btn`, `.alert-note`, `.muted-note`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`,
+  `.stat-grid`) before any panel grows a scoped duplicate. When the same markup or CSS appears in
+  a second place, hoist it; a third copy is a review failure.
 
 This is a hard rule. Architectural feedback that came at the cost of redoing significant work
 must not be repeatable.

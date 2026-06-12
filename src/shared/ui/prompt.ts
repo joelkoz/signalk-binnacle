@@ -7,3 +7,11 @@ export function promptSaveName(kind: string): string | undefined {
   if (name === null) return undefined;
   return name.trim() || fallback;
 }
+
+// Prompt to rename something, seeded with its current name. Returns the trimmed new name, or
+// undefined when cancelled or emptied (renaming to nothing is a cancel, not a clear).
+export function promptRename(kind: string, current: string): string | undefined {
+  const name = window.prompt(`Rename ${kind.toLowerCase()} to`, current);
+  if (name === null) return undefined;
+  return name.trim() || undefined;
+}

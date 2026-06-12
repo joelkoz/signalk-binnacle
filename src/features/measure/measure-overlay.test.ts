@@ -41,6 +41,28 @@ describe('measure overlay', () => {
     expect(labeled?.properties?.label).toBe('111 m');
   });
 
+  it('scales the line, the vertices, and the label with the overlay opacity', () => {
+    const { overlay, map, ctx } = setup();
+    overlay.add(ctx);
+    overlay.setOpacity?.(ctx, 0.4);
+    expect(map.setPaintProperty).toHaveBeenCalledWith('binnacle-measure-line', 'line-opacity', 0.4);
+    expect(map.setPaintProperty).toHaveBeenCalledWith(
+      'binnacle-measure-vertex',
+      'circle-opacity',
+      0.4,
+    );
+    expect(map.setPaintProperty).toHaveBeenCalledWith(
+      'binnacle-measure-vertex',
+      'circle-stroke-opacity',
+      0.4,
+    );
+    expect(map.setPaintProperty).toHaveBeenCalledWith(
+      'binnacle-measure-label',
+      'text-opacity',
+      0.4,
+    );
+  });
+
   it('clears once the tool stops', () => {
     const { measure, overlay, map, ctx } = setup();
     overlay.add(ctx);

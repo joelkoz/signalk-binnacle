@@ -1,0 +1,87 @@
+<script lang="ts">
+import { tick } from 'svelte';
+
+interface Props {
+  label: string;
+  unit?: string;
+  // The effective value the field displays. After a commit the text snaps back to this, so a
+  // caller that clamps or rejects an entry never leaves the input desynced from reality.
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number | 'any';
+  inputWidth?: string;
+  ariaLabel?: string;
+  onCommit: (value: number) => void;
+}
+
+const {
+  label,
+  unit,
+  value,
+  min,
+  max,
+  step = 'any',
+  inputWidth = '5.5rem',
+  ariaLabel,
+  onCommit,
+}: Props = $props();
+
+function commit(event: Event): void {
+  const input = event.currentTarget as HTMLInputElement;
+  const entered = Number(input.value);
+  if (Number.isFinite(entered)) onCommit(entered);
+  // Snap the text back to the effective value after the caller has had its say.
+  void tick().then(() => {
+    input.value = String(value);
+  });
+}
+</script>
+
+<!-- The labeled number-input-with-unit row shared by the alarm thresholds, the anchor watch
+     radius, and the route planning speed, so the field shape cannot drift per panel. -->
+<label class="field">
+  <span class="name">{label}</span>
+  <input
+    type="number"
+    {min}
+    {max}
+    {step}
+    value={String(value)}
+    aria-label={ariaLabel ?? (unit ? `${label} in ${unit}` : label)}
+    style:inline-size={inputWidth}
+    onchange={commit}
+  >
+  {#if unit}
+    <span class="unit">{unit}</span>
+  {/if}
+</label>
+
+<style>
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--control-size);
+}
+.name {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.field input {
+  padding: 0.3rem var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-md);
+  accent-color: var(--accent);
+}
+.unit {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+</style>

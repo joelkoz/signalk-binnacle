@@ -1,9 +1,10 @@
 <script lang="ts">
 import { ArrowLeft, Trash2 } from '@lucide/svelte';
-import { type UserChartSource, type UserCharts, zoomRange } from '$entities/user-charts';
+import type { UserChartSource, UserCharts } from '$entities/user-charts';
 import { formatBytes } from '$shared/lib';
-import { focusOnMount } from '$shared/ui';
+import { InlineConfirm } from '$shared/ui';
 import ChartSpecList from './ChartSpecList.svelte';
+import { chartSpecRows } from './chart-spec';
 
 interface Props {
   source: UserChartSource;
@@ -16,12 +17,13 @@ const { source, userCharts, onBack }: Props = $props();
 let confirming = $state(false);
 let name = $state('');
 
+const spec = $derived(chartSpecRows(source));
 const specRows = $derived([
-  { label: 'Type', value: source.kind === 'vector' ? 'Vector' : 'Raster' },
+  spec.type,
   { label: 'Source', value: source.origin.type === 'url' ? 'URL' : 'File (offline)' },
-  { label: 'Zoom', value: zoomRange(source) },
+  spec.zoom,
   { label: 'Bounds', value: fmtBounds(source.bounds) },
-  ...(source.byteSize ? [{ label: 'Size', value: formatBytes(source.byteSize) }] : []),
+  ...(spec.size ? [spec.size] : []),
 ]);
 
 // Seed the editable name from the source, resyncing if it changes underneath. The panel keys
@@ -58,9 +60,9 @@ async function doDelete(): Promise<void> {
       aria-label="Back to layers"
       onclick={onBack}
     >
-      <ArrowLeft size={18} aria-hidden="true" />
+      <ArrowLeft size={20} aria-hidden="true" />
     </button>
-    <h3 class="panel-title">Chart detail</h3>
+    <h3 class="panel-title panel-title--sub">Chart detail</h3>
   </header>
 
   <label class="name-field">
@@ -80,13 +82,11 @@ async function doDelete(): Promise<void> {
 
   {#if confirming}
     <div class="confirm">
-      <p>Delete this chart?{source.byteSize ? ` Frees ${formatBytes(source.byteSize)}.` : ''}</p>
-      <div class="actions">
-        <button type="button" class="btn" use:focusOnMount onclick={() => (confirming = false)}>
-          Cancel
-        </button>
-        <button type="button" class="btn btn-danger" onclick={doDelete}>Delete</button>
-      </div>
+      <InlineConfirm
+        question={`Delete this chart?${source.byteSize ? ` Frees ${formatBytes(source.byteSize)}.` : ''}`}
+        onConfirm={doDelete}
+        onCancel={() => (confirming = false)}
+      />
     </div>
   {:else}
     <button type="button" class="btn btn-danger" onclick={() => (confirming = true)}>
@@ -108,11 +108,6 @@ header {
   align-items: center;
   gap: 0.4rem;
 }
-header h3 {
-  margin: 0;
-  font-size: var(--text-md);
-  font-weight: 600;
-}
 .name-field {
   display: flex;
   flex-direction: column;
@@ -122,13 +117,5 @@ header h3 {
   padding: var(--space-2);
   border: 1px solid var(--alarm);
   border-radius: var(--radius-sm);
-}
-.confirm p {
-  margin: 0 0 0.4rem;
-}
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.4rem;
 }
 </style>

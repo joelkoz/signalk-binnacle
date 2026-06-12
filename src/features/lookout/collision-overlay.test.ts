@@ -37,6 +37,9 @@ describe('collision overlay', () => {
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     expect(overlay.band).toBe('safety');
+    // Pinned safety ring: an active alarm must never be user-dimmable.
+    expect(overlay.supportsOpacity).toBe(false);
+    expect(overlay.setOpacity).toBeUndefined();
     expect(map.sources.size).toBe(1);
     expect(map.layers.size).toBe(1);
     const source = [...map.sources.values()][0];

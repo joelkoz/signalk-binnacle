@@ -1,5 +1,5 @@
 <script lang="ts">
-import { ChevronRight, Pin } from '@lucide/svelte';
+import { ChevronRight, Pin, Plus } from '@lucide/svelte';
 import type { UserCharts } from '$entities/user-charts';
 import { chartSourceId, type LayerListItem } from '$shared/map';
 import type { PersistedValue } from '$shared/settings';
@@ -210,7 +210,12 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 
 <!-- While a chart detail is open it shows its own "Back to layers" control, so the panel-level
      "Back to menu" arrow is suppressed to avoid two stacked back buttons. -->
-<SlideOver title="Layers" {onClose} onBack={manageSource ? undefined : onBack}>
+<SlideOver
+  title="Layers and charts"
+  closeLabel="Close layers and charts"
+  {onClose}
+  onBack={manageSource ? undefined : onBack}
+>
   <div class="visually-hidden" aria-live="polite">{reorderAnnouncement}</div>
   {#if manageSource && userCharts}
     {#key manageSource.id}
@@ -218,7 +223,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
     {/key}
   {:else}
     {#if view.items.length === 0}
-      <p class="empty">No layers</p>
+      <p class="muted-note">No layers</p>
     {:else}
       {#if pinned.length > 0}
         <ul class="pinned-list">
@@ -290,8 +295,9 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
         {#if addOpen}
           <AddChartForm {userCharts} onDone={() => (addOpen = false)} />
         {:else}
-          <button type="button" class="add-chart" onclick={() => (addOpen = true)}>
-            + Add a chart
+          <button type="button" class="btn" onclick={() => (addOpen = true)}>
+            <Plus size={16} aria-hidden="true" />
+            Add a chart
           </button>
         {/if}
       </div>
@@ -300,11 +306,6 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
 </SlideOver>
 
 <style>
-.empty {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
 .pinned-list,
 .rows {
   list-style: none;
@@ -414,19 +415,5 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
   margin-block-start: var(--space-2);
   padding-block-start: var(--space-2);
   border-block-start: 1px solid var(--border);
-}
-.add-chart {
-  inline-size: 100%;
-  min-block-size: var(--control-size);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-.add-chart:hover {
-  border-color: var(--accent);
 }
 </style>

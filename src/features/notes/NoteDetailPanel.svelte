@@ -85,7 +85,7 @@ function measure(item: NormalizedItem): string {
           <!-- The danger status always leads its section, rendered before the dl: a div between
                dt/dd pairs is non-conforming HTML. -->
           {#if danger}
-            <div class="alert" data-danger={danger.value === true}>
+            <div class="alert-note alert" data-danger={danger.value === true}>
               {danger.value === true ? 'Dangerous to navigation' : 'Not a danger to navigation'}
             </div>
           {/if}
@@ -160,7 +160,7 @@ function measure(item: NormalizedItem): string {
   {#if sourceUrl}
     <a class="source-link" href={sourceUrl} target="_blank" rel="noopener noreferrer">
       View source <span class="visually-hidden">(opens in a new tab)</span>
-      <ExternalLink size={13} aria-hidden="true" />
+      <ExternalLink size={14} aria-hidden="true" />
     </a>
   {/if}
 {/snippet}
@@ -205,25 +205,21 @@ dd {
   margin-block-start: 0.15rem;
   line-height: 1.4;
 }
-/* The hazard danger status leads its section as a full-width banner: an alarm fill when the
-   feature is dangerous to navigation, a quiet outline when it is explicitly not. */
+/* The hazard danger status leads its section as a full-width banner on the global .alert-note
+   frame: a bordered, tinted caution when the feature is dangerous to navigation (a fill rather
+   than the brightest-pixel --alarm text, matching the weather warning treatment), and a quiet
+   outline when it is explicitly not. */
 .alert {
   margin-block: 0.2rem;
   padding: 0.4rem 0.55rem;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
+  color: var(--text);
   font-weight: 600;
 }
-/* A bordered, tinted caution rather than a solid bright fill, so the hazard reads clearly without
-   painting the brightest pixel in the palette (the night-red --alarm) across a full-width block.
-   This matches the weather warning treatment. */
 .alert[data-danger="true"] {
-  border: 1px solid var(--alarm);
   background: var(--alarm-tint);
-  color: var(--text);
 }
 .alert[data-danger="false"] {
-  border: 1px solid var(--border);
+  border-color: var(--border);
   color: var(--text-muted);
   font-weight: 400;
 }

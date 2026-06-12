@@ -61,7 +61,7 @@ export function createMeasureOverlay(measure: MeasureStore): MeasureOverlay {
     id: 'measure',
     title: 'Measure',
     band: 'routes',
-    supportsOpacity: false,
+    supportsOpacity: true,
     layerIds: LAYERS,
     add(ctx) {
       const { map } = ctx;
@@ -135,6 +135,13 @@ export function createMeasureOverlay(measure: MeasureStore): MeasureOverlay {
     },
     setVisible(ctx, visible) {
       setLayersVisibility(ctx.map, LAYERS, visible);
+    },
+    setOpacity(ctx, opacity) {
+      ctx.map.setPaintProperty(LINE_LAYER, 'line-opacity', opacity);
+      ctx.map.setPaintProperty(VERTEX_LAYER, 'circle-opacity', opacity);
+      ctx.map.setPaintProperty(VERTEX_LAYER, 'circle-stroke-opacity', opacity);
+      // text-opacity fades the halo with the glyphs, so the label needs no halo-specific handling.
+      ctx.map.setPaintProperty(LABEL_LAYER, 'text-opacity', opacity);
     },
     applyTheme(ctx, next) {
       paint = next;

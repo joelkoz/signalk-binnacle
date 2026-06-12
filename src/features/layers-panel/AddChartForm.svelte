@@ -1,9 +1,9 @@
 <script lang="ts">
 import { CloudUpload, Link2 } from '@lucide/svelte';
-import { type DraftChart, type UserCharts, zoomRange } from '$entities/user-charts';
-import { formatBytes } from '$shared/lib';
+import type { DraftChart, UserCharts } from '$entities/user-charts';
 import { focusOnMount } from '$shared/ui';
 import ChartSpecList from './ChartSpecList.svelte';
+import { chartSpecRows } from './chart-spec';
 
 interface Props {
   userCharts: UserCharts;
@@ -22,24 +22,22 @@ let fileInput = $state<HTMLInputElement>();
 let draft = $state<DraftChart | undefined>();
 let draftName = $state('');
 
-const draftRows = $derived(
-  draft
-    ? [
-        { label: 'Type', value: draft.source.kind === 'vector' ? 'Vector' : 'Raster' },
-        { label: 'Zoom', value: zoomRange(draft.source) },
-        ...(draft.source.byteSize
-          ? [{ label: 'Size', value: formatBytes(draft.source.byteSize) }]
-          : []),
-        {
-          label: 'Stored',
-          value:
-            draft.source.origin.type === 'url'
-              ? 'This device, and shared to the server'
-              : 'This device',
-        },
-      ]
-    : [],
-);
+const draftRows = $derived.by(() => {
+  if (!draft) return [];
+  const spec = chartSpecRows(draft.source);
+  return [
+    spec.type,
+    spec.zoom,
+    ...(spec.size ? [spec.size] : []),
+    {
+      label: 'Stored',
+      value:
+        draft.source.origin.type === 'url'
+          ? 'This device, and shared to the server'
+          : 'This device',
+    },
+  ];
+});
 
 // The busy and error envelope shared by the read-to-stage and the commit steps.
 async function withBusy(action: () => Promise<void>, fallbackError: string): Promise<void> {

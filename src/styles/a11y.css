@@ -1,0 +1,29 @@
+/* Accessibility primitives: the keyboard focus ring (night-red dims it) and the
+   visually-hidden live-region helper. */
+
+/* One keyboard-focus indicator for every interactive control, visible on every theme. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Night-red dims the ring: --accent is the brightest red in the palette, and a bright 2px outline
+   appearing as you tab through controls in the dark hurts dark adaptation. A thinner, dimmer red
+   (--text) still marks focus while keeping the brightest pixel low. */
+:root[data-theme="night-red"] :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline-width: 1px;
+  outline-color: var(--text);
+}
+
+/* Visually hidden but exposed to assistive tech: for live regions and off-screen labels that should
+   be announced without taking visual space. */
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
