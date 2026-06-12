@@ -41,8 +41,6 @@ export interface NotificationPublishStrategy {
   publish(path: string, value: SkNotification): void | Promise<unknown>;
 }
 
-type PublishLike = NotificationPublishStrategy | NotificationPublishStrategy['publish'];
-
 // Publishes the collision notification when its state, the worst contact, or that contact's
 // coarse CPA or TCPA bucket changes, so the message refreshes as the contact closes without a
 // server write on every per-second CPA tick. A clear is published only after an active alert,
@@ -52,9 +50,8 @@ export class CollisionNotifier {
   #last: string | undefined;
   #active = false;
 
-  constructor(publish: PublishLike) {
-    this.#publish =
-      typeof publish === 'function' ? publish : (path, value) => publish.publish(path, value);
+  constructor(strategy: NotificationPublishStrategy) {
+    this.#publish = (path, value) => strategy.publish(path, value);
   }
 
   update(assessment: Assessment): void {

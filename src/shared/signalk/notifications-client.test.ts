@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { stubFetch } from '$shared/testing/fetch-stub';
 import {
   acknowledgeNotification,
   postMobNotification,
@@ -11,18 +12,6 @@ import {
 const BASE = 'https://boat.example';
 const API = `${BASE}/signalk/v2/api/notifications`;
 const ID = '6e6f7469-6669-4361-9469-6f6e49644142';
-
-function stubFetch(response: { ok: boolean; body?: unknown } | 'reject') {
-  const mock = vi.fn(async (_url: string, _init?: RequestInit) => {
-    if (response === 'reject') throw new TypeError('network down');
-    return {
-      ok: response.ok,
-      json: async () => response.body,
-    } as Response;
-  });
-  vi.stubGlobal('fetch', mock);
-  return mock;
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -61,11 +50,23 @@ describe('postNotification', () => {
 describe('updateNotification', () => {
   it('updates in place via PUT on the id', async () => {
     const mock = stubFetch({ ok: true });
-    await expect(updateNotification(BASE, 'tok', ID, { state: 'warn' })).resolves.toBe(true);
+    await expect(updateNotification(BASE, 'tok', ID, { state: 'warn' })).resolves.toBe('updated');
     const [url, init] = mock.mock.calls[0];
     expect(url).toBe(`${API}/${ID}`);
     expect(init?.method).toBe('PUT');
     expect(JSON.parse(init?.body as string)).toEqual({ state: 'warn' });
+  });
+
+  it('reports an unknown id as missing so the caller can re-raise', async () => {
+    stubFetch({ ok: false, status: 400 });
+    await expect(updateNotification(BASE, 'tok', ID, { state: 'warn' })).resolves.toBe('missing');
+  });
+
+  it('reports server and transport failures as failed', async () => {
+    stubFetch({ ok: false, status: 500 });
+    await expect(updateNotification(BASE, 'tok', ID, { state: 'warn' })).resolves.toBe('failed');
+    stubFetch('reject');
+    await expect(updateNotification(BASE, 'tok', ID, { state: 'warn' })).resolves.toBe('failed');
   });
 });
 

@@ -1,6 +1,7 @@
 <script lang="ts">
 import {
   Anchor,
+  Bell,
   CloudSun,
   Layers,
   LocateFixed,
@@ -9,7 +10,6 @@ import {
   Radar,
   Route,
   Ruler,
-  SlidersHorizontal,
   Spline,
   UserCog,
   VolumeX,
@@ -204,8 +204,11 @@ const collisionNotifier = new CollisionNotifier({
     }
     if (value.state === 'normal') {
       if (collisionAlertId) {
-        void resolveNotification(serverOrigin(), chartsToken, collisionAlertId);
+        const cleared = await resolveNotification(serverOrigin(), chartsToken, collisionAlertId);
         collisionAlertId = undefined;
+        // A failed clear would strand a raised alarm on every other station (the server only
+        // reaps normal-state entries); the v1 delta still announces the all-clear.
+        if (!cleared) publishDelta(path, value);
       }
       return;
     }
@@ -214,8 +217,14 @@ const collisionNotifier = new CollisionNotifier({
         state: value.state,
         message: value.message,
       });
-      if (updated) return;
-      // The server reaped or lost the id (a restart): fall through and raise afresh.
+      if (updated === 'updated') return;
+      if (updated === 'failed') {
+        // Transport failure: a fresh raise would also fail and could orphan a duplicate once the
+        // link returns. Keep the id for the next change and let the v1 delta carry this one.
+        publishDelta(path, value);
+        return;
+      }
+      // The server reaped or lost the id (a restart): raise afresh.
       collisionAlertId = undefined;
     }
     collisionAlertId = await postNotification(serverOrigin(), chartsToken, {
@@ -225,6 +234,9 @@ const collisionNotifier = new CollisionNotifier({
       includePosition: true,
       includeCreatedAt: true,
     });
+    // This alarm fires unattended: when even the raise fails, the v1 delta keeps the rest of the
+    // boat informed, and the next bucket change retries the v2 path.
+    if (!collisionAlertId) publishDelta(path, value);
   },
 });
 
@@ -242,16 +254,25 @@ function toggleCollisionMute(): void {
 const notificationsStore = new NotificationsStore(store);
 
 // Silence and acknowledge act on the server's notification id, so the action propagates to every
-// station; rows without an id (a v1-only producer) simply do not offer the buttons.
+// station; rows without an id (a v1-only producer) simply do not offer the buttons. A refusal
+// (auth, transport) surfaces in the panel, since the alarm keeping on sounding looks identical
+// to a slow stream echo otherwise.
+let alarmActionError = $state<string | undefined>();
 function onSilenceNotification(notification: ActiveNotification): void {
-  if (notification.id) {
-    void silenceNotification(serverOrigin(), chartsToken, notification.id);
-  }
+  if (!notification.id) return;
+  alarmActionError = undefined;
+  void silenceNotification(serverOrigin(), chartsToken, notification.id).then((ok) => {
+    if (!ok) alarmActionError = 'Could not silence the alert. Check the connection and access.';
+  });
 }
 function onAcknowledgeNotification(notification: ActiveNotification): void {
-  if (notification.id) {
-    void acknowledgeNotification(serverOrigin(), chartsToken, notification.id);
-  }
+  if (!notification.id) return;
+  alarmActionError = undefined;
+  void acknowledgeNotification(serverOrigin(), chartsToken, notification.id).then((ok) => {
+    if (!ok) {
+      alarmActionError = 'Could not acknowledge the alert. Check the connection and access.';
+    }
+  });
 }
 
 // The anchor watch: server-driven when the anchoralarm plugin answers, client-side otherwise. The
@@ -427,7 +448,15 @@ let waypointError = $state<string | undefined>();
 
 async function refreshWaypoints(): Promise<void> {
   const fetched = await fetchWaypoints(serverOrigin(), chartsToken);
-  if (fetched) waypointsStore.setWaypoints(fetched);
+  if (fetched) {
+    waypointsStore.setWaypoints(fetched);
+    return;
+  }
+  // A never-loaded list must not read as "no waypoints yet": that claims an empty boat when the
+  // fetch failed. Once a load has succeeded, the kept list stands and the failure stays quiet.
+  if (waypointsStore.waypoints.length === 0) {
+    waypointError = 'Could not load waypoints. Check the connection.';
+  }
 }
 
 async function onDropWaypoint(position: LatLon): Promise<void> {
@@ -755,7 +784,7 @@ const menuItems = $derived<MenuItem[]>([
   {
     id: 'alarms',
     label: 'Alarms',
-    icon: SlidersHorizontal,
+    icon: Bell,
     group: 'Safety',
     onSelect: () => openPanel('alarms'),
   },
@@ -860,14 +889,16 @@ function publishMobValue(value: unknown): void {
 // Commit the press-time mark, tell the whole boat, and bring the mark into view. Guidance only;
 // the course (and any coupled autopilot) is touched solely by the strip's deliberate Steer to MOB.
 // Without a fix the alarm still raises, position-less, so the crew mobilizes either way.
-let mobAlertId: string | undefined;
+// The in-flight raise, held so a cancel racing it can resolve whatever id it eventually returns
+// instead of stranding a boat-wide emergency nothing ever clears.
+let mobAlertPending: Promise<string | undefined> | undefined;
 function onMobTrigger(mark: MobMark | undefined): void {
   const committed = mob.trigger(mark);
   if (notificationsApi) {
     // The v2 route attaches the server's own position and timestamp; if the POST fails, fall
     // back to the v1 delta so the boat-wide alarm is never lost to a transport error.
-    void postMobNotification(serverOrigin(), chartsToken, 'Man overboard').then((id) => {
-      mobAlertId = id;
+    mobAlertPending = postMobNotification(serverOrigin(), chartsToken, 'Man overboard');
+    void mobAlertPending.then((id) => {
       if (!id) publishMobValue(mobNotification(committed.position));
     });
   } else {
@@ -880,9 +911,15 @@ function onMobTrigger(mark: MobMark | undefined): void {
 
 function onMobCancel(): void {
   mob.cancel();
-  if (mobAlertId) {
-    void resolveNotification(serverOrigin(), chartsToken, mobAlertId);
-    mobAlertId = undefined;
+  const pending = mobAlertPending;
+  mobAlertPending = undefined;
+  if (pending) {
+    // Await the raise a fast cancel may be racing, then clear by id; a failed clear falls back
+    // to the v1 delta so no station is left with a raised emergency.
+    void pending.then(async (id) => {
+      const cleared = id ? await resolveNotification(serverOrigin(), chartsToken, id) : false;
+      if (!cleared) publishMobValue(mobClearNotification());
+    });
   } else {
     publishMobValue(mobClearNotification());
   }
@@ -898,10 +935,12 @@ function onMobSteer(): void {
 // rationale on routeError applies here too).
 let anchorError = $state<string | undefined>();
 
-// The anchor action chain, resolved once capabilities are known: the standard Anchor API when the
-// server exposes it (a proposal today, tracked by the weekly watch), then the anchoralarm plugin,
-// then the client-local watch. Until features resolve, the none transport refuses server calls and
-// every action lands on the local path.
+// The anchor action chain, selected once at resolve time from capabilities: the standard Anchor
+// API when the server exposes it (a proposal today, tracked by the weekly watch), otherwise the
+// anchoralarm plugin probe. A failed call on the selected transport degrades to the client-local
+// watch, never sideways to the other transport: a server that advertises the standard API and
+// then fails it has a problem masking would hide. Until features resolve, every action lands on
+// the local path.
 const anchorTransport = $derived(
   resolveAnchorTransport(serverOrigin(), chartsToken, {
     standardApiAvailable: serverFeatures?.apis.has('anchor') ?? false,
@@ -1465,8 +1504,8 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.depthBelowTransducer, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.anchorPosition, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.anchorMaxRadius, policy: 'instant', minPeriod: 1000 },
-    { path: SK_PATHS.anchorNotification, policy: 'instant', minPeriod: 1000 },
-    { path: SK_PATHS.mobNotification, policy: 'instant', minPeriod: 1000 },
+    // One wildcard row covers every notifications.* path including anchor and MOB; a specific
+    // row beside it would have the server deliver those deltas twice.
     { path: SK_PATHS.allNotifications, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.position, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.courseOverGroundTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
@@ -1599,6 +1638,7 @@ onDestroy(() => {
       symbols={symbolsStore}
       onDropWaypoint={(position) => void onDropWaypoint(position)}
       aisTrailsAvailable={() => serverFeatures?.plugins.has('tracks') ?? false}
+      isOnline={() => net.online}
       {store}
       {vessel}
       {aisTargets}
@@ -1782,6 +1822,7 @@ onDestroy(() => {
           arrivalMuted={arrivalMuted.value}
           onToggleArrivalMute={() => arrivalMuted.set(!arrivalMuted.value)}
           notifications={notificationsStore}
+          error={alarmActionError}
           onSilence={notificationsApi ? onSilenceNotification : undefined}
           onAcknowledge={notificationsApi ? onAcknowledgeNotification : undefined}
           onClose={closePanel}

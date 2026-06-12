@@ -60,6 +60,9 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
   and CO-OPS predictions gain service-worker caching over https, with per-cache bounds and quota
   protection; opaque cross-origin responses are no longer cached (each one padded several MB of
   quota).
+- Tide stations and predictions, chart notes, and the vessel conditions panel now persist in
+  browser storage, so a reload with no signal replays the last data for the area, each item
+  declaring its own age, over plain http as well as https.
 
 ### Removed
 
@@ -124,11 +127,20 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
 - Profiles no longer show "unsaved changes" on every launch, deleting all profiles no longer
   resurrects the starter profiles, and a synced device no longer marks a profile active without
   applying it. A failed profile import shows an error.
+- A refused alarm Silence or Acknowledge now shows an error in the Alarms panel instead of the
+  alarm just continuing to sound, and a collision alert whose server notification was cleared
+  from another station is re-raised instead of going silent.
+- Cleared notifications no longer linger in the Active alerts list, and an unchanged
+  notification broadcast no longer re-renders the panel.
+- AIS wakes now clear after a few minutes of failed refreshes instead of freezing in place, and
+  waypoint markers have their own color in each theme.
 
 ### Internal
 
 - Map tile, WebGL shader, and PMTiles resources are released on teardown, dead exports and the
   unused weather view persistence were removed, and assorted hot-path allocations were trimmed.
+- Shared bbox helpers, a shared test fetch stub, the shared input primitive, and one global
+  segmented-control rule replaced per-feature copies.
 
 <a id="v050"></a>
 

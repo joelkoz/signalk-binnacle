@@ -3,6 +3,8 @@ import type {
   GeoJSONSourceSpecification,
   LineLayerSpecification,
 } from 'maplibre-gl';
+
+import { bboxContains, padBbox } from '$shared/geo';
 import {
   emptyFeatureCollection,
   mapThemePaint,
@@ -25,27 +27,10 @@ const SETTLE_MS = 400;
 // The plugin accumulates points at a one-minute default resolution, so fetching fresher buys
 // nothing.
 const REFETCH_MS = 30_000;
+// Consecutive failed refetch cycles before frozen wakes clear (a few minutes of staleness).
+const MAX_STALE_FETCHES = 4;
 // Fetch this fraction beyond every viewport edge so a small pan stays inside the last fetch's area.
 const PAD_FRACTION = 0.5;
-
-// Twins of the notes-cache helpers; feature slices cannot import each other, so the two small
-// geometry guards live in both.
-function padBbox([west, south, east, north]: Bbox): Bbox {
-  const dx = (east - west) * PAD_FRACTION;
-  const dy = (north - south) * PAD_FRACTION;
-  return [
-    Math.max(-180, west - dx),
-    Math.max(-85, south - dy),
-    Math.min(180, east + dx),
-    Math.min(85, north + dy),
-  ];
-}
-
-function bboxContains(outer: Bbox, inner: Bbox): boolean {
-  return (
-    outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3]
-  );
-}
 
 function featureCollection(trails: readonly AisTrail[]): GeoJSON.FeatureCollection {
   return {
@@ -78,6 +63,7 @@ export function createAisTrailsOverlay(
   // Starts true to match the layer-manager default; the register-time setVisible corrects it.
   let visible = true;
   let fetching = false;
+  let failedFetches = 0;
   let nextFetchAt = 0;
   let fetchedBbox: Bbox | undefined;
   let lastMoveAt = 0;
@@ -178,12 +164,21 @@ export function createAisTrailsOverlay(
       // Claim the cadence and the area up front, so a failed fetch backs off for a full interval
       // instead of retrying every frame (the notes cooldown pattern).
       nextFetchAt = now + REFETCH_MS;
-      const fetchBbox = padBbox(viewport);
+      const fetchBbox = padBbox(viewport, PAD_FRACTION);
       fetchedBbox = fetchBbox;
       fetchAisTrails(base, token, fetchBbox)
         .then((trails) => {
-          // undefined is a transient failure or an absent plugin: keep the wakes already shown.
-          if (trails) render(ctx, trails);
+          if (trails) {
+            failedFetches = 0;
+            render(ctx, trails);
+            return;
+          }
+          // undefined is a transient failure or an absent plugin: keep the wakes already shown,
+          // but not forever. Live targets keep advancing while frozen wakes silently age, so
+          // after a few consecutive failed cycles (a couple of minutes) the wakes clear rather
+          // than presenting hours-old history as recent.
+          failedFetches += 1;
+          if (failedFetches >= MAX_STALE_FETCHES) clearRendered(ctx);
         })
         .finally(() => {
           fetching = false;

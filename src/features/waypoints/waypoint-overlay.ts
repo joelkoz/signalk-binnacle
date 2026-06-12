@@ -127,7 +127,7 @@ export function createWaypointOverlay(
           source: SOURCE_ID,
           paint: {
             'circle-radius': 5,
-            'circle-color': paint.note,
+            'circle-color': paint.waypoint,
             'circle-stroke-color': paint.markerGlyph,
             'circle-stroke-width': 1.5,
           },
@@ -191,7 +191,7 @@ export function createWaypointOverlay(
     },
     applyTheme(ctx, next) {
       paint = next;
-      ctx.map.setPaintProperty(MARKER_LAYER, 'circle-color', paint.note);
+      ctx.map.setPaintProperty(MARKER_LAYER, 'circle-color', paint.waypoint);
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-stroke-color', paint.markerGlyph);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-color', paint.label);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-halo-color', paint.background);

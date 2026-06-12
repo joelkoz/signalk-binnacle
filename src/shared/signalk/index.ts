@@ -7,6 +7,7 @@ export { fetchServerFeatures } from './features-client';
 export type {
   RaiseNotificationOptions,
   UpdateNotificationOptions,
+  UpdateNotificationResult,
 } from './notifications-client';
 export {
   acknowledgeNotification,

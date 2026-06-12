@@ -1,20 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { stubFetch } from '$shared/testing/fetch-stub';
 import { type Bbox, fetchAisTrails } from './ais-trails-client';
 
 const BASE = 'https://boat.example';
 const BBOX: Bbox = [-83.5, 42.0, -82.5, 43.0];
-
-function stubFetch(response: { ok: boolean; body?: unknown } | 'reject') {
-  const mock = vi.fn(async (_url: string, _init?: RequestInit) => {
-    if (response === 'reject') throw new TypeError('network down');
-    return {
-      ok: response.ok,
-      json: async () => response.body,
-    } as Response;
-  });
-  vi.stubGlobal('fetch', mock);
-  return mock;
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();

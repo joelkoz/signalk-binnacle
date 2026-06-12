@@ -1,5 +1,5 @@
 <script lang="ts">
-import { Crosshair, Navigation, SquarePen, Trash2 } from '@lucide/svelte';
+import { Navigation, SquarePen, Trash2 } from '@lucide/svelte';
 import type { Waypoint } from '$entities/waypoint';
 import { formatLatitude, formatLongitude } from '$shared/lib';
 import { InlineConfirm, promptRename, SavedList, SlideOver } from '$shared/ui';
@@ -35,7 +35,7 @@ function confirmDelete(id: string): void {
 }
 </script>
 
-<SlideOver title="Waypoints" bodyFlex {onClose} {onBack}>
+<SlideOver title="Waypoints" closeLabel="Close waypoints panel" bodyFlex {onClose} {onBack}>
   {#if error}
     <p class="alert-note" role="alert">{error}</p>
   {/if}
@@ -50,7 +50,14 @@ function confirmDelete(id: string): void {
   >
     {#snippet card(waypoint)}
       <div class="card-head">
-        <span class="name" title={waypoint.name}>{waypoint.name}</span>
+        <button
+          type="button"
+          class="name"
+          title="Show this waypoint on the chart"
+          onclick={() => onLocate(waypoint)}
+        >
+          {waypoint.name}
+        </button>
       </div>
       <dl class="card-stats">
         <dt class="caps-label">Position</dt>
@@ -72,15 +79,6 @@ function confirmDelete(id: string): void {
         />
       {:else}
         <div class="actions">
-          <button
-            type="button"
-            class="icon-btn"
-            aria-label="Show on chart"
-            title="Show on chart"
-            onclick={() => onLocate(waypoint)}
-          >
-            <Crosshair size={18} aria-hidden="true" />
-          </button>
           {#if onGoTo}
             <button
               type="button"
@@ -124,5 +122,14 @@ function confirmDelete(id: string): void {
   font-size: var(--text-sm);
   color: var(--text-muted);
   overflow-wrap: anywhere;
+}
+/* The tappable name is the locate action, the Routes panel idiom; the box and button reset come
+   from the global .saved system, only the interactivity is local. */
+:global(.saved) .name {
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+:global(.saved) .name:hover {
+  color: var(--accent);
 }
 </style>

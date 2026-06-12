@@ -39,7 +39,7 @@ export class SignalKStore {
   }
 
   applyFrame(frame: SKFrame): void {
-    if (frame.selfContext) this.selfContext = frame.selfContext;
+    if (!this.selfContext && frame.selfContext) this.selfContext = frame.selfContext;
     for (const [path, value] of frame.self) {
       const cell = this.cell(path);
       cell.value = value;
@@ -74,9 +74,30 @@ export class SignalKStore {
   #mirrorNotification(path: string, value: Value): void {
     const state =
       value && typeof value === 'object' ? (value as { state?: unknown }).state : undefined;
-    if (typeof state !== 'string') {
+    // A cleared, normal, or nominal notification leaves the mirror rather than accumulating in
+    // it: the alert list only ever shows raised states, and servers can republish normal-state
+    // values every cycle for telemetry paths under notifications.*.
+    if (typeof state !== 'string' || state === 'normal' || state === 'nominal') {
       if (this.notifications.delete(path)) this.notificationsVersion += 1;
       return;
+    }
+    // Bump only on a real change: a persistent alarm republished identically every delta cycle
+    // must not rebuild every consumer's list per frame. State and message carry everything the
+    // list renders besides the status flags, which the same comparison covers via reference.
+    const previous = this.notifications.get(path);
+    if (previous === value) return;
+    if (previous && typeof previous === 'object' && typeof value === 'object' && value) {
+      const a = previous as { state?: unknown; message?: unknown; id?: unknown; status?: unknown };
+      const b = value as { state?: unknown; message?: unknown; id?: unknown; status?: unknown };
+      if (
+        a.state === b.state &&
+        a.message === b.message &&
+        a.id === b.id &&
+        JSON.stringify(a.status) === JSON.stringify(b.status)
+      ) {
+        this.notifications.set(path, value);
+        return;
+      }
     }
     this.notifications.set(path, value);
     this.notificationsVersion += 1;

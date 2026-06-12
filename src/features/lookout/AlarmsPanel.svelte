@@ -8,6 +8,9 @@ import { thresholdsCaution } from './thresholds-caution';
 
 interface Props {
   notifications: NotificationsStore;
+  // A transient silence or acknowledge failure, surfaced because a refused action is otherwise
+  // indistinguishable from a slow stream echo while the alarm keeps sounding.
+  error?: string;
   onSilence?: (n: ActiveNotification) => void;
   onAcknowledge?: (n: ActiveNotification) => void;
   thresholds: PersistedValue<Thresholds>;
@@ -22,6 +25,7 @@ interface Props {
 
 const {
   notifications,
+  error,
   onSilence,
   onAcknowledge,
   thresholds,
@@ -66,9 +70,10 @@ function setMeters(key: 'dangerCpaMeters' | 'warningCpaMeters', nm: number): voi
   thresholds.set({ ...thresholds.value, [key]: nauticalMilesToMeters(nm) });
 }
 
+const SECONDS_PER_MINUTE = 60;
 function setSeconds(key: 'dangerTcpaSeconds' | 'warningTcpaSeconds', minutes: number): void {
   if (!Number.isFinite(minutes) || minutes < 0) return;
-  thresholds.set({ ...thresholds.value, [key]: minutes * 60 });
+  thresholds.set({ ...thresholds.value, [key]: minutes * SECONDS_PER_MINUTE });
 }
 
 const cpaNm = (meters: number): number => Number(formatCpaNm(meters));
@@ -79,6 +84,9 @@ const caution = $derived(thresholdsCaution(t));
 
 <SlideOver title="Alarms" closeLabel="Close alarms panel" {onClose} {onBack}>
   <div class="alarms">
+    {#if error}
+      <p class="alert-note" role="alert">{error}</p>
+    {/if}
     <section class="alerts" aria-label="Active alerts">
       <span class="caps-label">Active alerts</span>
       {#each alerts as n (n.path)}
@@ -128,7 +136,7 @@ const caution = $derived(thresholdsCaution(t));
         <span>Mute collision alarm</span>
       </button>
       {#if collisionMuted && collisionMuteRemainingMin !== undefined}
-        <p class="muted-note">auto re-arms in {collisionMuteRemainingMin} min</p>
+        <p class="muted-note">Auto re-arms in {collisionMuteRemainingMin} min</p>
       {/if}
       <button
         type="button"
@@ -245,7 +253,9 @@ const caution = $derived(thresholdsCaution(t));
   color: var(--warning);
 }
 .state-tag.alert {
-  color: var(--text-muted);
+  /* The lowest raised grade still outranks normal text in the severity ladder, so it keeps the
+     full text color; muted is reserved for cleared states. */
+  color: var(--text);
 }
 .alert-main {
   display: flex;

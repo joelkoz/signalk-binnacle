@@ -24,6 +24,9 @@ export interface MapThemePaint {
   // Tide and tidal-current station marker fill: a teal in day and dusk, distinct from the note
   // purple so the two marker kinds never read alike; a distinct red at night.
   tide: string;
+  // Standalone waypoint markers: kept apart from the note and tide hues so the marker kinds
+  // never read alike on the chart.
+  waypoint: string;
   // The glyph drawn on a marker disc: a light contrast in day and dusk, a brighter red
   // at night so it reads on the disc without breaking the pure-red-on-black contract.
   markerGlyph: string;
@@ -73,6 +76,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     warning: '#e0a020',
     note: '#7a3fa0',
     tide: '#0d8a99',
+    waypoint: '#1f6fb0',
     markerGlyph: '#ffffff',
     select: '#ffb300',
     navStarboard: '#d8392f',
@@ -99,6 +103,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     warning: '#d9a441',
     note: '#9a6fc0',
     tide: '#2f9fb0',
+    waypoint: '#4f8fc0',
     markerGlyph: '#eef3f6',
     select: '#ffc24d',
     navStarboard: '#e0573f',
@@ -125,6 +130,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     warning: '#b03a26',
     note: '#9a2a18',
     tide: '#c24a30',
+    waypoint: '#d96a50',
     markerGlyph: '#ff9a86',
     select: '#ffb39a',
     navStarboard: '#ff6a5a',

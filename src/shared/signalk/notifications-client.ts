@@ -1,5 +1,5 @@
 import { withTimeout } from '$shared/lib';
-import { authInit, deleteResource, putResource } from './resource';
+import { authInit, deleteResource } from './resource';
 import type { NotificationState } from './types';
 
 // Thin client for the server's v2 Notifications API (signalk-server src/api/notifications).
@@ -69,6 +69,11 @@ export async function postNotification(
   return idFrom(await postJson(`${base}${NOTIFICATIONS_API}`, token, options));
 }
 
+// The three ways an update lands: applied; the server no longer knows the id (a restart reaped
+// it, so a fresh raise is right); or the transport failed (a fresh raise would also fail, and
+// could orphan a still-raised duplicate once the link returns).
+export type UpdateNotificationResult = 'updated' | 'missing' | 'failed';
+
 // Update a raised notification in place (state, message, or data). A state change resets the
 // server-side silenced and acknowledged flags.
 export async function updateNotification(
@@ -76,8 +81,25 @@ export async function updateNotification(
   token: string | undefined,
   id: string,
   options: UpdateNotificationOptions,
-): Promise<boolean> {
-  return putResource(`${base}${NOTIFICATIONS_API}/${id}`, token, options);
+): Promise<UpdateNotificationResult> {
+  try {
+    const response = await fetch(
+      `${base}${NOTIFICATIONS_API}/${id}`,
+      withTimeout(
+        authInit(token, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(options),
+        }),
+      ),
+    );
+    if (response.ok) return 'updated';
+    // The server answers 400 "Notification not found!" for an unknown id; any 4xx here means it
+    // saw the request and refused it, so re-raising is the correct recovery.
+    return response.status >= 400 && response.status < 500 ? 'missing' : 'failed';
+  } catch {
+    return 'failed';
+  }
 }
 
 // Clear a notification: the server sets its state to normal and emits the final delta

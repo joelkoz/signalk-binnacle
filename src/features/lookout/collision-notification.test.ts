@@ -47,8 +47,10 @@ describe('buildNotification', () => {
 describe('CollisionNotifier', () => {
   it('publishes on state change but not on every tick', () => {
     const sent: Array<{ path: string; value: unknown }> = [];
-    const notifier = new CollisionNotifier((path, value) => {
-      sent.push({ path, value });
+    const notifier = new CollisionNotifier({
+      publish: (path, value) => {
+        sent.push({ path, value });
+      },
     });
     const danger: Assessment = { contacts: [contact()], worst: 'danger' };
 
@@ -67,8 +69,10 @@ describe('CollisionNotifier', () => {
 
   it('republishes with fresh numbers as the contact closes a coarse bucket', () => {
     const sent: Array<{ value: { message: string } }> = [];
-    const notifier = new CollisionNotifier((_path, value) => {
-      sent.push({ value: value as { message: string } });
+    const notifier = new CollisionNotifier({
+      publish: (_path, value) => {
+        sent.push({ value: value as { message: string } });
+      },
     });
     notifier.update({ contacts: [contact()], worst: 'danger' }); // CPA 463 m, TCPA 300 s
     notifier.update({
@@ -96,8 +100,10 @@ describe('CollisionNotifier', () => {
 
   it('does not publish a clear before any active alert, but does after one', () => {
     const sent: Array<{ value: unknown }> = [];
-    const notifier = new CollisionNotifier((_path, value) => {
-      sent.push({ value });
+    const notifier = new CollisionNotifier({
+      publish: (_path, value) => {
+        sent.push({ value });
+      },
     });
     const clear: Assessment = { contacts: [], worst: 'clear' };
 
