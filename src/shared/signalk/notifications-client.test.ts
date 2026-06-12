@@ -68,6 +68,13 @@ describe('updateNotification', () => {
     stubFetch('reject');
     await expect(updateNotification(BASE, 'tok', ID, { state: 'warn' })).resolves.toBe('failed');
   });
+
+  it('reports an auth refusal as failed, not missing, so the id is kept', async () => {
+    stubFetch({ ok: false, status: 403 });
+    await expect(updateNotification(BASE, 'tok', ID, { state: 'warn' })).resolves.toBe('failed');
+    stubFetch({ ok: false, status: 401 });
+    await expect(updateNotification(BASE, 'tok', ID, { state: 'warn' })).resolves.toBe('failed');
+  });
 });
 
 describe('resolveNotification', () => {
@@ -99,6 +106,12 @@ describe('silence and acknowledge', () => {
     stubFetch('reject');
     await expect(silenceNotification(BASE, undefined, ID)).resolves.toBe(false);
     await expect(acknowledgeNotification(BASE, undefined, ID)).resolves.toBe(false);
+  });
+
+  it('returns false when the server refuses the action, the path the panel error surfaces', async () => {
+    stubFetch({ ok: false, status: 403 });
+    await expect(silenceNotification(BASE, 'tok', ID)).resolves.toBe(false);
+    await expect(acknowledgeNotification(BASE, 'tok', ID)).resolves.toBe(false);
   });
 });
 

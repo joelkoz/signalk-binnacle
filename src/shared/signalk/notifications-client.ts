@@ -94,9 +94,10 @@ export async function updateNotification(
       ),
     );
     if (response.ok) return 'updated';
-    // The server answers 400 "Notification not found!" for an unknown id; any 4xx here means it
-    // saw the request and refused it, so re-raising is the correct recovery.
-    return response.status >= 400 && response.status < 500 ? 'missing' : 'failed';
+    // The server answers 400 "Notification not found!" for an unknown or reaped id, so only 400
+    // warrants a re-raise; an auth refusal or absent API keeps the id and the caller's v1 delta
+    // fallback carries the change.
+    return response.status === 400 ? 'missing' : 'failed';
   } catch {
     return 'failed';
   }

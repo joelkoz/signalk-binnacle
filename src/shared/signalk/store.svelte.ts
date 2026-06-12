@@ -1,6 +1,20 @@
 import type { AisTargetState, ConnectionState, SKFrame, Value } from './types';
 import { INITIAL_CONNECTION_STATE } from './types';
 
+// The four v2 status flags are all the alert list renders, so the notification dedup compares
+// them field by field; serializing the status object would allocate per delta for active alarms.
+type Flags =
+  | { silenced?: unknown; acknowledged?: unknown; canSilence?: unknown; canAcknowledge?: unknown }
+  | undefined;
+function sameFlags(a: Flags, b: Flags): boolean {
+  return (
+    a?.silenced === b?.silenced &&
+    a?.acknowledged === b?.acknowledged &&
+    a?.canSilence === b?.canSilence &&
+    a?.canAcknowledge === b?.canAcknowledge
+  );
+}
+
 export class PathCell {
   value = $state<Value | undefined>(undefined);
   // The wall-clock epoch of the most recent stream update, for staleness checks. Zero until the
@@ -82,18 +96,18 @@ export class SignalKStore {
       return;
     }
     // Bump only on a real change: a persistent alarm republished identically every delta cycle
-    // must not rebuild every consumer's list per frame. State and message carry everything the
-    // list renders besides the status flags, which the same comparison covers via reference.
+    // must not rebuild every consumer's list per frame. State, message, id, and the four status
+    // flags carry everything the list renders.
     const previous = this.notifications.get(path);
     if (previous === value) return;
     if (previous && typeof previous === 'object' && typeof value === 'object' && value) {
-      const a = previous as { state?: unknown; message?: unknown; id?: unknown; status?: unknown };
-      const b = value as { state?: unknown; message?: unknown; id?: unknown; status?: unknown };
+      const a = previous as { state?: unknown; message?: unknown; id?: unknown; status?: Flags };
+      const b = value as { state?: unknown; message?: unknown; id?: unknown; status?: Flags };
       if (
         a.state === b.state &&
         a.message === b.message &&
         a.id === b.id &&
-        JSON.stringify(a.status) === JSON.stringify(b.status)
+        sameFlags(a.status, b.status)
       ) {
         this.notifications.set(path, value);
         return;

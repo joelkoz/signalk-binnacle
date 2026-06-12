@@ -249,7 +249,13 @@ const collisionNotifier = new CollisionNotifier({
 function toggleCollisionMute(): void {
   collisionMute.toggle();
   if (collisionMute.active && collisionAlertId) {
-    void silenceNotification(serverOrigin(), chartsToken, collisionAlertId);
+    // A refused boat-wide silence surfaces in the Alarms panel; the local mute itself stands.
+    alarmActionError = undefined;
+    void silenceNotification(serverOrigin(), chartsToken, collisionAlertId).then((ok) => {
+      if (!ok) {
+        alarmActionError = 'Could not silence the alert boat-wide. Other stations may still sound.';
+      }
+    });
   }
 }
 
@@ -1497,6 +1503,9 @@ $effect(() => {
   void refreshWaypoints();
   // A provider plugin enabled while the link was down would otherwise stay undetected.
   void refreshWeatherProvider(auth.token ?? undefined);
+  // A unit preset changed on the server while the link was down would otherwise hold until the
+  // token changes or the page reloads.
+  void units.syncFromServer(serverOrigin());
   // Unconditional: a course activated from another station while the link was down would otherwise
   // stay unknown here until its next change; the hydration also reconciles the activation flags.
   void hydrateAndSeedCourse();

@@ -164,6 +164,37 @@ describe('SignalKStore', () => {
     expect(store.notificationsVersion).toBe(2);
   });
 
+  it('suppresses the version bump when a notification republishes unchanged', () => {
+    const store = new SignalKStore();
+    const status = { silenced: false, acknowledged: false, canSilence: true, canAcknowledge: true };
+    const raise = { state: 'alarm', message: 'Dragging', id: 'abc', status };
+    store.applyFrame(frame({ 'notifications.navigation.anchor': raise }));
+    expect(store.notificationsVersion).toBe(1);
+    // A persistent alarm republished identically every cycle (a fresh object, same content) must
+    // not rebuild the consumers' lists per frame.
+    store.applyFrame(
+      frame({ 'notifications.navigation.anchor': { ...raise, status: { ...status } } }),
+    );
+    expect(store.notificationsVersion).toBe(1);
+    // A status flag flip is a real change and must bump.
+    store.applyFrame(
+      frame({
+        'notifications.navigation.anchor': { ...raise, status: { ...status, silenced: true } },
+      }),
+    );
+    expect(store.notificationsVersion).toBe(2);
+  });
+
+  it('captures the self context from the first frame that carries it', () => {
+    const store = new SignalKStore();
+    expect(store.selfContext).toBeUndefined();
+    store.applyFrame({ ...frame({}), selfContext: 'vessels.urn:mrn:imo:mmsi:230099999' });
+    expect(store.selfContext).toBe('vessels.urn:mrn:imo:mmsi:230099999');
+    // A later frame without the field must not clear it.
+    store.applyFrame(frame({}));
+    expect(store.selfContext).toBe('vessels.urn:mrn:imo:mmsi:230099999');
+  });
+
   it('removes a notification whose value has no state, without a version bump for a no-op', () => {
     const store = new SignalKStore();
     store.applyFrame(frame({ 'notifications.x': { message: 'no state' } }));
