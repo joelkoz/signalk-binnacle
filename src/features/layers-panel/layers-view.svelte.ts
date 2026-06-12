@@ -1,4 +1,5 @@
 import type { LayerListItem, LayerManager } from '$shared/map';
+import { clampReorderSlot } from './layer-category';
 
 export class LayersView {
   items = $state<LayerListItem[]>([]);
@@ -29,9 +30,13 @@ export class LayersView {
 
   // Move a layer to a new index in the top-to-bottom display order, then rebuild the list in
   // the new order. A reorder is a discrete drop, not a per-pixel stream, so a full refresh is
-  // fine here (unlike the in-place opacity write above, which mutates one item).
+  // fine here (unlike the in-place opacity write above, which mutates one item). The target is
+  // clamped here, in the one place every reorder funnels through, so no caller can move a row
+  // outside its own category bucket; the panel clamps too, but only for its drop indicator and
+  // keyboard announcement.
   reorder(id: string, toIndex: number): void {
-    this.#manager.reorder(id, toIndex);
+    const movable = this.items.filter((item) => !item.pinned && !item.parent);
+    this.#manager.reorder(id, clampReorderSlot(movable, id, toIndex));
     this.refresh();
   }
 }

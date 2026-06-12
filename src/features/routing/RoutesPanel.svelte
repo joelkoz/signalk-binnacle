@@ -22,7 +22,7 @@ import {
 import { etaSeconds } from '$shared/nav';
 import type { PersistedValue } from '$shared/settings';
 import {
-  focusOnMount,
+  InlineConfirm,
   pickTextFile,
   promptSaveName,
   SavedList,
@@ -151,7 +151,7 @@ $effect(() => {
   {onBack}
 >
   {#if error}
-    <p class="error" role="alert">{error}</p>
+    <p class="alert-note" role="alert">{error}</p>
   {/if}
 
   <div class="panel-controls">
@@ -258,24 +258,13 @@ $effect(() => {
         <dd><span class="num">{route.waypoints.length}</span></dd>
       </dl>
       {#if confirmingDelete === route.id}
-        <div class="confirm" role="group" aria-label="Confirm delete route">
-          <span class="confirm-text">
-            {route.id === activeId ? 'Delete this route and stop navigating?' : 'Delete this route?'}
-          </span>
-          <div class="confirm-actions">
-            <button type="button" class="btn btn-danger" onclick={() => confirmDelete(route.id)}>
-              Delete
-            </button>
-            <button
-              type="button"
-              class="btn"
-              use:focusOnMount
-              onclick={() => (confirmingDelete = undefined)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <InlineConfirm
+          question={route.id === activeId
+            ? 'Delete this route and stop navigating?'
+            : 'Delete this route?'}
+          onConfirm={() => confirmDelete(route.id)}
+          onCancel={() => (confirmingDelete = undefined)}
+        />
       {:else}
         <div class="actions">
           <VisibilityToggle
@@ -425,31 +414,8 @@ $effect(() => {
   color: var(--accent);
   text-align: end;
 }
-.error {
-  margin: 0;
-  padding: 0.4rem var(--space-2);
-  border: 1px solid var(--alarm);
-  border-radius: var(--radius-sm);
-  color: var(--alarm);
-  font-size: var(--text-sm);
-}
-/* The inline delete confirm replaces the action row for the armed card: a clear question and a pair
-   of full buttons, so confirming or backing out is a deliberate second tap. */
-.confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.confirm-text {
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-.confirm-actions {
-  display: flex;
-  gap: var(--space-2);
-}
+/* The inline alarm note and the armed delete confirm come from the global .alert-note rule and the
+   shared InlineConfirm component. */
 /* The route-edit working-plan stats use the global .stat-grid system in app.css. */
 /* The card list, wrapper, stats, and actions come from the shared SavedList plus the global .saved
    system in app.css. The .saved wrapper lives in SavedList, so the ancestor is matched with :global

@@ -119,15 +119,13 @@ function handlePointerDown(id: string, event: PointerEvent): void {
   const handle = event.currentTarget as HTMLElement;
   handle.setPointerCapture(event.pointerId);
 
-  // Measure each non-dragged row's vertical midpoint on every move, so a panel scroll mid-drag
-  // cannot leave the slots pointing at stale positions (the list is small, so a per-move measure is
-  // cheap). Collapsed-category rows stay in the DOM (hidden), so they measure as a zero midpoint and
-  // never become a drop target, while still holding their movable index, so the slot the pointer
-  // resolves to is a valid movable index. The slot is the first midpoint the pointer is above,
-  // matching view.reorder's contract, then clamped to the row's own category span so a drag can
-  // never silently change z-order outside the visible category.
-  const slotFromPointer = (clientY: number): number => {
-    const midpoints = listEl
+  // Measure each non-dragged row's vertical midpoint once at drag start, re-measuring only when
+  // the list scrolls mid-drag, so a pointermove costs no layout read or reflow. Collapsed-category
+  // rows stay in the DOM (hidden), so they measure as a zero midpoint and never become a drop
+  // target, while still holding their movable index, so the slot the pointer resolves to is a
+  // valid movable index.
+  const measureMidpoints = (): number[] =>
+    listEl
       ? [...listEl.querySelectorAll<HTMLElement>('[data-layer-row]')]
           .filter((el) => el.dataset.layerRow !== id)
           .map((el) => {
@@ -135,6 +133,12 @@ function handlePointerDown(id: string, event: PointerEvent): void {
             return rect.top + rect.height / 2;
           })
       : [];
+  let midpoints = measureMidpoints();
+
+  // The slot is the first midpoint the pointer is above, matching view.reorder's contract, then
+  // clamped to the row's own category span so the drop indicator never points outside the visible
+  // category (view.reorder clamps again as the unforgeable backstop).
+  const slotFromPointer = (clientY: number): number => {
     let slot = midpoints.length;
     for (let i = 0; i < midpoints.length; i++) {
       if (clientY < midpoints[i]) {
@@ -145,10 +149,17 @@ function handlePointerDown(id: string, event: PointerEvent): void {
     return clampReorderSlot(movable, id, slot);
   };
 
-  // One AbortController tears down all three listeners on drop or cancel, so the teardown
+  // One AbortController tears down all the listeners on drop or cancel, so the teardown
   // lives in a single place rather than being repeated per handler.
   const drag = new AbortController();
   const { signal } = drag;
+  listEl?.addEventListener(
+    'scroll',
+    () => {
+      midpoints = measureMidpoints();
+    },
+    { signal, passive: true },
+  );
   const finish = (commit: boolean): void => {
     drag.abort();
     handle.releasePointerCapture(event.pointerId);

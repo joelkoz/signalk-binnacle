@@ -37,6 +37,20 @@ export function clearCourse(base: string, token: string | undefined): Promise<bo
   return deleteResource(`${base}${COURSE}`, token);
 }
 
+// What a hydrated course snapshot says about local activation: a route id when the server is
+// navigating a saved route, a goto when it has a bare destination, or nothing when no course is
+// active (or the snapshot is absent, so nothing is known). The href parse is the inverse of
+// routes-client's routeHref.
+export function activationFromCourse(
+  info: CourseInfo | undefined,
+): { routeId?: string; goto?: boolean } | undefined {
+  if (!info) return undefined;
+  const rawId = info.activeRoute?.href?.split('/').pop();
+  if (rawId) return { routeId: decodeURIComponent(rawId) };
+  if (info.nextPoint?.position) return { goto: true };
+  return {};
+}
+
 // One-time hydration: v2 course paths are not in the v1 full model, so the stream sends nothing
 // until the next change. Read the current snapshot once when a course becomes active.
 export async function hydrateCourse(

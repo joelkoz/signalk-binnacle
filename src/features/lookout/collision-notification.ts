@@ -1,4 +1,4 @@
-import { shortVesselId } from '$entities/ais';
+import { vesselLabel } from '$entities/ais';
 import type { Assessment } from '$entities/collision';
 import { formatCpaNm, formatTcpaMin } from '$shared/lib';
 
@@ -23,7 +23,7 @@ export function buildNotification(assessment: Assessment): SkNotification {
   if (!top) {
     return { state: 'normal', method: [], message: 'No collision risk' };
   }
-  const name = top.name || shortVesselId(top.id);
+  const name = vesselLabel(top.name, top.id);
   const cpa = formatCpaNm(top.cpaMeters);
   const tcpa = formatTcpaMin(top.tcpaSeconds);
   const danger = assessment.worst === 'danger';

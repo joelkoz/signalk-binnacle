@@ -1,8 +1,8 @@
 <script lang="ts">
 import { Check, Download, Save, SquarePen, Star, Trash2, Upload } from '@lucide/svelte';
 import type { Profile } from '$entities/profile';
-import { focusOnMount, pickTextFile, promptSaveName, SavedList, SlideOver } from '$shared/ui';
-import { parseProfilesJson } from './profile-io';
+import { InlineConfirm, pickTextFile, promptSaveName, SavedList, SlideOver } from '$shared/ui';
+import { type ImportedProfile, parseProfilesJson } from './profile-io';
 
 interface Props {
   profiles: Profile[];
@@ -17,7 +17,7 @@ interface Props {
   onSetDefault: (id: string) => void;
   // Download a profile as a JSON file, and import profiles from the text of a JSON file.
   onExport: (id: string) => void;
-  onImport: (json: string) => void;
+  onImport: (profiles: ImportedProfile[]) => void;
   onClose: () => void;
   onBack?: () => void;
 }
@@ -44,19 +44,20 @@ function promptNew(): void {
   if (name !== undefined) onSaveNew(name);
 }
 
-// A parse error or a file with no valid entries must not fail silently: validate here so the
-// panel can say so, and hand only a usable document to the importer.
+// A parse error or a file with no valid entries must not fail silently: the panel parses once,
+// says so when nothing was usable, and hands the already-parsed profiles to the importer.
 let importError = $state<string | undefined>();
 
 async function importProfiles(): Promise<void> {
   const text = await pickTextFile('.json,application/json');
   if (text === undefined) return;
-  if (parseProfilesJson(text).length === 0) {
+  const parsed = parseProfilesJson(text);
+  if (parsed.length === 0) {
     importError = 'No valid profiles in that file.';
     return;
   }
   importError = undefined;
-  onImport(text);
+  onImport(parsed);
 }
 
 // Delete is destructive and propagates to every synced device, so it arms a confirm step rather
@@ -88,7 +89,7 @@ function promptRename(profile: Profile): void {
   </div>
 
   {#if importError}
-    <p class="error" role="status">{importError}</p>
+    <p class="alert-note" role="status">{importError}</p>
   {/if}
 
   <SavedList
@@ -114,22 +115,11 @@ function promptRename(profile: Profile): void {
         <p class="dirty caps-label">Unsaved changes</p>
       {/if}
       {#if confirmingDelete === profile.id}
-        <div class="confirm" role="group" aria-label="Confirm delete profile">
-          <span class="confirm-text">Delete this profile on every synced device?</span>
-          <div class="confirm-actions">
-            <button type="button" class="btn btn-danger" onclick={() => confirmDelete(profile.id)}>
-              Delete
-            </button>
-            <button
-              type="button"
-              class="btn"
-              use:focusOnMount
-              onclick={() => (confirmingDelete = undefined)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <InlineConfirm
+          question="Delete this profile on every synced device?"
+          onConfirm={() => confirmDelete(profile.id)}
+          onCancel={() => (confirmingDelete = undefined)}
+        />
       {:else}
         <div class="actions">
           {#if !isActive}
@@ -215,29 +205,6 @@ function promptRename(profile: Profile): void {
   margin: 0;
   color: var(--text-muted);
 }
-.error {
-  margin: 0;
-  padding: 0.4rem var(--space-2);
-  border: 1px solid var(--alarm);
-  border-radius: var(--radius-sm);
-  color: var(--alarm);
-  font-size: var(--text-sm);
-}
-/* The inline delete confirm replaces the action row for the armed card: a clear question and a pair
-   of full buttons, so confirming or backing out is a deliberate second tap. */
-.confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.confirm-text {
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-.confirm-actions {
-  display: flex;
-  gap: var(--space-2);
-}
+/* The import error uses the global .alert-note rule; the armed delete confirm comes from the
+   shared InlineConfirm component. */
 </style>

@@ -105,6 +105,18 @@ export class AnchorWatch {
     return this.mode !== 'off';
   }
 
+  // The watch has lost its position feed: the distance readout cannot be trusted in any mode.
+  get fixLost(): boolean {
+    return this.watching && this.#vessel.positionStale;
+  }
+
+  // Client-mode drag detection counts position fixes, so without them it is silently dead; a
+  // server watch keeps alarming on its own feed. Consumers must make this state loud: the watch
+  // guards a sleeping crew.
+  get degraded(): boolean {
+    return this.fixLost && this.mode !== 'server';
+  }
+
   get position(): LatLon | undefined {
     return this.#serverPosition ?? this.#local?.position;
   }

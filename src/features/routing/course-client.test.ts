@@ -1,5 +1,11 @@
-import { afterEach, expect, it, vi } from 'vitest';
-import { activateRoute, advancePoint, clearCourse, setDestination } from './course-client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  activateRoute,
+  activationFromCourse,
+  advancePoint,
+  clearCourse,
+  setDestination,
+} from './course-client';
 
 afterEach(() => vi.restoreAllMocks());
 const ok = { ok: true, json: async () => ({}) } as Response;
@@ -41,4 +47,26 @@ it('clearCourse DELETEs the course', async () => {
   await clearCourse('http://pi', 'tok');
   expect(f.mock.calls[0][0]).toBe(`http://pi${COURSE}`);
   expect((f.mock.calls[0][1] as RequestInit).method).toBe('DELETE');
+});
+
+describe('activationFromCourse', () => {
+  it('reads the route id out of an activeRoute href, decoding it', () => {
+    expect(activationFromCourse({ activeRoute: { href: '/resources/routes/abc%20def' } })).toEqual({
+      routeId: 'abc def',
+    });
+  });
+
+  it('reports a goto for a bare destination with no route', () => {
+    expect(
+      activationFromCourse({ nextPoint: { position: { latitude: 1, longitude: 2 } } }),
+    ).toEqual({ goto: true });
+  });
+
+  it('reports an empty activation when the snapshot has no course', () => {
+    expect(activationFromCourse({})).toEqual({});
+  });
+
+  it('reports nothing known for an absent snapshot', () => {
+    expect(activationFromCourse(undefined)).toBeUndefined();
+  });
 });

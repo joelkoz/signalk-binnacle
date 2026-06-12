@@ -168,11 +168,12 @@ export class UserCharts {
   }
 
   rename(id: string, name: string): void {
-    if (!this.sources.some((source) => source.id === id)) return;
-    this.sources = this.sources.map((source) => (source.id === id ? { ...source, name } : source));
+    const index = this.sources.findIndex((source) => source.id === id);
+    if (index < 0) return;
+    const renamed = { ...this.sources[index], name };
+    this.sources = this.sources.with(index, renamed);
     this.#persist(this.sources);
-    const renamed = this.sources.find((source) => source.id === id);
-    if (renamed) this.#onRename?.(renamed);
+    this.#onRename?.(renamed);
   }
 
   async remove(id: string): Promise<void> {

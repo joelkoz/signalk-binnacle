@@ -17,19 +17,14 @@ import {
   VolumeX,
   Waves,
 } from '@lucide/svelte';
-import { onDestroy, onMount, tick } from 'svelte';
-import { AIS_PRUNE_INTERVAL_MS, AIS_STALE_TTL_MS, AisTargets, shortVesselId } from '$entities/ais';
+import { onDestroy, onMount, tick, untrack } from 'svelte';
+import { AisTargets, vesselLabel } from '$entities/ais';
 import { AnchorWatch } from '$entities/anchor';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
 import { MeasureStore } from '$entities/measure';
 import { type MobMark, MobStore } from '$entities/mob';
-import {
-  type Profile,
-  type ProfileSettings,
-  ProfileStore,
-  SignalKProfileAdapter,
-} from '$entities/profile';
+import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$entities/profile';
 import { RouteStore, remainingRouteDistanceMeters, reverseRoute } from '$entities/route';
 import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
@@ -75,12 +70,14 @@ import {
 import {
   createProfileBindings,
   downloadProfileJson,
+  type ImportedProfile,
   ProfileSwitcher,
   ProfilesPanel,
-  parseProfilesJson,
+  seedStarterProfiles,
 } from '$features/profiles';
 import {
   activateRoute,
+  activationFromCourse,
   advancePoint,
   clearCourse,
   deleteRoute,
@@ -89,6 +86,7 @@ import {
   hydrateCourse,
   parseGpxRoutes,
   RoutesPanel,
+  routeHref,
   saveRoute,
   setDestination,
 } from '$features/routing';
@@ -381,26 +379,10 @@ $effect(() => {
   if (!applying) profileStore.markDirty();
 });
 
-// Seed three starter profiles on first run only (no stored document at all), so the feature is not
-// empty and teaches the concept. They capture the current defaults and vary the theme; the navigator
-// edits them. The ids are stable so the same starters seeded on two devices merge to one on sync,
-// not duplicate. A one-shot init check, not an effect keyed on live emptiness: deleting the last
-// profile must not instantly resurrect the starters.
+// Starter profiles on first run only (no stored document at all). A one-shot init check, not an
+// effect keyed on live emptiness: deleting the last profile must not instantly resurrect them.
 if (!profileStore.loadedFromStorage && profileStore.profiles.length === 0) {
-  const base = captureProfileSettings();
-  const now = Date.now();
-  const starter = (id: string, name: string, settings: ProfileSettings): Profile => ({
-    id,
-    name,
-    settings,
-    createdAt: now,
-    updatedAt: now,
-  });
-  profileStore.seed([
-    starter('binnacle-seed-coastal-day', 'Coastal day', { ...base, theme: 'day' }),
-    starter('binnacle-seed-night-passage', 'Night passage', { ...base, theme: 'night-red' }),
-    starter('binnacle-seed-at-anchor', 'At anchor', { ...base, theme: 'dusk' }),
-  ]);
+  seedStarterProfiles(profileStore, captureProfileSettings());
 }
 
 // Once the user is authenticated to a secured server, sync profiles through the SignalK applicationData
@@ -442,10 +424,10 @@ function onExportProfile(id: string): void {
   if (profile) downloadProfileJson(profile);
 }
 
-// Import each valid profile from the picked JSON as a new saved profile (a fresh id, so an import never
-// overwrites an existing one); malformed entries are dropped by the parser.
-function onImportProfiles(json: string): void {
-  for (const imported of parseProfilesJson(json)) {
+// Save each imported profile as a new one (a fresh id, so an import never overwrites an existing
+// profile); the panel already parsed and validated the picked file.
+function onImportProfiles(profiles: ImportedProfile[]): void {
+  for (const imported of profiles) {
     profileStore.save(imported.name, imported.settings);
   }
 }
@@ -454,41 +436,48 @@ function onImportProfiles(json: string): void {
 // PMTiles store, and the chart-canvas registers an overlay per source.
 const pmtilesStore = createPmtilesStore();
 const userChartsStore = new PersistedValue<UserChartSource[]>('binnacle:user-charts', []);
+// Register (or refresh) a URL chart as a server resource, best-effort, so other Signal K devices
+// discover it. Gated on a token: without auth the write only earns a 401, so do not bother. A
+// file chart's bytes cannot be hosted on a stock server, so it stays local.
+function syncUrlChartToServer(source: UserChartSource): void {
+  if (source.origin.type === 'url' && chartsToken) {
+    void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url));
+  }
+}
+
+// Drop a registered user-chart overlay and free its blob, so the reconcile effect can register it
+// afresh (rename) or let a removed chart go. Shared by the reconcile eviction and the rename
+// callback so the unregister-and-revoke dance has one owner.
+function dropRegisteredUserChart(id: string): void {
+  if (!registeredUserCharts.has(id)) return;
+  const blobUrl = registeredUserCharts.get(id);
+  registeredUserCharts.delete(id);
+  userChartRegistrar?.unregister(id);
+  if (blobUrl) URL.revokeObjectURL(blobUrl);
+}
+
 const userCharts = new UserCharts(
   pmtilesStore,
   userChartsStore.value,
   (sources) => userChartsStore.set(sources),
   // Fly to a freshly imported chart so the user sees it, even when it covers a different area than
-  // the current view (charts without known bounds, rare, leave the view unchanged). For a URL chart
-  // also register it as a server resource, best-effort, so other Signal K devices discover it. A
-  // file chart's bytes cannot be hosted on a stock server, so it stays local.
+  // the current view (charts without known bounds, rare, leave the view unchanged).
   (source) => {
     if (source.bounds) mapCommands?.fitBounds(source.bounds);
-    if (source.origin.type === 'url' && chartsToken) {
-      void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url));
-    }
+    syncUrlChartToServer(source);
   },
   // On removal, also delete a URL chart's server resource (best-effort); a file chart was never
-  // synced, so there is nothing on the server to remove. Gated on a token, like the register above:
-  // without auth the write only earns a 401, so do not bother issuing it.
+  // synced, so there is nothing on the server to remove.
   (source) => {
     if (source.origin.type === 'url' && chartsToken) {
       void deleteChart(serverOrigin(), chartsToken, source.id);
     }
   },
   // On rename, drop the registered overlay so the reconcile effect re-registers it under the new
-  // name (the overlay title is read once at registration), and refresh a URL chart's server
-  // resource the same way the add path does.
+  // name (the overlay title is read once at registration), and refresh the server resource.
   (source) => {
-    const blobUrl = registeredUserCharts.get(source.id);
-    if (registeredUserCharts.has(source.id)) {
-      registeredUserCharts.delete(source.id);
-      userChartRegistrar?.unregister(source.id);
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-    }
-    if (source.origin.type === 'url' && chartsToken) {
-      void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url));
-    }
+    dropRegisteredUserChart(source.id);
+    syncUrlChartToServer(source);
   },
 );
 // Reclaim any orphaned PMTiles blob (a leftover from a failed-persist import or a degraded delete)
@@ -525,9 +514,11 @@ function loadTides(): void {
 }
 
 // Toggling the tide layer on (or opening the panel) loads tides for the current view, covering the
-// fetches the gated pan-settle path skipped while nothing displayed them.
+// fetches the gated pan-settle path skipped while nothing displayed them. The view read is
+// untracked: mapView changes every frame of a pan, and depending on it would re-run this per
+// frame while the layer is on; the debounced pan-settle path already covers view changes.
 $effect(() => {
-  if (tidesWanted) loadTides();
+  if (tidesWanted) untrack(loadTides);
 });
 
 let mapCommands = $state<MapCommands | undefined>();
@@ -628,10 +619,9 @@ const menuItems = $derived<MenuItem[]>([
 
 // Sound the collision alarm whenever the assessment, acknowledgement, mute, or escalation changes.
 // Escalation past the inner ring overrides both acknowledge and mute, so a close, imminent contact
-// always sounds. reconcile() drops a stale acknowledge once the situation has gone all-clear, so
-// the same vessel re-approaching later alarms afresh.
+// always sounds. A stale acknowledge expires inside the assessment itself once the situation goes
+// all-clear, so the same vessel re-approaching later alarms afresh.
 $effect(() => {
-  collision.reconcile();
   lookoutAlarm.update(
     collision.assessment.worst,
     collision.suppressed,
@@ -640,13 +630,8 @@ $effect(() => {
   );
 });
 
-// AIS staleness pruning runs on its own coarse wall-clock interval, not the render loop: rendering
-// pauses while the tab is hidden, and collision assessment must not keep consuming targets that
-// stopped reporting.
-$effect(() => {
-  const id = setInterval(() => store.pruneAis(Date.now(), AIS_STALE_TTL_MS), AIS_PRUNE_INTERVAL_MS);
-  return () => clearInterval(id);
-});
+// AIS staleness pruning, tied to the app lifecycle; the entity owns the TTL and cadence policy.
+$effect(() => aisTargets.startPruning());
 
 // A concise spoken summary of the active collision danger, written into a persistent assertive live
 // region so a new threat is announced for a screen-reader or hard-of-hearing operator, not only
@@ -656,7 +641,7 @@ const collisionAlert = $derived.by(() => {
   const { contacts } = collision.assessment;
   if (collision.suppressed || contacts.length === 0) return '';
   const nearest = contacts[0];
-  const who = nearest.name || shortVesselId(nearest.id);
+  const who = vesselLabel(nearest.name, nearest.id);
   const count = contacts.length;
   // Lead with the worst contact's grade (contacts[0] is severity-then-time sorted), so a
   // warning-only situation is not announced as full danger.
@@ -687,17 +672,10 @@ $effect(() => {
   anchorAlarm.update(anchor.dragging && !anchor.acknowledged);
 });
 
-// A GPS dropout starves the watch of position fixes. The chip stops showing numbers it cannot
-// stand behind, and in client mode, where the drag detector counts fixes and is silently dead
-// without them, the degradation is announced on the assertive anchor channel: this watch guards
-// a sleeping crew, so it must never fail quietly.
-const anchorFixLost = $derived(anchor.watching && vessel.positionStale);
-const anchorWatchDegraded = $derived(anchorFixLost && anchor.mode !== 'server');
-
 // The anchor channel of the assertive live region, separate from the collision channel so a drag
 // alarm is announced even while a collision alert holds the other region.
 const anchorAlert = $derived.by(() => {
-  if (anchorWatchDegraded) {
+  if (anchor.degraded) {
     return 'Anchor watch degraded: no GPS fix, so drag detection has stopped.';
   }
   if (!anchor.dragging || anchor.acknowledged) return '';
@@ -831,11 +809,8 @@ $effect(() => {
   const sources = userCharts.sources;
   if (!registrar) return;
   const wanted = new Set(sources.map((source) => source.id));
-  for (const [id, blobUrl] of registeredUserCharts) {
-    if (wanted.has(id)) continue;
-    registeredUserCharts.delete(id);
-    registrar.unregister(id);
-    if (blobUrl) URL.revokeObjectURL(blobUrl);
+  for (const id of registeredUserCharts.keys()) {
+    if (!wanted.has(id)) dropRegisteredUserChart(id);
   }
   for (const source of sources) {
     if (registeredUserCharts.has(source.id)) continue;
@@ -1030,12 +1005,6 @@ function onCancelRouteEdit(): void {
   routeStore.setWorking(undefined);
 }
 
-// The server resource href for a route id, built in one place so every caller encodes the same way
-// as the routes client.
-function routeHref(id: string): string {
-  return `/resources/routes/${encodeURIComponent(id)}`;
-}
-
 // Seed the course cells once from a REST GET, then the stream keeps them live. The v2
 // navigation.course paths are not in the v1 full model, so under subscribe=none the stream sends
 // nothing until the next change; this makes the nav strip show values immediately on activation.
@@ -1047,17 +1016,17 @@ async function hydrateAndSeedCourse(): Promise<void> {
   courseGuidance.seed(info, calc, startedAt);
   // Reconcile the local activation flags with what the server is actually navigating: a page
   // reload mid-passage restores the Active badge, skip buttons, and route progress, and a course
-  // replaced from another station moves the badge to the right route. info undefined means the
-  // GET failed, so nothing is known and nothing is touched.
-  if (!info) return;
-  const routeId = info.activeRoute?.href?.split('/').pop();
-  if (routeId) {
-    if (routeStore.activeId !== routeId) {
-      routeStore.setActive(routeId);
-      routeStore.toggleShown(routeId, true);
+  // replaced from another station moves the badge to the right route. An undefined activation
+  // means the GET failed, so nothing is known and nothing is touched.
+  const activation = activationFromCourse(info);
+  if (!activation) return;
+  if (activation.routeId) {
+    if (routeStore.activeId !== activation.routeId) {
+      routeStore.setActive(activation.routeId);
+      routeStore.toggleShown(activation.routeId, true);
     }
     gotoActive = false;
-  } else if (info.nextPoint?.position) {
+  } else if (activation.goto) {
     routeStore.setActive(undefined);
     gotoActive = true;
   }
@@ -1348,13 +1317,12 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.aisShipType, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.closestApproach, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
   ]);
-  await refreshSavedTracks();
-  await refreshRoutes();
-  // Restore an in-progress course after a reload: the v2 course paths send nothing under
-  // subscribe=none until the next change, and the local activation flags are session state, so
-  // without this a mid-passage reload leaves the nav strip, arrival alarm, and auto-advance dead
-  // while the server is still navigating.
-  await hydrateAndSeedCourse();
+  // Three independent REST reads, in parallel: saved tracks, routes, and the course snapshot.
+  // The course hydration restores an in-progress course after a reload: the v2 course paths send
+  // nothing under subscribe=none until the next change, and the local activation flags are
+  // session state, so without it a mid-passage reload leaves the nav strip, arrival alarm, and
+  // auto-advance dead while the server is still navigating.
+  await Promise.all([refreshSavedTracks(), refreshRoutes(), hydrateAndSeedCourse()]);
 }
 
 // Detect a configured Signal K weather provider so the panel can prefer it over the free sources.
@@ -1678,13 +1646,13 @@ onDestroy(() => {
       {#if anchor.watching}
         <span
           class="readout anchor-chip"
-          class:anchor-chip--alarm={anchor.dragging || anchorFixLost}
+          class:anchor-chip--alarm={anchor.dragging || anchor.fixLost}
           role="status"
-          title={anchorFixLost
+          title={anchor.fixLost
             ? 'Anchor watch: no GPS fix, drag detection degraded'
             : 'Anchor watch: distance from the anchor over the watch radius'}
         >
-          {#if anchorFixLost}
+          {#if anchor.fixLost}
             Anchor <b>no GPS</b>
           {:else}
             Anchor <b>{formatFixed(anchor.distanceMeters, 0)}</b>/<b

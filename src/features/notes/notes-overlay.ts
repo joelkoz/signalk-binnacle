@@ -122,6 +122,12 @@ export function createNotesOverlay(
   let lastZoom: number | undefined;
   let lastLng: number | undefined;
   let lastLat: number | undefined;
+  // Force the next sync of a stationary map to re-evaluate cache-or-fetch: the idle fast-path
+  // compares against the last synced coordinates, so dropping the zoom anchor is the one named
+  // way to break it (after a failed fetch, a cooldown tick, or a move during a fetch).
+  const invalidateIdleAnchor = (): void => {
+    lastZoom = undefined;
+  };
   let fetching = false;
   // Set after a failed fetch; until it passes, sync holds the fast-path open instead of fetching.
   let cooldownUntil = 0;
@@ -380,9 +386,8 @@ export function createNotesOverlay(
       }
       if (fetching) return;
       if (Date.now() < cooldownUntil) {
-        // Still backing off from a failed fetch: drop the fast-path anchor so a later sync of a
-        // stationary map re-evaluates and retries once the cooldown passes.
-        lastZoom = undefined;
+        // Still backing off from a failed fetch; retry once the cooldown passes, even stationary.
+        invalidateIdleAnchor();
         return;
       }
       fetching = true;
@@ -395,7 +400,7 @@ export function createNotesOverlay(
           // empty array is a real "no POIs here" answer, so it renders and clears them.
           if (!notes) {
             cooldownUntil = Date.now() + RETRY_COOLDOWN_MS;
-            lastZoom = undefined;
+            invalidateIdleAnchor();
             return;
           }
           cache.put(fetchBbox, notes, Date.now());
@@ -409,7 +414,7 @@ export function createNotesOverlay(
             after.getEast(),
             after.getNorth(),
           ];
-          if (!bboxContains(fetchBbox, current)) lastZoom = undefined;
+          if (!bboxContains(fetchBbox, current)) invalidateIdleAnchor();
         })
         .finally(() => {
           fetching = false;

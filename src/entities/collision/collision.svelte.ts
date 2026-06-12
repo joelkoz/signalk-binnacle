@@ -233,18 +233,6 @@ export class CollisionAssessment {
     this.#ackSignature = this.#signature();
   }
 
-  // Call once per assessment pass from an effect (App's alarm effect does): when the situation
-  // has gone all-clear, the acknowledge is dropped so the same vessel re-approaching later alarms
-  // again. suppressed already self-heals through #ackExpired even without this; reconcile keeps
-  // the signature itself from outliving the situation it acknowledged. Not called from suppressed
-  // because that getter runs inside consumer $derived expressions, where a $state write throws.
-  reconcile(): void {
-    if (this.#ackSignature !== null && this.#signature() === null) {
-      this.#ackSignature = null;
-      this.#ackExpired = false;
-    }
-  }
-
   #signature(): string | null {
     const top = this.assessment.contacts[0];
     return top ? `${top.id}:${top.severity}` : null;

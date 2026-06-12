@@ -3,7 +3,7 @@ import { Download, Eraser, Pause, Play, Route, Save, Trash2, Undo2 } from '@luci
 import type { TrackRecorder } from '$entities/track';
 import { formatDuration, formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
-import { focusOnMount, promptSaveName, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
+import { InlineConfirm, promptSaveName, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
 import type { SavedTrack } from './tracks-client';
 
 interface Props {
@@ -64,8 +64,12 @@ function promptSaveAsRoute(): void {
   if (name !== undefined) onSaveAsRoute(name);
 }
 
+// Discarding the live recording is destructive, so it arms the same inline confirm as the
+// saved-track delete rather than a blocking window.confirm.
+let confirmingClear = $state(false);
 function confirmClear(): void {
-  if (window.confirm('Discard the current track? This cannot be undone.')) recorder.clear();
+  confirmingClear = false;
+  recorder.clear();
 }
 
 // Deleting a saved track is destructive, so it arms a confirm step rather than firing on a
@@ -106,13 +110,21 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     <button
       type="button"
       class="btn btn-danger"
-      onclick={confirmClear}
+      onclick={() => (confirmingClear = true)}
       disabled={recorder.points.length === 0}
     >
       <Eraser size={16} aria-hidden="true" />
       Clear
     </button>
   </div>
+  {#if confirmingClear}
+    <InlineConfirm
+      question="Discard the current track? This cannot be undone."
+      confirmLabel="Discard"
+      onConfirm={confirmClear}
+      onCancel={() => (confirmingClear = false)}
+    />
+  {/if}
 
   <div class="color-mode" role="group" aria-label="Track color">
     <button
@@ -194,22 +206,11 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
         <dd><span class="num">{durationText}</span></dd>
       </dl>
       {#if confirmingDelete === track.id}
-        <div class="confirm" role="group" aria-label="Confirm delete track">
-          <span class="confirm-text">Delete this track?</span>
-          <div class="confirm-actions">
-            <button type="button" class="btn btn-danger" onclick={() => confirmDelete(track.id)}>
-              Delete
-            </button>
-            <button
-              type="button"
-              class="btn"
-              use:focusOnMount
-              onclick={() => (confirmingDelete = undefined)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <InlineConfirm
+          question="Delete this track?"
+          onConfirm={() => confirmDelete(track.id)}
+          onCancel={() => (confirmingDelete = undefined)}
+        />
       {:else}
         <div class="actions">
           <VisibilityToggle shown={shown.has(track.id)} onToggle={() => onToggleSaved(track.id)} />
@@ -263,21 +264,6 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 /* The current-track stats use the global .stat-grid system in app.css. */
 /* The saved-track card list, name, stats, and actions come from the global .saved system in app.css. */
-/* The inline delete confirm replaces the action row for the armed card: a clear question and a pair
-   of full buttons, so confirming or backing out is a deliberate second tap. */
-.confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.confirm-text {
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-.confirm-actions {
-  display: flex;
-  gap: var(--space-2);
-}
+/* The armed confirms (saved-track delete, live-track discard) come from the shared InlineConfirm
+   component. */
 </style>

@@ -6,3 +6,4 @@ export {
   type ProfileBindings,
 } from './profile-bindings';
 export { downloadProfileJson, type ImportedProfile, parseProfilesJson } from './profile-io';
+export { seedStarterProfiles } from './starter-profiles';

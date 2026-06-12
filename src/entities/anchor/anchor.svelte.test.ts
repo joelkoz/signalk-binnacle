@@ -44,6 +44,23 @@ describe('AnchorWatch (client mode)', () => {
     expect(anchor.distanceMeters).toBeCloseTo(111.19, 0);
   });
 
+  it('reports fixLost and degraded when the fix goes stale during a client watch', () => {
+    const store = new SignalKStore();
+    const clock = $state({ now: 100_000 });
+    const vessel = new OwnVessel(store, clock);
+    const anchor = new AnchorWatch(store, vessel, createFakeStorage());
+    // A local frame factory aligned with the clock, so the fix starts fresh, not already stale.
+    const freshFrame = createFrameFactory(99_000);
+    store.applyFrame(freshFrame({ 'navigation.position': INSIDE }));
+    anchor.dropLocal(ANCHOR, 50);
+    expect(anchor.fixLost).toBe(false);
+    expect(anchor.degraded).toBe(false);
+    // The fix dropout passes the staleness window: client drag detection is silently dead.
+    clock.now += 60_000;
+    expect(anchor.fixLost).toBe(true);
+    expect(anchor.degraded).toBe(true);
+  });
+
   it('latches dragging after three consecutive fixes outside the radius', () => {
     const { anchor, fix } = setup();
     anchor.dropLocal(ANCHOR, 50);

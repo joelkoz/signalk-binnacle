@@ -14,6 +14,13 @@ export function fetchRoutes(base: string, token?: string): Promise<Route[] | und
   return fetchKeyedResource(base, [V2, V1], token, featureToRoute);
 }
 
+// The server-relative resource href for a route id, as the Course API's activeRoute wants it.
+// Owned here, beside the resource clients, so the href format has one home; routeIdFromHref in
+// course-client.ts is its inverse.
+export function routeHref(id: string): string {
+  return `/resources/routes/${encodeURIComponent(id)}`;
+}
+
 // PUT the route to its client-chosen id. Returns whether the write succeeded.
 export function saveRoute(base: string, token: string | undefined, route: Route): Promise<boolean> {
   return putResource(`${base}${V2}/${encodeURIComponent(route.id)}`, token, routeToFeature(route));

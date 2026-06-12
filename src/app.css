@@ -188,6 +188,17 @@ body {
   color: var(--text-muted);
 }
 
+/* The bordered inline alarm note the panels show for a failed action (route save, profile import):
+   one shared rule so the alarm framing cannot drift between panels. */
+.alert-note {
+  margin: 0;
+  padding: 0.4rem var(--space-2);
+  border: 1px solid var(--alarm);
+  border-radius: var(--radius-sm);
+  color: var(--alarm);
+  font-size: var(--text-sm);
+}
+
 /* One button vocabulary for the panels: the bordered base, plus a filled-primary and a danger
    modifier, so panels share these instead of each re-declaring the accent fill and hover feel. */
 .btn {

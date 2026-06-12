@@ -1,4 +1,4 @@
-import { type AisTargetView, shortVesselId } from '$entities/ais';
+import { type AisTargetView, vesselLabel } from '$entities/ais';
 import type { DangerContact, Severity } from '$entities/collision';
 import type { LatLon } from '$shared/geo';
 import { haversineMeters, rhumbBearingRad } from '$shared/nav';
@@ -42,7 +42,7 @@ export function buildAisRows(
     const risk = risks.get(target.id);
     return {
       id: target.id,
-      label: target.name || shortVesselId(target.id),
+      label: vesselLabel(target.name, target.id),
       position: target.position,
       rangeMeters: own
         ? haversineMeters(

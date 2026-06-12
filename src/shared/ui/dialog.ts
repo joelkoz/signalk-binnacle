@@ -6,9 +6,10 @@ import type { Action } from 'svelte/action';
 //
 // Open dismissables are tracked in one stack so a single Escape closes only the topmost (most
 // recently opened) one. The note and weather panels can be open at the same time, and the app menu
-// can sit over a slide-over, so without the shared stack one Escape would close more than one. One
-// shared window listener serves every open entry, and an Escape that closes something is marked
-// consumed via preventDefault so other Escape listeners (the measure strip) can ignore it.
+// or an active measurement can sit over a slide-over, so without the shared stack one Escape would
+// close more than one. One shared window listener serves every open entry, and an Escape that
+// closes something is marked consumed via preventDefault so any foreign Escape listener can see it
+// was taken.
 const openDialogs: Array<() => void> = [];
 
 function onKeydown(event: KeyboardEvent): void {
@@ -20,13 +21,12 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 // Register a closer in the shared Escape stack; returns the unregister function. The dialog action
-// uses this for the slide-over panels, and the app menu registers here directly so Escape over a
-// menu-above-panel stack closes only the menu.
+// uses this for the slide-over panels; the app menu and the measure strip register here directly
+// so Escape over a stacked surface closes only the topmost one.
 export function registerDismiss(close: () => void): () => void {
   openDialogs.push(close);
-  // Capture phase, so this handler runs before any bubble-phase Escape listener (the measure strip
-  // registers one at mount) regardless of registration order; those listeners then see the
-  // preventDefault mark and stand down.
+  // Capture phase, so this handler runs before any bubble-phase Escape listener regardless of
+  // registration order; foreign listeners then see the preventDefault mark and stand down.
   if (openDialogs.length === 1) window.addEventListener('keydown', onKeydown, true);
   return () => {
     const index = openDialogs.indexOf(close);

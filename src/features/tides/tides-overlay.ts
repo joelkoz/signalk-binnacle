@@ -5,7 +5,7 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { CurrentReading, TideReading, TidesStore } from '$entities/tides';
-import { formatClockTime } from '$shared/lib';
+import { formatClockTime, MINUTE_MS } from '$shared/lib';
 import {
   emptyFeatureCollection,
   mapThemePaint,
@@ -134,7 +134,7 @@ export function createTidesOverlay(store: TidesStore): TidesOverlay {
       const tide = store.tide;
       const current = store.current;
       const nowMs = Date.now();
-      const minute = Math.floor(nowMs / 60_000);
+      const minute = Math.floor(nowMs / MINUTE_MS);
       if (seeded && tide === lastTide && current === lastCurrent && minute === lastLabelMinute) {
         return;
       }

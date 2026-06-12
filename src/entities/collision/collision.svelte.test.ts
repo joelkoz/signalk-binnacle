@@ -212,7 +212,6 @@ describe('CollisionAssessment acknowledge', () => {
       epoch: Date.now(),
     });
     expect(collision.assessment.contacts).toHaveLength(0);
-    collision.reconcile();
 
     // The same vessel closes again at the same severity: a new event, never auto-suppressed.
     store.applyFrame({
@@ -227,42 +226,6 @@ describe('CollisionAssessment acknowledge', () => {
       epoch: Date.now(),
     });
     expect(collision.assessment.worst).toBe('danger');
-    expect(collision.suppressed).toBe(false);
-  });
-
-  it('re-arms through the all-clear even without reconcile being called', () => {
-    const store = dangerStore('vessels.a');
-    const collision = new CollisionAssessment(
-      new OwnVessel(store),
-      new AisTargets(store),
-      createThresholds(),
-    );
-    collision.acknowledge();
-    store.applyFrame({
-      self: new Map(),
-      ais: new Map([
-        [
-          'vessels.a',
-          new Map<string, unknown>([
-            ['navigation.closestApproach', { distance: 100, timeTo: -10 }],
-          ]),
-        ],
-      ]),
-      connection: { phase: 'open', attempt: 0 },
-      epoch: Date.now(),
-    });
-    expect(collision.assessment.contacts).toHaveLength(0);
-    store.applyFrame({
-      self: new Map(),
-      ais: new Map([
-        [
-          'vessels.a',
-          new Map<string, unknown>([['navigation.closestApproach', { distance: 100, timeTo: 60 }]]),
-        ],
-      ]),
-      connection: { phase: 'open', attempt: 0 },
-      epoch: Date.now(),
-    });
     expect(collision.suppressed).toBe(false);
   });
 });

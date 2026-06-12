@@ -1,5 +1,6 @@
 import { asNumber, isLatLon, type LatLon } from '$shared/geo';
 import { type SignalKStore, SK_PATHS } from '$shared/signalk';
+import { AIS_PRUNE_INTERVAL_MS, AIS_STALE_TTL_MS } from './ais-staleness';
 
 // The Signal K spec types closestApproach.timeTo as an ISO-8601 duration string (e.g. "PT1M30S"),
 // but some providers publish a raw number of seconds. Parse both: a number passes through, a
@@ -51,6 +52,16 @@ export class AisTargets {
 
   constructor(store: SignalKStore) {
     this.#store = store;
+  }
+
+  // Start the staleness prune timer; returns the disposer. The entity owns the policy (TTL and
+  // cadence); the composition root only ties the timer to the app lifecycle.
+  startPruning(): () => void {
+    const id = setInterval(
+      () => this.#store.pruneAis(Date.now(), AIS_STALE_TTL_MS),
+      AIS_PRUNE_INTERVAL_MS,
+    );
+    return () => clearInterval(id);
   }
 
   // Reading this in a reactive context takes a dependency on AIS changes, since the

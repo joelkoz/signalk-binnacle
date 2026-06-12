@@ -1,22 +1,20 @@
 <script lang="ts">
 import type { MeasureStore } from '$entities/measure';
 import { formatBearingOr, formatMetersOrNm } from '$shared/lib';
+import { registerDismiss } from '$shared/ui';
 
 interface Props {
   measure: MeasureStore;
 }
 
 const { measure }: Props = $props();
-</script>
 
-<!-- The shared dialog action owns Escape while a panel is open and calls preventDefault when it
-     closes one, so a defaultPrevented Escape was aimed at the topmost slide-over, not at the
-     measurement. Ignoring it keeps one Escape from both closing a panel and ending the line. -->
-<svelte:window
-  onkeydown={(e) => {
-    if (measure.active && e.key === 'Escape' && !e.defaultPrevented) measure.stop();
-  }}
-/>
+// An active measurement is a dismissable like the slide-overs and the app menu, so it joins the
+// shared Escape stack: one Escape ends only the topmost surface, with no listener-order games.
+$effect(() => {
+  if (measure.active) return registerDismiss(() => measure.stop());
+});
+</script>
 
 {#if measure.active}
   <aside class="bottom-strip bottom-strip--accent" aria-label="Measure">

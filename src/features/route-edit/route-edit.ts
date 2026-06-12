@@ -109,14 +109,21 @@ export function createRouteEditor(opts: {
   // The last emitted waypoints, seeded from start's route, so a rebuild from Terra Draw
   // coordinates can put the per-waypoint names back on the points that did not move. Terra Draw
   // only carries coordinates, so without this every edit would discard all names and the save
-  // would drop coordinatesMeta.
+  // would drop coordinatesMeta. anyNamed is kept beside it so the per-pointermove change events
+  // of an unnamed route (the common case) skip the O(rebuilt x remembered) scan entirely.
   let remembered: Waypoint[] = [];
+  let anyNamed = false;
+  const remember = (waypoints: Waypoint[]): void => {
+    remembered = waypoints;
+    anyNamed = waypoints.some((w) => w.name != null);
+  };
 
   // Re-attach names: a rebuilt coordinate that equals a remembered waypoint's position keeps that
   // waypoint's name, consuming remembered entries in order so a route that visits the same point
   // twice keeps both names in sequence. A dragged point matches nothing and loses its name, which
   // is the honest outcome: the named mark no longer sits there.
   const reconcileNames = (rebuilt: Waypoint[]): Waypoint[] => {
+    if (!anyNamed) return rebuilt;
     const consumed: boolean[] = remembered.map(() => false);
     return rebuilt.map((waypoint) => {
       for (let i = 0; i < remembered.length; i += 1) {
@@ -136,24 +143,26 @@ export function createRouteEditor(opts: {
   const read = (): Waypoint[] => {
     const lines = draw.getSnapshot().filter((f) => f.properties.mode === LINESTRING_MODE);
     if (lines.length === 0) return [];
-    // Finishing a line and tapping again starts a second feature the panel would otherwise
-    // ignore. Keep the most recently created or updated linestring as the working line (ties keep
-    // the later snapshot entry, so the choice is deterministic) and drop the rest, so the chart
-    // and the panel agree.
     let line = lines[0];
-    for (const f of lines) {
-      if (featureStamp(f) >= featureStamp(line)) line = f;
-    }
-    const extras = lines
-      .filter((f) => f !== line)
-      .map((f) => f.id)
-      .filter((id): id is string | number => id != null);
-    if (extras.length > 0) {
-      pruning = true;
-      try {
-        draw.removeFeatures(extras);
-      } finally {
-        pruning = false;
+    if (lines.length > 1) {
+      // Finishing a line and tapping again starts a second feature the panel would otherwise
+      // ignore. Keep the most recently created or updated linestring as the working line (ties
+      // keep the later snapshot entry, so the choice is deterministic) and drop the rest, so the
+      // chart and the panel agree. The common one-line case skips all of this.
+      for (const f of lines) {
+        if (featureStamp(f) >= featureStamp(line)) line = f;
+      }
+      const extras = lines
+        .filter((f) => f !== line)
+        .map((f) => f.id)
+        .filter((id): id is string | number => id != null);
+      if (extras.length > 0) {
+        pruning = true;
+        try {
+          draw.removeFeatures(extras);
+        } finally {
+          pruning = false;
+        }
       }
     }
     return reconcileNames(drawFeatureToWaypoints(line));
@@ -162,13 +171,13 @@ export function createRouteEditor(opts: {
   draw.on('change', () => {
     if (pruning) return;
     const next = read();
-    remembered = next;
+    remember(next);
     opts.onChange(next);
   });
 
   return {
     start(route) {
-      remembered = route ? route.waypoints.slice() : [];
+      remember(route ? route.waypoints.slice() : []);
       draw.start();
       if (route && route.waypoints.length > 0) {
         draw.addFeatures([routeToStoreFeature(route)]);
