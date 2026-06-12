@@ -55,12 +55,20 @@ export function createRadarOverlay(
   let desiredVisible = false;
   let opacity = DEFAULT_OPACITY;
   let lastPaint: MapThemePaint | undefined;
+  // One check at construction, matching the wind overlay: the preference is effectively fixed for
+  // the session, and matchMedia on every visible sync tick is waste.
+  const reducedMotion = prefersReducedMotion();
+
+  // The single visibility truth for both the update path and lazy layer creation, so toggling the
+  // layer on while the slider is scrubbed away can never flash live radar for a tick.
+  function effectiveVisible(): boolean {
+    return desiredVisible && !radarScrubbedAway(store.selectedTime, wallNow());
+  }
 
   // MapLibre's setLayoutProperty already no-ops on an unchanged value, so no local cache.
   function applyEffectiveVisibility(ctx: OverlayContext): void {
     if (!ctx.map.getLayer(LAYER_ID)) return;
-    const effective = desiredVisible && !radarScrubbedAway(store.selectedTime, wallNow());
-    ctx.map.setLayoutProperty(LAYER_ID, 'visibility', effective ? 'visible' : 'none');
+    ctx.map.setLayoutProperty(LAYER_ID, 'visibility', effectiveVisible() ? 'visible' : 'none');
   }
 
   // Point the source at the current frame, creating the source and layer the first time a frame is
@@ -96,7 +104,7 @@ export function createRadarOverlay(
         id: LAYER_ID,
         type: 'raster',
         source: SOURCE_ID,
-        layout: { visibility: desiredVisible ? 'visible' : 'none' },
+        layout: { visibility: effectiveVisible() ? 'visible' : 'none' },
         paint: { 'raster-opacity': opacity },
       };
       ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
@@ -134,11 +142,11 @@ export function createRadarOverlay(
       }
       // Re-evaluate the scrub gate every tick: the slider moves without any radar data change.
       applyEffectiveVisibility(ctx);
-      if (!desiredVisible || radarScrubbedAway(store.selectedTime, wallNow())) return;
+      if (!effectiveVisible()) return;
       if (!ctx.map.getLayer(LAYER_ID) || !radar || frames.length < 2) return;
       // A reduced-motion preference holds the radar on its latest frame (set on each new-radar branch
       // above) rather than looping, mirroring the wind field and the camera moves.
-      if (prefersReducedMotion()) return;
+      if (reducedMotion) return;
       // Advance one frame per FRAME_MS, holding PAUSE_MS on the latest before wrapping to the oldest.
       const interval = frameIndex === frames.length - 1 ? PAUSE_MS : FRAME_MS;
       const t = now();

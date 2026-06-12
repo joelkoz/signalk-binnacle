@@ -19,11 +19,16 @@ function grid(): WeatherGrid {
 const bracket = { lo: 0, hi: 0, frac: 0 };
 
 describe('waveArrowFeatures', () => {
-  it('emits sparse arrows tagged with height', () => {
+  it('emits sparse arrows', () => {
     const fc = waveArrowFeatures(grid(), bracket);
     expect(fc.features.length).toBeGreaterThan(0);
     expect(fc.features.length).toBeLessThan(16);
-    expect(fc.features[0].properties?.height).toBe(2);
+  });
+
+  it('skips cells whose height is missing', () => {
+    const g = grid();
+    g.waveHeight = [new Array(16).fill(Number.NaN)];
+    expect(waveArrowFeatures(g, bracket).features).toHaveLength(0);
   });
 
   it('is empty without wave data', () => {

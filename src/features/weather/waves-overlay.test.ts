@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { WeatherStore } from '$entities/weather';
 import { mapThemePaint, type OverlayContext } from '$shared/map';
 import { createFakeMap } from '$shared/testing/fake-map';
@@ -46,6 +46,34 @@ describe('waves overlay', () => {
     const arrowSource = map.sources.get('binnacle-weather-waves-arrows');
     const fc = arrowSource?.data as GeoJSON.FeatureCollection;
     expect(fc.features.length).toBeGreaterThan(0);
+  });
+
+  it('clears the field canvas when a new grid lacks the wave field', () => {
+    const store = storeWithGrid();
+    const ctx2d = {
+      createImageData: (w: number, h: number) => ({ data: { set: () => {} }, width: w, height: h }),
+      putImageData: () => {},
+      clearRect: vi.fn(),
+    };
+    const canvas = { width: 0, height: 0, getContext: () => ctx2d } as unknown as HTMLCanvasElement;
+    const overlay = createWavesOverlay(store, () => canvas);
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    overlay.sync(ctxFor(map));
+    expect(canvas.width).toBeGreaterThan(1); // the wave field was drawn
+
+    // A refetch without marine data must render empty, not stretch the old pixels over the new bbox.
+    const cells = 4;
+    store.setGrid({
+      lats: [0, 1],
+      lons: [0, 1],
+      times: [1000],
+      windU: [new Array(cells).fill(0)],
+      windV: [new Array(cells).fill(0)],
+    });
+    overlay.sync(ctxFor(map));
+    expect(canvas.width).toBe(1);
+    expect(ctx2d.clearRect).toHaveBeenCalled();
   });
 
   it('removes its layers and sources', () => {

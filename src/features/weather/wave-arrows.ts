@@ -7,8 +7,9 @@ const STRIDE = 2; // draw every other cell in each axis so the field is not litt
 const ARROW_FRACTION = 0.5;
 
 // One arrow per strided grid cell pointing the way the waves travel (the reverse of the
-// meteorological from-direction), tagged with wave height for coloring. Direction is blended across
-// the bracketing steps. Empty when the grid carries no wave direction or height.
+// meteorological from-direction); the wave field already colors by height, so the arrows carry no
+// properties. Direction is blended across the bracketing steps, and cells missing direction or
+// height are skipped. Empty when the grid carries no wave direction or height.
 export function waveArrowFeatures(
   grid: WeatherGrid,
   bracket: TimeBracket,
@@ -25,6 +26,6 @@ export function waveArrowFeatures(
     const waveHeight = lerp(h0[i], h1[i], bracket.frac);
     if (Number.isNaN(direction) || Number.isNaN(waveHeight)) return undefined;
     // Travel vector: the reverse of the from-direction, the same convention as the wind arrows.
-    return { u: -Math.sin(direction), v: -Math.cos(direction), props: { height: waveHeight } };
+    return { u: -Math.sin(direction), v: -Math.cos(direction), props: {} };
   });
 }

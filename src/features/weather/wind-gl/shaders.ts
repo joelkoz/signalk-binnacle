@@ -62,6 +62,9 @@ void main() {
 }`;
 
 // Project a particle to the screen via lon/lat and mercator, and pass its speed for coloring.
+// u_speed_max is the color ramp's absolute top speed (RAMP_MAX_SPEED), not the grid's component
+// maxima: the ramp texture and the legend span 0 to that fixed speed, so normalizing by the grid
+// max would recolor the same wind differently from one fetch to the next.
 export const DRAW_VERT = `
 precision mediump float;
 attribute float a_index;
@@ -69,6 +72,7 @@ uniform sampler2D u_particles;
 uniform sampler2D u_wind;
 uniform vec2 u_wind_min;
 uniform vec2 u_wind_max;
+uniform float u_speed_max;
 uniform float u_particles_res;
 uniform mat4 u_matrix;
 uniform vec4 u_bounds;
@@ -81,7 +85,7 @@ void main() {
   vec2 pos = vec2(color.r / 255.0 + color.b, color.g / 255.0 + color.a);
   vec4 w = texture2D(u_wind, pos);
   vec2 velocity = w.a < 0.5 ? vec2(0.0) : mix(u_wind_min, u_wind_max, w.rg);
-  v_speed_t = length(velocity) / length(u_wind_max);
+  v_speed_t = length(velocity) / u_speed_max;
   float lon = mix(u_bounds.x, u_bounds.z, pos.x);
   float lat = mix(u_bounds.y, u_bounds.w, pos.y);
   float mx = (lon + 180.0) / 360.0;

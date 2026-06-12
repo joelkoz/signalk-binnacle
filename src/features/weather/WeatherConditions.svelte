@@ -77,19 +77,22 @@ function posCoords(key: string): [number, number] {
 $effect(() => {
   const key = posKey;
   const provider = providerName;
-  if (!key) {
+  // Without a position or a provider there is no provider data to show: clear any stale answers
+  // (a provider that disappears at runtime must not keep its warnings on screen).
+  if (!key || !provider) {
     clear();
     return;
   }
-  if (!provider) return;
   const [lat, lon] = posCoords(key);
   void loadProvider(lat, lon);
 });
 
 function clear(): void {
+  seq += 1; // an in-flight provider load must not repopulate what was just cleared
   obsData = undefined;
   seriesData = undefined;
   warnings = [];
+  loading = false;
 }
 
 async function loadProvider(lat: number, lon: number): Promise<void> {
@@ -181,9 +184,11 @@ const parsedSeries = $derived(seriesData?.map(conditionsFromSignalK));
 
 const forecast = $derived.by<PointConditions[]>(() => {
   if (providerName && parsedSeries) {
-    return parsedSeries
+    const rows = parsedSeries
       .filter((c) => !Number.isNaN(c.timeMs) && c.timeMs >= targetMs)
       .slice(0, FORECAST_STEPS);
+    // An empty or fully-past provider series must not suppress the free-grid forecast.
+    if (rows.length > 0) return rows;
   }
   if (!posKey) return [];
   const [lat, lon] = posCoords(posKey);

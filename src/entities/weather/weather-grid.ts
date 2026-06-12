@@ -1,4 +1,4 @@
-import { lerp } from '$shared/lib';
+import { lerp, nearestBy } from '$shared/lib';
 
 export interface Bbox {
   west: number;
@@ -115,16 +115,7 @@ export interface TimeBracket {
 // now on load: Open-Meteo's hourly series starts at 00:00 of the current day, so the first step is
 // up to a day in the past and must never be the default.
 export function nearestGridTime(times: number[], targetMs: number): number | undefined {
-  let best: number | undefined;
-  let bestGap = Number.POSITIVE_INFINITY;
-  for (const t of times) {
-    const gap = Math.abs(t - targetMs);
-    if (gap < bestGap) {
-      bestGap = gap;
-      best = t;
-    }
-  }
-  return best;
+  return nearestBy(times, (t) => t, targetMs);
 }
 
 // The two forecast step indices bracketing a selected time and the blend fraction, clamped to the

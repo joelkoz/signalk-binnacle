@@ -72,6 +72,27 @@ describe('radar overlay', () => {
     expect(map.layers.size).toBe(1);
   });
 
+  it('creates the layer hidden when toggled on while the slider is scrubbed away', () => {
+    const store = storeWithRadar();
+    store.setSelectedTime(2 * 60 * 60 * 1000); // two hours from "now" (wallNow = 0): scrubbed away
+    const overlay = createRadarOverlay(
+      store,
+      () => 0,
+      () => 0,
+    );
+    const map = createFakeMap();
+    const added: Array<{ id: string; layout?: { visibility?: string } }> = [];
+    const addLayer = map.addLayer;
+    map.addLayer = (layer) => {
+      added.push(layer as (typeof added)[number]);
+      return addLayer(layer);
+    };
+    overlay.add(ctxFor(map));
+    overlay.setVisible(ctxFor(map), true);
+    expect(map.layers.size).toBe(1);
+    expect(added[0]?.layout?.visibility).toBe('none');
+  });
+
   it('removes its layer and source', () => {
     const overlay = createRadarOverlay(storeWithRadar());
     const map = createFakeMap();

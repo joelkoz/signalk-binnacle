@@ -1,4 +1,4 @@
-import { RAMP_WIDTH } from '../wind-color-texture';
+import { RAMP_MAX_SPEED, RAMP_WIDTH } from '../wind-color-texture';
 import type { WindField } from '../wind-field-texture';
 import { DRAW_FRAG, DRAW_VERT, QUAD_VERT, SCREEN_FRAG, UPDATE_FRAG } from './shaders';
 
@@ -7,6 +7,9 @@ type GL = WebGLRenderingContext | WebGL2RenderingContext;
 export interface WindParticlesOptions {
   // Square root of the particle count; particleCount = resolution^2. ~90 gives ~8100 on a Pi GPU.
   resolution?: number;
+  // Scales velocity into a per-frame offset in grid-normalized units, with no aspect correction:
+  // motion direction skews slightly in non-square bboxes, an accepted approximation for an
+  // ambient flow visualization (the upstream webgl-wind technique does the same).
   speedFactor?: number;
   dropRate?: number;
   dropRateBump?: number;
@@ -27,12 +30,20 @@ function createShader(gl: GL, type: number, source: string): WebGLShader {
 function createProgram(gl: GL, vert: string, frag: string): WebGLProgram {
   const program = gl.createProgram();
   if (!program) throw new Error('createProgram failed');
-  gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vert));
-  gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, frag));
+  const vertShader = createShader(gl, gl.VERTEX_SHADER, vert);
+  const fragShader = createShader(gl, gl.FRAGMENT_SHADER, frag);
+  gl.attachShader(program, vertShader);
+  gl.attachShader(program, fragShader);
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     throw new Error(gl.getProgramInfoLog(program) ?? 'program link failed');
   }
+  // The linked program is self-contained: release the shader objects so each #build (initial plus
+  // every context-restore reinit) does not leak six of them.
+  gl.detachShader(program, vertShader);
+  gl.detachShader(program, fragShader);
+  gl.deleteShader(vertShader);
+  gl.deleteShader(fragShader);
   return program;
 }
 
@@ -70,9 +81,10 @@ function createBuffer(gl: GL, data: Float32Array): WebGLBuffer {
 let windGlSupport: boolean | undefined;
 export function supportsWindGl(): boolean {
   if (windGlSupport !== undefined) return windGlSupport;
+  let gl: GL | null = null;
   try {
     const canvas = document.createElement('canvas');
-    const gl = (canvas.getContext('webgl') ?? canvas.getContext('experimental-webgl')) as GL | null;
+    gl = (canvas.getContext('webgl') ?? canvas.getContext('experimental-webgl')) as GL | null;
     if (!gl) {
       windGlSupport = false;
       return windGlSupport;
@@ -82,6 +94,9 @@ export function supportsWindGl(): boolean {
     windGlSupport = true;
   } catch {
     windGlSupport = false;
+  } finally {
+    // Browsers cap live WebGL contexts per page; release the probe's instead of waiting for GC.
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
   }
   return windGlSupport;
 }
@@ -116,6 +131,7 @@ interface DrawLoc {
   uMatrix: Uniform;
   uWindMin: Uniform;
   uWindMax: Uniform;
+  uSpeedMax: Uniform;
   uBounds: Uniform;
 }
 
@@ -191,6 +207,7 @@ export class WindParticles {
       uMatrix: gl.getUniformLocation(this.#drawProgram, 'u_matrix'),
       uWindMin: gl.getUniformLocation(this.#drawProgram, 'u_wind_min'),
       uWindMax: gl.getUniformLocation(this.#drawProgram, 'u_wind_max'),
+      uSpeedMax: gl.getUniformLocation(this.#drawProgram, 'u_speed_max'),
       uBounds: gl.getUniformLocation(this.#drawProgram, 'u_bounds'),
     };
     this.#quadBuffer = createBuffer(gl, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
@@ -332,6 +349,7 @@ export class WindParticles {
     gl.uniformMatrix4fv(loc.uMatrix, false, matrix);
     gl.uniform2f(loc.uWindMin, this.#field.uMin, this.#field.vMin);
     gl.uniform2f(loc.uWindMax, this.#field.uMax, this.#field.vMax);
+    gl.uniform1f(loc.uSpeedMax, RAMP_MAX_SPEED);
     gl.uniform4f(
       loc.uBounds,
       this.#field.west,

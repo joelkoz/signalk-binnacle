@@ -34,6 +34,7 @@ import {
   weatherLegend,
 } from '$features/weather';
 import {
+  Clock,
   formatBearingOr,
   formatClockTime,
   formatDayClock,
@@ -54,11 +55,8 @@ interface Props {
   // The shared, cached weather loader (Open-Meteo plus RainViewer), constructed in App.
   loader: WeatherLoader;
   theme: Theme;
-  // Where the nav chart is looking, used the first time the panel opens.
+  // Where the nav chart is looking; the panel always opens there rather than keeping its own view.
   initialView?: MapView;
-  // The panel's own remembered view, and a sink to persist it.
-  savedView?: MapView;
-  onViewChange?: (view: MapView) => void;
   // The panel's own weather-layer visibility, separate from the nav chart's layers.
   savedLayers?: LayerSettings;
   onLayersChange?: (settings: LayerSettings) => void;
@@ -82,8 +80,6 @@ const {
   loader,
   theme,
   initialView,
-  savedView,
-  onViewChange,
   savedLayers,
   onLayersChange,
   onLayersReady,
@@ -101,6 +97,11 @@ const MAX_ZOOM = 7;
 const MIN_ZOOM = 1;
 const DEFAULT_ZOOM = 3;
 const STEP_MS = 3 * HOUR_MS;
+
+// A bare Date.now() inside a $derived freezes for as long as its other dependencies hold still,
+// so during a long open the stale-age note, the Past/Forecast label, and the now tick would stop
+// tracking the wall clock. This coarse minute tick keeps them honest.
+const clock = new Clock(MINUTE_MS);
 
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
@@ -149,8 +150,7 @@ const statusNote = $derived.by<string>(() => {
       return 'Weather unavailable: offline or rate limited';
     case 'stale': {
       const fetched = store.grid?.fetchedAt;
-      const age =
-        fetched === undefined ? undefined : Math.round((Date.now() - fetched) / MINUTE_MS);
+      const age = fetched === undefined ? undefined : Math.round((clock.now - fetched) / MINUTE_MS);
       return age === undefined
         ? `Showing last forecast${wavesNote}`
         : `Showing forecast fetched ${age} min ago${wavesNote}`;
@@ -163,14 +163,14 @@ const statusNote = $derived.by<string>(() => {
 // Radar can only show "now": when the slider is parked away from now the overlay hides itself
 // (the same radarScrubbedAway predicate, so legend and layer cannot disagree), and the legend says
 // so instead of leaving a silently missing layer.
-const scrubbedAway = $derived(radarScrubbedAway(store.selectedTime, Date.now()));
+const scrubbedAway = $derived(radarScrubbedAway(store.selectedTime, clock.now));
 // The painted frame's valid time, fed by the radar overlay (a callback, not store state).
 let radarFrameTime = $state<number | undefined>();
 const radarNote = $derived.by<string>(() => {
   if (scrubbedAway) return 'shows now only, hidden while the slider is off now';
   if (!online) return 'cached radar (offline), not live';
   if (radarFrameTime === undefined) return 'radar with short-term nowcast, regional resolution';
-  const dMin = Math.round((radarFrameTime - Date.now()) / MINUTE_MS);
+  const dMin = Math.round((radarFrameTime - clock.now) / MINUTE_MS);
   const rel = dMin === 0 ? 'now' : dMin > 0 ? `+${dMin} min (nowcast)` : `${dMin} min`;
   return `frame ${rel} · short-term nowcast`;
 });
@@ -195,11 +195,11 @@ const range = $derived<TimeRange | undefined>(
 // The label carries the zone (the shared formatDayClock rationale) and whether the slider sits in
 // the already-elapsed part of the series.
 const timeLabel = $derived(store.grid ? formatDayClock(store.selectedTime, { zone: true }) : '');
-const timeKind = $derived(store.selectedTime < Date.now() - STEP_MS / 2 ? 'Past' : 'Forecast');
+const timeKind = $derived(store.selectedTime < clock.now - STEP_MS / 2 ? 'Past' : 'Forecast');
 // Where "now" sits on the slider track, for the tick that separates past from forecast.
 const nowFrac = $derived.by<number | undefined>(() => {
   if (!range || range.end <= range.start) return undefined;
-  const f = (Date.now() - range.start) / (range.end - range.start);
+  const f = (clock.now - range.start) / (range.end - range.start);
   return f >= 0 && f <= 1 ? f : undefined;
 });
 
@@ -246,17 +246,24 @@ function scheduleFetch(): void {
 }
 
 const READOUT_DISMISS_MS = 8000;
+// The pointer or focus is parked on the readout, so nothing (not even a provider upgrade landing
+// mid-read) may arm the dismiss timer until it leaves.
+let readoutHeld = false;
+
+function clearReadoutTimer(): void {
+  if (readoutTimer) clearTimeout(readoutTimer);
+  readoutTimer = undefined;
+}
 
 function showReadout(value: WeatherReadout | undefined, source: string | undefined): void {
-  holdReadout();
+  clearReadoutTimer();
   readout = value;
   readoutSource = value ? source : undefined;
-  if (value) readoutTimer = setTimeout(dismissReadout, READOUT_DISMISS_MS);
+  if (value && !readoutHeld) readoutTimer = setTimeout(dismissReadout, READOUT_DISMISS_MS);
 }
 
 function dismissReadout(): void {
-  if (readoutTimer) clearTimeout(readoutTimer);
-  readoutTimer = undefined;
+  clearReadoutTimer();
   readout = undefined;
   readoutSource = undefined;
   readoutPending = false;
@@ -265,11 +272,12 @@ function dismissReadout(): void {
 // A slow reader must not lose the readout mid-read: hovering or focusing it parks the dismiss
 // timer, leaving restarts it.
 function holdReadout(): void {
-  if (readoutTimer) clearTimeout(readoutTimer);
-  readoutTimer = undefined;
+  readoutHeld = true;
+  clearReadoutTimer();
 }
 
 function releaseReadout(): void {
+  readoutHeld = false;
   if (readout && !readoutTimer) readoutTimer = setTimeout(dismissReadout, READOUT_DISMISS_MS);
 }
 
@@ -314,8 +322,6 @@ async function providerReadout(lat: number, lon: number): Promise<WeatherReadout
   return step ? readoutFromSignalK(step) : undefined;
 }
 
-const fmt = formatFixed;
-
 // Refetch once when waves or radar is turned on, so the new source appears without a pan. Keyed on
 // the rising edge with a plain flag so a failed fetch cannot loop. This creates a $effect, so it MUST
 // be called synchronously during component setup (as below), never inside a branch or callback, or
@@ -348,9 +354,8 @@ onMount(() => {
   mapHandle = createThemedMap({
     container,
     // The panel opens centered on the nav chart's current view, so the forecast is for the area you
-    // are looking at; the zoom is capped to MAX_ZOOM by createThemedMap. It falls back to its own
-    // remembered view only when the nav chart has not reported one yet.
-    view: initialView ?? savedView,
+    // are looking at; the zoom is capped to MAX_ZOOM by createThemedMap.
+    view: initialView,
     defaultZoom: DEFAULT_ZOOM,
     minZoom: MIN_ZOOM,
     maxZoom: MAX_ZOOM,
@@ -361,7 +366,6 @@ onMount(() => {
       // arrows and pressure isobars stay freely combinable on top.
       exclusive: [WEATHER_FILL_IDS],
     },
-    onView: (view) => onViewChange?.(view),
     onClick: (lngLat) => void onTap(lngLat.lng, lngLat.lat),
     onLoad: async ({ map, manager, recolor: recolorFn, isDestroyed, runTick }) => {
       // Band order, bottom to top: the waves height field sits at the bottom, then the precip,
@@ -415,6 +419,7 @@ onMount(() => {
 });
 
 onDestroy(() => {
+  clock.dispose();
   if (fetchTimer) clearTimeout(fetchTimer);
   if (readoutTimer) clearTimeout(readoutTimer);
   if (zoomNoteTimer) clearTimeout(zoomNoteTimer);
@@ -509,16 +514,16 @@ onDestroy(() => {
               &middot; <b>{formatHectopascalsOr(readout.pressurePa)}</b> hPa
             {/if}
             {#if showField(WEATHER_LAYER_IDS.waves) && readout.waveHeightM !== undefined}
-              &middot; waves <b>{fmt(readout.waveHeightM, 1)}</b> m
+              &middot; waves <b>{formatFixed(readout.waveHeightM, 1)}</b> m
               {#if readout.wavePeriodS !== undefined}
-                / <b>{fmt(readout.wavePeriodS, 1)}</b> s
+                / <b>{formatFixed(readout.wavePeriodS, 1)}</b> s
               {/if}
               {#if readout.waveFromRad !== undefined}
                 from <b>{formatBearingOr(readout.waveFromRad)}</b>&deg;T
               {/if}
             {/if}
             {#if (showField(WEATHER_LAYER_IDS.precip) || showField(WEATHER_LAYER_IDS.radar)) && readout.precipitationMm !== undefined && readout.precipitationMm >= RAIN_VISIBLE_MM_H}
-              &middot; rain <b>{fmt(readout.precipitationMm, 1)}</b>
+              &middot; rain <b>{formatFixed(readout.precipitationMm, 1)}</b>
               {readout.precipIsRate ? 'mm/h' : 'mm'}
             {/if}
           </span>

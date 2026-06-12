@@ -80,6 +80,9 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
   // waves-off pan would still show "Showing last forecast" for the cooldown of a host it never hits.
   let gridCooldownUntil = 0;
   let marineCooldownUntil = 0;
+  // Bumped at each load's entry so an older viewport's slow response cannot land after a newer
+  // one and overwrite its grid, radar, or status (the WeatherConditions sequence-guard pattern).
+  let loadSeq = 0;
 
   // Returns the merged grid plus whether it is partial: waves were requested but the marine endpoint
   // failed (commonly an Open-Meteo 429 on the separate marine host). A partial grid still carries
@@ -107,6 +110,7 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
 
   return {
     async load(store, bbox, opts, want) {
+      const seq = ++loadSeq;
       store.setStatus('loading');
       const t = deps.now();
       const key = weatherCacheKey(bbox, opts, want.waves);
@@ -140,18 +144,28 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
       if (!want.radar) radarPromise = Promise.resolve(undefined);
       else if (radarCache && radarCache.expires > t)
         radarPromise = Promise.resolve(radarCache.data);
-      else radarPromise = deps.radar();
+      // Stamp the TTL only on a real fetch: re-stamping on cache hits would slide the expiry
+      // forever under steady loads and the nowcast would never refresh.
+      else
+        radarPromise = deps.radar().then((fresh) => {
+          if (fresh) radarCache = { data: fresh, expires: t + RADAR_TTL_MS };
+          return fresh;
+        });
 
       const [{ grid, partial, fromNetwork }, radar] = await Promise.all([
         resolveGrid(),
         radarPromise,
       ]);
+      // Re-read at each store write (not once): the persist await below is another window in which
+      // a newer load can start.
+      const superseded = () => seq !== loadSeq;
 
       if (grid) {
-        store.setGrid(grid, t);
+        if (!superseded()) store.setGrid(grid, t);
         // A partial grid (waves failed) is shown but never cached, so a later view retries marine;
         // the marine backoff itself was armed inside fetchMerged, and the healthy atmospheric
-        // endpoint stays unblocked.
+        // endpoint stays unblocked. The caches are still written when superseded: they are keyed
+        // by viewport, so the data stays valid for a return to this view.
         if (!partial && fromNetwork) {
           // The cache computes its own expiry as `t + GRID_TTL_MS`; persist stores the same absolute
           // value so the two tiers expire together.
@@ -163,12 +177,9 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
       } else {
         // A real network attempt (not a cache hit or a cooldown skip) failed: back off before retry.
         if (fromNetwork) gridCooldownUntil = t + GRID_FAIL_COOLDOWN_MS;
-        store.setStatus(store.grid ? 'stale' : 'error');
+        if (!superseded()) store.setStatus(store.grid ? 'stale' : 'error');
       }
-      if (radar) {
-        radarCache = { data: radar, expires: t + RADAR_TTL_MS };
-        store.setRadar(radar);
-      }
+      if (radar && !superseded()) store.setRadar(radar);
     },
   };
 }

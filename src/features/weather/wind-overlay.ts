@@ -171,7 +171,9 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
         const matrix = matrixOf(args);
         if (matrix.length < 16) return; // unrecognized render args; MapLibre 5 gives a 4x4 matrix
         const moved = !sameMatrix(matrix, lastMatrix);
-        lastMatrix = matrix;
+        // Copy, never alias: if MapLibre mutates the matrix in place, sameMatrix would compare an
+        // array to itself and never see a move.
+        lastMatrix = matrix.slice();
         const w = gl.drawingBufferWidth;
         const h = gl.drawingBufferHeight;
         // A pan or zoom must redraw immediately so the trail clears in place; otherwise step the

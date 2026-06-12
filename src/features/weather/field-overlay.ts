@@ -87,7 +87,15 @@ export function createFieldOverlay(
     const grid = store.grid;
     const field = grid ? fieldRgba(grid, store.bracket, theme) : undefined;
     const context = canvas.getContext('2d');
-    if (!field || !context) return;
+    if (!context) return;
+    if (!field) {
+      // No field for this grid (for example a partial fetch left waves out): render empty. Leaving
+      // the previous pixels would let sync stretch the old field over the new bbox.
+      canvas.width = 1;
+      canvas.height = 1;
+      context.clearRect(0, 0, 1, 1);
+      return;
+    }
     canvas.width = field.width;
     canvas.height = field.height;
     const image = context.createImageData(field.width, field.height);

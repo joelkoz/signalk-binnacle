@@ -9,35 +9,19 @@ export { type WeatherLegend, weatherLegend } from './legend';
 export { createPrecipOverlay } from './precip-overlay';
 export { createPressureOverlay } from './pressure-overlay';
 export { createRadarOverlay, radarScrubbedAway } from './radar-overlay';
-export { fetchRadar } from './rainviewer-client';
 export {
-  conditionsFromSignalK,
   defaultProviderName,
   fetchObservations,
   fetchPointForecasts,
   fetchWeatherProviders,
-  fetchWeatherWarnings,
   NEAR_NOW_MS,
   nearestInTimeBounded,
-  type PointConditions,
   readoutFromSignalK,
-  type SignalKWeatherData,
-  type WeatherProviderInfo,
-  type WeatherWarning,
 } from './signalk-weather';
 export { advancePlay, clampTime, stepTime, type TimeRange } from './time-scrub';
 export { default as WeatherConditions } from './WeatherConditions.svelte';
 export { createWavesOverlay } from './waves-overlay';
 export type { ForecastOptions } from './weather-client';
-export {
-  createWeatherLoader,
-  type WeatherLayersWanted,
-  type WeatherLoader,
-} from './weather-loader';
-export {
-  RAIN_VISIBLE_MM_H,
-  readoutAt,
-  readoutAtBracket,
-  type WeatherReadout,
-} from './weather-readout';
+export { createWeatherLoader, type WeatherLoader } from './weather-loader';
+export { RAIN_VISIBLE_MM_H, readoutAtBracket, type WeatherReadout } from './weather-readout';
 export { createWindOverlay } from './wind-overlay';

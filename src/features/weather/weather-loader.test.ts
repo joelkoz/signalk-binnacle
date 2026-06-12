@@ -129,6 +129,55 @@ describe('createWeatherLoader', () => {
     expect(deps.radar).toHaveBeenCalledTimes(2);
   });
 
+  it('does not slide the radar TTL on cache hits', async () => {
+    const nowRef = { ms: 0 };
+    const deps = makeDeps(nowRef);
+    const loader = createWeatherLoader(deps);
+    const { store } = makeStore();
+
+    await loader.load(store, BBOX, OPTS, { waves: false, radar: true });
+    expect(deps.radar).toHaveBeenCalledTimes(1);
+
+    // A hit just under the TTL must not push the expiry out.
+    nowRef.ms = 4 * 60 * 1000;
+    await loader.load(store, BBOX, OPTS, { waves: false, radar: true });
+    expect(deps.radar).toHaveBeenCalledTimes(1);
+
+    // Past the ORIGINAL expiry (t = 5 min) the nowcast is refetched, even though the latest hit was
+    // only a minute ago; a sliding expiry would keep serving the stale frames forever.
+    nowRef.ms = 6 * 60 * 1000;
+    await loader.load(store, BBOX, OPTS, { waves: false, radar: true });
+    expect(deps.radar).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops a superseded load so an older viewport cannot overwrite a newer grid', async () => {
+    const nowRef = { ms: 0 };
+    const deps = makeDeps(nowRef);
+    const slowGrid = { id: 'slow' } as unknown as WeatherGrid;
+    const fastGrid = { id: 'fast' } as unknown as WeatherGrid;
+    let releaseSlow!: (grid: WeatherGrid) => void;
+    deps.forecast
+      .mockImplementationOnce(
+        () =>
+          new Promise<WeatherGrid>((resolve) => {
+            releaseSlow = resolve;
+          }),
+      )
+      .mockImplementationOnce(async () => fastGrid);
+    const loader = createWeatherLoader(deps);
+    const { store, grids } = makeStore();
+
+    const otherBbox: Bbox = { west: 10, south: 20, east: 30, north: 40 };
+    const first = loader.load(store, BBOX, OPTS, { waves: false, radar: false });
+    const second = loader.load(store, otherBbox, OPTS, { waves: false, radar: false });
+    await second;
+    releaseSlow(slowGrid);
+    await first;
+
+    expect(grids).toHaveLength(1);
+    expect((grids[0] as unknown as { id: string }).id).toBe('fast');
+  });
+
   it('marks the store error when the first fetch fails, stale when a grid already exists', async () => {
     const deps = makeDeps({ ms: 0 });
     deps.forecast.mockResolvedValue(undefined as unknown as WeatherGrid);

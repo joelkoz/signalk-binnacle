@@ -1,10 +1,13 @@
 import { type Bbox, sampleGrid, type WeatherGrid } from '$entities/weather';
-import { DEG_TO_RAD, PA_PER_HPA } from '$shared/lib';
+import { DEG_TO_RAD, PA_PER_HPA, withTimeout } from '$shared/lib';
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 // Open-Meteo accepts many locations per request; keep batches well under its cap.
 const MAX_LOCS_PER_REQUEST = 200;
+// Longer than the shared default: a 200-location batch is a real server-side workload, but a
+// half-open boat link must still not hang the loader for the browser's minutes-long default.
+const FETCH_TIMEOUT_MS = 15_000;
 
 export interface ForecastOptions {
   maxCells: number;
@@ -63,7 +66,10 @@ async function fetchGridLocations<T>(
     const chunks = chunk(points, MAX_LOCS_PER_REQUEST);
     const responses = await Promise.all(
       chunks.map((c) =>
-        fetchFn(buildUrl(baseUrl, c, hourly, extra, opts), { credentials: 'omit' }),
+        fetchFn(
+          buildUrl(baseUrl, c, hourly, extra, opts),
+          withTimeout({ credentials: 'omit' }, FETCH_TIMEOUT_MS),
+        ),
       ),
     );
     const locs: T[] = [];
