@@ -1,8 +1,8 @@
-import { HOUR_MS } from '$shared/lib';
+import { DAY_MS } from '$shared/lib';
 import { TREND_METRICS, type TrendKey, type TrendSeries } from './trend-metrics';
 
 const SAMPLE_MS = 30_000;
-const WINDOW_MS = 24 * HOUR_MS;
+const WINDOW_MS = DAY_MS;
 const MAX_SAMPLES = Math.ceil(WINDOW_MS / SAMPLE_MS);
 
 export type TrendSample = Partial<Record<TrendKey, number | undefined>>;
@@ -29,12 +29,14 @@ export class TrendSessionRecorder {
     this.stop();
     const tick = () => this.record(sample(), now());
     tick();
-    this.#interval = window.setInterval(tick, SAMPLE_MS);
+    // The bare global, not window.setInterval: identical in the browser, and testable under
+    // the node vitest environment where window does not exist.
+    this.#interval = setInterval(tick, SAMPLE_MS);
     return () => this.stop();
   }
 
   stop(): void {
-    if (this.#interval !== undefined) window.clearInterval(this.#interval);
+    if (this.#interval !== undefined) clearInterval(this.#interval);
     this.#interval = undefined;
   }
 

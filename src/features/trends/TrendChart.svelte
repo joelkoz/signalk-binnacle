@@ -15,7 +15,9 @@ const { times, values, theme }: Props = $props();
 const CHART_HEIGHT = 120;
 
 let host: HTMLDivElement | undefined = $state();
-let chart: uPlot | undefined;
+// $state.raw, not a plain let: the data and theme effects below must re-run when the mount
+// effect replaces the instance, and raw skips proxying the uPlot internals.
+let chart = $state.raw<uPlot | undefined>(undefined);
 
 // Colors resolve from the live CSS variables at draw time, so one redraw re-themes the canvas.
 function cssVar(name: string): string {

@@ -44,6 +44,27 @@ describe('loadTrendHistory', () => {
     expect(got?.series.get('wind')?.values).toEqual([null, 7.1]);
   });
 
+  it('matches a column by path and method, falling back to path alone', async () => {
+    const fetchValues = vi.fn(async () => ({
+      provider: 'qdb',
+      values: {
+        from: '',
+        to: '',
+        // The wind path twice with different methods: the max column is wind's, not the first.
+        columns: [
+          { path: 'environment.wind.speedApparent', method: 'average' },
+          { path: 'environment.wind.speedApparent', method: 'max' },
+          { path: 'navigation.speedOverGround', method: '' },
+        ],
+        rows: [['2026-06-12T00:00:00Z', 3.0, 7.1, 2.5]] as Array<[string, ...unknown[]]>,
+      },
+    }));
+    const got = await loadTrendHistory('http://boat', undefined, PROVIDERS, { fetchValues });
+    expect(got?.series.get('wind')?.values).toEqual([7.1]);
+    // No method echo: sog still resolves by path alone.
+    expect(got?.series.get('sog')?.values).toEqual([2.5]);
+  });
+
   it('returns undefined when the query fails and empty series for missing columns', async () => {
     expect(
       await loadTrendHistory('http://boat', undefined, PROVIDERS, {

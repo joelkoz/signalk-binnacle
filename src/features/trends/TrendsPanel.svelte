@@ -27,15 +27,27 @@ let history = $state<TrendHistory | undefined>(undefined);
 let loading = $state(false);
 let loadFailed = $state(false);
 
+// The sequence counter keeps a stale in-flight load from clobbering a newer result when
+// providers (or the token) change mid-fetch; only the latest load may write state.
+let loadSeq = 0;
 $effect(() => {
-  if (!hasProvider || !providers) return;
+  if (!providers?.ids.length) return;
+  const mine = ++loadSeq;
   loading = true;
   loadFailed = false;
-  loadTrendHistory(origin, token, providers).then((got) => {
-    history = got;
-    loading = false;
-    loadFailed = got === undefined;
-  });
+  loadTrendHistory(origin, token, providers)
+    .then((got) => {
+      if (mine !== loadSeq) return;
+      history = got;
+      loading = false;
+      loadFailed = got === undefined;
+    })
+    .catch(() => {
+      if (mine !== loadSeq) return;
+      history = undefined;
+      loading = false;
+      loadFailed = true;
+    });
 });
 
 // The session recorder's version is the reactive pulse for the fallback series; reading it here

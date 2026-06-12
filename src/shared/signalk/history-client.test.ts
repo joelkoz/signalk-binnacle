@@ -104,4 +104,38 @@ describe('fetchHistoryValuesAcrossProviders', () => {
     expect(got?.provider).toBe('qdb');
     expect(got?.values.rows).toHaveLength(1);
   });
+
+  it('issues one provider-less query when the provider list is empty', async () => {
+    const mock = stubFetch({
+      ok: true,
+      body: {
+        range: {},
+        values: [{ path: 'p', method: 'average' }],
+        data: [['2026-06-12T00:00:00Z', 1]],
+      },
+    });
+    const got = await fetchHistoryValuesAcrossProviders(
+      BASE,
+      undefined,
+      { ids: [] },
+      { paths: ['p'], durationSeconds: 60 },
+    );
+    expect(got?.provider).toBeUndefined();
+    expect(got?.values.rows).toHaveLength(1);
+    expect(mock).toHaveBeenCalledTimes(1);
+    expect(String(mock.mock.calls[0][0])).not.toContain('provider=');
+  });
+
+  it('resolves undefined when every provider fails to answer', async () => {
+    const mock = stubFetch({ ok: false, status: 501 });
+    await expect(
+      fetchHistoryValuesAcrossProviders(
+        BASE,
+        undefined,
+        { ids: ['kip', 'qdb'] },
+        { paths: ['p'], durationSeconds: 60 },
+      ),
+    ).resolves.toBeUndefined();
+    expect(mock).toHaveBeenCalledTimes(2);
+  });
 });
