@@ -157,11 +157,18 @@ HTTPS. Over plain HTTP the app degrades cleanly to online-only with no loss of l
 weather forecast is cached separately in IndexedDB, which is not secure-context gated, so even over
 plain HTTP a reload reuses the last forecast rather than re-fetching.
 
-To add HTTPS to Signal K, the simplest way is the
-[signalk-ssl](https://www.npmjs.com/package/signalk-ssl) plugin
-([source](https://github.com/dirkwa/signalk-ssl)), which generates a local certificate authority,
-issues the server certificate, and distributes the root to your devices by QR code. The Signal K
-server's built-in SSL settings (Server, then Settings, then SSL) are an alternative.
+There are two good ways to add HTTPS to Signal K:
+
+- The [signalk-ssl](https://www.npmjs.com/package/signalk-ssl) plugin
+  ([source](https://github.com/dirkwa/signalk-ssl)), which generates a local certificate
+  authority, issues the server certificate, and distributes the root to your devices by QR code.
+  It runs its certificate tooling on the shared
+  [signalk-container](https://github.com/dirkwa/signalk-container) runtime. The Signal K server's
+  built-in SSL settings (Server, then Settings, then SSL) are a bare-bones alternative.
+- [Tailscale](https://tailscale.com), which adds remote access and publicly trusted certificates
+  (no trust-store step at all) in one move. See
+  [Accessing Signal K remotely with Tailscale](https://gist.github.com/NearlCrews/3f7af717fec853a80e7de1063940382e)
+  for a quick start, including a clean `signalk.<tailnet>.ts.net` service name.
 
 One more step is required, and it is easy to miss: your browser has to **trust** that certificate,
 not just reach it. A self-signed certificate, including one the signalk-ssl plugin generates, is not

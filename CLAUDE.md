@@ -5,6 +5,11 @@ bluewater cruiser and the liveaboard. It is NOT a port of Freeboard-SK or of the
 signalk-open-binnacle fork; those are conceptual references only. The project name is
 Binnacle, not Open Binnacle. No legacy code is carried forward.
 
+The north star: Binnacle should be so good that people adopt Signal K specifically to use it.
+That is the tiebreaker for every call: first-run excellence on a stock server, polish over
+feature count, "it just works" caching, one coherent design system, and gloved-hand marine UX
+are the product itself.
+
 This file is the source of truth for project-scoped AI assistant rules. User-global memory
 does not always load reliably across worktrees or fresh clones, so rules that came at the cost
 of redoing work live here.
@@ -198,8 +203,51 @@ must not be repeatable.
 - Guard every WebSocket `send` on `readyState === WebSocket.OPEN`. The first subscriptions can be
   issued while the socket is still CONNECTING; dropping the send is safe because the subscription
   registry resubscribes everything on open.
+- Server APIs over local-only storage, always (user rule): when a capability has a Signal K API
+  (resources, course, notifications, applicationData), Binnacle integrates with it even when that
+  requires read-write authorization rather than read-only. Local storage is the graceful degrade
+  for older servers or missing auth, never the primary design. The access-request UX should tell
+  the admin that Binnacle needs read-write approval (routes, waypoints, tracks, course, alarms,
+  profiles all write).
 - Every release must hold 100% Signal K compliance, and project files must be written per the
   Signal K spec to achieve it.
+
+## Leverage mature plugins before building features
+
+Binnacle does not need to build every capability itself. When a mature Signal K plugin already
+produces the data (alarms, anchor watch, course calcValues, weather providers, symbols, history),
+Binnacle's job is to CONSUME and surface it well, with a graceful client-side degrade when the
+plugin is absent (the navigation.closestApproach pattern). Build a feature in-app only when no
+maintained plugin covers it or when it is core chart-plotter interaction (rendering, editing,
+touch UX). Evaluate plugin maturity before depending on one: published on npm, active within the
+last year, and a stable API surface.
+
+## Plugin assumptions, caching, and coherence (user rules, 2026-06-12)
+
+- NEVER assume a plugin is installed just because the owner's boat server has it. Other users
+  have a STOCK signalk-server (bundled plugins only: the built-in resources-provider and
+  course-provider class of things). Every plugin integration detects (the /signalk/v2/features
+  endpoint or a probe) and degrades gracefully to a built-in or client-side path. Where the
+  upstream API is still a proposal (the Anchor API) or pre-1.0 (symbol-manager), build against
+  the current shape anyway; the weekly Signal K watch routine flags changes and the code gets
+  updated then.
+- Caching is a first-class product goal: the gold standard is "it just works" with nothing extra
+  to install, including when charts and tiles are served by another plugin. Repeat visits and
+  offline-degraded operation must be seamless for every tile and data source Binnacle renders
+  (base map, plugin-served charts, weather, tides, notes), within sensible quotas and expiry.
+- One coherent design system, not disjointed widgets: every new surface uses the shared tokens
+  (src/styles/), the shared UI primitives ($shared/ui), the established interaction patterns
+  (SlideOver, InlineConfirm, armed confirms, the dismiss stack, 44px targets), and the same API
+  conventions (detect-and-degrade clients in the slice, SI store, display-edge conversion). A
+  feature that looks or behaves differently from its siblings is not done.
+
+## Release policy: 0.5.x patches only (user rule, 2026-06-12, until revoked)
+
+Binnacle is in beta and the owner is not concerned about breaking changes yet. Every release is
+a PATCH against 0.5.x (0.5.1, 0.5.2, ...) until the owner explicitly says otherwise, regardless
+of how large the changes are or whether they remove features. Do not bump the minor or major on
+semver instinct; the version line is the owner's call. The pre-push release checklist in the
+global rules still applies in full to every patch.
 
 ## Build policy (every major step)
 
