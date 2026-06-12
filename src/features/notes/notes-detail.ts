@@ -93,6 +93,9 @@ function parseItem(raw: unknown): NormalizedItem | undefined {
   if (isItemKind(r.kind)) item.kind = r.kind;
   const unit = str(r.unit);
   if (unit !== undefined) item.unit = unit;
+  // The panel renders units only for measures, so a kind-less item with a unit would silently
+  // drop it; a unit is what makes a measure.
+  if (item.unit !== undefined && item.kind === undefined) item.kind = 'measure';
   return item;
 }
 
@@ -163,6 +166,8 @@ export async function fetchNoteDetail(
   // An empty id would hit the collection endpoint and parse as a bogus detail; refuse it.
   if (!id) return undefined;
   const path = `/${encodeURIComponent(id)}`;
+  // The v1 leg is a last-resort fallback: marker ids only come from the v2 list, so it is
+  // reachable only if a v2 list once served ids and the server later stopped answering v2.
   return (
     (await tryFetch(`${base}${V2}${path}`, token, id)) ??
     (await tryFetch(`${base}${V1}${path}`, token, id))

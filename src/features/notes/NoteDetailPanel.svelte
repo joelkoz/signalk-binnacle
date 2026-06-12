@@ -78,19 +78,24 @@ function measure(item: NormalizedItem): string {
       <button type="button" class="btn btn-ghost" onclick={() => (attempt += 1)}>Retry</button>
     {:else if sections}
       {#each sections as section (section.id)}
+        {@const danger = section.items.find((item) => isDangerFlag(item.label, item.kind))}
+        {@const listItems = section.items.filter((item) => !isDangerFlag(item.label, item.kind))}
         <section>
           <h3 class="caps-label">{section.title}</h3>
+          <!-- The danger status always leads its section, rendered before the dl: a div between
+               dt/dd pairs is non-conforming HTML. -->
+          {#if danger}
+            <div class="alert" data-danger={danger.value === true}>
+              {danger.value === true ? 'Dangerous to navigation' : 'Not a danger to navigation'}
+            </div>
+          {/if}
           <dl>
-            {#each section.items as item, i (item.label + i)}
+            {#each listItems as item, i (item.label + i)}
               {@const linkUrl =
                 item.kind === 'link' && typeof item.value === 'string'
                   ? safeHttpUrl(item.value)
                   : undefined}
-              {#if isDangerFlag(item.label, item.kind)}
-                <div class="alert" data-danger={item.value === true}>
-                  {item.value === true ? 'Dangerous to navigation' : 'Not a danger to navigation'}
-                </div>
-              {:else if item.kind === 'note'}
+              {#if item.kind === 'note'}
                 <div class="note-item">
                   {#if !isRedundantNoteLabel(item.label, section.title)}
                     <dt>{item.label}</dt>
@@ -111,9 +116,9 @@ function measure(item: NormalizedItem): string {
                       </span>
                     {:else if linkUrl}
                       <a href={linkUrl} target="_blank" rel="noopener noreferrer"
-                        >{item.label}<span class="visually-hidden"> (opens in a new tab)</span></a
+                        >Open link<span class="visually-hidden"> (opens in a new tab)</span></a
                       >
-                    {:else if item.kind === 'rating'}
+                    {:else if item.kind === 'rating' && Number.isFinite(Number(item.value))}
                       {@const ratingValue = Number(item.value)}
                       {@const filled = Math.round(ratingValue)}
                       <span class="rating" role="img" aria-label={`Rating ${ratingValue} of 5`}>

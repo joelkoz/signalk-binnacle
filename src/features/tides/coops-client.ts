@@ -9,22 +9,22 @@ const DATAGETTER = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter';
 // today's remaining events are all the same kind.
 const RANGE_HOURS = 48;
 
-// Prediction times arrive as 'YYYY-MM-DD HH:MM' in the station's local time with no zone. We parse
-// them as local time, which matches the station when the boat is in its timezone (the nearest
-// station is by definition close), and is the time a mariner reads off the tide table.
-function parseLocalTime(value: string): number {
-  return new Date(value.replace(' ', 'T')).getTime();
+// Prediction times arrive as 'YYYY-MM-DD HH:MM' with no zone marker. The URLs request
+// time_zone=gmt, so they parse as UTC here; a browser-local parse would shift every epoch
+// comparison by the zone offset whenever the device timezone differs from the station's.
+// Display formatting (formatClockTime) renders them in the device's local time.
+function parseGmtTime(value: string): number {
+  return new Date(`${value.replace(' ', 'T')}Z`).getTime();
 }
 
-// A local calendar date as YYYY[sep]MM[sep]DD. The CO-OPS begin_date (no separator) and the tides
-// session-cache rollover key (dashed) both build from this one source, so the fetch window and the
-// cache roll over at the same local-midnight instant. A UTC date would roll at a different wall-clock
-// moment, leaving the cache briefly out of step with the window around local midnight.
-export function localYmd(ms: number, sep = ''): string {
+// A UTC calendar date as YYYY[sep]MM[sep]DD. The CO-OPS begin_date (no separator, interpreted in
+// the requested time_zone=gmt) and the tides session-cache rollover key (dashed) both build from
+// this one source, so the fetch window and the cache roll over at the same UTC-midnight instant.
+export function utcYmd(ms: number, sep = ''): string {
   const d = new Date(ms);
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}${sep}${month}${sep}${day}`;
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${d.getUTCFullYear()}${sep}${month}${sep}${day}`;
 }
 
 async function fetchJson(url: string): Promise<unknown> {
@@ -58,12 +58,12 @@ export function fetchCurrentStations(): Promise<TideStation[]> {
 export async function fetchTideEvents(stationId: string): Promise<TideEvent[]> {
   // interval=hilo returns just the high and low turning points; units=metric puts the height in
   // meters, which is already SI.
-  const url = `${DATAGETTER}?product=predictions&interval=hilo&datum=MLLW&units=metric&time_zone=lst_ldt&format=json&begin_date=${localYmd(Date.now())}&range=${RANGE_HOURS}&station=${stationId}`;
+  const url = `${DATAGETTER}?product=predictions&interval=hilo&datum=MLLW&units=metric&time_zone=gmt&format=json&begin_date=${utcYmd(Date.now())}&range=${RANGE_HOURS}&station=${stationId}`;
   const data = (await fetchJson(url)) as {
     predictions?: Array<{ t: string; v: string; type: string }>;
   };
   return (data.predictions ?? []).map((p) => ({
-    timeMs: parseLocalTime(p.t),
+    timeMs: parseGmtTime(p.t),
     heightMeters: Number.parseFloat(p.v),
     kind: p.type === 'H' ? 'high' : 'low',
   }));
@@ -74,7 +74,7 @@ export async function fetchCurrentEvents(stationId: string): Promise<CurrentEven
   // m/s. It is signed (flood positive, ebb negative), but speed is a magnitude here: the flood-or-ebb
   // kind and the set in degrees carry the direction, so store the absolute value. The set is the mean
   // flood or ebb direction; slack has no direction and zero velocity.
-  const url = `${DATAGETTER}?product=currents_predictions&units=metric&time_zone=lst_ldt&format=json&begin_date=${localYmd(Date.now())}&range=${RANGE_HOURS}&interval=MAX_SLACK&station=${stationId}`;
+  const url = `${DATAGETTER}?product=currents_predictions&units=metric&time_zone=gmt&format=json&begin_date=${utcYmd(Date.now())}&range=${RANGE_HOURS}&interval=MAX_SLACK&station=${stationId}`;
   const data = (await fetchJson(url)) as {
     current_predictions?: {
       cp?: Array<{
@@ -92,7 +92,7 @@ export async function fetchCurrentEvents(stationId: string): Promise<CurrentEven
     const directionDeg =
       kind === 'flood' ? c.meanFloodDir : kind === 'ebb' ? c.meanEbbDir : undefined;
     return {
-      timeMs: parseLocalTime(c.Time),
+      timeMs: parseGmtTime(c.Time),
       velocityMps: Math.abs(c.Velocity_Major) / 100,
       directionDeg,
       kind,

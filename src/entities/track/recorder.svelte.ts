@@ -13,20 +13,25 @@ export interface RecordDecision {
   gap: boolean;
 }
 
-// Whether a candidate fix should be recorded, given the last fix and the settings. A fix is
-// kept when both the interval and the min-distance have passed (the min-distance doubles as a
-// min-move threshold so the track does not pile up at anchor); a long time gap always records
-// and starts a break.
+// Whether a candidate fix should be recorded, given the last recorded point, the time of the
+// last considered fix, and the settings. A fix is kept when both the interval and the
+// min-distance since the last recorded point have passed (the min-distance doubles as a
+// min-move threshold so the track does not pile up at anchor). A dropout is a silence in the
+// fix stream itself (lastFixT), not time since the last recorded point: a stationary boat with
+// continuous GPS keeps considering fixes, so it never gaps and the min-move check vetoes every
+// append. lastFixT falls back to the recorded point's time when unknown (a restored track),
+// where the silence since it is a real outage.
 export function decideRecord(
   last: TrackPoint | undefined,
+  lastFixT: number | undefined,
   lat: number,
   lon: number,
   now: number,
   settings: TrackSettings,
 ): RecordDecision {
   if (!last) return { append: true, gap: false };
+  if (now - (lastFixT ?? last.t) > GAP_MS) return { append: true, gap: true };
   const dt = now - last.t;
-  if (dt > GAP_MS) return { append: true, gap: true };
   const moved = haversineMeters(last.lat, last.lon, lat, lon);
   if (dt >= settings.intervalSeconds * 1000 && moved >= settings.minMeters) {
     return { append: true, gap: false };
@@ -62,6 +67,9 @@ export class TrackRecorder {
   #store: TrackStore<TrackPoint>;
   // Set when recording resumes or a paused fix arrives, so the next kept fix starts a break.
   #resumeGap = false;
+  // When the last fix was considered (recorded or not), so a dropout is detected from the fix
+  // stream rather than from the last recorded point.
+  #lastFixT: number | undefined;
 
   constructor(settings: PersistedValue<TrackSettings>, store: TrackStore<TrackPoint>) {
     this.#settings = settings;
@@ -71,16 +79,20 @@ export class TrackRecorder {
 
   async #restore(): Promise<void> {
     const saved = await this.#store.all();
-    if (saved.length > 0) this.points = saved;
+    // Prepend rather than assign: fixes recorded between construction and the store read must
+    // not be clobbered by the restore.
+    if (saved.length > 0) this.points = [...saved, ...this.points];
   }
 
   consider(lat: number, lon: number, sog: number, now: number = Date.now()): void {
+    const lastFixT = this.#lastFixT;
+    this.#lastFixT = now;
     if (this.paused) {
       this.#resumeGap = true;
       return;
     }
     const last = this.points[this.points.length - 1];
-    const decision = decideRecord(last, lat, lon, now, this.#settings.value);
+    const decision = decideRecord(last, lastFixT, lat, lon, now, this.#settings.value);
     if (!decision.append) return;
     const point: TrackPoint = { lat, lon, t: now, sog };
     // Flag a gap when this point follows a break (a pause-resume or a fix-rate dropout) so the

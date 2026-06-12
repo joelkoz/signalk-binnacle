@@ -40,6 +40,20 @@ describe('createTidesLoader', () => {
     expect(d.tideEvents).toHaveBeenCalledTimes(1);
   });
 
+  it('refetches after a day rollover even when the boat has not moved', async () => {
+    // Anchored: same position both loads, but the second lands on the next UTC day, so the
+    // 3 km skip radius must not pin the aging 48-hour event window.
+    let nowMs = Date.UTC(2026, 5, 8, 23, 0);
+    const d = deps({ now: () => nowMs });
+    const loader = createTidesLoader(d);
+    const store = new TidesStore();
+    await loader.load(store, 27.7, -82.7);
+    nowMs = Date.UTC(2026, 5, 9, 1, 0);
+    await loader.load(store, 27.7, -82.7);
+    expect(store.status).toBe('ready');
+    expect(d.tideEvents).toHaveBeenCalledTimes(2);
+  });
+
   it('flags no coverage when no station is within range', async () => {
     const loader = createTidesLoader(
       deps({

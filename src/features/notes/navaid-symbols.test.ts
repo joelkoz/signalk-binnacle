@@ -17,6 +17,11 @@ describe('navaid classification', () => {
     expect(navaidClassify('Daybeacon Middle').side).toBe('none');
   });
 
+  it('reads the digits of a letter-suffixed aid number', () => {
+    expect(navaidClassify('Channel Buoy 2A').side).toBe('starboard');
+    expect(navaidClassify('Channel Daybeacon 7B').side).toBe('port');
+  });
+
   it('treats a lighted buoy as a buoy, not a light', () => {
     const c = navaidClassify('West Harbor Access Channel Lighted Buoy 6');
     expect(c.kind).toBe('buoy');

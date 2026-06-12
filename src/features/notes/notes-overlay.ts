@@ -19,7 +19,7 @@ import {
 import { str } from '$shared/signalk';
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
-import { NotesCache, padBbox } from './notes-cache';
+import { bboxContains, NotesCache, padBbox } from './notes-cache';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
 import { categoryRank, POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
 
@@ -52,15 +52,9 @@ const MIN_ZOOM = 9;
 // wide view does not mash, and individual POIs appear from z12.
 const CLUSTER_MAX_ZOOM = 11;
 const CLUSTER_RADIUS = 44;
-
-// The first of the given values that is a non-empty string, or undefined if none is. Used to pick a
-// marker's attribution (credit, then source) and its url from the feature properties.
-function firstNonEmpty(...values: unknown[]): string | undefined {
-  for (const value of values) {
-    if (typeof value === 'string' && value) return value;
-  }
-  return undefined;
-}
+// After a failed fetch, back off this long before retrying so a stationary map recovers from a
+// transient hiccup without hammering a flaky provider (the tides loader uses the same pattern).
+const RETRY_COOLDOWN_MS = 30_000;
 
 // The cluster icon: the colored disc of the cluster's highest-ranked member, matched on the
 // aggregated maxRank, so a cluster holding a hazard shows the red hazard disc, a navaid the amber
@@ -129,6 +123,8 @@ export function createNotesOverlay(
   let lastLng: number | undefined;
   let lastLat: number | undefined;
   let fetching = false;
+  // Set after a failed fetch; until it passes, sync holds the fast-path open instead of fetching.
+  let cooldownUntil = 0;
   // Whether the layer is shown. A hidden Points-of-interest layer skips its sync entirely (no network
   // fetch, no re-clustering) and defers the icon re-raster on a theme change until it is shown again.
   // Starts true to match the layer-manager default; the register-time setVisible corrects it.
@@ -322,7 +318,7 @@ export function createNotesOverlay(
           id,
           name: String(props.name ?? 'Point of interest'),
           category: String(props.category) as PoiCategory,
-          attribution: firstNonEmpty(props.attribution, props.source),
+          attribution: str(props.attribution) ?? str(props.source),
           url: str(props.url),
         });
       };
@@ -383,16 +379,37 @@ export function createNotesOverlay(
         return;
       }
       if (fetching) return;
+      if (Date.now() < cooldownUntil) {
+        // Still backing off from a failed fetch: drop the fast-path anchor so a later sync of a
+        // stationary map re-evaluates and retries once the cooldown passes.
+        lastZoom = undefined;
+        return;
+      }
       fetching = true;
       // Fetch a padded area so the next small pan or zoom-in reuses this fetch from the cache.
       const fetchBbox = padBbox(viewport);
       fetchNotes(serverBase, token, fetchBbox)
         .then((notes) => {
-          // undefined is a transient failure: keep the markers already shown. An empty array is a
-          // real "no POIs here" answer, so it does clear them.
-          if (!notes) return;
+          // undefined is a transient failure: keep the markers already shown and retry after a
+          // cooldown, even stationary (the fast-path would otherwise pin the failure forever). An
+          // empty array is a real "no POIs here" answer, so it renders and clears them.
+          if (!notes) {
+            cooldownUntil = Date.now() + RETRY_COOLDOWN_MS;
+            lastZoom = undefined;
+            return;
+          }
           cache.put(fetchBbox, notes, Date.now());
           render(ctx, notes);
+          // The map may have moved while the fetch was in flight; when this fetch no longer covers
+          // the current viewport, drop the fast-path anchor so the next sync serves the new area.
+          const after = ctx.map.getBounds();
+          const current: Bbox = [
+            after.getWest(),
+            after.getSouth(),
+            after.getEast(),
+            after.getNorth(),
+          ];
+          if (!bboxContains(fetchBbox, current)) lastZoom = undefined;
         })
         .finally(() => {
           fetching = false;

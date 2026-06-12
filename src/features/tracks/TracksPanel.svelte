@@ -3,7 +3,7 @@ import { Download, Eraser, Pause, Play, Route, Save, Trash2, Undo2 } from '@luci
 import type { TrackRecorder } from '$entities/track';
 import { formatDuration, formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
-import { promptSaveName, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
+import { focusOnMount, promptSaveName, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
 import type { SavedTrack } from './tracks-client';
 
 interface Props {
@@ -66,6 +66,14 @@ function promptSaveAsRoute(): void {
 
 function confirmClear(): void {
   if (window.confirm('Discard the current track? This cannot be undone.')) recorder.clear();
+}
+
+// Deleting a saved track is destructive, so it arms a confirm step rather than firing on a
+// single tap where a mis-tap on a rolling deck would lose a saved track.
+let confirmingDelete = $state<string | undefined>();
+function confirmDelete(id: string): void {
+  confirmingDelete = undefined;
+  onDelete(id);
 }
 
 function setColorMode(mode: TrackSettings['colorMode']): void {
@@ -185,27 +193,46 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
         <dt class="caps-label">Duration</dt>
         <dd><span class="num">{durationText}</span></dd>
       </dl>
-      <div class="actions">
-        <VisibilityToggle shown={shown.has(track.id)} onToggle={() => onToggleSaved(track.id)} />
-        <button
-          type="button"
-          class="icon-btn"
-          aria-label="Export GeoJSON"
-          title="Export GeoJSON"
-          onclick={() => onExport(track)}
-        >
-          <Download size={18} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="icon-btn icon-btn--danger"
-          aria-label="Delete track"
-          title="Delete"
-          onclick={() => onDelete(track.id)}
-        >
-          <Trash2 size={18} aria-hidden="true" />
-        </button>
-      </div>
+      {#if confirmingDelete === track.id}
+        <div class="confirm" role="group" aria-label="Confirm delete track">
+          <span class="confirm-text">Delete this track?</span>
+          <div class="confirm-actions">
+            <button type="button" class="btn btn-danger" onclick={() => confirmDelete(track.id)}>
+              Delete
+            </button>
+            <button
+              type="button"
+              class="btn"
+              use:focusOnMount
+              onclick={() => (confirmingDelete = undefined)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      {:else}
+        <div class="actions">
+          <VisibilityToggle shown={shown.has(track.id)} onToggle={() => onToggleSaved(track.id)} />
+          <button
+            type="button"
+            class="icon-btn"
+            aria-label="Export GeoJSON"
+            title="Export GeoJSON"
+            onclick={() => onExport(track)}
+          >
+            <Download size={18} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="icon-btn icon-btn--danger"
+            aria-label="Delete track"
+            title="Delete"
+            onclick={() => (confirmingDelete = track.id)}
+          >
+            <Trash2 size={18} aria-hidden="true" />
+          </button>
+        </div>
+      {/if}
     {/snippet}
   </SavedList>
 </SlideOver>
@@ -236,4 +263,21 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 /* The current-track stats use the global .stat-grid system in app.css. */
 /* The saved-track card list, name, stats, and actions come from the global .saved system in app.css. */
+/* The inline delete confirm replaces the action row for the armed card: a clear question and a pair
+   of full buttons, so confirming or backing out is a deliberate second tap. */
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.confirm-text {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.confirm-actions {
+  display: flex;
+  gap: var(--space-2);
+}
 </style>

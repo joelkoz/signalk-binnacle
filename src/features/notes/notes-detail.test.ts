@@ -57,6 +57,30 @@ describe('fetchNoteDetail', () => {
     expect(detail?.fallbackText).toBeUndefined();
   });
 
+  it('defaults a kind-less item with a unit to a measure so the unit renders', async () => {
+    const body = {
+      ...structured,
+      properties: {
+        ...structured.properties,
+        crowsNest: {
+          schemaVersion: 1,
+          type: 'Navigational',
+          sections: [
+            { id: 'd', title: 'Depths', items: [{ label: 'Depth', value: 4.2, unit: 'm' }] },
+          ],
+        },
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, body)));
+    const detail = await fetchNoteDetail('http://pi', undefined, 'd-1');
+    expect(detail?.sections?.[0].items[0]).toEqual({
+      label: 'Depth',
+      value: 4.2,
+      kind: 'measure',
+      unit: 'm',
+    });
+  });
+
   it('falls back to plain text when crowsNest is absent', async () => {
     const body = { name: 'Plain Note', description: '<p>Hello <b>there</b></p>', properties: {} };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, body)));

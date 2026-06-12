@@ -18,7 +18,8 @@ export interface NavaidClass {
 // (BOYSHP, COLOUR, CATLAM) is a later spec; notes carry no such attributes.
 export function navaidClassify(name: string): NavaidClass {
   const n = name.toLowerCase();
-  const num = n.match(/\b(\d+)\b/);
+  // Aid numbers may carry a letter suffix ("Buoy 2A"); the digits alone decide the side.
+  const num = n.match(/(\d+)[a-z]?\b/);
   const side: NavaidSide = num ? (Number(num[1]) % 2 === 0 ? 'starboard' : 'port') : 'none';
   if (/lighthouse/.test(n)) return { kind: 'lighthouse', side: 'none' };
   if (/daybeacon/.test(n)) return { kind: 'daybeacon', side };

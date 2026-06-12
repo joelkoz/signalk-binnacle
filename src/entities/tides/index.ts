@@ -5,5 +5,4 @@ export type {
   TideEvent,
   TideReading,
   TideStation,
-  TidesStatus,
 } from './tides-types';

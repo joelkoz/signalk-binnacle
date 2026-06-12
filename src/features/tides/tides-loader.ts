@@ -14,7 +14,7 @@ import {
   fetchCurrentStations,
   fetchTideEvents,
   fetchTideStations,
-  localYmd,
+  utcYmd,
 } from './coops-client';
 import { nearestStations } from './station-proximity';
 
@@ -55,9 +55,9 @@ const realDeps: LoaderDeps = {
   now: () => Date.now(),
 };
 
-// The per-station event cache rolls over on the local day, matching the CO-OPS fetch window (both
-// derive from localYmd), so the cache and the window roll over at the same local-midnight instant.
-const dayKey = (ms: number): string => localYmd(ms, '-');
+// The per-station event cache rolls over on the UTC day, matching the CO-OPS fetch window (both
+// derive from utcYmd), so the cache and the window roll over at the same UTC-midnight instant.
+const dayKey = (ms: number): string => utcYmd(ms, '-');
 
 // A tides loader with its own session caches: the station lists are fetched once a day, and each
 // station's events are kept for the day so panning back to a covered area is instant. It feeds the
@@ -77,6 +77,9 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
   let inFlight = false;
   let lastLat: number | undefined;
   let lastLon: number | undefined;
+  // The day of the last load, so an anchored boat still refetches after midnight when the
+  // 48-hour event window would otherwise age out behind the skip radius.
+  let lastDay: string | undefined;
 
   async function ensureLists(nowMs: number): Promise<void> {
     if (tideList && currentList && nowMs - listsAt < STATIONS_TTL_MS) return;
@@ -91,7 +94,7 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
       const nowMs = deps.now();
       if (inFlight || nowMs < cooldownUntil) return;
       const settled = store.status === 'ready' || store.status === 'no-coverage';
-      if (settled && lastLat !== undefined && lastLon !== undefined) {
+      if (settled && lastLat !== undefined && lastLon !== undefined && dayKey(nowMs) === lastDay) {
         if (haversineMeters(lastLat, lastLon, lat, lon) < SKIP_RADIUS_M) return;
       }
       inFlight = true;
@@ -101,6 +104,7 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
         const day = dayKey(nowMs);
         lastLat = lat;
         lastLon = lon;
+        lastDay = day;
         const nearTide = nearestStations(tideList ?? [], lat, lon, 1, TIDE_RADIUS_M)[0];
         if (!nearTide) {
           store.setNoCoverage();

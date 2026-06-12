@@ -77,6 +77,10 @@ export function createTidesOverlay(store: TidesStore): TidesOverlay {
   let lastTide: TideReading | undefined;
   let lastCurrent: CurrentReading | undefined;
   let seeded = false;
+  // The minute the labels were last baked for. The "next event" text depends on the clock, not
+  // just the readings, so a label is refreshed when the minute turns over rather than showing a
+  // past event for hours on a stationary boat.
+  let lastLabelMinute = -1;
 
   return {
     id: 'tides',
@@ -129,12 +133,17 @@ export function createTidesOverlay(store: TidesStore): TidesOverlay {
     sync(ctx) {
       const tide = store.tide;
       const current = store.current;
-      if (seeded && tide === lastTide && current === lastCurrent) return;
+      const nowMs = Date.now();
+      const minute = Math.floor(nowMs / 60_000);
+      if (seeded && tide === lastTide && current === lastCurrent && minute === lastLabelMinute) {
+        return;
+      }
       seeded = true;
       lastTide = tide;
       lastCurrent = current;
+      lastLabelMinute = minute;
       const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      source?.setData(features(tide, current, Date.now()));
+      source?.setData(features(tide, current, nowMs));
     },
     setVisible(ctx, visible) {
       const value = visible ? 'visible' : 'none';
@@ -142,6 +151,7 @@ export function createTidesOverlay(store: TidesStore): TidesOverlay {
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(CIRCLE_LAYER, 'circle-opacity', opacity);
+      ctx.map.setPaintProperty(CIRCLE_LAYER, 'circle-stroke-opacity', opacity);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-opacity', opacity);
     },
     applyTheme(ctx, paint) {

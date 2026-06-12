@@ -141,7 +141,9 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
       </p>
     {/if}
 
-    <p class="footnote">Heights above MLLW, times in station local time.</p>
+    <p class="footnote">Heights above MLLW, times in the device's local time.</p>
+  {:else if store.status === 'error'}
+    <p class="status stale" role="status">Could not load tide predictions. Check the connection.</p>
   {:else}
     <p class="status" role="status">Pan to a US coast to see tide predictions.</p>
   {/if}

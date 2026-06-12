@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchCurrentEvents, fetchTideEvents, fetchTideStations } from './coops-client';
+import { fetchCurrentEvents, fetchTideEvents, fetchTideStations, utcYmd } from './coops-client';
 
-function mockFetch(json: unknown, ok = true, status = 200): void {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () => ({ ok, status, json: async () => json })),
-  );
+function mockFetch(json: unknown, ok = true, status = 200): ReturnType<typeof vi.fn> {
+  const mock = vi.fn(async () => ({ ok, status, json: async () => json }));
+  vi.stubGlobal('fetch', mock);
+  return mock;
 }
 
 afterEach(() => {
@@ -21,7 +20,7 @@ describe('coops-client', () => {
   });
 
   it('parses tide events with meters and a high or low kind', async () => {
-    mockFetch({
+    const fetchMock = mockFetch({
       predictions: [
         { t: '2026-06-08 09:34', v: '0.532', type: 'H' },
         { t: '2026-06-08 15:17', v: '0.307', type: 'L' },
@@ -32,6 +31,14 @@ describe('coops-client', () => {
     expect(events[0].kind).toBe('high');
     expect(events[1].kind).toBe('low');
     expect(Number.isFinite(events[0].timeMs)).toBe(true);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('time_zone=gmt');
+  });
+
+  it('parses prediction timestamps as UTC, not browser-local', async () => {
+    mockFetch({ predictions: [{ t: '2026-06-08 09:34', v: '0.532', type: 'H' }] });
+    const events = await fetchTideEvents('8726520');
+    // time_zone=gmt is requested, so '2026-06-08 09:34' is 09:34 UTC in any browser timezone.
+    expect(events[0].timeMs).toBe(Date.UTC(2026, 5, 8, 9, 34));
   });
 
   it('converts current velocity from cm/s to SI m/s and reads the set', async () => {
@@ -63,6 +70,7 @@ describe('coops-client', () => {
       },
     });
     const events = await fetchCurrentEvents('ACT8451');
+    expect(events[0].timeMs).toBe(Date.UTC(2026, 5, 8, 5, 58));
     expect(events[0].velocityMps).toBeCloseTo(0.204);
     expect(events[0].directionDeg).toBe(100);
     expect(events[0].kind).toBe('flood');
@@ -77,5 +85,12 @@ describe('coops-client', () => {
   it('throws on a non-ok response', async () => {
     mockFetch({}, false, 503);
     await expect(fetchTideStations()).rejects.toThrow();
+  });
+
+  it('builds the UTC day key from UTC date parts', () => {
+    // 2026-06-09 04:30 UTC is still 2026-06-08 on a UTC-5 device; the key must follow UTC.
+    const ms = Date.UTC(2026, 5, 9, 4, 30);
+    expect(utcYmd(ms)).toBe('20260609');
+    expect(utcYmd(ms, '-')).toBe('2026-06-09');
   });
 });
