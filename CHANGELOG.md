@@ -38,6 +38,14 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
 - Collision and MOB alerts ride the server's v2 Notifications API when available (server-managed
   ids; muting locally silences the boat-wide alert), with the v1 delta publish kept for older
   servers. Server capabilities are detected once from the features endpoint.
+- The anchor watch speaks the standard Anchor API the moment a server ships it (the proposal's
+  drop, raise, radius, and reposition routes, feature-detected), ahead of the existing
+  anchoralarm-plugin path and the client-local watch.
+- Custom chart symbols from the signalk-symbol-manager plugin: a note whose icon reference
+  resolves to a managed symbol renders that symbol (scale and anchor honored), and a provided
+  "waypoint" symbol replaces the built-in waypoint marker. At night-red, user artwork is remapped
+  into the red band so the theme's no-color rule holds. Without the plugin, every icon stays
+  built-in.
 
 ### Removed
 

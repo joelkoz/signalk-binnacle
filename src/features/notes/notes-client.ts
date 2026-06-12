@@ -10,6 +10,9 @@ export interface NotePoint {
   name: string;
   position: { latitude: number; longitude: number };
   category: PoiCategory;
+  // The provider's raw icon reference, kept alongside the derived category so a provided
+  // symbol (signalk-symbol-manager) can resolve it to a custom marker.
+  skIcon?: string;
   // Optional credit and link surfaced for the marker and its detail panel.
   url?: string;
   source?: string;
@@ -60,6 +63,7 @@ function noteFromEntry(id: string, raw: unknown): NotePoint | undefined {
       poiCategoryForType(
         typeof props.crowsNest?.type === 'string' ? (props.crowsNest.type as PoiType) : undefined,
       ) ?? categoryForSkIcon(str(props.skIcon)),
+    skIcon: str(props.skIcon),
     url: str(note.url),
     source: str(props.source),
     attribution: str(props.attribution),

@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SymbolsStore, symbolIconId } from '$entities/symbols';
 import type { OverlayContext } from '$shared/map';
+import type { SkSymbol } from '$shared/signalk';
 import { createFakeMap } from '$shared/testing/fake-map';
 import { fetchNotes, type NotePoint } from './notes-client';
 import { createNotesOverlay } from './notes-overlay';
@@ -29,12 +31,53 @@ function viewCtx(state: { zoom: number; lng: number; lat: number }): OverlayCont
 }
 
 async function settle(): Promise<void> {
-  for (let i = 0; i < 4; i += 1) await Promise.resolve();
+  for (let i = 0; i < 12; i += 1) await Promise.resolve();
+}
+
+// A fake map that renders sources and images (createFakeMap) and also answers the viewport
+// calls sync makes, so a symbols test can drive the full fetch-render-register flow.
+function viewFakeMap(state: { zoom: number; lng: number; lat: number }) {
+  return {
+    ...createFakeMap(),
+    getZoom: () => state.zoom,
+    getCenter: () => ({ lng: state.lng, lat: state.lat }),
+    getBounds: () => ({
+      getWest: () => state.lng - 1,
+      getSouth: () => state.lat - 1,
+      getEast: () => state.lng + 1,
+      getNorth: () => state.lat + 1,
+    }),
+  };
+}
+
+const MARINA_NOTE: NotePoint = {
+  id: 'n1',
+  name: 'Harbor Marina',
+  position: { latitude: 0, longitude: 0 },
+  category: 'marina',
+  skIcon: 'marina',
+};
+
+function marinaSymbol(): SkSymbol {
+  return {
+    uuid: 'u9',
+    aliases: ['custom:marina'],
+    name: 'Marina',
+    url: '/s/u9.svg',
+    roles: ['note'],
+    anchor: [12, 24],
+  };
+}
+
+function storeWith(symbol: SkSymbol, rasterize: SymbolsStore['rasterize']): SymbolsStore {
+  return new SymbolsStore('http://pi', undefined, [symbol], rasterize);
 }
 
 beforeEach(() => {
   fetchNotesMock.mockReset();
 });
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('notes overlay', () => {
   it('adds the cluster ring, icon, count, point, and selection layers in the routes band', async () => {
@@ -80,6 +123,66 @@ describe('notes overlay', () => {
     // would skip and the overlay would keep showing the old area forever.
     overlay.sync(ctx);
     expect(fetchNotesMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('swaps a note to its provided symbol once registered, with the anchor offset', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, text: async () => '<svg/>' } as unknown as Response),
+    );
+    const rasterize = vi.fn().mockResolvedValue({
+      image: { width: 48, height: 48, data: new Uint8ClampedArray(4) } as never,
+      cssWidth: 24,
+      cssHeight: 24,
+      scale: 1,
+    });
+    const store = storeWith(marinaSymbol(), rasterize);
+    fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
+    const overlay = createNotesOverlay('http://pi', undefined, undefined, store);
+    const map = viewFakeMap({ zoom: 12, lng: 0, lat: 0 });
+    const ctx = ctxFor(map);
+    await overlay.add(ctx);
+    overlay.sync(ctx);
+    await settle();
+    expect(map.hasImage(symbolIconId('u9'))).toBe(true);
+    const fc = map.sources.get('binnacle-notes')?.data as GeoJSON.FeatureCollection;
+    expect(fc.features[0].properties).toMatchObject({
+      icon: symbolIconId('u9'),
+      iconOffset: [0, -12],
+    });
+  });
+
+  it('degrades to the category disc when the symbol SVG fetch fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network')));
+    const store = storeWith(marinaSymbol(), vi.fn());
+    fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
+    const overlay = createNotesOverlay('http://pi', undefined, undefined, store);
+    const map = viewFakeMap({ zoom: 12, lng: 0, lat: 0 });
+    const ctx = ctxFor(map);
+    await overlay.add(ctx);
+    overlay.sync(ctx);
+    await settle();
+    expect(map.hasImage(symbolIconId('u9'))).toBe(false);
+    const fc = map.sources.get('binnacle-notes')?.data as GeoJSON.FeatureCollection;
+    expect(fc.features[0].properties).toMatchObject({
+      icon: 'binnacle-poi-marina',
+      iconOffset: [0, 0],
+    });
+  });
+
+  it('uses the category disc with a centered offset when no symbols store is passed', async () => {
+    fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
+    const overlay = createNotesOverlay('http://pi', undefined);
+    const map = viewFakeMap({ zoom: 12, lng: 0, lat: 0 });
+    const ctx = ctxFor(map);
+    await overlay.add(ctx);
+    overlay.sync(ctx);
+    await settle();
+    const fc = map.sources.get('binnacle-notes')?.data as GeoJSON.FeatureCollection;
+    expect(fc.features[0].properties).toMatchObject({
+      icon: 'binnacle-poi-marina',
+      iconOffset: [0, 0],
+    });
   });
 
   it('retries a failed fetch on a stationary map once the cooldown passes', async () => {

@@ -6,6 +6,7 @@ import type { CollisionAssessment } from '$entities/collision';
 import type { MeasureStore } from '$entities/measure';
 import type { MobStore } from '$entities/mob';
 import type { RouteStore } from '$entities/route';
+import type { SymbolsStore } from '$entities/symbols';
 import type { TidesStore } from '$entities/tides';
 import type { TrackRecorder } from '$entities/track';
 import type { UnitsStore } from '$entities/units';
@@ -67,6 +68,8 @@ interface Props {
   units: UnitsStore;
   // Standard server waypoints, drawn as named markers in the routes band.
   waypoints: WaypointsStore;
+  // Provided chart symbols (signalk-symbol-manager), empty on a stock server.
+  symbols?: SymbolsStore;
   // The active theme, so the on-chart route editor restyles its draw layers per theme.
   theme: Theme;
   trackSettings: PersistedValue<TrackSettings>;
@@ -109,6 +112,7 @@ const {
   measure,
   units,
   waypoints,
+  symbols,
   collision,
   recorder,
   routeStore,
@@ -213,7 +217,7 @@ onMount(() => {
       // vessel and collision pinned on top, then the navigator's routes and track, then AIS and the
       // safety overlays, the ocean fields, and the charts at the base); the order below sets only the
       // order within a band.
-      const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect);
+      const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect, symbols);
       // One list feeds both registration and the per-frame tick, so the two cannot drift. The order
       // sets z within each band (tides under the safety overlays, the own vessel on top).
       const dynamicOverlays = [
@@ -221,7 +225,7 @@ onMount(() => {
         createAnchorOverlay(anchor, vessel, onAnchorMoved),
         createMeasureOverlay(measure, units),
         createRouteOverlay(routeStore),
-        createWaypointOverlay(waypoints),
+        createWaypointOverlay(waypoints, symbols),
         notesOverlay,
         createAisOverlay(aisTargets, store),
         createCollisionOverlay(collision),

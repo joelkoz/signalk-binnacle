@@ -9,18 +9,24 @@ import { authInit, putResource } from '$shared/signalk';
 
 const PLUGIN_BASE = '/plugins/anchoralarm';
 
-async function post(url: string, token: string | undefined, body: unknown): Promise<boolean> {
+// POST an anchor command under the degrade contract above. A body is JSON-encoded when given; the
+// standard Anchor API's drop and raise take none, so those calls send a bare POST. Shared with the
+// standard-API client in anchor-api-client.ts.
+export async function postAnchorCommand(
+  url: string,
+  token: string | undefined,
+  body?: unknown,
+): Promise<boolean> {
   try {
-    const response = await fetch(
-      url,
-      withTimeout(
-        authInit(token, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        }),
-      ),
-    );
+    const init: RequestInit =
+      body === undefined
+        ? { method: 'POST' }
+        : {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          };
+    const response = await fetch(url, withTimeout(authInit(token, init)));
     return response.ok;
   } catch {
     return false;
@@ -34,7 +40,7 @@ export function dropAnchorOnServer(
   token: string | undefined,
   radiusMeters: number,
 ): Promise<boolean> {
-  return post(`${base}${PLUGIN_BASE}/dropAnchor`, token, { radius: radiusMeters });
+  return postAnchorCommand(`${base}${PLUGIN_BASE}/dropAnchor`, token, { radius: radiusMeters });
 }
 
 export function setServerRadius(
@@ -42,11 +48,11 @@ export function setServerRadius(
   token: string | undefined,
   radiusMeters: number,
 ): Promise<boolean> {
-  return post(`${base}${PLUGIN_BASE}/setRadius`, token, { radius: radiusMeters });
+  return postAnchorCommand(`${base}${PLUGIN_BASE}/setRadius`, token, { radius: radiusMeters });
 }
 
 export function raiseServerAnchor(base: string, token: string | undefined): Promise<boolean> {
-  return post(`${base}${PLUGIN_BASE}/raiseAnchor`, token, {});
+  return postAnchorCommand(`${base}${PLUGIN_BASE}/raiseAnchor`, token, {});
 }
 
 // Correct the drop point after a drag-to-adjust on the chart, via the plugin's PUT handler on the

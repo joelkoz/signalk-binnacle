@@ -25,6 +25,7 @@ import { type MobMark, MobStore } from '$entities/mob';
 import { type ActiveNotification, NotificationsStore } from '$entities/notifications';
 import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$entities/profile';
 import { RouteStore, remainingRouteDistanceMeters, reverseRoute } from '$entities/route';
+import { SymbolsStore } from '$entities/symbols';
 import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
 import { UnitsStore } from '$entities/units';
@@ -37,10 +38,7 @@ import {
   ANCHOR_TONE,
   AnchorPanel,
   AnchorStrip,
-  dropAnchorOnServer,
-  putServerAnchorPosition,
-  raiseServerAnchor,
-  setServerRadius,
+  resolveAnchorTransport,
 } from '$features/anchor-watch';
 import { AuthBanner } from '$features/auth-banner';
 import { deleteChart, putChart } from '$features/charts';
@@ -142,6 +140,7 @@ import {
   acknowledgeNotification,
   createSignalKClient,
   fetchServerFeatures,
+  fetchSymbols,
   postMobNotification,
   postNotification,
   resolveNotification,
@@ -407,6 +406,11 @@ const units = new UnitsStore();
 // Standard server waypoints: fetched from /resources/waypoints, rendered by the chart overlay,
 // managed in the Waypoints panel, and dropped from the chart's long-press menu.
 const waypointsStore = new WaypointsStore();
+
+// Provided chart symbols (signalk-symbol-manager). Constructed empty so the chart can mount
+// immediately and hold one stable reference; filled when the fetch lands after access resolves.
+// On a stock server the resource type 404s and every icon stays built-in.
+const symbolsStore = new SymbolsStore(serverOrigin(), undefined);
 let waypointError = $state<string | undefined>();
 
 async function refreshWaypoints(): Promise<void> {
@@ -882,15 +886,25 @@ function onMobSteer(): void {
 // rationale on routeError applies here too).
 let anchorError = $state<string | undefined>();
 
+// The anchor action chain, resolved once capabilities are known: the standard Anchor API when the
+// server exposes it (a proposal today, tracked by the weekly watch), then the anchoralarm plugin,
+// then the client-local watch. Until features resolve, the none transport refuses server calls and
+// every action lands on the local path.
+const anchorTransport = $derived(
+  resolveAnchorTransport(serverOrigin(), chartsToken, {
+    standardApiAvailable: serverFeatures?.apis.has('anchor') ?? false,
+  }),
+);
+
 async function onDropAnchor(): Promise<void> {
   anchorError = undefined;
   const position = vessel.position;
   if (!position) return;
   const radius = anchor.preferredRadiusMeters;
-  // The server drop doubles as the plugin detection: when the anchoralarm plugin answers, it owns
-  // the watch (and keeps alarming with the browser closed) and the stream reflects it back. Any
-  // failure degrades to the client-side watch; the panel's mode line says which one is running.
-  if (await dropAnchorOnServer(serverOrigin(), chartsToken, radius)) return;
+  // The server drop doubles as detection: when the standard API or the anchoralarm plugin answers,
+  // the server owns the watch (and keeps alarming with the browser closed) and the stream reflects
+  // it back. Any failure degrades to the client-side watch; the panel's mode line says which.
+  if (await anchorTransport.drop(radius)) return;
   anchor.dropLocal(position, radius);
 }
 
@@ -914,7 +928,7 @@ async function anchorAction(
 
 function onRaiseAnchor(): Promise<void> {
   return anchorAction(
-    () => raiseServerAnchor(serverOrigin(), chartsToken),
+    () => anchorTransport.raise(),
     'raise the anchor',
     () => anchor.raiseLocal(),
   );
@@ -923,7 +937,7 @@ function onRaiseAnchor(): Promise<void> {
 function onSetAnchorRadius(meters: number): Promise<void> {
   anchor.rememberRadius(meters);
   return anchorAction(
-    () => setServerRadius(serverOrigin(), chartsToken, meters),
+    () => anchorTransport.setRadius(meters),
     'set the radius',
     () => anchor.setRadiusLocal(meters),
   );
@@ -931,7 +945,7 @@ function onSetAnchorRadius(meters: number): Promise<void> {
 
 function onAnchorMoved(position: LatLon): Promise<void> {
   return anchorAction(
-    () => putServerAnchorPosition(serverOrigin(), chartsToken, position),
+    () => anchorTransport.setPosition(position),
     'move the anchor',
     () => anchor.movePositionLocal(position),
   );
@@ -1485,6 +1499,11 @@ $effect(() => {
   void fetchServerFeatures(serverOrigin(), auth.token ?? undefined).then((features) => {
     if (features) serverFeatures = features;
   });
+  // Provided chart symbols; absent on a stock server, in which case the built-ins stand.
+  symbolsStore.setAuth(auth.token ?? undefined);
+  void fetchSymbols(serverOrigin(), auth.token ?? undefined).then((list) => {
+    if (list) symbolsStore.setSymbols(list);
+  });
 });
 
 onMount(() => {
@@ -1565,6 +1584,7 @@ onDestroy(() => {
     <ChartCanvas
       {units}
       waypoints={waypointsStore}
+      symbols={symbolsStore}
       onDropWaypoint={(position) => void onDropWaypoint(position)}
       {store}
       {vessel}

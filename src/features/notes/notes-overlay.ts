@@ -7,6 +7,7 @@ import type {
   MapLayerMouseEvent,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
+import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
 import {
   DARK_SCRIM,
   emptyFeatureCollection,
@@ -16,7 +17,7 @@ import {
   type OverlayModule,
   rgbaCss,
 } from '$shared/map';
-import { str } from '$shared/signalk';
+import { type SkSymbol, str } from '$shared/signalk';
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
 import { bboxContains, NotesCache, padBbox } from './notes-cache';
@@ -81,26 +82,33 @@ function iconFor(note: NotePoint): string {
   return poiIconId(note.category);
 }
 
-function featureCollection(notes: readonly NotePoint[]): GeoJSON.FeatureCollection {
+function featureCollection(
+  notes: readonly NotePoint[],
+  managedIcon: (note: NotePoint) => SymbolIconEntry | undefined,
+): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
-    features: notes.map((note) => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [note.position.longitude, note.position.latitude],
-      },
-      properties: {
-        id: note.id,
-        name: note.name,
-        category: note.category,
-        rank: categoryRank(note.category),
-        icon: iconFor(note),
-        url: note.url ?? '',
-        source: note.source ?? '',
-        attribution: note.attribution ?? '',
-      },
-    })),
+    features: notes.map((note): GeoJSON.Feature => {
+      const managed = managedIcon(note);
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [note.position.longitude, note.position.latitude],
+        },
+        properties: {
+          id: note.id,
+          name: note.name,
+          category: note.category,
+          rank: categoryRank(note.category),
+          icon: managed?.iconId ?? iconFor(note),
+          iconOffset: managed?.offset ?? [0, 0],
+          url: note.url ?? '',
+          source: note.source ?? '',
+          attribution: note.attribution ?? '',
+        },
+      };
+    }),
   };
 }
 
@@ -110,6 +118,7 @@ export function createNotesOverlay(
   serverBase: string,
   token: string | undefined,
   onSelect?: (selection: NoteSelection | undefined) => void,
+  symbols?: SymbolsStore,
 ): NotesOverlay {
   // A viewport-keyed cache of fetched note sets so panning back, panning a little, or zooming in
   // reuses a recent fetch instead of re-hitting the network (the data depends only on the bbox, not
@@ -142,6 +151,42 @@ export function createNotesOverlay(
   let onClusterClick: ((event: MapLayerMouseEvent) => void) | undefined;
   let onEnter: (() => void) | undefined;
   let onLeave: (() => void) | undefined;
+  // Provided symbols (signalk-symbol-manager), absent on a stock server. The registry holds the
+  // registered map images; pendingSymbols collects the resolvable-but-not-yet-registered ones a
+  // render saw, so their loads can be kicked once and the set re-rendered when they land.
+  const registry = symbols?.createIconRegistry();
+  const pendingSymbols = new Map<string, SkSymbol>();
+  let themePaint = mapThemePaint('day');
+
+  // The registered icon for a note whose skIcon resolves to a provided symbol, or undefined for
+  // the built-in category disc (no symbols store, unresolvable reference, image still loading,
+  // or a failed load).
+  function managedIcon(note: NotePoint): SymbolIconEntry | undefined {
+    if (!registry || !symbols || !note.skIcon) return undefined;
+    const symbol = symbols.resolve(note.skIcon, 'note');
+    if (!symbol) return undefined;
+    const entry = registry.entry(symbol.uuid);
+    if (entry) return entry;
+    if (registry.status(symbol.uuid) !== 'failed') pendingSymbols.set(symbol.uuid, symbol);
+    return undefined;
+  }
+
+  // Kick the loads a render queued; each success re-renders the same note set (if still shown)
+  // so the now-registered symbol replaces its category disc. A failure resolves false and is
+  // remembered by the registry, so the disc simply stays: no missing-image warning either way,
+  // because a feature never references an unregistered image id.
+  function ensurePendingIcons(ctx: OverlayContext, notes: NotePoint[]): void {
+    if (!registry || pendingSymbols.size === 0) return;
+    const pending = [...pendingSymbols.values()];
+    pendingSymbols.clear();
+    for (const symbol of pending) {
+      void registry.ensure(ctx.map, symbol, themePaint).then((ok) => {
+        if (!ok || renderedNotes !== notes) return;
+        renderedNotes = undefined;
+        render(ctx, notes);
+      });
+    }
+  }
 
   function setData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
     const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
@@ -153,7 +198,8 @@ export function createNotesOverlay(
   function render(ctx: OverlayContext, notes: NotePoint[]): void {
     if (notes === renderedNotes) return;
     renderedNotes = notes;
-    setData(ctx, featureCollection(notes));
+    setData(ctx, featureCollection(notes, managedIcon));
+    ensurePendingIcons(ctx, notes);
   }
 
   // Clear the shown markers (below the zoom floor) without discarding the cache, so zooming back in
@@ -293,6 +339,9 @@ export function createNotesOverlay(
         layout: {
           'icon-image': ['get', 'icon'],
           'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 0.9],
+          // Every feature carries an iconOffset ([0, 0] for the centered category discs); a
+          // provided symbol's offset pins its declared anchor pixel to the point.
+          'icon-offset': ['get', 'iconOffset'],
           'icon-allow-overlap': true,
           'text-field': ['get', 'name'],
           'text-font': ['Noto Sans Regular'],
@@ -424,11 +473,13 @@ export function createNotesOverlay(
       setSelected(ctx, undefined);
     },
     applyTheme(ctx, paint) {
+      themePaint = paint;
       // The cheap per-layer color updates always run so the layer is correct the instant it shows.
       // The expensive icon re-raster (18 SVGs) is deferred while hidden and done on the next show.
       if (visible) {
         void registerPoiIcons(ctx.map, paint);
         void registerNavaidIcons(ctx.map, paint);
+        registry?.retheme(ctx.map, paint);
       } else {
         pendingIconPaint = paint;
       }
@@ -451,6 +502,7 @@ export function createNotesOverlay(
         pendingIconPaint = undefined;
         void registerPoiIcons(ctx.map, paint);
         void registerNavaidIcons(ctx.map, paint);
+        registry?.retheme(ctx.map, paint);
       }
     },
     setOpacity(ctx, opacity) {

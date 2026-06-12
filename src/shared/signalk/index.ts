@@ -29,6 +29,8 @@ export {
   strArray,
 } from './resource';
 export { SignalKStore } from './store.svelte';
+export type { SkSymbol } from './symbols-client';
+export { fetchSymbols } from './symbols-client';
 export type {
   ActiveRoute,
   AisTargetState,

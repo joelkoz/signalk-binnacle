@@ -41,6 +41,7 @@ describe('fetchNotes', () => {
       name: 'Harbor Marina',
       position: { latitude: 42.6, longitude: -83.5 },
       category: 'marina',
+      skIcon: 'marina',
       url: 'https://example/poi/1',
       source: 'activecaptain',
       attribution: 'Data from Garmin ActiveCaptain',
