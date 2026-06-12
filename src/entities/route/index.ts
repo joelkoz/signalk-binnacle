@@ -1,7 +1,6 @@
 export {
   featureToRoute,
   type RouteLeg,
-  type RouteResourceBody,
   remainingRouteDistanceMeters,
   routeDistanceMeters,
   routeLegs,

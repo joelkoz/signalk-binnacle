@@ -23,7 +23,7 @@ export function rhumbBearingRad(from: LatLon, to: LatLon): number {
 }
 
 // Initial great-circle bearing, for a long-passage readout alongside the rhumb bearing.
-export function greatCircleBearingRad(from: LatLon, to: LatLon): number {
+function greatCircleBearingRad(from: LatLon, to: LatLon): number {
   const lat1 = from.latitude * DEG_TO_RAD;
   const lat2 = to.latitude * DEG_TO_RAD;
   const dLon = normalizeLonDeltaDeg(to.longitude - from.longitude) * DEG_TO_RAD;

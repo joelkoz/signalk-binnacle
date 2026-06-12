@@ -66,16 +66,17 @@ const ttg = $derived(
   guidance.timeToGoSeconds != null ? formatDuration(guidance.timeToGoSeconds) : PLACEHOLDER,
 );
 // Whole-route distance still to run, and the arrival clock time (now plus the route time-to-go),
-// recomputed each render so the clock stays current as the strip ticks.
-const routeDtg = $derived(
-  routeProgress ? formatNmOr(routeProgress.distanceToGoMeters) : PLACEHOLDER,
-);
+// recomputed each render so the clock stays current as the strip ticks. formatNmOr already shows
+// the placeholder for an absent value, so routeDtg needs no guard of its own (the template only
+// renders it inside the routeProgress block anyway).
+const routeDtg = $derived(formatNmOr(routeProgress?.distanceToGoMeters));
 const eta = $derived.by(() => {
   if (!routeProgress) return PLACEHOLDER;
-  // Prefer the server's estimatedTimeOfArrival (an ISO-8601 instant) when a provider supplies it,
-  // since it reflects the server's own time model. Guard against an unparseable string and fall
-  // back to a local clock estimate (now plus the route time-to-go) when the server value is absent.
-  const iso = guidance.estimatedTimeOfArrivalIso;
+  // The server's estimatedTimeOfArrival (calcValues) is the NEXT-point ETA, not the route end, so
+  // it only equals the route arrival on the final leg. On earlier legs the honest route ETA is the
+  // local clock estimate from the whole-route time-to-go. Guard against an unparseable string and
+  // fall back the same way.
+  const iso = guidance.isLastPoint ? guidance.estimatedTimeOfArrivalIso : undefined;
   if (iso) {
     const at = new Date(iso).getTime();
     if (!Number.isNaN(at)) return formatClockTime(at);

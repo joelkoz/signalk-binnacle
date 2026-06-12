@@ -14,7 +14,9 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
   rgbaCss,
+  setLayersVisibility,
 } from '$shared/map';
 import { routeLineFeatures, waypointFeatures } from './route-features';
 
@@ -146,10 +148,7 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
       );
     },
     setVisible(ctx, visible) {
-      const value = visible ? 'visible' : 'none';
-      for (const id of LAYERS) {
-        ctx.map.setLayoutProperty(id, 'visibility', value);
-      }
+      setLayersVisibility(ctx.map, LAYERS, visible);
     },
     setOpacity(ctx, opacity) {
       // The casing carries its own alpha in CASING_COLOR, so scale it by the layer opacity too.
@@ -169,12 +168,7 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
       ctx.map.setPaintProperty(WPT_LABEL_LAYER, 'text-halo-color', paint.background);
     },
     remove(ctx) {
-      for (const id of LAYERS) {
-        if (ctx.map.getLayer(id)) ctx.map.removeLayer(id);
-      }
-      for (const src of [LINE_SRC, WPT_SRC]) {
-        if (ctx.map.getSource(src)) ctx.map.removeSource(src);
-      }
+      removeLayersAndSources(ctx.map, LAYERS, [LINE_SRC, WPT_SRC]);
     },
   };
 }

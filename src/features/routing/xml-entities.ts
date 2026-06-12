@@ -18,7 +18,8 @@ const XML_UNESCAPES: Record<string, string> = {
 };
 
 export function escapeXml(value: string): string {
-  return value.replace(/[<>&'"]/g, (c) => XML_ESCAPES[c] ?? c);
+  // The character class matches exactly the XML_ESCAPES keys, so the lookup always hits.
+  return value.replace(/[<>&'"]/g, (c) => XML_ESCAPES[c]);
 }
 
 export function unescapeXml(value: string): string {
@@ -31,6 +32,7 @@ export function unescapeXml(value: string): string {
       // rather than throwing an uncaught error that aborts the whole import.
       return cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : match;
     }
-    return XML_UNESCAPES[code] ?? match;
+    // The named alternation matches exactly the XML_UNESCAPES keys, so the lookup always hits.
+    return XML_UNESCAPES[code];
   });
 }

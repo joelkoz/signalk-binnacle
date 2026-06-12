@@ -23,8 +23,6 @@ const VERTEX_LAYER = 'binnacle-measure-vertex';
 const LABEL_LAYER = 'binnacle-measure-label';
 const LAYERS = [LINE_LAYER, VERTEX_LAYER, LABEL_LAYER];
 
-export const MEASURE_OVERLAY_ID = 'measure';
-
 function features(measure: MeasureStore): GeoJSON.FeatureCollection {
   const points = measure.points;
   if (points.length === 0) return emptyFeatureCollection();
@@ -60,7 +58,7 @@ export function createMeasureOverlay(measure: MeasureStore): MeasureOverlay {
   let lastPoints: readonly LatLon[] | undefined;
 
   return {
-    id: MEASURE_OVERLAY_ID,
+    id: 'measure',
     title: 'Measure',
     band: 'routes',
     supportsOpacity: false,

@@ -1,1 +1,1 @@
-export { type MeasureLeg, MeasureStore } from './measure.svelte';
+export { MeasureStore } from './measure.svelte';

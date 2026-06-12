@@ -14,6 +14,10 @@ describe('normalizeBounds', () => {
     expect(normalizeBounds([0, 0, Number.POSITIVE_INFINITY, 1])).toBeNull();
   });
 
+  it('rejects an inverted box with south above north', () => {
+    expect(normalizeBounds([-122, 37, -121, 36])).toBeNull();
+  });
+
   it('fits an antimeridian-crossing box by unwrapping east past west', () => {
     const corners = normalizeBounds([170, 0, -170, 10]);
     expect(corners).not.toBeNull();

@@ -169,14 +169,14 @@ $effect(() => {
     <div class="editing" role="group" aria-label="Route under edit">
       <dl class="stat-grid">
         <dt>Waypoints</dt>
-        <dd><span class="num">{working.waypoints.length}</span><span class="unit"></span></dd>
+        <dd><span class="num">{working.waypoints.length}</span></dd>
         <dt>Distance</dt>
         <dd>
           <span class="num">{workingDistanceNm}</span>
           <span class="unit">nm</span>
         </dd>
         <dt>Time</dt>
-        <dd><span class="num">{totalTime}</span><span class="unit"></span></dd>
+        <dd><span class="num">{totalTime}</span></dd>
       </dl>
       <label class="plan-speed">
         <span>Plan speed</span>

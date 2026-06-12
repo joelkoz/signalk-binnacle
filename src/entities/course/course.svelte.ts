@@ -21,6 +21,21 @@ export type CourseSource = 'server' | 'computed';
 // Arrival radius used when the server reports no arrivalCircle for the active leg.
 const DEFAULT_ARRIVAL_CIRCLE_METERS = 100;
 
+// Arrival latches with hysteresis: once inside the circle, the boat must move out past
+// circle * this factor (or the active point must change) before arrived clears, so GPS jitter at
+// the boundary cannot re-fire the arrival alarm and banner.
+const ARRIVAL_EXIT_FACTOR = 1.2;
+
+// Every course cell the guidance owns, so the pre-created, seeded, staleness-checked, and cleared
+// sets provably match.
+const COURSE_CELL_PATHS = [
+  SK_PATHS.courseNextPoint,
+  SK_PATHS.coursePreviousPoint,
+  SK_PATHS.courseActiveRoute,
+  SK_PATHS.courseCalcValues,
+  SK_PATHS.courseArrivalCircle,
+] as const;
+
 // Source-agnostic active-following guidance. It reads the Signal K navigation.course paths from
 // the store and exposes the active-leg readouts, preferring the server's calcValues when a
 // provider populates them and computing the derived values client-side when they are absent or
@@ -35,17 +50,22 @@ export class CourseGuidance {
     // Pre-create the cells so the first access inside a reactive context finds an existing,
     // tracked cell. A cell created lazily during a reactive read is not tracked, so later
     // updates would not re-render. This mirrors OwnVessel's constructor.
-    store.cell(SK_PATHS.courseNextPoint);
-    store.cell(SK_PATHS.coursePreviousPoint);
-    store.cell(SK_PATHS.courseActiveRoute);
-    store.cell(SK_PATHS.courseCalcValues);
-    store.cell(SK_PATHS.courseArrivalCircle);
+    for (const path of COURSE_CELL_PATHS) store.cell(path);
   }
 
   // Seed every course cell from a one-time REST hydration, so the nav strip shows values immediately
-  // before the stream sends the first change. The guidance owns these cells, so the seeded set and
-  // the cleared set provably match.
-  seed(info: CourseInfo | undefined, calc: CourseCalculations | undefined): void {
+  // before the stream sends the first change. asOf is the wall clock when the hydrate began; a slow
+  // REST response must not clobber fresher streamed deltas (activate, then skip twice before the
+  // hydrate resolves), so the seed is dropped when any course cell took a stream write at or after
+  // that moment (each cell's epoch is the wall clock of its last stream write, zero until one lands).
+  seed(
+    info: CourseInfo | undefined,
+    calc: CourseCalculations | undefined,
+    asOf: number = Date.now(),
+  ): void {
+    for (const path of COURSE_CELL_PATHS) {
+      if (this.#store.cell(path).epoch >= asOf) return;
+    }
     if (info) {
       this.#store.cell(SK_PATHS.courseNextPoint).value = info.nextPoint;
       this.#store.cell(SK_PATHS.coursePreviousPoint).value = info.previousPoint;
@@ -58,11 +78,9 @@ export class CourseGuidance {
   // Clear every course cell on stop, so no previousPoint, activeRoute, arrivalCircle, or calcValues
   // lingers to leak into the next activation.
   clear(): void {
-    this.#store.cell(SK_PATHS.courseNextPoint).value = undefined;
-    this.#store.cell(SK_PATHS.coursePreviousPoint).value = undefined;
-    this.#store.cell(SK_PATHS.courseActiveRoute).value = undefined;
-    this.#store.cell(SK_PATHS.courseArrivalCircle).value = undefined;
-    this.#store.cell(SK_PATHS.courseCalcValues).value = undefined;
+    for (const path of COURSE_CELL_PATHS) {
+      this.#store.cell(path).value = undefined;
+    }
   }
 
   #info = $derived.by<CourseInfo>(() => ({
@@ -176,9 +194,32 @@ export class CourseGuidance {
     return d != null && sog != null ? etaSeconds(d, sog) : undefined;
   });
 
+  // Latch bookkeeping for the arrival hysteresis. Plain fields, not $state: they are internal to
+  // the derived below (writing reactive state from inside a derived is unsafe), and the derived
+  // already recomputes on every input that can change the latch.
+  #arrivedLatched = false;
+  #arrivalLatchKey: string | undefined;
+
   arrived: boolean = $derived.by(() => {
+    const next = this.#next;
+    const key = next ? `${next.latitude},${next.longitude}` : undefined;
+    if (key !== this.#arrivalLatchKey) {
+      this.#arrivalLatchKey = key;
+      this.#arrivedLatched = false;
+    }
     const d = this.distanceToNextMeters;
+    if (key === undefined || d == null) {
+      this.#arrivedLatched = false;
+      return false;
+    }
     const circle = this.#info.arrivalCircle ?? DEFAULT_ARRIVAL_CIRCLE_METERS;
-    return d != null && d <= circle;
+    if (this.#arrivedLatched) {
+      // Latched: only a clear move past the exit margin releases it, so jitter at the circle
+      // boundary cannot re-fire the arrival alarm.
+      if (d > circle * ARRIVAL_EXIT_FACTOR) this.#arrivedLatched = false;
+    } else if (d <= circle) {
+      this.#arrivedLatched = true;
+    }
+    return this.#arrivedLatched;
   });
 }

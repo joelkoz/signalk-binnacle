@@ -8,7 +8,7 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { Route, Waypoint } from '$entities/route';
-import { isLonLat, latLonToLonLat, lonLatToLatLon } from '$shared/geo';
+import { isLonLat, type LatLon, latLonToLonLat, lonLatToLatLon } from '$shared/geo';
 import { mapThemePaint } from '$shared/map';
 import type { Theme } from '$shared/ui';
 
@@ -28,6 +28,28 @@ export function drawFeatureToWaypoints(feature: GeoJSON.Feature): Waypoint[] {
   const geom = feature.geometry;
   if (geom.type !== 'LineString') return [];
   return geom.coordinates.filter(isLonLat).map((c) => ({ position: lonLatToLatLon(c) }));
+}
+
+// Terra Draw rounds coordinates to its store precision, so an untouched point can come back
+// perturbed below the millimeter scale; the tolerance absorbs that while still treating any real
+// drag as a different position.
+const COORD_MATCH_EPSILON_DEG = 1e-9;
+
+function positionsMatch(a: LatLon, b: LatLon): boolean {
+  return (
+    Math.abs(a.latitude - b.latitude) <= COORD_MATCH_EPSILON_DEG &&
+    Math.abs(a.longitude - b.longitude) <= COORD_MATCH_EPSILON_DEG
+  );
+}
+
+// Terra Draw stamps tracked features with createdAt and updatedAt (epoch ms) in properties.
+function featureStamp(feature: GeoJSONStoreFeatures): number {
+  const created = feature.properties.createdAt;
+  const updated = feature.properties.updatedAt;
+  return Math.max(
+    typeof created === 'number' ? created : 0,
+    typeof updated === 'number' ? updated : 0,
+  );
 }
 
 // The single waypoints-to-LineString mapper, in the narrower store-feature shape (non-null
@@ -84,15 +106,69 @@ export function createRouteEditor(opts: {
     ],
   });
 
-  const read = (): Waypoint[] => {
-    const line = draw.getSnapshot().find((f) => f.properties.mode === LINESTRING_MODE);
-    return line ? drawFeatureToWaypoints(line) : [];
+  // The last emitted waypoints, seeded from start's route, so a rebuild from Terra Draw
+  // coordinates can put the per-waypoint names back on the points that did not move. Terra Draw
+  // only carries coordinates, so without this every edit would discard all names and the save
+  // would drop coordinatesMeta.
+  let remembered: Waypoint[] = [];
+
+  // Re-attach names: a rebuilt coordinate that equals a remembered waypoint's position keeps that
+  // waypoint's name, consuming remembered entries in order so a route that visits the same point
+  // twice keeps both names in sequence. A dragged point matches nothing and loses its name, which
+  // is the honest outcome: the named mark no longer sits there.
+  const reconcileNames = (rebuilt: Waypoint[]): Waypoint[] => {
+    const consumed: boolean[] = remembered.map(() => false);
+    return rebuilt.map((waypoint) => {
+      for (let i = 0; i < remembered.length; i += 1) {
+        if (consumed[i] || !positionsMatch(remembered[i].position, waypoint.position)) continue;
+        consumed[i] = true;
+        const name = remembered[i].name;
+        return name == null ? waypoint : { ...waypoint, name };
+      }
+      return waypoint;
+    });
   };
 
-  draw.on('change', () => opts.onChange(read()));
+  // Pruning extras below fires a nested change event from removeFeatures; the flag keeps that
+  // nested event from emitting a second, identical waypoint set.
+  let pruning = false;
+
+  const read = (): Waypoint[] => {
+    const lines = draw.getSnapshot().filter((f) => f.properties.mode === LINESTRING_MODE);
+    if (lines.length === 0) return [];
+    // Finishing a line and tapping again starts a second feature the panel would otherwise
+    // ignore. Keep the most recently created or updated linestring as the working line (ties keep
+    // the later snapshot entry, so the choice is deterministic) and drop the rest, so the chart
+    // and the panel agree.
+    let line = lines[0];
+    for (const f of lines) {
+      if (featureStamp(f) >= featureStamp(line)) line = f;
+    }
+    const extras = lines
+      .filter((f) => f !== line)
+      .map((f) => f.id)
+      .filter((id): id is string | number => id != null);
+    if (extras.length > 0) {
+      pruning = true;
+      try {
+        draw.removeFeatures(extras);
+      } finally {
+        pruning = false;
+      }
+    }
+    return reconcileNames(drawFeatureToWaypoints(line));
+  };
+
+  draw.on('change', () => {
+    if (pruning) return;
+    const next = read();
+    remembered = next;
+    opts.onChange(next);
+  });
 
   return {
     start(route) {
+      remembered = route ? route.waypoints.slice() : [];
       draw.start();
       if (route && route.waypoints.length > 0) {
         draw.addFeatures([routeToStoreFeature(route)]);

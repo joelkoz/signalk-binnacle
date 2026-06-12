@@ -10,12 +10,14 @@ export type CornerBounds = [[number, number], [number, number]];
 const DEGENERATE_PAD_DEG = 0.0005;
 
 // Normalize a bounding box for a map fit, or return null when it is unusable. A box with any
-// non-finite coordinate is rejected (a malformed descriptor). A west greater than east box crosses
-// the antimeridian, expressed by adding 360 to east so the fit takes the short way. A zero-area box
-// is padded so it has a real extent.
+// non-finite coordinate, or with south above north, is rejected (a malformed descriptor: unlike
+// west greater than east, latitude has no wraparound to explain the inversion). A west greater
+// than east box crosses the antimeridian, expressed by adding 360 to east so the fit takes the
+// short way. A zero-area box is padded so it has a real extent.
 export function normalizeBounds(bbox: Bbox4): CornerBounds | null {
   const [west, south, east, north] = bbox;
   if (![west, south, east, north].every(Number.isFinite)) return null;
+  if (south > north) return null;
   const unwrappedEast = east < west ? east + 360 : east;
   const w = unwrappedEast === west ? west - DEGENERATE_PAD_DEG : west;
   const e = unwrappedEast === west ? unwrappedEast + DEGENERATE_PAD_DEG : unwrappedEast;

@@ -5,13 +5,17 @@ import { CourseGuidance } from './course.svelte';
 
 function storeWith(self: Record<string, unknown>): SignalKStore {
   const store = new SignalKStore();
+  applySelf(store, self, 1);
+  return store;
+}
+
+function applySelf(store: SignalKStore, self: Record<string, unknown>, epoch: number): void {
   store.applyFrame({
     self: new Map(Object.entries(self)),
     ais: new Map(),
     connection: { phase: 'open', attempt: 0 },
-    epoch: 1,
+    epoch,
   });
-  return store;
 }
 
 describe('CourseGuidance', () => {
@@ -83,6 +87,74 @@ describe('CourseGuidance', () => {
     expect(g.active).toBe(false);
     expect(g.source).toBe('computed');
     expect(g.isLastPoint).toBe(false);
+  });
+
+  it('skips seeding when a stream delta wrote a course cell after the hydrate began', () => {
+    const store = storeWith({ 'navigation.position': { latitude: 0, longitude: 0 } });
+    const g = new CourseGuidance(store, new OwnVessel(store));
+    const hydrateStarted = 1000;
+    // A skip advanced the route while the REST hydration was in flight.
+    applySelf(
+      store,
+      { 'navigation.course.nextPoint': { position: { latitude: 1, longitude: 1 }, name: 'C' } },
+      1500,
+    );
+    g.seed(
+      { nextPoint: { position: { latitude: 0, longitude: 1 }, name: 'B' } },
+      undefined,
+      hydrateStarted,
+    );
+    expect(g.nextPointName).toBe('C');
+  });
+
+  it('seeds when the only course deltas predate the hydrate', () => {
+    const store = storeWith({ 'navigation.position': { latitude: 0, longitude: 0 } });
+    const g = new CourseGuidance(store, new OwnVessel(store));
+    applySelf(
+      store,
+      { 'navigation.course.nextPoint': { position: { latitude: 1, longitude: 1 }, name: 'C' } },
+      500,
+    );
+    g.seed({ nextPoint: { position: { latitude: 0, longitude: 1 }, name: 'B' } }, undefined, 1000);
+    expect(g.nextPointName).toBe('B');
+  });
+
+  it('latches arrival against boundary jitter and clears past the exit margin', () => {
+    const store = storeWith({
+      'navigation.position': { latitude: 0, longitude: 0 },
+      'navigation.course.nextPoint': { position: { latitude: 0, longitude: 1 }, name: 'B' },
+      'navigation.course.calcValues': { crossTrackError: 0, distance: 100 },
+    });
+    const g = new CourseGuidance(store, new OwnVessel(store));
+    // At the (default 100 m) circle: arrived.
+    expect(g.arrived).toBe(true);
+    // Jitter 5 percent outside the circle: still latched.
+    applySelf(store, { 'navigation.course.calcValues': { crossTrackError: 0, distance: 105 } }, 2);
+    expect(g.arrived).toBe(true);
+    // 25 percent outside, past the exit margin: a real departure clears the latch.
+    applySelf(store, { 'navigation.course.calcValues': { crossTrackError: 0, distance: 125 } }, 3);
+    expect(g.arrived).toBe(false);
+  });
+
+  it('the arrival latch resets when the next point changes', () => {
+    const store = storeWith({
+      'navigation.position': { latitude: 0, longitude: 0 },
+      'navigation.course.nextPoint': { position: { latitude: 0, longitude: 1 }, name: 'B' },
+      'navigation.course.calcValues': { crossTrackError: 0, distance: 50 },
+    });
+    const g = new CourseGuidance(store, new OwnVessel(store));
+    expect(g.arrived).toBe(true);
+    // A new active point at a distance inside the old latch's jitter band must read not-arrived:
+    // the latch belongs to the previous point.
+    applySelf(
+      store,
+      {
+        'navigation.course.nextPoint': { position: { latitude: 1, longitude: 1 }, name: 'C' },
+        'navigation.course.calcValues': { crossTrackError: 0, distance: 110 },
+      },
+      2,
+    );
+    expect(g.arrived).toBe(false);
   });
 
   it('computes the derived values when calcValues is absent and flags the source computed', () => {

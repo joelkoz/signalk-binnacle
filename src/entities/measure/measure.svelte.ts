@@ -1,5 +1,5 @@
 import type { LatLon } from '$shared/geo';
-import { haversineMeters, rhumbBearingRad } from '$shared/nav';
+import { rhumbBearingRad, rhumbDistanceMeters } from '$shared/nav';
 
 export interface MeasureLeg {
   from: LatLon;
@@ -28,10 +28,12 @@ export class MeasureStore {
     for (let i = 1; i < this.#points.length; i += 1) {
       const from = this.#points[i - 1];
       const to = this.#points[i];
+      // Rhumb distance with the rhumb bearing, so each leg reads as one consistent geometry: the
+      // constant-bearing line a helmsman would actually steer between the tapped points.
       out.push({
         from,
         to,
-        distanceMeters: haversineMeters(from.latitude, from.longitude, to.latitude, to.longitude),
+        distanceMeters: rhumbDistanceMeters(from, to),
         bearingRad: rhumbBearingRad(from, to),
       });
     }
