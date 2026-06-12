@@ -2,6 +2,7 @@
 import { formatCpaNm, formatTcpaMin, nauticalMilesToMeters } from '$shared/lib';
 import { DEFAULT_THRESHOLDS, type PersistedValue, type Thresholds } from '$shared/settings';
 import { SlideOver } from '$shared/ui';
+import { thresholdsCaution } from './thresholds-caution';
 
 interface Props {
   thresholds: PersistedValue<Thresholds>;
@@ -28,6 +29,8 @@ function setSeconds(key: 'dangerTcpaSeconds' | 'warningTcpaSeconds', minutes: nu
 
 const nm = (meters: number): string => formatCpaNm(meters);
 const min = (seconds: number): string => formatTcpaMin(seconds);
+
+const caution = $derived(thresholdsCaution(t));
 </script>
 
 <SlideOver title="Collision thresholds" {onClose} {onBack}>
@@ -90,6 +93,9 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
         <span class="unit">min</span>
       </label>
     </div>
+    {#if caution}
+      <p class="note" role="status">{caution}</p>
+    {/if}
     <button
       type="button"
       class="btn btn-ghost reset"
@@ -138,6 +144,11 @@ const min = (seconds: number): string => formatTcpaMin(seconds);
 }
 .unit {
   color: var(--text-muted);
+}
+.note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--warning);
 }
 .reset {
   align-self: flex-start;

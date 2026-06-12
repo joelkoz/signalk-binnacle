@@ -87,18 +87,20 @@ export class MobStore {
     return Math.max(0, (this.#clock.now - this.#local.epochMs) / 1000);
   }
 
-  // Live bearing (radians true) and range (meters) from the boat back to the mark.
+  // Live bearing (radians true) and range (meters) from the boat back to the mark. A stale fix
+  // yields undefined rather than frozen guidance: dashes are honest during a GPS dropout, a
+  // bearing from where the boat was a minute ago is not. Matches the footer's SOG and COG.
   #bearing = $derived.by<number | undefined>(() => {
     const mark = this.position;
     const boat = this.#vessel.position;
-    if (!mark || !boat) return undefined;
+    if (!mark || !boat || this.#vessel.positionStale) return undefined;
     return rhumbBearingRad(boat, mark);
   });
 
   #distance = $derived.by<number | undefined>(() => {
     const mark = this.position;
     const boat = this.#vessel.position;
-    if (!mark || !boat) return undefined;
+    if (!mark || !boat || this.#vessel.positionStale) return undefined;
     return haversineMeters(boat.latitude, boat.longitude, mark.latitude, mark.longitude);
   });
 

@@ -201,17 +201,31 @@ export function createAnchorOverlay(
 
       if (!onMoved || handlersAttached) return;
       handlersAttached = true;
-      const endDrag = (e: MapMouseEvent | MapTouchEvent): void => {
+      const commitMove = onMoved;
+      function endDrag(e: MapMouseEvent | MapTouchEvent): void {
         map.off('mousemove', onPointerMove);
         map.off('touchmove', onPointerMove);
+        map.off('touchcancel', cancelDrag);
         const committed = dragPreview ?? { latitude: e.lngLat.lat, longitude: e.lngLat.lng };
         dragPreview = undefined;
         needsRedraw = true;
-        onMoved(committed);
-      };
+        commitMove(committed);
+      }
+      // A cancelled touch (a system gesture, palm rejection) must abandon the drag: discard the
+      // preview without committing, and detach the move and end handlers so a later pan plus
+      // touchend cannot silently relocate the anchor.
+      function cancelDrag(): void {
+        map.off('mousemove', onPointerMove);
+        map.off('touchmove', onPointerMove);
+        map.off('touchend', endDrag);
+        dragPreview = undefined;
+        needsRedraw = true;
+      }
       map.on('mousedown', MARKER_LAYER, (e: MapLayerMouseEvent) => {
         e.preventDefault();
         map.on('mousemove', onPointerMove);
+        // No mouse cancel path: MapLibre tracks an in-flight mouse drag at the window level, so
+        // mouseup reaches endDrag even when the button is released off the canvas.
         map.once('mouseup', endDrag);
       });
       map.on('touchstart', MARKER_LAYER, (e: MapLayerTouchEvent) => {
@@ -219,6 +233,7 @@ export function createAnchorOverlay(
         e.preventDefault();
         map.on('touchmove', onPointerMove);
         map.once('touchend', endDrag);
+        map.once('touchcancel', cancelDrag);
       });
       map.on('mouseenter', MARKER_LAYER, () => {
         map.getCanvas().style.cursor = 'move';

@@ -47,14 +47,36 @@ describe('ais overlay', () => {
         ['vessels.b', new Map<string, unknown>([['name', 'no pos']])],
       ]),
       connection: { phase: 'open', attempt: 0 },
-      // The worker stamps targets with a wall clock; a recent epoch keeps them
-      // inside the staleness window when sync prunes.
       epoch: Date.now(),
     });
     overlay.sync(ctxFor(map));
     const source = [...map.sources.values()][0];
     const fc = source.data as { features: unknown[] };
     expect(fc.features).toHaveLength(1);
+  });
+
+  it('renders stale targets untouched: expiry belongs to the app timer', () => {
+    const store = new SignalKStore();
+    const overlay = createAisOverlay(new AisTargets(store), store);
+    const map = createFakeMap();
+    overlay.add(ctxFor(map));
+    store.applyFrame({
+      self: new Map(),
+      ais: new Map([
+        [
+          'vessels.old',
+          new Map<string, unknown>([['navigation.position', { latitude: 1, longitude: 2 }]]),
+        ],
+      ]),
+      connection: { phase: 'open', attempt: 0 },
+      // Hours past any staleness TTL; the overlay must still draw it rather than prune it.
+      epoch: Date.now() - 10_000_000,
+    });
+    overlay.sync(ctxFor(map));
+    const source = [...map.sources.values()][0];
+    const fc = source.data as { features: unknown[] };
+    expect(fc.features).toHaveLength(1);
+    expect(store.aisTargets.size).toBe(1);
   });
 
   it('skips setData when the ais version is unchanged', () => {

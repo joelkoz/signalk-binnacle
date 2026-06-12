@@ -1,23 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { AisTargetView } from '$entities/ais';
 import type { DangerContact } from '$entities/collision';
-import { buildAisRows, shortVesselId } from './ais-rows';
+import { buildAisRows } from './ais-rows';
 
 const OWN = { latitude: 0, longitude: 0 };
 
 function target(partial: Partial<AisTargetView> & { id: string }): AisTargetView {
   return { position: { latitude: 0.001, longitude: 0 }, ...partial };
 }
-
-describe('shortVesselId', () => {
-  it('reads the MMSI from a Signal K vessel urn', () => {
-    expect(shortVesselId('vessels.urn:mrn:imo:mmsi:368000000')).toBe('368000000');
-  });
-
-  it('passes an unrecognized id through', () => {
-    expect(shortVesselId('boat-7')).toBe('boat-7');
-  });
-});
 
 describe('buildAisRows', () => {
   it('labels by name when reported, otherwise by MMSI', () => {
@@ -75,5 +65,34 @@ describe('buildAisRows', () => {
     const contact = { id: 'a', severity: 'danger' } as DangerContact;
     const [row] = buildAisRows([target({ id: 'a' })], OWN, [contact], 'range');
     expect(row.severity).toBe('danger');
+  });
+
+  it('fills CPA and TCPA from the lookout contact when the provider publishes none', () => {
+    const contact = {
+      id: 'a',
+      severity: 'danger',
+      cpaMeters: 250,
+      tcpaSeconds: 90,
+    } as DangerContact;
+    const [row] = buildAisRows([target({ id: 'a' })], OWN, [contact], 'range');
+    expect(row.cpaMeters).toBe(250);
+    expect(row.tcpaSeconds).toBe(90);
+  });
+
+  it('prefers the provider CPA and TCPA over the lookout values', () => {
+    const contact = {
+      id: 'a',
+      severity: 'danger',
+      cpaMeters: 250,
+      tcpaSeconds: 90,
+    } as DangerContact;
+    const [row] = buildAisRows(
+      [target({ id: 'a', cpaMeters: 300, tcpaSeconds: 120 })],
+      OWN,
+      [contact],
+      'range',
+    );
+    expect(row.cpaMeters).toBe(300);
+    expect(row.tcpaSeconds).toBe(120);
   });
 });

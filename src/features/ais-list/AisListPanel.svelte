@@ -39,7 +39,7 @@ const rows = $derived(
 );
 </script>
 
-<SlideOver title="AIS targets" subtitle="{rows.length} in range" {onClose} {onBack}>
+<SlideOver title="AIS targets" subtitle="{rows.length} tracked" {onClose} {onBack}>
   <section class="ais-list">
     <div class="sort" role="group" aria-label="Sort targets by">
       <span class="caps-label">Sort by</span>
@@ -56,7 +56,7 @@ const rows = $derived(
       {/each}
     </div>
     {#if rows.length === 0}
-      <p class="empty">No AIS targets in range.</p>
+      <p class="empty">No AIS targets.</p>
     {:else}
       <ul class="targets">
         {#each rows as row (row.id)}

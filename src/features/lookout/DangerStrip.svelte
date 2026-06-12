@@ -1,4 +1,5 @@
 <script lang="ts">
+import { shortVesselId } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
 import { formatCpaNm, formatTcpaMin } from '$shared/lib';
 
@@ -64,7 +65,7 @@ const acknowledged = $derived(collision.suppressed && !collision.escalating);
     <ul class="list">
       {#each top as contact (contact.id)}
         <li class="row {contact.severity}">
-          <span class="name">{contact.name || contact.id}</span>
+          <span class="name">{contact.name || shortVesselId(contact.id)}</span>
           <span class="metric">CPA <b>{formatCpaNm(contact.cpaMeters)}</b> nm</span>
           <span class="metric">TCPA <b>{formatTcpaMin(contact.tcpaSeconds, 1)}</b> min</span>
         </li>

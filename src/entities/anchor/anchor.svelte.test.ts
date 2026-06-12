@@ -125,6 +125,25 @@ describe('AnchorWatch (client mode)', () => {
     expect(anchor.mode).toBe('off');
   });
 
+  it('drops unknown persisted properties instead of re-persisting them forever', () => {
+    const storage = createFakeStorage({
+      'binnacle:anchor-watch': JSON.stringify({
+        position: { latitude: 1, longitude: 2, altitude: 9 },
+        radiusMeters: 60,
+        dragging: false,
+        legacy: true,
+      }),
+    });
+    const store = new SignalKStore();
+    const anchor = new AnchorWatch(store, new OwnVessel(store), storage);
+    anchor.setRadiusLocal(70); // any local change re-persists the watch
+    expect(JSON.parse(storage.data.get('binnacle:anchor-watch') ?? 'null')).toEqual({
+      position: { latitude: 1, longitude: 2 },
+      radiusMeters: 70,
+      dragging: false,
+    });
+  });
+
   it('clamps the radius to the minimum and ignores a non-finite one', () => {
     const { anchor } = setup();
     anchor.dropLocal(ANCHOR, 50);

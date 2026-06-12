@@ -25,7 +25,13 @@ function validLocal(value: LocalAnchor | null): LocalAnchor | null {
   if (!value || typeof value !== 'object') return null;
   if (!isLatLon(value.position)) return null;
   if (!isFiniteNumber(value.radiusMeters) || value.radiusMeters < MIN_RADIUS_M) return null;
-  return { ...value, dragging: value.dragging === true };
+  // Rebuilt as a clean literal: spreading the raw localStorage object would re-persist any
+  // unknown extra properties forever.
+  return {
+    position: { latitude: value.position.latitude, longitude: value.position.longitude },
+    radiusMeters: value.radiusMeters,
+    dragging: value.dragging === true,
+  };
 }
 
 // The anchor watch state machine. Server mode is fully stream-driven: the plugin's

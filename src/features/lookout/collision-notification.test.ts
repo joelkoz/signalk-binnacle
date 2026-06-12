@@ -35,6 +35,13 @@ describe('buildNotification', () => {
   it('returns normal when clear', () => {
     expect(buildNotification({ contacts: [], worst: 'clear' }).state).toBe('normal');
   });
+
+  it('names an unnamed contact by its MMSI, not the raw context urn', () => {
+    const a: Assessment = { contacts: [contact({ name: undefined })], worst: 'danger' };
+    const n = buildNotification(a);
+    expect(n.message).toContain('123');
+    expect(n.message).not.toContain('urn:mrn');
+  });
 });
 
 describe('CollisionNotifier', () => {
@@ -44,12 +51,31 @@ describe('CollisionNotifier', () => {
     const danger: Assessment = { contacts: [contact()], worst: 'danger' };
 
     notifier.update(danger);
-    notifier.update({ contacts: [contact({ cpaMeters: 400 })], worst: 'danger' }); // same state+id
+    // Same state, id, and coarse CPA/TCPA buckets: a per-tick wobble, not a republish.
+    notifier.update({
+      contacts: [contact({ cpaMeters: 470, tcpaSeconds: 320 })],
+      worst: 'danger',
+    });
     expect(sent).toHaveLength(1);
     expect(sent[0]).toEqual({
       path: NOTIFICATION_PATH,
       value: expect.objectContaining({ state: 'alarm' }),
     });
+  });
+
+  it('republishes with fresh numbers as the contact closes a coarse bucket', () => {
+    const sent: Array<{ value: { message: string } }> = [];
+    const notifier = new CollisionNotifier((_path, value) =>
+      sent.push({ value: value as { message: string } }),
+    );
+    notifier.update({ contacts: [contact()], worst: 'danger' }); // CPA 463 m, TCPA 300 s
+    notifier.update({
+      contacts: [contact({ cpaMeters: 200, tcpaSeconds: 120 })],
+      worst: 'danger',
+    });
+    expect(sent).toHaveLength(2);
+    expect(sent[1].value.message).toContain('TCPA 2 min');
+    expect(sent[0].value.message).not.toBe(sent[1].value.message);
   });
 
   it('does not publish a clear before any active alert, but does after one', () => {

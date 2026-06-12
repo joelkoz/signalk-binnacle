@@ -120,6 +120,29 @@ describe('MobStore', () => {
     expect(((mob.bearingRad ?? 0) * 180) / Math.PI).toBeCloseTo(180, 1);
   });
 
+  it('blanks bearing and range while the own fix is stale', () => {
+    const store = new SignalKStore();
+    const clock = $state({ now: 100_000 });
+    const vessel = new OwnVessel(store, clock);
+    const mob = new MobStore(store, vessel, clock, createFakeStorage());
+    // A local frame factory aligned with the clock, so the fix starts fresh, not already stale.
+    const freshFrame = createFrameFactory(99_000);
+    store.applyFrame(freshFrame({ 'navigation.position': BOAT }));
+    mob.trigger();
+    store.applyFrame(
+      freshFrame({
+        'navigation.position': { latitude: BOAT.latitude + 0.001, longitude: BOAT.longitude },
+      }),
+    );
+    clock.now = 101_000;
+    expect(mob.bearingRad).toBeDefined();
+    expect(mob.distanceMeters).toBeDefined();
+    // The fix dropout passes the staleness window: frozen guidance must blank to dashes.
+    clock.now += 60_000;
+    expect(mob.bearingRad).toBeUndefined();
+    expect(mob.distanceMeters).toBeUndefined();
+  });
+
   it('acknowledge silences without clearing, and a new trigger re-arms', () => {
     const { store, mob } = setup();
     store.applyFrame(frame({ 'navigation.position': BOAT }));

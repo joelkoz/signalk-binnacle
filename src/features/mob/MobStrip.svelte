@@ -1,6 +1,8 @@
 <script lang="ts">
+import { onDestroy } from 'svelte';
 import type { MobStore } from '$entities/mob';
 import { formatBearingOr, formatClockTime, formatMetersOrNm } from '$shared/lib';
+import { ConfirmArm } from '$shared/ui';
 import { formatElapsed } from './mob-format';
 
 interface Props {
@@ -13,6 +15,15 @@ interface Props {
 }
 
 const { mob, onSteer, onCancel }: Props = $props();
+
+// Cancel wipes the splash point boat-wide, so it arms a confirm step instead of firing on a
+// single tap; the arm times out back to plain Cancel on its own.
+const cancelArm = new ConfirmArm();
+onDestroy(() => cancelArm.disarm());
+
+function tapCancel(): void {
+  if (cancelArm.tap()) onCancel();
+}
 </script>
 
 {#if mob.active}
@@ -32,7 +43,9 @@ const { mob, onSteer, onCancel }: Props = $props();
             Acknowledge
           </button>
         {/if}
-        <button type="button" class="ack ack--warning" onclick={onCancel}>Cancel</button>
+        <button type="button" class="ack ack--warning" onclick={tapCancel}>
+          {cancelArm.armed ? 'Confirm cancel?' : 'Cancel'}
+        </button>
       </div>
     </div>
     <div class="row">

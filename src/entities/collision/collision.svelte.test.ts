@@ -32,10 +32,38 @@ function dangerStore(targetId: string): SignalKStore {
 }
 
 describe('assessContacts', () => {
-  it('returns no dangers without an own position', () => {
+  it('stands down computed-only contacts without an own position', () => {
     const r = assessContacts(undefined, [target({})], DEFAULT_THRESHOLDS);
     expect(r.contacts).toHaveLength(0);
     expect(r.worst).toBe('clear');
+  });
+
+  it('still classifies provider contacts without an own position', () => {
+    // Provider CPA and TCPA come from the server, so a lost or stale own fix must not
+    // silence them.
+    const t = target({ id: 'p', cpaMeters: 100, tcpaSeconds: 120 });
+    const r = assessContacts(undefined, [t], DEFAULT_THRESHOLDS);
+    expect(r.contacts[0]?.severity).toBe('danger');
+    expect(r.worst).toBe('danger');
+  });
+
+  it('treats a target reporting SOG but no COG as stationary', () => {
+    // A fabricated due-north course for this southern target would read as closing and alarm;
+    // with no course it must count as stationary, and a stationary pair never closes.
+    const t = target({
+      id: 'nocog',
+      position: { latitude: -1852 / 111320, longitude: 0 },
+      sogMps: knotsToMetersPerSecond(10),
+    });
+    const r = assessContacts(ownStationary, [t], DEFAULT_THRESHOLDS);
+    expect(r.contacts).toHaveLength(0);
+  });
+
+  it('returns the same all-clear object every pass for stable identity', () => {
+    const a = assessContacts(ownStationary, [], DEFAULT_THRESHOLDS);
+    const b = assessContacts(undefined, [], DEFAULT_THRESHOLDS);
+    expect(a).toBe(b);
+    expect(a.worst).toBe('clear');
   });
 
   it('prefers the provider CPA/TCPA when present and flags the source', () => {
@@ -87,6 +115,46 @@ describe('assessContacts', () => {
   });
 });
 
+describe('assessContacts downgrade hysteresis', () => {
+  // DEFAULT_THRESHOLDS: danger 926 m / 600 s, warning 1852 m / 1200 s.
+  const previous = (severity: 'danger' | 'warning') =>
+    new Map<string, 'danger' | 'warning'>([['t', severity]]);
+
+  it('holds danger while the value sits inside the 10 percent margin', () => {
+    const t = target({ cpaMeters: 1000, tcpaSeconds: 60 }); // over 926, under 926 * 1.1
+    const r = assessContacts(ownStationary, [t], DEFAULT_THRESHOLDS, previous('danger'));
+    expect(r.contacts[0]?.severity).toBe('danger');
+  });
+
+  it('downgrades danger to warning once the margin is cleared', () => {
+    const t = target({ cpaMeters: 1050, tcpaSeconds: 60 }); // over 926 * 1.1
+    const r = assessContacts(ownStationary, [t], DEFAULT_THRESHOLDS, previous('danger'));
+    expect(r.contacts[0]?.severity).toBe('warning');
+  });
+
+  it('holds warning inside the margin and drops it once cleared', () => {
+    const inside = target({ cpaMeters: 1900, tcpaSeconds: 60 }); // over 1852, under 1852 * 1.1
+    const held = assessContacts(ownStationary, [inside], DEFAULT_THRESHOLDS, previous('warning'));
+    expect(held.contacts[0]?.severity).toBe('warning');
+
+    const outside = target({ cpaMeters: 2100, tcpaSeconds: 60 }); // over 1852 * 1.1
+    const clear = assessContacts(ownStationary, [outside], DEFAULT_THRESHOLDS, previous('warning'));
+    expect(clear.contacts).toHaveLength(0);
+  });
+
+  it('never delays an upgrade', () => {
+    const t = target({ cpaMeters: 100, tcpaSeconds: 60 });
+    const r = assessContacts(ownStationary, [t], DEFAULT_THRESHOLDS, previous('warning'));
+    expect(r.contacts[0]?.severity).toBe('danger');
+  });
+
+  it('classifies a returning contact immediately, with no held severity', () => {
+    const t = target({ cpaMeters: 100, tcpaSeconds: 60 });
+    const r = assessContacts(ownStationary, [t], DEFAULT_THRESHOLDS, new Map());
+    expect(r.contacts[0]?.severity).toBe('danger');
+  });
+});
+
 describe('CollisionAssessment acknowledge', () => {
   it('suppresses the acknowledged contact and re-arms when the worst contact changes', () => {
     const store = dangerStore('vessels.a');
@@ -117,6 +185,127 @@ describe('CollisionAssessment acknowledge', () => {
       epoch: Date.now(),
     });
     expect(collision.suppressed).toBe(false);
+  });
+
+  it('re-arms when the situation clears and the same contact returns', () => {
+    const store = dangerStore('vessels.a');
+    const collision = new CollisionAssessment(
+      new OwnVessel(store),
+      new AisTargets(store),
+      createThresholds(),
+    );
+    collision.acknowledge();
+    expect(collision.suppressed).toBe(true);
+
+    // The contact opens (negative TCPA), so the assessment goes all-clear.
+    store.applyFrame({
+      self: new Map(),
+      ais: new Map([
+        [
+          'vessels.a',
+          new Map<string, unknown>([
+            ['navigation.closestApproach', { distance: 100, timeTo: -10 }],
+          ]),
+        ],
+      ]),
+      connection: { phase: 'open', attempt: 0 },
+      epoch: Date.now(),
+    });
+    expect(collision.assessment.contacts).toHaveLength(0);
+    collision.reconcile();
+
+    // The same vessel closes again at the same severity: a new event, never auto-suppressed.
+    store.applyFrame({
+      self: new Map(),
+      ais: new Map([
+        [
+          'vessels.a',
+          new Map<string, unknown>([['navigation.closestApproach', { distance: 100, timeTo: 60 }]]),
+        ],
+      ]),
+      connection: { phase: 'open', attempt: 0 },
+      epoch: Date.now(),
+    });
+    expect(collision.assessment.worst).toBe('danger');
+    expect(collision.suppressed).toBe(false);
+  });
+
+  it('re-arms through the all-clear even without reconcile being called', () => {
+    const store = dangerStore('vessels.a');
+    const collision = new CollisionAssessment(
+      new OwnVessel(store),
+      new AisTargets(store),
+      createThresholds(),
+    );
+    collision.acknowledge();
+    store.applyFrame({
+      self: new Map(),
+      ais: new Map([
+        [
+          'vessels.a',
+          new Map<string, unknown>([
+            ['navigation.closestApproach', { distance: 100, timeTo: -10 }],
+          ]),
+        ],
+      ]),
+      connection: { phase: 'open', attempt: 0 },
+      epoch: Date.now(),
+    });
+    expect(collision.assessment.contacts).toHaveLength(0);
+    store.applyFrame({
+      self: new Map(),
+      ais: new Map([
+        [
+          'vessels.a',
+          new Map<string, unknown>([['navigation.closestApproach', { distance: 100, timeTo: 60 }]]),
+        ],
+      ]),
+      connection: { phase: 'open', attempt: 0 },
+      epoch: Date.now(),
+    });
+    expect(collision.suppressed).toBe(false);
+  });
+});
+
+describe('CollisionAssessment hysteresis', () => {
+  it('holds a danger grade through threshold-level scatter', () => {
+    // The contact starts well inside danger, scatters just past the 926 m danger CPA, and must
+    // hold danger; a real retreat past the margin downgrades.
+    const store = dangerStore('vessels.a');
+    const collision = new CollisionAssessment(
+      new OwnVessel(store),
+      new AisTargets(store),
+      createThresholds(),
+    );
+    expect(collision.assessment.worst).toBe('danger');
+
+    store.applyFrame({
+      self: new Map(),
+      ais: new Map([
+        [
+          'vessels.a',
+          new Map<string, unknown>([['navigation.closestApproach', { distance: 950, timeTo: 60 }]]),
+        ],
+      ]),
+      connection: { phase: 'open', attempt: 0 },
+      epoch: Date.now(),
+    });
+    expect(collision.assessment.worst).toBe('danger');
+
+    store.applyFrame({
+      self: new Map(),
+      ais: new Map([
+        [
+          'vessels.a',
+          new Map<string, unknown>([
+            ['navigation.closestApproach', { distance: 1100, timeTo: 60 }],
+          ]),
+        ],
+      ]),
+      connection: { phase: 'open', attempt: 0 },
+      epoch: Date.now(),
+    });
+    expect(collision.assessment.worst).toBe('warning');
   });
 });
 

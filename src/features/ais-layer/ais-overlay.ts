@@ -6,20 +6,15 @@ import { AIS_ICON_ID, aisIconImage } from './ais-icon';
 
 const SOURCE_ID = 'binnacle-ais';
 const LAYER_ID = 'binnacle-ais-symbol';
-// Drop a target after three minutes without an update: long enough to ride out a class-B
-// transmitter's slow reporting interval, short enough that stale moving traffic clears off the
-// chart rather than lingering minutes after it stopped reporting.
-const STALE_TTL_MS = 180_000;
-// Staleness changes on a minutes scale, so scan for stale targets on this cadence
-// rather than every animation frame.
-const PRUNE_INTERVAL_MS = 5_000;
 // The transient color shown for the single frame before the first recolor; taken from the day theme
 // so there is one source for the day AIS color rather than a literal that could drift.
 const DEFAULT_COLOR: Rgba = mapThemePaint('day').aisTarget;
 
+// Purely presentational: stale-target expiry lives on an app-level timer (store.pruneAis with the
+// entities/ais TTL), never in this render path, which pauses in a hidden tab while the collision
+// math keeps consuming the store.
 export function createAisOverlay(targets: AisTargets, store: SignalKStore): SymbolOverlay {
   let lastVersion = -1;
-  let lastPruneAt = 0;
 
   function featureCollection(): GeoJSON.FeatureCollection {
     return {
@@ -37,15 +32,6 @@ export function createAisOverlay(targets: AisTargets, store: SignalKStore): Symb
         },
       })),
     };
-  }
-
-  function prune(): void {
-    // Date.now matches the wall clock the worker stamps targets with, so staleness is
-    // a real elapsed time, not a cross-thread time-origin difference.
-    const t = Date.now();
-    if (t - lastPruneAt < PRUNE_INTERVAL_MS) return;
-    lastPruneAt = t;
-    store.pruneAis(t, STALE_TTL_MS);
   }
 
   function shouldRefresh(): boolean {
@@ -66,6 +52,5 @@ export function createAisOverlay(targets: AisTargets, store: SignalKStore): Symb
     paintColor: (paint) => paint.aisTarget,
     features: featureCollection,
     shouldRefresh,
-    beforeSync: prune,
   });
 }

@@ -37,10 +37,18 @@ const statusLine = $derived(
   anchor.dragging ? 'Dragging: the boat is outside the watch radius.' : MODE_STATUS[anchor.mode],
 );
 
-function commitRadius(raw: string): void {
-  const meters = Number(raw);
-  if (!Number.isFinite(meters) || meters < MIN_RADIUS_M) return;
-  onSetRadius(meters);
+function commitRadius(input: HTMLInputElement): void {
+  const meters = Number(input.value);
+  if (input.value.trim() === '' || !Number.isFinite(meters)) {
+    // Snap the text back to the effective radius, so a rejected entry never sits in the box
+    // looking accepted.
+    input.value = String(Math.round(anchor.radiusMeters ?? anchor.preferredRadiusMeters));
+    return;
+  }
+  // Below-minimum entries clamp up, matching the entity, and the box shows what was applied.
+  const clamped = Math.max(MIN_RADIUS_M, meters);
+  input.value = String(Math.round(clamped));
+  onSetRadius(clamped);
 }
 
 // Capture the real swing: the live distance plus a safety margin becomes the new radius.
@@ -77,7 +85,7 @@ function captureFromDistance(): void {
         step="1"
         aria-label="Watch radius in meters"
         value={Math.round(anchor.radiusMeters ?? anchor.preferredRadiusMeters)}
-        onchange={(e) => commitRadius(e.currentTarget.value)}
+        onchange={(e) => commitRadius(e.currentTarget)}
       >
       <span class="unit">m</span>
     </label>

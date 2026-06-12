@@ -1,6 +1,8 @@
 <script lang="ts">
+import { onDestroy } from 'svelte';
 import type { AnchorWatch } from '$entities/anchor';
 import { formatFixed } from '$shared/lib';
+import { ConfirmArm } from '$shared/ui';
 
 interface Props {
   anchor: AnchorWatch;
@@ -8,6 +10,15 @@ interface Props {
 }
 
 const { anchor, onRaise }: Props = $props();
+
+// Raise ends the watch and silences the alarm in one motion, so it arms a confirm step instead
+// of firing on a single tap; the arm times out back to plain Raise on its own.
+const raiseArm = new ConfirmArm();
+onDestroy(() => raiseArm.disarm());
+
+function tapRaise(): void {
+  if (raiseArm.tap()) onRaise();
+}
 </script>
 
 {#if anchor.dragging}
@@ -27,7 +38,9 @@ const { anchor, onRaise }: Props = $props();
           <button type="button" class="ack" onclick={() => anchor.acknowledge()}>
             Acknowledge
           </button>
-          <button type="button" class="ack ack--warning" onclick={onRaise}>Raise anchor</button>
+          <button type="button" class="ack ack--warning" onclick={tapRaise}>
+            {raiseArm.armed ? 'Confirm raise?' : 'Raise anchor'}
+          </button>
         </div>
       {/if}
     </div>

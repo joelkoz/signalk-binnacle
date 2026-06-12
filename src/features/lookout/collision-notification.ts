@@ -1,3 +1,4 @@
+import { shortVesselId } from '$entities/ais';
 import type { Assessment } from '$entities/collision';
 import { formatCpaNm, formatTcpaMin } from '$shared/lib';
 
@@ -22,7 +23,7 @@ export function buildNotification(assessment: Assessment): SkNotification {
   if (!top) {
     return { state: 'normal', method: [], message: 'No collision risk' };
   }
-  const name = top.name || top.id;
+  const name = top.name || shortVesselId(top.id);
   const cpa = formatCpaNm(top.cpaMeters);
   const tcpa = formatTcpaMin(top.tcpaSeconds);
   const danger = assessment.worst === 'danger';
@@ -33,9 +34,10 @@ export function buildNotification(assessment: Assessment): SkNotification {
   };
 }
 
-// Publishes the collision notification when its state or the worst contact changes, so the
-// server is not written on every per-second CPA tick. A clear is published only after an
-// active alert, so loading the app does not write a redundant "normal".
+// Publishes the collision notification when its state, the worst contact, or that contact's
+// coarse CPA or TCPA bucket changes, so the message refreshes as the contact closes without a
+// server write on every per-second CPA tick. A clear is published only after an active alert,
+// so loading the app does not write a redundant "normal".
 export class CollisionNotifier {
   #publish: (path: string, value: unknown) => void;
   #last: string | undefined;
@@ -47,7 +49,13 @@ export class CollisionNotifier {
 
   update(assessment: Assessment): void {
     const value = buildNotification(assessment);
-    const signature = `${value.state}|${assessment.contacts[0]?.id ?? ''}`;
+    const top = assessment.contacts[0];
+    let signature: string = value.state;
+    if (top) {
+      const cpaBucket = Math.round(top.cpaMeters / 100);
+      const tcpaBucket = Math.round(top.tcpaSeconds / 60);
+      signature = `${value.state}|${top.id}|${cpaBucket}|${tcpaBucket}`;
+    }
     if (signature === this.#last) return;
     this.#last = signature;
     if (value.state === 'normal' && !this.#active) return;

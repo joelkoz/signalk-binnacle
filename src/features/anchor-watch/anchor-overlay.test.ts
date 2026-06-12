@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AnchorWatch } from '$entities/anchor';
 import { OwnVessel } from '$entities/vessel';
 import type { OverlayContext } from '$shared/map';
@@ -92,5 +92,102 @@ describe('anchor overlay', () => {
     overlay.setVisible(ctx, false);
     const hidden = map.setLayoutProperty.mock.calls.filter((call) => call[2] === 'none');
     expect(hidden).toHaveLength(overlay.layerIds.length);
+  });
+});
+
+// The drag handlers register through on, once, and off; the shared fake map stubs those out, so
+// this local extension keeps real listener bookkeeping and lets a test fire map events.
+type FiredHandler = (e: unknown) => void;
+
+function eventfulMap() {
+  const base = createFakeMap();
+  const listeners = new Map<string, Set<FiredHandler>>();
+  const onceListeners = new Map<string, Set<FiredHandler>>();
+  const key = (type: string, layer?: string) => (layer === undefined ? type : `${type}:${layer}`);
+  const add = (bag: Map<string, Set<FiredHandler>>, k: string, handler: FiredHandler) => {
+    const set = bag.get(k) ?? new Set<FiredHandler>();
+    set.add(handler);
+    bag.set(k, set);
+  };
+  return {
+    ...base,
+    on(type: string, layerOrHandler: string | FiredHandler, maybeHandler?: FiredHandler) {
+      if (typeof layerOrHandler === 'function') add(listeners, key(type), layerOrHandler);
+      else if (maybeHandler) add(listeners, key(type, layerOrHandler), maybeHandler);
+    },
+    once(type: string, handler: FiredHandler) {
+      add(onceListeners, key(type), handler);
+    },
+    off(type: string, handler: FiredHandler) {
+      listeners.get(key(type))?.delete(handler);
+      onceListeners.get(key(type))?.delete(handler);
+    },
+    fire(type: string, e: unknown, layer?: string) {
+      const k = key(type, layer);
+      for (const handler of [...(listeners.get(k) ?? [])]) handler(e);
+      const armed = onceListeners.get(k);
+      if (armed) {
+        const handlers = [...armed];
+        armed.clear();
+        for (const handler of handlers) handler(e);
+      }
+    },
+    getCanvas: () => ({ style: { cursor: '' } }),
+  };
+}
+
+function touchEvent(lat: number, lng: number) {
+  return { points: [{ x: 0, y: 0 }], preventDefault: () => {}, lngLat: { lat, lng } };
+}
+
+function markerCoords(map: ReturnType<typeof eventfulMap>): unknown {
+  const feature = features(map as never, 'binnacle-anchor-point')[0];
+  return (feature?.geometry as GeoJSON.Point).coordinates;
+}
+
+function dragSetup() {
+  const store = new SignalKStore();
+  const vessel = new OwnVessel(store);
+  const anchor = new AnchorWatch(store, vessel, createFakeStorage());
+  anchor.dropLocal({ latitude: 0, longitude: 0 }, 50);
+  const onMoved = vi.fn();
+  const overlay = createAnchorOverlay(anchor, vessel, onMoved);
+  const map = eventfulMap();
+  const ctx: OverlayContext = { map: map as never, beforeIdFor: () => undefined };
+  overlay.add(ctx);
+  overlay.sync(ctx);
+  return { map, overlay, ctx, onMoved };
+}
+
+describe('anchor overlay marker drag', () => {
+  it('commits the drag preview on touchend, once', () => {
+    const { map, overlay, ctx, onMoved } = dragSetup();
+    map.fire('touchstart', touchEvent(1, 1), 'binnacle-anchor-marker');
+    map.fire('touchmove', touchEvent(2, 2));
+    overlay.sync(ctx);
+    expect(markerCoords(map)).toEqual([2, 2]);
+    map.fire('touchend', touchEvent(3, 3));
+    expect(onMoved).toHaveBeenCalledTimes(1);
+    expect(onMoved).toHaveBeenCalledWith({ latitude: 2, longitude: 2 });
+    // The armed touchcancel was removed with the drag; a stray one later changes nothing.
+    map.fire('touchcancel', touchEvent(4, 4));
+    overlay.sync(ctx);
+    expect(onMoved).toHaveBeenCalledTimes(1);
+  });
+
+  it('abandons the drag on touchcancel without relocating the anchor', () => {
+    const { map, overlay, ctx, onMoved } = dragSetup();
+    map.fire('touchstart', touchEvent(1, 1), 'binnacle-anchor-marker');
+    map.fire('touchmove', touchEvent(2, 2));
+    map.fire('touchcancel', touchEvent(2, 2));
+    overlay.sync(ctx);
+    expect(markerCoords(map)).toEqual([0, 0]);
+    // A later pan plus lift must not silently move the drop point: the move and end handlers
+    // were detached with the cancel.
+    map.fire('touchmove', touchEvent(5, 5));
+    map.fire('touchend', touchEvent(5, 5));
+    overlay.sync(ctx);
+    expect(markerCoords(map)).toEqual([0, 0]);
+    expect(onMoved).not.toHaveBeenCalled();
   });
 });
