@@ -19,7 +19,14 @@
   },
   "keywords": [
     "signalk-webapp",
-    "signalk-category-chart-plotters"
+    "signalk-category-chart-plotters",
+    "chart-plotter",
+    "navigation",
+    "marine",
+    "ais",
+    "weather",
+    "anchor-watch",
+    "pwa"
   ],
   "engines": {
     "node": ">=22"
@@ -41,7 +48,10 @@
     ]
   },
   "files": [
-    "public/"
+    "public/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
