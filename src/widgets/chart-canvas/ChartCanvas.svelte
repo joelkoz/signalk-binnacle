@@ -29,7 +29,11 @@ import type { RouteEditor } from '$features/route-edit';
 import { createRouteOverlay } from '$features/route-layer';
 import { createSeamarkOverlay, SEAMARK_SOURCES } from '$features/seamark-overlay';
 import { createTidesOverlay } from '$features/tides';
-import { createTrackOverlay, type SavedTracksSource } from '$features/track-layer';
+import {
+  createHistoryTrackOverlay,
+  createTrackOverlay,
+  type SavedTracksSource,
+} from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
 import { createWaypointOverlay } from '$features/waypoints';
 import { type LatLon, normalizeBounds } from '$shared/geo';
@@ -43,7 +47,7 @@ import {
   type ThemedMapHandle,
 } from '$shared/map';
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
-import { type SignalKStore, serverOrigin } from '$shared/signalk';
+import { type HistoryProviders, type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 import ChartContextMenu from './ChartContextMenu.svelte';
 import type { MapCommands, UserChartRegistrar } from './commands';
@@ -105,6 +109,8 @@ interface Props {
   // Connectivity, so the notes overlay can serve expired cached POIs while offline instead of
   // blanking them at TTL expiry.
   isOnline?: () => boolean;
+  // The known history providers, for the 24 h track history overlay; undefined gates its fetches.
+  historyProviders?: () => HistoryProviders | undefined;
   // Commit a drag-to-adjust of the anchor marker (the app PUTs it server-side or moves it locally).
   onAnchorMoved?: (position: LatLon) => void;
 }
@@ -144,6 +150,7 @@ const {
   onDropWaypoint,
   aisTrailsAvailable,
   isOnline,
+  historyProviders,
   onAnchorMoved,
 }: Props = $props();
 
@@ -246,6 +253,7 @@ onMount(() => {
         createAisOverlay(aisTargets, store),
         createCollisionOverlay(collision),
         createMobOverlay(mob, vessel),
+        createHistoryTrackOverlay(origin, chartsToken, historyProviders ?? (() => undefined)),
         createTrackOverlay(recorder, trackSettings, savedTracks),
         createVesselOverlay(vessel),
       ];

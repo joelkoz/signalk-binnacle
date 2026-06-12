@@ -36,11 +36,13 @@ export {
   landDistanceUnit,
   lengthUnit,
   MINUTE_MS,
+  metersPerSecondToKnots,
   metersToFeet,
   nauticalMilesToMeters,
   PA_PER_HPA,
   precipRateUnit,
   pressureUnit,
+  pressureValue,
   temperatureUnit,
   type UnitsMode,
 } from './units';

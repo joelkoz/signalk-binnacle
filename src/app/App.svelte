@@ -2,6 +2,7 @@
 import {
   Anchor,
   Bell,
+  ChartLine,
   CloudSun,
   Layers,
   LocateFixed,
@@ -106,6 +107,7 @@ import {
   saveTrack,
   TracksPanel,
 } from '$features/tracks';
+import { TrendSessionRecorder, TrendsPanel } from '$features/trends';
 import { deleteWaypoint, fetchWaypoints, saveWaypoint, WaypointsPanel } from '$features/waypoints';
 import {
   createWeatherLoader,
@@ -139,11 +141,12 @@ import {
   type MapView,
   PersistedValue,
 } from '$shared/settings';
-import type { ConnectionPhase, Context } from '$shared/signalk';
+import type { ConnectionPhase, Context, HistoryProviders } from '$shared/signalk';
 import {
   AuthController,
   acknowledgeNotification,
   createSignalKClient,
+  fetchHistoryProviders,
   fetchServerFeatures,
   fetchSymbols,
   postMobNotification,
@@ -185,6 +188,7 @@ const collisionMute = new CollisionMute(clock);
 // Server capability discovery: gates the v2 Notifications transport below; an older server
 // falls back to the raw v1 delta publish.
 let serverFeatures = $state<ServerFeatures | undefined>();
+let historyProviders = $state<HistoryProviders | undefined>(undefined);
 const notificationsApi = $derived(serverFeatures?.apis.has('notifications') ?? false);
 
 function publishDelta(path: string, value: unknown): void {
@@ -382,6 +386,7 @@ type LeftPanel =
   | 'tracks'
   | 'waypoints'
   | 'tides'
+  | 'trends'
   | 'ais'
   | 'anchor'
   | 'alarms'
@@ -435,6 +440,9 @@ const layerCategoriesOpen = new PersistedValue<Record<string, boolean>>(
 // The display-unit preference: follows the server's unit preferences when they resolve, with a
 // locally persisted fallback that profiles can carry. The store stays SI; only readouts consult it.
 const units = new UnitsStore();
+// Samples the live instruments from app start so the Trends panel has an honest in-session
+// series on servers with no history provider. Stopped on destroy.
+const trendRecorder = new TrendSessionRecorder();
 
 // Standard server waypoints: fetched from /resources/waypoints, rendered by the chart overlay,
 // managed in the Waypoints panel, and dropped from the chart's long-press menu.
@@ -766,6 +774,13 @@ const menuItems = $derived<MenuItem[]>([
       openPanel('tides');
       loadTides();
     },
+  },
+  {
+    id: 'trends',
+    label: 'Trends',
+    icon: ChartLine,
+    group: 'Conditions',
+    onSelect: () => openPanel('trends'),
   },
   {
     id: 'ais',
@@ -1502,6 +1517,8 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.courseArrivalCircle, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.courseCalcValues, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.depthBelowTransducer, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.windSpeedApparent, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.outsidePressure, policy: 'instant', minPeriod: 5000 },
     { path: SK_PATHS.anchorPosition, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.anchorMaxRadius, policy: 'instant', minPeriod: 1000 },
     // One wildcard row covers every notifications.* path including anchor and MOB; a specific
@@ -1550,6 +1567,11 @@ $effect(() => {
   void fetchServerFeatures(serverOrigin(), auth.token ?? undefined).then((features) => {
     if (features) serverFeatures = features;
   });
+  // History provider discovery: the v2 features list reports the history API even with no
+  // provider registered, so the providers route is the real signal.
+  void fetchHistoryProviders(serverOrigin(), auth.token ?? undefined).then((providers) => {
+    if (providers) historyProviders = providers;
+  });
   // Provided chart symbols; absent on a stock server, in which case the built-ins stand.
   symbolsStore.setAuth(auth.token ?? undefined);
   void fetchSymbols(serverOrigin(), auth.token ?? undefined).then((list) => {
@@ -1558,6 +1580,12 @@ $effect(() => {
 });
 
 onMount(() => {
+  trendRecorder.start(() => ({
+    depth: vessel.depthMeters,
+    wind: vessel.windSpeedApparentMps,
+    pressure: vessel.outsidePressurePa,
+    sog: vessel.sogMps,
+  }));
   window.addEventListener('pointerdown', primeAudio, { once: true });
   // The auth controller owns the focus and cross-tab listeners that pick up an approval.
   auth.watch();
@@ -1574,6 +1602,7 @@ onMount(() => {
 });
 
 onDestroy(() => {
+  trendRecorder.stop();
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   if (arrivalBannerTimer) clearTimeout(arrivalBannerTimer);
   window.removeEventListener('pointerdown', primeAudio);
@@ -1639,6 +1668,7 @@ onDestroy(() => {
       onDropWaypoint={(position) => void onDropWaypoint(position)}
       aisTrailsAvailable={() => serverFeatures?.plugins.has('tracks') ?? false}
       isOnline={() => net.online}
+      historyProviders={() => historyProviders}
       {store}
       {vessel}
       {aisTargets}
@@ -1779,6 +1809,20 @@ onDestroy(() => {
           {units}
           stationsShown={layerSettings.value.tides?.visible ?? false}
           onToggleStations={(shown) => setLayerVisible('tides', shown)}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
+      </div>
+    {/if}
+    {#if activePanel === 'trends'}
+      <div class="panel-slot">
+        <TrendsPanel
+          origin={serverOrigin()}
+          token={chartsToken}
+          providers={historyProviders}
+          recorder={trendRecorder}
+          mode={units.mode}
+          theme={theme.theme}
           onClose={closePanel}
           onBack={backToMenu}
         />

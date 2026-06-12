@@ -25,6 +25,8 @@ export class OwnVessel {
       SK_PATHS.courseOverGroundTrue,
       SK_PATHS.headingTrue,
       SK_PATHS.depthBelowTransducer,
+      SK_PATHS.windSpeedApparent,
+      SK_PATHS.outsidePressure,
     ]) {
       store.cell(path);
     }
@@ -48,6 +50,16 @@ export class OwnVessel {
   // Depth below the transducer in meters (SI), when a sounder publishes it.
   get depthMeters(): number | undefined {
     return asNumber(this.#raw(SK_PATHS.depthBelowTransducer));
+  }
+
+  // Apparent wind speed in m/s (SI), when an anemometer publishes it.
+  get windSpeedApparentMps(): number | undefined {
+    return asNumber(this.#raw(SK_PATHS.windSpeedApparent));
+  }
+
+  // Outside air pressure in Pascals (SI), when a barometer publishes it.
+  get outsidePressurePa(): number | undefined {
+    return asNumber(this.#raw(SK_PATHS.outsidePressure));
   }
 
   get position(): LatLon | undefined {

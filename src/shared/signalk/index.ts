@@ -5,6 +5,17 @@ export { createSignalKClient } from './client';
 export type { ServerFeatures } from './features-client';
 export { fetchServerFeatures } from './features-client';
 export type {
+  HistoryColumn,
+  HistoryProviders,
+  HistoryQuery,
+  HistoryValues,
+} from './history-client';
+export {
+  fetchHistoryProviders,
+  fetchHistoryValues,
+  fetchHistoryValuesAcrossProviders,
+} from './history-client';
+export type {
   RaiseNotificationOptions,
   UpdateNotificationOptions,
   UpdateNotificationResult,

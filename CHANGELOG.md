@@ -66,6 +66,13 @@ server's imperial-or-metric unit preference, and route editing loads on demand.
 - When the base map style itself is unreachable (plain http at sea with no internet), the map
   starts on a minimal water-colored fallback instead of staying blank, so cached charts and
   every overlay still load. The real base map returns on the next load with connectivity.
+- A Trends panel: depth, apparent wind, barometric pressure, and speed over the last 24 hours
+  as themed graphs, served by the server's v2 History API when a history provider runs
+  (signalk-questdb, signalk-to-influxdb2, or signalk-parquet), with provider fallback when the
+  default provider has no data. Without one, the graphs show the current session, sampled live.
+- A "Track history (24 h)" chart layer: the vessel's server-recorded last day as a dashed line
+  under the live track, gap-split across stops, opt-in from the Layers panel and only queried
+  while shown.
 
 ### Removed
 

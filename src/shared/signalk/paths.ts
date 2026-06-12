@@ -11,6 +11,8 @@ export const SK_PATHS = {
   speedOverGround: 'navigation.speedOverGround',
   closestApproach: 'navigation.closestApproach',
   depthBelowTransducer: 'environment.depth.belowTransducer',
+  windSpeedApparent: 'environment.wind.speedApparent',
+  outsidePressure: 'environment.outside.pressure',
   anchorPosition: 'navigation.anchor.position',
   anchorMaxRadius: 'navigation.anchor.maxRadius',
   anchorNotification: 'notifications.navigation.anchor',

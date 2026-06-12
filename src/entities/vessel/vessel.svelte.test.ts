@@ -91,6 +91,8 @@ describe('OwnVessel', () => {
       'navigation.courseOverGroundTrue',
       'navigation.headingTrue',
       'environment.depth.belowTransducer',
+      'environment.wind.speedApparent',
+      'environment.outside.pressure',
     ]);
   });
 });

@@ -169,6 +169,16 @@ export function pressureUnit(mode: UnitsMode): 'hPa' | 'inHg' {
   return mode === 'imperial' ? 'inHg' : 'hPa';
 }
 
+// The numeric pressure in the mode's display unit (hPa or inHg), for charts and inputs that
+// need the value rather than a formatted string.
+export function pressureValue(
+  pascals: number | null | undefined,
+  mode: UnitsMode,
+): number | undefined {
+  if (pascals == null) return undefined;
+  return mode === 'imperial' ? pascals / PA_PER_INHG : pascals / PA_PER_HPA;
+}
+
 // Pressure to the conventional precision per unit: whole hectopascals, hundredths of inHg.
 export function formatPressureOr(pascals: number | null | undefined, mode: UnitsMode): string {
   if (mode === 'imperial') {
