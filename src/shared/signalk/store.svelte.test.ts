@@ -82,6 +82,35 @@ describe('SignalKStore', () => {
     cleanup();
   });
 
+  it('does not retrigger connection consumers when phase and attempt are unchanged', () => {
+    const store = new SignalKStore();
+    const cleanup = $effect.root(() => {
+      let runs = 0;
+      $effect(() => {
+        void store.connection;
+        runs += 1;
+      });
+      flushSync();
+      expect(runs).toBe(1);
+      // The worker sends a fresh connection object per frame; an unchanged state must not re-run.
+      store.applyFrame(frame({ 'navigation.speedOverGround': 1 }));
+      store.applyFrame(frame({ 'navigation.speedOverGround': 2 }));
+      flushSync();
+      expect(runs).toBe(2);
+      store.applyFrame(frame({ 'navigation.speedOverGround': 3 }));
+      flushSync();
+      expect(runs).toBe(2);
+      store.applyFrame({
+        self: new Map(),
+        connection: { phase: 'reconnecting', attempt: 1 },
+        epoch: 2000,
+      });
+      flushSync();
+      expect(runs).toBe(3);
+    });
+    cleanup();
+  });
+
   it('applies ais targets from the frame', () => {
     const store = new SignalKStore();
     store.applyFrame({

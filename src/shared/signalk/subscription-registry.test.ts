@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SubscriptionRegistry } from './subscription-registry';
 import type { Context, Path } from './types';
 
@@ -37,6 +37,31 @@ describe('SubscriptionRegistry', () => {
       context: 'vessels.self',
       unsubscribe: [{ path: 'navigation.position' }],
     });
+  });
+
+  it('warns in dev when a second demand for a path carries different parameters', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const reg = new SubscriptionRegistry(() => {});
+      reg.add([{ path: path('navigation.position'), period: 200, policy: 'instant' }]);
+      reg.add([{ path: path('navigation.position'), period: 5000, policy: 'instant' }]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0][0])).toContain('navigation.position');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('does not warn when a second demand matches the active parameters', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const reg = new SubscriptionRegistry(() => {});
+      reg.add([{ path: path('navigation.position'), period: 200, policy: 'instant' }]);
+      reg.add([{ path: path('navigation.position'), period: 200, policy: 'instant' }]);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('resubscribeAll re-sends every active subscription', () => {

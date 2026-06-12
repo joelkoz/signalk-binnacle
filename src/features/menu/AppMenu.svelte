@@ -2,6 +2,7 @@
 import { Menu } from '@lucide/svelte';
 import { fly } from 'svelte/transition';
 import { prefersReducedMotion } from '$shared/lib';
+import { registerDismiss } from '$shared/ui';
 import type { MenuItem } from './menu-item';
 
 interface Props {
@@ -66,18 +67,27 @@ function select(item: MenuItem): void {
   if (item.pressed === undefined) closeMenu(true);
 }
 
-// Close when a pointer goes down outside the menu (focus follows the pointer), or on Escape (focus
-// returns to the trigger).
+// Close when a pointer goes down outside the menu (focus follows the pointer).
 function onWindowPointerDown(event: PointerEvent): void {
   if (open && root && !root.contains(event.target as Node)) closeMenu();
 }
 
-function onWindowKeydown(event: KeyboardEvent): void {
-  if (open && event.key === 'Escape') closeMenu(true);
-}
+// While open, sit in the shared dismiss stack from dialog.ts rather than owning a window Escape
+// listener: with the menu open over a slide-over, the stack guarantees one Escape closes only the
+// topmost (the menu), marks the event consumed via preventDefault, and leaves the panel for the
+// next Escape.
+$effect(() => {
+  if (!open) return;
+  return registerDismiss(() => closeMenu(true));
+});
 
 // Arrow keys move the roving focus between enabled items, wrapping; Home and End jump to the ends.
+// Tab dismisses the menu (the WAI-ARIA menu pattern) without preventDefault, so focus moves on.
 function onPopoutKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Tab') {
+    closeMenu();
+    return;
+  }
   const buttons = itemButtons();
   if (buttons.length === 0) return;
   const at = Math.max(
@@ -100,7 +110,7 @@ function onPopoutKeydown(event: KeyboardEvent): void {
 }
 </script>
 
-<svelte:window onpointerdown={onWindowPointerDown} onkeydown={onWindowKeydown} />
+<svelte:window onpointerdown={onWindowPointerDown} />
 
 <div class="app-menu" bind:this={root}>
   <button

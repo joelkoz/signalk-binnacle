@@ -4,23 +4,41 @@ import type { Action } from 'svelte/action';
 // when it opened (typically the control that opened it) once it closes. Deliberately light, with no
 // focus trap, because these panels are non-modal: the chart stays live underneath.
 //
-// Open panels are tracked in a stack so a single Escape closes only the topmost (most recently
-// opened) one. The note and weather panels can be open at the same time, so without the stack one
-// Escape would close both. One shared window listener serves every open panel.
+// Open dismissables are tracked in one stack so a single Escape closes only the topmost (most
+// recently opened) one. The note and weather panels can be open at the same time, and the app menu
+// can sit over a slide-over, so without the shared stack one Escape would close more than one. One
+// shared window listener serves every open entry, and an Escape that closes something is marked
+// consumed via preventDefault so other Escape listeners (the measure strip) can ignore it.
 const openDialogs: Array<() => void> = [];
 
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key !== 'Escape') return;
-  openDialogs[openDialogs.length - 1]?.();
+  if (event.key !== 'Escape' || event.defaultPrevented) return;
+  const top = openDialogs[openDialogs.length - 1];
+  if (!top) return;
+  event.preventDefault();
+  top();
+}
+
+// Register a closer in the shared Escape stack; returns the unregister function. The dialog action
+// uses this for the slide-over panels, and the app menu registers here directly so Escape over a
+// menu-above-panel stack closes only the menu.
+export function registerDismiss(close: () => void): () => void {
+  openDialogs.push(close);
+  // Capture phase, so this handler runs before any bubble-phase Escape listener (the measure strip
+  // registers one at mount) regardless of registration order; those listeners then see the
+  // preventDefault mark and stand down.
+  if (openDialogs.length === 1) window.addEventListener('keydown', onKeydown, true);
+  return () => {
+    const index = openDialogs.indexOf(close);
+    if (index >= 0) openDialogs.splice(index, 1);
+    if (openDialogs.length === 0) window.removeEventListener('keydown', onKeydown, true);
+  };
 }
 
 export const dialog: Action<HTMLElement, () => void> = (node, onClose) => {
   let close = onClose;
   const restoreTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  const entry = (): void => close();
-
-  openDialogs.push(entry);
-  if (openDialogs.length === 1) window.addEventListener('keydown', onKeydown);
+  const unregister = registerDismiss(() => close());
 
   // Move focus into the panel on open so a keyboard or screen-reader user lands inside it, not back on
   // the trigger that opened it. The panel carries tabindex="-1" to receive focus; this is a no-op if
@@ -32,10 +50,13 @@ export const dialog: Action<HTMLElement, () => void> = (node, onClose) => {
       close = next;
     },
     destroy(): void {
-      const index = openDialogs.indexOf(entry);
-      if (index >= 0) openDialogs.splice(index, 1);
-      if (openDialogs.length === 0) window.removeEventListener('keydown', onKeydown);
-      restoreTo?.focus();
+      unregister();
+      // Restore only when this panel actually holds focus (or focus already fell to the body):
+      // unconditionally restoring would yank focus from an unrelated panel the user moved into.
+      const active = document.activeElement;
+      if (node.contains(active) || active === document.body || active === null) {
+        restoreTo?.focus();
+      }
     },
   };
 };

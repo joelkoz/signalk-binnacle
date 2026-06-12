@@ -52,12 +52,6 @@ export interface SubscribeEntry {
   policy?: SubscribePolicy;
 }
 
-export interface LeafWrite {
-  context: Context;
-  path: Path;
-  value: Value;
-}
-
 // One coalesced batch delivered from the worker to the main thread per frame. Both self and AIS are
 // Maps, the shape the batcher already accumulates; Comlink structured-clones them across the worker
 // boundary, so there is no per-path or per-context object to build on either side.

@@ -70,6 +70,24 @@ describe('FrameBatcher', () => {
     expect(flushes[0]).toEqual(new Map([['navigation.headingTrue', 1]]));
   });
 
+  it('prefers the timer scheduler outside a window even when rAF exists, so flushes continue while the tab is hidden', async () => {
+    // The node test environment has no document, like a dedicated worker. Re-import the module so
+    // the default scheduler is selected with requestAnimationFrame present but no window: it must
+    // pick the timer (worker rAF is compositor-driven and stops in a hidden tab).
+    expect(typeof document).toBe('undefined');
+    vi.resetModules();
+    const raf = vi.fn();
+    vi.stubGlobal('requestAnimationFrame', raf);
+    const { FrameBatcher: WorkerBatcher } = await import('./batcher');
+    const batcher = new WorkerBatcher();
+    const flushes: Map<string, Value>[] = [];
+    batcher.onFlush = (self) => flushes.push(self);
+    batcher.put('navigation.position', { latitude: 0, longitude: 0 });
+    vi.runAllTimers();
+    expect(raf).not.toHaveBeenCalled();
+    expect(flushes).toHaveLength(1);
+  });
+
   it('accumulates per-vessel writes keyed by context, last write wins', () => {
     const batcher = new FrameBatcher();
     let captured: Map<string, Map<string, Value>> | undefined;

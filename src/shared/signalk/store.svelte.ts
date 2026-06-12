@@ -50,7 +50,12 @@ export class SignalKStore {
       // moved and the consumers' version guards still hold.
       if (frame.ais.size > 0) this.aisVersion += 1;
     }
-    this.connection = frame.connection;
+    // The worker sends a fresh connection object on every frame; assigning it unconditionally
+    // would re-run every connection-derived consumer once per animation frame.
+    const incoming = frame.connection;
+    if (incoming.phase !== this.connection.phase || incoming.attempt !== this.connection.attempt) {
+      this.connection = incoming;
+    }
   }
 
   pruneAis(now: number, ttlMs: number): number {

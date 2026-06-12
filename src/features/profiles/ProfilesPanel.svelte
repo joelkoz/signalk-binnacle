@@ -1,7 +1,8 @@
 <script lang="ts">
 import { Check, Download, Save, SquarePen, Star, Trash2, Upload } from '@lucide/svelte';
 import type { Profile } from '$entities/profile';
-import { pickTextFile, promptSaveName, SavedList, SlideOver } from '$shared/ui';
+import { focusOnMount, pickTextFile, promptSaveName, SavedList, SlideOver } from '$shared/ui';
+import { parseProfilesJson } from './profile-io';
 
 interface Props {
   profiles: Profile[];
@@ -43,9 +44,27 @@ function promptNew(): void {
   if (name !== undefined) onSaveNew(name);
 }
 
+// A parse error or a file with no valid entries must not fail silently: validate here so the
+// panel can say so, and hand only a usable document to the importer.
+let importError = $state<string | undefined>();
+
 async function importProfiles(): Promise<void> {
   const text = await pickTextFile('.json,application/json');
-  if (text !== undefined) onImport(text);
+  if (text === undefined) return;
+  if (parseProfilesJson(text).length === 0) {
+    importError = 'No valid profiles in that file.';
+    return;
+  }
+  importError = undefined;
+  onImport(text);
+}
+
+// Delete is destructive and propagates to every synced device, so it arms a confirm step rather
+// than firing on a single tap, matching the Routes panel.
+let confirmingDelete = $state<string | undefined>();
+function confirmDelete(id: string): void {
+  confirmingDelete = undefined;
+  onRemove(id);
 }
 
 function promptRename(profile: Profile): void {
@@ -67,6 +86,10 @@ function promptRename(profile: Profile): void {
       Import
     </button>
   </div>
+
+  {#if importError}
+    <p class="error" role="status">{importError}</p>
+  {/if}
 
   <SavedList
     heading="Saved profiles"
@@ -90,69 +113,88 @@ function promptRename(profile: Profile): void {
       {#if isActive && isDirty}
         <p class="dirty caps-label">Unsaved changes</p>
       {/if}
-      <div class="actions">
-        {#if !isActive}
+      {#if confirmingDelete === profile.id}
+        <div class="confirm" role="group" aria-label="Confirm delete profile">
+          <span class="confirm-text">Delete this profile on every synced device?</span>
+          <div class="confirm-actions">
+            <button type="button" class="btn btn-danger" onclick={() => confirmDelete(profile.id)}>
+              Delete
+            </button>
+            <button
+              type="button"
+              class="btn"
+              use:focusOnMount
+              onclick={() => (confirmingDelete = undefined)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      {:else}
+        <div class="actions">
+          {#if !isActive}
+            <button
+              type="button"
+              class="icon-btn"
+              aria-label="Apply this profile"
+              title="Apply"
+              onclick={() => onApply(profile.id)}
+            >
+              <Check size={18} aria-hidden="true" />
+            </button>
+          {/if}
+          {#if isActive}
+            <button
+              type="button"
+              class="icon-btn"
+              aria-label="Save changes to this profile"
+              title="Save changes"
+              disabled={!isDirty}
+              onclick={() => onUpdate(profile.id)}
+            >
+              <Save size={18} aria-hidden="true" />
+            </button>
+          {/if}
           <button
             type="button"
             class="icon-btn"
-            aria-label="Apply this profile"
-            title="Apply"
-            onclick={() => onApply(profile.id)}
+            aria-label="Rename profile"
+            title="Rename"
+            onclick={() => promptRename(profile)}
           >
-            <Check size={18} aria-hidden="true" />
+            <SquarePen size={18} aria-hidden="true" />
           </button>
-        {/if}
-        {#if isActive}
+          {#if !isDefault}
+            <button
+              type="button"
+              class="icon-btn"
+              aria-label="Set as default profile"
+              title="Set as default"
+              onclick={() => onSetDefault(profile.id)}
+            >
+              <Star size={18} aria-hidden="true" />
+            </button>
+          {/if}
           <button
             type="button"
             class="icon-btn"
-            aria-label="Save changes to this profile"
-            title="Save changes"
-            disabled={!isDirty}
-            onclick={() => onUpdate(profile.id)}
+            aria-label="Export profile as a file"
+            title="Export"
+            onclick={() => onExport(profile.id)}
           >
-            <Save size={18} aria-hidden="true" />
+            <Download size={18} aria-hidden="true" />
           </button>
-        {/if}
-        <button
-          type="button"
-          class="icon-btn"
-          aria-label="Rename profile"
-          title="Rename"
-          onclick={() => promptRename(profile)}
-        >
-          <SquarePen size={18} aria-hidden="true" />
-        </button>
-        {#if !isDefault}
           <button
             type="button"
-            class="icon-btn"
-            aria-label="Set as default profile"
-            title="Set as default"
-            onclick={() => onSetDefault(profile.id)}
+            class="icon-btn icon-btn--danger"
+            aria-label="Delete profile"
+            title="Delete"
+            onclick={() => (confirmingDelete = profile.id)}
           >
-            <Star size={18} aria-hidden="true" />
+            <Trash2 size={18} aria-hidden="true" />
           </button>
-        {/if}
-        <button
-          type="button"
-          class="icon-btn"
-          aria-label="Export profile as a file"
-          title="Export"
-          onclick={() => onExport(profile.id)}
-        >
-          <Download size={18} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="icon-btn icon-btn--danger"
-          aria-label="Delete profile"
-          title="Delete"
-          onclick={() => onRemove(profile.id)}
-        >
-          <Trash2 size={18} aria-hidden="true" />
-        </button>
-      </div>
+        </div>
+      {/if}
     {/snippet}
   </SavedList>
 </SlideOver>
@@ -172,5 +214,30 @@ function promptRename(profile: Profile): void {
 .dirty {
   margin: 0;
   color: var(--text-muted);
+}
+.error {
+  margin: 0;
+  padding: 0.4rem var(--space-2);
+  border: 1px solid var(--alarm);
+  border-radius: var(--radius-sm);
+  color: var(--alarm);
+  font-size: var(--text-sm);
+}
+/* The inline delete confirm replaces the action row for the armed card: a clear question and a pair
+   of full buttons, so confirming or backing out is a deliberate second tap. */
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.confirm-text {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.confirm-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 </style>

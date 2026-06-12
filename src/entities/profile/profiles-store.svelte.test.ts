@@ -58,6 +58,17 @@ describe('ProfileStore load guard', () => {
     const store = new ProfileStore(adapter);
     expect(store.profiles.map((p) => p.id)).toEqual(['good']);
   });
+
+  it('loads empty without throwing when the stored profiles field is a truthy non-array', () => {
+    const adapter = fakeAdapter({
+      profiles: 'corrupt' as unknown as Profile[],
+      activeId: 'p1',
+      defaultId: undefined,
+    });
+    const store = new ProfileStore(adapter);
+    expect(store.profiles).toEqual([]);
+    expect(store.activeId).toBe('p1');
+  });
 });
 
 const settings = (overrides: Partial<ProfileSettings> = {}): ProfileSettings => ({
@@ -237,7 +248,7 @@ describe('ProfileStore.syncWithServer', () => {
     const store = new ProfileStore(
       fakeAdapter({
         profiles: [profile('p1', 'Local v1', 1)],
-        activeId: undefined,
+        activeId: 'p1',
         defaultId: undefined,
       }),
     );
@@ -249,7 +260,9 @@ describe('ProfileStore.syncWithServer', () => {
     await store.syncWithServer(server);
     const byId = Object.fromEntries(store.profiles.map((p) => [p.id, p.name]));
     expect(byId).toEqual({ p1: 'Remote v2', p2: 'Remote only' });
-    expect(store.activeId).toBe('p2');
+    // The active selection is per-device state: the merge keeps the local activeId so the
+    // switcher never shows a profile as Active that this device has not applied.
+    expect(store.activeId).toBe('p1');
     expect(store.defaultId).toBe('p2');
     await flush();
     expect(
@@ -258,6 +271,40 @@ describe('ProfileStore.syncWithServer', () => {
         ?.profiles.map((p) => p.id)
         .sort(),
     ).toEqual(['p1', 'p2']);
+  });
+
+  it('drops malformed remote profiles and tolerates a non-array remote profiles field', async () => {
+    const localStore = new ProfileStore(
+      fakeAdapter({
+        profiles: [profile('p1', 'Local', 1)],
+        activeId: undefined,
+        defaultId: undefined,
+      }),
+    );
+    await localStore.syncWithServer(
+      fakeServer({
+        profiles: [profile('p2', 'Remote good', 2), { id: 'bad' } as unknown as Profile],
+        activeId: undefined,
+        defaultId: undefined,
+      }),
+    );
+    expect(localStore.profiles.map((p) => p.id).sort()).toEqual(['p1', 'p2']);
+
+    const corruptStore = new ProfileStore(
+      fakeAdapter({
+        profiles: [profile('p1', 'Local', 1)],
+        activeId: undefined,
+        defaultId: undefined,
+      }),
+    );
+    await corruptStore.syncWithServer(
+      fakeServer({
+        profiles: 'corrupt' as unknown as Profile[],
+        activeId: undefined,
+        defaultId: undefined,
+      }),
+    );
+    expect(corruptStore.profiles.map((p) => p.id)).toEqual(['p1']);
   });
 
   it('keeps a newer local profile over an older remote one', async () => {

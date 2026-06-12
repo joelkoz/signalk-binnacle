@@ -11,6 +11,7 @@ import {
   SELF_CONTEXT,
   type SKFrame,
   type SubscribeEntry,
+  type Value,
 } from './types';
 
 // The hello handshake carries the self identifier; the rest of a frame is a Delta. Widen the parse
@@ -80,6 +81,16 @@ export class WorkerCore {
     return context === SELF_CONTEXT || context === this.#selfContext;
   }
 
+  // One routing callback for the life of the core, not a fresh closure per #ingest: reconciling
+  // runs on the hottest path, once per incoming delta frame.
+  #route = (context: Context, path: Path, value: Value): void => {
+    if (this.#isSelf(context)) {
+      this.#batcher.put(path, value);
+    } else {
+      this.#batcher.putVessel(context, path, value);
+    }
+  };
+
   #ingest(raw: string): void {
     let message: DeltaOrHello;
     try {
@@ -99,12 +110,6 @@ export class WorkerCore {
       if (typeof message.self === 'string') this.#selfContext = message.self;
       return;
     }
-    reconcileDelta(message, (write) => {
-      if (this.#isSelf(write.context)) {
-        this.#batcher.put(write.path, write.value);
-      } else {
-        this.#batcher.putVessel(write.context, write.path, write.value);
-      }
-    });
+    reconcileDelta(message, this.#route);
   }
 }

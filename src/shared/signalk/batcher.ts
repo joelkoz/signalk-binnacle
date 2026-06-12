@@ -5,12 +5,16 @@ import type { Value } from './types';
 type Schedule = (cb: (epoch: number) => void) => () => void;
 
 // The epoch stamped on each flush is a wall clock (Date.now), not the scheduler's
-// timestamp: the batcher runs in the worker where requestAnimationFrame is absent, so
-// the rAF callback's high-res timestamp is unavailable and would in any case use a
-// different time origin than the main thread that prunes by staleness. Date.now is
-// consistent across both threads.
+// high-res timestamp, which would use a different time origin than the main thread
+// that prunes by staleness. Date.now is consistent across both threads.
+//
+// Outside a window (the worker, where this batcher actually runs) the scheduler is the
+// timer, never requestAnimationFrame: modern dedicated workers do expose rAF, but it is
+// compositor-driven and stops while the tab is hidden, which would freeze delta flushes
+// in a backgrounded tab exactly when anchor, collision, and MOB monitoring matter. A
+// window context keeps rAF for its alignment with rendering.
 const defaultSchedule: Schedule =
-  typeof requestAnimationFrame === 'function'
+  typeof document !== 'undefined' && typeof requestAnimationFrame === 'function'
     ? (cb) => {
         const id = requestAnimationFrame(() => cb(Date.now()));
         return () => cancelAnimationFrame(id);

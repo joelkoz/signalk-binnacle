@@ -73,11 +73,19 @@ export class ProfileStore {
   #pushPending = false;
   #pushing = false;
 
+  // True when the constructor found a stored document, even an empty one. Distinguishes a fresh
+  // device (seed the starter profiles) from a store the user deliberately emptied (do not
+  // resurrect the starters on the next launch).
+  readonly loadedFromStorage: boolean = false;
+
   constructor(adapter: ProfileAdapter = new LocalProfileAdapter()) {
     this.#adapter = adapter;
     const stored = adapter.load();
     if (stored) {
-      this.profiles = (stored.profiles ?? []).filter(isStoredProfile);
+      this.loadedFromStorage = true;
+      // Array.isArray, not a nullish fallback: a corrupt document where profiles is a truthy
+      // non-array would otherwise throw here during App init and blank the app.
+      this.profiles = Array.isArray(stored.profiles) ? stored.profiles.filter(isStoredProfile) : [];
       this.activeId = stored.activeId;
       this.#defaultId = stored.defaultId;
     }
@@ -124,12 +132,17 @@ export class ProfileStore {
   #mergeRemote(remote: ProfilesState): void {
     const byId = new Map<string, Profile>();
     for (const p of this.profiles) byId.set(p.id, p);
-    for (const p of remote.profiles ?? []) {
+    // The same shape guards the local load applies: a remote document is just another stored
+    // document, so a malformed entry (or a non-array profiles field) must not enter the store.
+    const incoming = Array.isArray(remote.profiles) ? remote.profiles.filter(isStoredProfile) : [];
+    for (const p of incoming) {
       const existing = byId.get(p.id);
       if (!existing || (p.updatedAt ?? 0) >= (existing.updatedAt ?? 0)) byId.set(p.id, p);
     }
     this.profiles = [...byId.values()];
-    this.activeId = remote.activeId ?? this.activeId;
+    // Merge only the profile list and the default. The active selection is per-device state:
+    // adopting the remote activeId would show a profile as Active while this device still runs
+    // its previous settings, with no dirty flag to say so.
     this.#defaultId = remote.defaultId ?? this.#defaultId;
     // Cache the merged state locally without re-scheduling a push; syncWithServer pushes once.
     this.#adapter.save(this.#snapshot());

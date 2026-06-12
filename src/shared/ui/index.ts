@@ -1,4 +1,5 @@
-export { dialog } from './dialog';
+export { ConfirmArm } from './confirm-arm.svelte';
+export { dialog, registerDismiss } from './dialog';
 export { pickTextFile } from './file-pick';
 export { focusOnMount, focusTrap } from './focus';
 export { promptSaveName } from './prompt';

@@ -17,8 +17,9 @@ interface AuthOptions {
 const STORAGE_KEY = 'binnacle:signalk-auth';
 const PROBE_PATH = '/signalk/v1/api/vessels/self';
 const REQUEST_PATH = '/signalk/v1/access/requests';
-// Stop polling an unanswered access request after this many attempts (about 10 min at
-// the default 3 s interval) so a never-approved request is not an unbounded loop.
+// Stop polling an unanswered access request (or retrying a POST that keeps failing in
+// transit) after this many attempts (about 10 min at the default 3 s interval) so a
+// never-approved request is not an unbounded loop.
 const MAX_POLL_ATTEMPTS = 200;
 
 // A short, recognizable client id (binnacle-<8 hex>) so the Signal K access-requests list shows a
@@ -90,6 +91,13 @@ export class AuthController {
         this.status = 'authenticated';
         return;
       }
+      // A transport failure proves nothing about the token: clearing it here would wipe an
+      // admin-approved token on a flaky boat network. Keep it, skip the anonymous probe (it
+      // would also fail and could mislabel the server), and let a later probe retry.
+      if (!authed) return;
+      // Likewise a non-auth error (a 500, a proxy hiccup) is not a rejection of the token.
+      if (authed.status !== 401 && authed.status !== 403) return;
+      // Only a definite rejection invalidates the stored token.
       this.#store(null);
     }
     // Probe anonymously WITHOUT credentials. A browser session cookie would
@@ -106,13 +114,20 @@ export class AuthController {
 
   async requestAccess(): Promise<void> {
     this.status = 'requesting';
-    this.#pollAttempts = 0;
     const res = await this.#safeFetch(`${this.#base}${REQUEST_PATH}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clientId: this.clientId, description: 'Binnacle chart plotter' }),
     });
-    if (!res) return;
+    if (!res) {
+      // A failed POST (offline at startup) must not strand the request: with no #href,
+      // checkRequest returns immediately, so without this retry the status would read
+      // 'requesting' forever. Re-issue the POST on the poll cadence; the attempt counter
+      // bounds the retries and is reset below once a POST lands.
+      this.#schedulePoll(() => this.requestAccess());
+      return;
+    }
+    this.#pollAttempts = 0;
     const body = await this.#json(res);
     this.#href = typeof body.href === 'string' ? body.href : undefined;
     if (!this.#href) {
@@ -207,7 +222,9 @@ export class AuthController {
     }
   };
 
-  #schedulePoll(): void {
+  // Schedule the next poll tick. The default task checks the pending request; requestAccess
+  // passes itself as the task to retry a POST that failed in transit.
+  #schedulePoll(task?: () => Promise<void>): void {
     if (this.#stopped || this.#pollScheduled || this.status === 'authenticated') return;
     if (this.#pollAttempts >= MAX_POLL_ATTEMPTS) {
       this.status = 'denied';
@@ -217,7 +234,7 @@ export class AuthController {
     this.#pollScheduled = true;
     this.#schedule(() => {
       this.#pollScheduled = false;
-      void this.checkRequest();
+      void (task ? task() : this.checkRequest());
     }, this.#pollMs);
   }
 

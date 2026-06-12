@@ -14,7 +14,7 @@ export {
   str,
   strArray,
 } from './resource';
-export { PathCell, SignalKStore } from './store.svelte';
+export { SignalKStore } from './store.svelte';
 export type {
   ActiveRoute,
   AisTargetState,

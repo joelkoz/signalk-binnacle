@@ -222,6 +222,88 @@ describe('AuthController', () => {
     expect(auth.status).toBe('requesting');
   });
 
+  it('keeps the stored token on a transport failure and skips the anonymous probe', async () => {
+    const store = storage({
+      'binnacle:signalk-auth': JSON.stringify({ clientId: 'binnacle-1', token: 'keepme' }),
+    });
+    const fetchFn = vi.fn(async () => {
+      throw new Error('network down');
+    });
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: store,
+      schedule: noSchedule,
+    });
+    await auth.probe();
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(auth.status).toBe('unknown');
+    expect(JSON.parse(store.getItem('binnacle:signalk-auth') as string).token).toBe('keepme');
+  });
+
+  it('keeps the stored token on a non-auth probe error (500)', async () => {
+    const store = storage({
+      'binnacle:signalk-auth': JSON.stringify({ clientId: 'binnacle-1', token: 'keepme' }),
+    });
+    const fetchFn = vi.fn(async () => res(false, {}, 500));
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: store,
+      schedule: noSchedule,
+    });
+    await auth.probe();
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(store.getItem('binnacle:signalk-auth') as string).token).toBe('keepme');
+  });
+
+  it('clears the stored token on a definite 401 rejection', async () => {
+    const store = storage({
+      'binnacle:signalk-auth': JSON.stringify({ clientId: 'binnacle-1', token: 'stale' }),
+    });
+    const fetchFn = vi.fn(async (url: string) => {
+      if (url.endsWith('/access/requests')) return res(true, { href: '/signalk/v1/requests/r1' });
+      return res(false, {}, 401);
+    });
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: store,
+      schedule: noSchedule,
+    });
+    await auth.probe();
+    expect(JSON.parse(store.getItem('binnacle:signalk-auth') as string).token).toBeNull();
+    expect(auth.status).toBe('requesting');
+  });
+
+  it('retries a failed access-request POST without a reload', async () => {
+    const scheduled: Array<() => void> = [];
+    let postFails = true;
+    const fetchFn = vi.fn(async (url: string) => {
+      if (url.endsWith('/access/requests')) {
+        if (postFails) throw new Error('offline');
+        return res(true, { href: '/signalk/v1/requests/r1' });
+      }
+      return res(false, {});
+    });
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: storage(),
+      schedule: (run) => {
+        scheduled.push(run);
+      },
+    });
+    await auth.requestAccess();
+    expect(auth.status).toBe('requesting');
+    expect(scheduled).toHaveLength(1);
+    // The network comes back; the scheduled retry re-issues the POST and starts polling.
+    postFails = false;
+    scheduled[0]();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(auth.status).toBe('requesting');
+    const posts = fetchFn.mock.calls.filter(([url]) => String(url).endsWith('/access/requests'));
+    expect(posts).toHaveLength(2);
+    // The approval poll is now scheduled against the obtained href.
+    expect(scheduled.length).toBeGreaterThan(1);
+  });
+
   it('keeps a stable clientId across instances', () => {
     const store = storage();
     const a = new AuthController(BASE, {

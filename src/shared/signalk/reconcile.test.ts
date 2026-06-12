@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { reconcileDelta } from './reconcile';
-import type { Context, Delta, LeafWrite } from './types';
+import type { Context, Delta, Path, Value } from './types';
 
-function collect(delta: Delta): LeafWrite[] {
-  const out: LeafWrite[] = [];
-  reconcileDelta(delta, (w) => out.push(w));
+interface Collected {
+  context: Context;
+  path: Path;
+  value: Value;
+}
+
+function collect(delta: Delta): Collected[] {
+  const out: Collected[] = [];
+  reconcileDelta(delta, (context, path, value) => out.push({ context, path, value }));
   return out;
 }
 

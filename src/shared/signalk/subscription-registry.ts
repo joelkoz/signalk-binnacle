@@ -38,12 +38,27 @@ export class SubscriptionRegistry {
       const existing = this.#demand.get(key);
       if (existing) {
         existing.count += 1;
+        // The first subscriber's parameters stand for the key's lifetime; a differing later
+        // demand is silently coalesced, so flag it in dev where it is a real mistake.
+        if (
+          import.meta.env?.DEV &&
+          (existing.entry.period !== resolved.period ||
+            existing.entry.minPeriod !== resolved.minPeriod ||
+            existing.entry.policy !== resolved.policy)
+        ) {
+          console.warn(
+            `[signalk] subscription ${key} is already active with different parameters; the new period, minPeriod, or policy is ignored`,
+          );
+        }
       } else {
         this.#demand.set(key, { count: 1, entry: resolved });
         this.#sendSubscribe(resolved);
       }
       keys.push(key);
     }
+    // The release closure is deliberate API surface for future per-feature subscriptions: today
+    // only tests exercise it (Comlink cannot return a closure across the worker boundary, so
+    // production removal flows through remove()).
     return () => this.#release(keys);
   }
 

@@ -68,8 +68,8 @@ export function createExpiringStore<T>(dbName: string, options: Options = {}): E
   const factory = 'factory' in options ? options.factory : globalThis.indexedDB;
   if (!factory) return memoryStore<T>(maxEntries);
 
-  // Mirror to memory so a mid-session degrade keeps what was cached so far, and so a read right after
-  // a write does not depend on the IndexedDB round-trip.
+  // Mirror every write to memory so a mid-session degrade keeps what was cached so far. Reads still
+  // try IndexedDB first; the mirror only answers once degradeToMemory has tripped to the fallback.
   const memory = memoryStore<T>(maxEntries);
   const idb = degradeToMemory();
   const db = openIdbDatabase(factory, dbName, 1, (conn) => {

@@ -11,8 +11,7 @@ export function isFiniteNumber(value: unknown): value is number {
 }
 
 // The item whose time is nearest the target, skipping items with a NaN time. One scan shared by
-// the nearest-forecast-step, nearest-grid-time, and latest-observation lookups, which were three
-// structurally identical loops.
+// the nearest-forecast-step, nearest-grid-time, and latest-observation lookups.
 export function nearestBy<T>(
   items: readonly T[],
   toMs: (item: T) => number,
