@@ -1,6 +1,6 @@
 <script lang="ts">
 import { MapPin, Navigation, Ruler } from '@lucide/svelte';
-import { focusOnMount } from '$shared/ui';
+import { registerDismiss, rovingFocus } from '$shared/ui';
 
 interface Props {
   // The press point in chart pixels, and the chart's pixel size, so the menu clamps inside the
@@ -21,7 +21,9 @@ interface Props {
 
 const { x, y, width, height, onGoToHere, onDropWaypoint, onMeasureFrom, onClose }: Props = $props();
 
-let menuEl = $state<HTMLElement>();
+// Escape closes through the shared dismiss stack, so it peels the topmost surface in order rather
+// than a raw window listener firing alongside any other open menu.
+$effect(() => registerDismiss(onClose));
 
 // Wide enough for the longest label ("Measure from here") at the inherited font size; the menu
 // is fixed to this width below so the clamp math always matches the rendered box.
@@ -42,44 +44,21 @@ const itemCount = $derived(1 + (onDropWaypoint ? 1 : 0) + (onMeasureFrom ? 1 : 0
 const menuHeight = $derived(itemCount * ITEM_HEIGHT + MENU_PADDING);
 const above = $derived(y > menuHeight + EDGE * 2 || y > height / 2);
 const top = $derived(above ? y - EDGE : y + EDGE);
-
-function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') onClose();
-}
-
-function onMenuKeydown(event: KeyboardEvent): void {
-  const items = [...(menuEl?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])];
-  if (items.length === 0) return;
-  const at = Math.max(
-    0,
-    items.findIndex((el) => el === document.activeElement),
-  );
-  if (event.key === 'ArrowDown') {
-    event.preventDefault();
-    items[(at + 1) % items.length]?.focus();
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault();
-    items[(at - 1 + items.length) % items.length]?.focus();
-  }
-}
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
 <!-- A transparent backdrop catches the outside tap to dismiss and keeps the press off the map. -->
-<button type="button" class="backdrop" aria-label="Dismiss menu" onclick={onClose}></button>
+<button type="button" class="overlay-backdrop" aria-label="Dismiss menu" onclick={onClose}></button>
 <div
   class="menu"
   role="menu"
   aria-label="Chart actions"
   tabindex="-1"
-  bind:this={menuEl}
-  onkeydown={onMenuKeydown}
+  use:rovingFocus={'[role="menuitem"]'}
   style="left: {left}px; top: {top}px; inline-size: {MENU_WIDTH}px; transform: translate(-50%, {above
     ? '-100%'
     : '0'});"
 >
-  <button type="button" role="menuitem" class="item" use:focusOnMount onclick={onGoToHere}>
+  <button type="button" role="menuitem" class="item" onclick={onGoToHere}>
     <Navigation size={16} aria-hidden="true" />
     Go to here
   </button>
@@ -98,15 +77,6 @@ function onMenuKeydown(event: KeyboardEvent): void {
 </div>
 
 <style>
-.backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: var(--z-overlay);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: default;
-}
 .menu {
   position: absolute;
   z-index: var(--z-menu);

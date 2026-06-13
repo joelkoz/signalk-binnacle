@@ -486,3 +486,16 @@
   border-color: var(--accent);
   background: var(--accent-tint);
 }
+
+/* The transparent full-cover catcher behind an anchored map popover (the chart context menu and the
+   weather layer menu): an outside tap lands here and dismisses, and it keeps the press off the map.
+   One source so the two map menus layer their backdrop and card identically. */
+.overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}

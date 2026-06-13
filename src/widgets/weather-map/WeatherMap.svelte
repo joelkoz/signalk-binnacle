@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Layers,
   Pause,
   Play,
   X,
@@ -63,7 +64,8 @@ import {
 import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shared/map';
 import type { MapView } from '$shared/settings';
 import { serverOrigin } from '$shared/signalk';
-import { dialog, scrollEdges, type Theme } from '$shared/ui';
+import { dialog, type Theme } from '$shared/ui';
+import WeatherLayerMenu from './WeatherLayerMenu.svelte';
 
 interface Props {
   store: WeatherStore;
@@ -134,6 +136,11 @@ let recolor: ((next: Theme) => void) | undefined;
 let layersView = $state<LayersView | undefined>();
 
 let conditionsOpen = $state(false);
+let layerMenuOpen = $state(false);
+// A stable identity so the menu's dismiss-stack effect registers once, not on every parent render.
+const closeLayerMenu = (): void => {
+  layerMenuOpen = false;
+};
 // A one-shot transient note when the user pinches into the zoom cap, so the wall reads as a data
 // limit rather than a broken map.
 let zoomNote = $state('');
@@ -155,7 +162,14 @@ let tapSeq = 0;
 const items = $derived(layersView?.items ?? []);
 const fills = $derived(items.filter((i) => WEATHER_FILL_ID_SET.has(i.id)));
 const overlayItems = $derived(items.filter((i) => !WEATHER_FILL_ID_SET.has(i.id)));
-const anyActive = $derived(items.some((i) => i.visible));
+const activeCount = $derived(items.filter((i) => i.visible).length);
+// The source and fetch-age line, surfaced in the layer menu as well as the footer so it is not
+// hidden behind a click; undefined before any grid loads.
+const menuProvenance = $derived(
+  store.grid?.fetchedAt
+    ? `${GRID_SOURCE_LABEL} · fetched ${formatClockTime(store.grid.fetchedAt)}`
+    : undefined,
+);
 const wavesActive = $derived(items.some((i) => i.id === WEATHER_LAYER_IDS.waves && i.visible));
 const radarActive = $derived(items.some((i) => i.id === WEATHER_LAYER_IDS.radar && i.visible));
 const layerOn = (id: string): boolean => items.some((i) => i.id === id && i.visible);
@@ -261,7 +275,7 @@ const FORECAST_OPTS = { maxCells: 200, forecastDays: 5 };
 function scheduleFetch(): void {
   if (fetchTimer) clearTimeout(fetchTimer);
   fetchTimer = setTimeout(() => {
-    if (!getBounds || !anyActive) return;
+    if (!getBounds || activeCount === 0) return;
     void loader.load(store, getBounds(), FORECAST_OPTS, {
       waves: wavesActive,
       radar: radarActive,
@@ -311,7 +325,9 @@ function releaseReadout(): void {
 async function onTap(lng: number, lat: number): Promise<void> {
   const seq = ++tapSeq;
   const gridSample =
-    anyActive && store.grid ? readoutAtBracket(store.grid, lng, lat, store.bracket) : undefined;
+    activeCount > 0 && store.grid
+      ? readoutAtBracket(store.grid, lng, lat, store.bracket)
+      : undefined;
   if (!providerName) {
     showReadout(gridSample, gridSample ? GRID_SOURCE_LABEL : undefined);
     return;
@@ -366,7 +382,7 @@ refetchOnEnable(() => radarActive);
 
 // Fetch on first open if a layer is on but no grid is loaded yet.
 $effect(() => {
-  if (anyActive && !store.grid) scheduleFetch();
+  if (activeCount > 0 && !store.grid) scheduleFetch();
 });
 
 // Recolor when the theme prop changes; the initial recolor runs inline once the map loads.
@@ -477,37 +493,10 @@ onDestroy(() => {
         <ArrowLeft size={20} aria-hidden="true" />
       </button>
     {/if}
+    <!-- The layer toggles moved off the header onto the floating menu over the map (the row used to
+         overflow); the title now carries the spacing so "Here" and close sit at the trailing edge.
+         "Here" stays a one-tap header control: it opens a conditions panel, distinct from a layer. -->
     <h2 class="panel-title">Weather</h2>
-    <div class="layer-bar" role="group" aria-label="Weather layers" use:scrollEdges>
-      {#each fills as item (item.id)}
-        <button
-          type="button"
-          class="btn btn-pill btn-compact"
-          class:is-on={item.visible}
-          aria-pressed={item.visible}
-          onclick={() => layersView?.toggle(item.id, !item.visible)}
-        >
-          {item.title}
-        </button>
-      {/each}
-      {#if fills.length > 0 && overlayItems.length > 0}
-        <span class="bar-sep" aria-hidden="true"></span>
-      {/if}
-      {#each overlayItems as item (item.id)}
-        <button
-          type="button"
-          class="btn btn-pill btn-compact"
-          class:is-on={item.visible}
-          aria-pressed={item.visible}
-          onclick={() => layersView?.toggle(item.id, !item.visible)}
-        >
-          {item.title}
-        </button>
-      {/each}
-    </div>
-    <!-- The separator and caret set the "Here" disclosure apart from the layer toggles it sits
-         beside: it opens a panel, they switch map layers. -->
-    <span class="bar-sep" aria-hidden="true"></span>
     <button
       type="button"
       class="btn btn-pill btn-compact here-btn"
@@ -530,6 +519,36 @@ onDestroy(() => {
 
   <div class="panel-map">
     <div class="map" bind:this={container}></div>
+    <!-- The layers menu trigger floats over the upper-left of the map. It lights whenever any layer
+         is on (recovering the at-a-glance state the old always-visible pills gave) and shows the
+         active count, so a glance answers "is anything on" without opening the menu. -->
+    <button
+      type="button"
+      class="icon-pill layer-trigger"
+      class:is-on={layerMenuOpen || activeCount > 0}
+      aria-haspopup="true"
+      aria-expanded={layerMenuOpen}
+      aria-controls={layerMenuOpen ? 'weather-layer-menu' : undefined}
+      aria-label={activeCount > 0 ? `Weather layers, ${activeCount} on` : 'Weather layers'}
+      title="Weather layers"
+      onclick={() => (layerMenuOpen = !layerMenuOpen)}
+    >
+      <Layers size={20} aria-hidden="true" />
+      {#if activeCount > 0}
+        <span class="layer-count" aria-hidden="true">{activeCount}</span>
+      {/if}
+    </button>
+    {#if layerMenuOpen}
+      <div id="weather-layer-menu">
+        <WeatherLayerMenu
+          {fills}
+          overlays={overlayItems}
+          provenance={menuProvenance}
+          onToggle={(id, next) => layersView?.toggle(id, next)}
+          onClose={closeLayerMenu}
+        />
+      </div>
+    {/if}
     <!-- One column for the floating notes so the readout and a status note stack instead of
          overlapping, on any width. Both containers stay mounted so the live regions announce
          reliably (a region inserted together with its content is skipped by some screen readers). -->
@@ -605,8 +624,8 @@ onDestroy(() => {
         />
       </div>
     {/if}
-    {#if !anyActive}
-      <p class="hint">Turn on a layer above to load weather for this area.</p>
+    {#if activeCount === 0}
+      <p class="hint">Open the layers menu, upper left, to load weather for this area.</p>
     {/if}
   </div>
 
@@ -700,12 +719,10 @@ onDestroy(() => {
         {/each}
       </div>
     {/if}
-    {#if store.grid?.fetchedAt}
-      <!-- Provenance, not licensing: which source produced the fields and how old they are. -->
-      <p class="provenance">
-        {GRID_SOURCE_LABEL}
-        &middot; fetched {formatClockTime(store.grid.fetchedAt)}
-      </p>
+    {#if menuProvenance}
+      <!-- Provenance, not licensing: which source produced the fields and how old they are. The
+           same line the layer menu shows, from the one derived so they cannot diverge. -->
+      <p class="provenance">{menuProvenance}</p>
     {/if}
   </footer>
 </section>
@@ -735,61 +752,51 @@ onDestroy(() => {
   z-index: calc(var(--z-panel) + 1);
   overflow: hidden;
 }
-/* On the global .panel-header frame, denser than the slide-over panels so the pill bar fits: a
-   shorter block padding, and the close button keeps its tighter end inset. */
+/* On the global .panel-header frame, a touch denser than the slide-over panels: a shorter block
+   padding, and the close button keeps its tighter end inset. */
 .panel-head {
   padding-block: 0.4rem;
   padding-inline-end: var(--space-2);
 }
-/* One row at every width: wrapping would grow the header and strand pills under the title, so
-   overflow scrolls instead. The edge fades come from the scrollEdges action and show only while
-   content actually extends past that edge; a permanent fade would clip the last pill's label
-   even when there is nothing more to scroll to. */
-.layer-bar {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.3rem;
+/* The title takes the slack so "Here" and close sit at the trailing edge now that the layer pills
+   have moved to the floating menu. */
+.panel-head .panel-title {
   flex: 1;
-  min-inline-size: 0;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-/* Pills keep their natural width: .btn-compact's min-inline-size would otherwise let flex
-   shrink them under their labels, compressing the row instead of letting it scroll. */
-.layer-bar > * {
-  flex-shrink: 0;
-}
-/* :global() exempts the runtime-toggled attributes from Svelte's unused-selector pruning; the
-   .layer-bar class keeps the rules component-scoped. */
-.layer-bar:global([data-scroll-end]) {
-  mask-image: linear-gradient(to right, black calc(100% - 1.25rem), transparent);
-}
-.layer-bar:global([data-scroll-start]) {
-  mask-image: linear-gradient(to right, transparent, black 1.25rem);
-}
-.layer-bar:global([data-scroll-start][data-scroll-end]) {
-  mask-image: linear-gradient(
-    to right,
-    transparent,
-    black 1.25rem,
-    black calc(100% - 1.25rem),
-    transparent
-  );
-}
-.bar-sep {
-  inline-size: 1px;
-  align-self: stretch;
-  margin-inline: var(--space-1);
-  background: var(--border);
 }
 .here-btn {
   gap: var(--space-1);
 }
+/* The container context for the layer menu's bottom-sheet re-dock: it keys off this width, not the
+   viewport, because the weather panel is min(94vw, 46rem) and can be narrow on a wide screen. */
 .panel-map {
   position: relative;
   flex: 1 1 auto;
   min-block-size: 0;
+  container-type: inline-size;
+}
+/* The floating layers-menu trigger, upper-left over the map, above the canvas but below the open
+   menu's backdrop so a second tap (on the backdrop) closes it. */
+.layer-trigger {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
+  z-index: 2;
+}
+/* A small active-layer count tucked on the pill, so the glance answers "how many" as well as the
+   lit "anything on" state. */
+.layer-count {
+  position: absolute;
+  inset-block-start: -0.2rem;
+  inset-inline-end: -0.2rem;
+  min-inline-size: 1.05rem;
+  padding: 0 0.2rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--surface);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05rem;
+  text-align: center;
 }
 /* Absolute fill rather than a percentage height, so the canvas always has real pixels regardless of
    how the flex parent resolves its height. */
@@ -799,13 +806,15 @@ onDestroy(() => {
 }
 /* The floating notes stack in one top column (readout, then status note) so they can never overlap,
    and stay mounted for reliable live-region announcement; an empty note is invisible and inert. */
+/* The notes align to the trailing edge so the readout clears the floating layers trigger at the
+   leading edge; the status note re-centers itself (align-self below). */
 .map-notes {
   position: absolute;
   inset-block-start: var(--space-2);
   inset-inline: var(--space-2);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: var(--space-2);
   pointer-events: none;
 }
@@ -814,7 +823,8 @@ onDestroy(() => {
    a rate-limited fetch, a stale fallback, or the zoom cap rather than reading as a blank or
    silently outdated map; the readout modifier carries the tapped-point conditions. */
 .map-note {
-  max-inline-size: calc(100% - var(--space-4));
+  /* Leave the leading column clear for the floating trigger so a wide readout never slides under it. */
+  max-inline-size: calc(100% - var(--control-size) - var(--space-3));
   padding: 0.3rem 0.6rem;
   background: var(--surface-overlay);
   border: 1px solid var(--border);

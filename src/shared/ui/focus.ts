@@ -7,6 +7,34 @@ export const focusOnMount: Action<HTMLElement> = (node) => {
   node.focus({ preventScroll: true });
 };
 
+// Vertical arrow-key roving over the items matching `selector` inside this element, with initial
+// focus on the first match when it mounts. Shared by the anchored map menus (the chart context menu
+// and the weather layer menu); AppMenu's 2D tile grid keeps its own Left/Right/Home/End handler.
+// The listener lives in the action, not a template onkeydown, so the host element can carry a
+// non-interactive role without tripping the a11y interaction lint.
+export const rovingFocus: Action<HTMLElement, string> = (node, selector) => {
+  const items = (): HTMLElement[] => [...node.querySelectorAll<HTMLElement>(selector)];
+  items()[0]?.focus({ preventScroll: true });
+  function onKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const list = items();
+    if (list.length === 0) return;
+    event.preventDefault();
+    const at = Math.max(
+      0,
+      list.findIndex((el) => el === document.activeElement),
+    );
+    const next = event.key === 'ArrowDown' ? at + 1 : at - 1 + list.length;
+    list[next % list.length]?.focus();
+  }
+  node.addEventListener('keydown', onKeydown);
+  return {
+    destroy(): void {
+      node.removeEventListener('keydown', onKeydown);
+    },
+  };
+};
+
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
