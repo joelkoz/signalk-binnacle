@@ -116,6 +116,9 @@ export class AuthController {
     this.status = 'requesting';
     const res = await this.#safeFetch(`${this.#base}${REQUEST_PATH}`, {
       method: 'POST',
+      // Anonymous like the probes: the access request is keyed by clientId and href, never a
+      // session cookie, so omit credentials to keep the choice deliberate and consistent.
+      credentials: 'omit',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clientId: this.clientId, description: 'Binnacle chart plotter' }),
     });
@@ -143,7 +146,7 @@ export class AuthController {
     if (this.#checking || !this.#href || this.status === 'authenticated') return;
     this.#checking = true;
     try {
-      const res = await this.#safeFetch(`${this.#base}${this.#href}`);
+      const res = await this.#safeFetch(`${this.#base}${this.#href}`, { credentials: 'omit' });
       if (res && (res.status === 404 || res.status === 410)) {
         // The request expired or was cleared server-side; start a fresh one rather than poll a dead
         // href forever (which left the first tab stuck until the user opened a new one).

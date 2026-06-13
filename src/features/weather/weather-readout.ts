@@ -1,8 +1,9 @@
 import { bilinearAt, type TimeBracket, timeBracket, type WeatherGrid } from '$entities/weather';
 import { HOUR_MS, lerp, precipRateUnit, type UnitsMode } from '$shared/lib';
 
-// Below this rate (mm/h) precipitation is not worth showing in a readout: a trace that rounds to
-// nothing. Shared by the readouts that gate a rain line on it so the threshold is defined once.
+// The smallest precipitation worth showing in a readout: a trace below this rounds to nothing.
+// 0.1 reads as mm/h for the free grid's rate and as mm for a provider's accumulation volume; the
+// same tenth-of-a-millimeter floor is a sensible trace cutoff for both, so one constant gates both.
 export const RAIN_VISIBLE_MM_H = 0.1;
 
 // The unit label beside a precipitation value: the rate unit for the free grid's mm/h, the bare

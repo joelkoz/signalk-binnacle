@@ -34,6 +34,9 @@ export interface WeatherLoader {
 const GRID_TTL_MS = HOUR_MS;
 // Radar is a nowcast: RainViewer publishes a new frame about every 10 minutes, so keep it short.
 const RADAR_TTL_MS = 5 * MINUTE_MS;
+// The viewport bucket size for the weather grid cache: coarser than the point-conditions cell
+// (shared geo COORD_CELL_DEG, 0.1) on purpose, because a forecast grid covers a wider area than a
+// single point reading, so a 0.25 degree bucket reuses one grid across nearby pans.
 const QUANTIZE_DEG = 0.25;
 // Cap the viewport cache so a long session of panning does not grow it without bound.
 const MAX_GRID_ENTRIES = 16;

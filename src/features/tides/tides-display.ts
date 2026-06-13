@@ -47,26 +47,27 @@ export function tideSourceNote(source: TidesSource | undefined): string {
 }
 
 // The high and low events at or after a reference time, soonest first, for the next-tide readout.
+// Events arrive already sorted ascending by time (both the CO-OPS and signalk-tides parsers sort),
+// and filter preserves order, so no re-sort is needed on this per-tick path.
 export function upcomingEvents(events: TideEvent[], nowMs: number): TideEvent[] {
-  return events.filter((event) => event.timeMs >= nowMs).sort((a, b) => a.timeMs - b.timeMs);
+  return events.filter((event) => event.timeMs >= nowMs);
 }
 
 // The next flood or ebb at or after a reference time (slack is skipped), for the current readout.
+// Events are pre-sorted ascending (see upcomingEvents), so the first match is the soonest.
 export function nextCurrentEvent(events: CurrentEvent[], nowMs: number): CurrentEvent | undefined {
-  return events
-    .filter((event) => event.timeMs >= nowMs && event.kind !== 'slack')
-    .sort((a, b) => a.timeMs - b.timeMs)[0];
+  return events.find((event) => event.timeMs >= nowMs && event.kind !== 'slack');
 }
 
 // Normalize the day's high and low turning points to a 0..1 box for an SVG tide curve: x over the
 // span of events, y from the lowest tide (0) to the highest (1).
 export function tideCurvePoints(events: TideEvent[]): Array<{ x: number; y: number }> {
   if (events.length === 0) return [];
-  const times = events.map((e) => e.timeMs);
+  // Events are pre-sorted ascending by time, so the span ends are the first and last, no spread.
   const heights = events.map((e) => e.heightMeters);
-  const t0 = Math.min(...times);
+  const t0 = events[0].timeMs;
   const h0 = Math.min(...heights);
-  const tSpan = Math.max(...times) - t0 || 1;
+  const tSpan = events[events.length - 1].timeMs - t0 || 1;
   const hSpan = Math.max(...heights) - h0 || 1;
   return events.map((e) => ({ x: (e.timeMs - t0) / tSpan, y: (e.heightMeters - h0) / hSpan }));
 }
@@ -74,9 +75,9 @@ export function tideCurvePoints(events: TideEvent[]): Array<{ x: number; y: numb
 // Where "now" falls along the tide curve's x axis, or undefined when it is outside the event span.
 export function nowFraction(events: TideEvent[], nowMs: number): number | undefined {
   if (events.length === 0) return undefined;
-  const times = events.map((e) => e.timeMs);
-  const t0 = Math.min(...times);
-  const t1 = Math.max(...times);
+  // Pre-sorted ascending by time, so the span ends are the first and last entries.
+  const t0 = events[0].timeMs;
+  const t1 = events[events.length - 1].timeMs;
   if (nowMs < t0 || nowMs > t1) return undefined;
   return (nowMs - t0) / (t1 - t0 || 1);
 }

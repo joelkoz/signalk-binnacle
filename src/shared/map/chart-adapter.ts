@@ -117,8 +117,12 @@ const DRAW_LAYERS: readonly DrawStyle[] = [
   { sourceLayer: 'boundary', kind: 'line', paint: 'boundary' },
 ];
 
+// Initial draw colors; the theme is corrected by applyRasterTheme after the layers mount, so this
+// is computed once at module load rather than allocating a fresh paint object per chart register.
+const DAY_PAINT = mapThemePaint('day');
+
 function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecification[] {
-  const paint = mapThemePaint('day');
+  const paint = DAY_PAINT;
   // Signal K's charts API often returns an empty layers list for a PMTiles archive;
   // the real source-layer names live in the archive's own metadata. The vector base
   // map uses the standard Protomaps schema, so when no layers are declared, draw the

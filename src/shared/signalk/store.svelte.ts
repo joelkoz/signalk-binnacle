@@ -41,6 +41,9 @@ export class SignalKStore {
   readonly notifications = new Map<string, Value>();
   notificationsVersion = $state(0);
 
+  // Grows as new paths arrive and is never pruned: this is safe because the subscribed path set is
+  // finite and stable, so cells reach a fixed size. A misbehaving server emitting novel paths every
+  // delta would grow this without bound, but that is out of scope for a well-formed stream.
   #cells = new Map<string, PathCell>();
 
   cell(path: string): PathCell {
