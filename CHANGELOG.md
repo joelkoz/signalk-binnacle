@@ -8,9 +8,18 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
-A full-codebase reliability, correctness, and coherence pass. No new features: this hardens the
-weather overlays, the caching and history layers, the course and anchor logic, and makes a set of
-previously silent failures visible.
+A full-codebase reliability, correctness, and coherence pass, plus a weather-panel layer menu. It
+hardens the weather overlays, the caching and history layers, the course and anchor logic, makes a
+set of previously silent failures visible, and moves the weather layer toggles into a floating menu.
+
+### Changed
+
+- The weather panel's layer toggles move from the header pill row, which ran out of room and
+  truncated, into a single layers menu opened from a floating button at the upper left of the
+  mini-map. The button lights and shows a count whenever layers are on, the menu groups the area
+  fill and the overlays and carries the source line, and it docks as a bottom sheet on a narrow
+  panel so it never covers the small map from the top. The one-tap Here conditions control stays
+  in the header.
 
 ### Fixed
 
@@ -46,6 +55,10 @@ previously silent failures visible.
 - New tests cover the stream connection and worker lifecycle, the unit conversion family, the
   anchor acknowledge escalation, client-computed course VMG and time-to-go, and several boundary
   and error paths the audit found untested.
+- A shared rovingFocus arrow-key action and an overlay-backdrop utility class now back both the
+  chart context menu and the new weather layers menu, replacing duplicated handlers and CSS, and
+  the chart context menu moved onto the shared Escape dismiss stack. The now-unused scrollEdges
+  action was removed.
 
 <a id="v061"></a>
 

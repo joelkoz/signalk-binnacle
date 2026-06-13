@@ -135,11 +135,11 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   utilities, shell, a11y, vendor), and the import order IS the cascade order. New global styling
   goes into the right module, never back into one monolith; new shared UI behavior goes through
   the `$shared/ui` primitives (SlideOver, InlineConfirm, UnitField, ConfirmArm, SavedList,
-  VisibilityToggle, the dialog dismiss stack, the scrollEdges overflow-fade action) and the
-  global utility classes (the `.btn` system,
-  `.icon-btn`, `.alert-note`, `.muted-note`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`,
-  `.stat-grid`) before any panel grows a scoped duplicate. When the same markup or CSS appears in
-  a second place, hoist it; a third copy is a review failure.
+  VisibilityToggle, the dialog dismiss stack, the rovingFocus arrow-key action) and the
+  global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.overlay-backdrop`,
+  `.alert-note`, `.muted-note`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`, `.stat-grid`)
+  before any panel grows a scoped duplicate. When the same markup or CSS appears in a second place,
+  hoist it; a third copy is a review failure.
 
 This is a hard rule. Architectural feedback that came at the cost of redoing significant work
 must not be repeatable.
