@@ -48,6 +48,18 @@ describe('PersistedValue', () => {
     const p = new PersistedValue('k', 5, fakeStorage(new Map()));
     expect(p.fromStorage).toBe(false);
   });
+
+  it('set() does not throw when storage.setItem throws QuotaExceededError, and the in-memory value still updates', () => {
+    const throwingStorage = {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException('quota exceeded', 'QuotaExceededError');
+      },
+    };
+    const p = new PersistedValue('k', 0, throwingStorage);
+    expect(() => p.set(42)).not.toThrow();
+    expect(p.value).toBe(42);
+  });
 });
 
 describe('isMapView', () => {

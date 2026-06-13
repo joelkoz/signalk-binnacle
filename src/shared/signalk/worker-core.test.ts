@@ -104,4 +104,90 @@ describe('WorkerCore', () => {
     vi.runAllTimers();
     expect(frames.at(-1)?.self.get('navigation.headingTrue')).toBe(1);
   });
+
+  it('drops a malformed frame and continues delivering subsequent valid deltas', () => {
+    const frames: SKFrame[] = [];
+    const core = new WorkerCore();
+    core.connect('ws://test', (f) => frames.push(f));
+    const ws = FakeWebSocket.instances[0];
+    ws.onopen?.();
+    ws.onmessage?.({ data: 'this is not json {{{' });
+    vi.runAllTimers();
+    ws.onmessage?.({
+      data: JSON.stringify({
+        context: 'vessels.self',
+        updates: [{ values: [{ path: 'navigation.speedOverGround', value: 2.5 }] }],
+      }),
+    });
+    vi.runAllTimers();
+    expect(frames.at(-1)?.self.get('navigation.speedOverGround')).toBe(2.5);
+  });
+
+  it('disconnect() fires no further frames after the batcher is drained', () => {
+    const frames: SKFrame[] = [];
+    const core = new WorkerCore();
+    core.connect('ws://test', (f) => frames.push(f));
+    const ws = FakeWebSocket.instances[0];
+    ws.onopen?.();
+    ws.onmessage?.({
+      data: JSON.stringify({
+        context: 'vessels.self',
+        updates: [{ values: [{ path: 'navigation.headingTrue', value: 0.5 }] }],
+      }),
+    });
+    core.disconnect();
+    const countAfterDisconnect = frames.length;
+    vi.runAllTimers();
+    expect(frames.length).toBe(countAfterDisconnect);
+  });
+
+  it('reconnect() opens a new socket', () => {
+    const core = new WorkerCore();
+    core.connect('ws://test', () => {});
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    core.reconnect();
+    expect(FakeWebSocket.instances).toHaveLength(2);
+  });
+
+  it('routes a self-URN delta to AIS before hello, then to self after hello arrives', () => {
+    const frames: SKFrame[] = [];
+    const core = new WorkerCore();
+    core.connect('ws://test', (f) => frames.push(f));
+    const ws = FakeWebSocket.instances[0];
+    ws.onopen?.();
+    // Delta for the self URN arrives before hello, so selfContext is not yet set.
+    ws.onmessage?.({
+      data: JSON.stringify({
+        context: 'vessels.urn:mrn:imo:mmsi:123456789',
+        updates: [{ values: [{ path: 'navigation.speedOverGround', value: 1 }] }],
+      }),
+    });
+    vi.runAllTimers();
+    // Without the hello, the URN is unknown self and is routed to AIS.
+    expect(
+      frames
+        .at(-1)
+        ?.ais?.get('vessels.urn:mrn:imo:mmsi:123456789')
+        ?.get('navigation.speedOverGround'),
+    ).toBe(1);
+    expect(frames.at(-1)?.self.get('navigation.speedOverGround')).toBeUndefined();
+
+    // Now the hello arrives, establishing the self URN.
+    ws.onmessage?.({
+      data: JSON.stringify({
+        name: 'sk',
+        version: '1.0.0',
+        self: 'vessels.urn:mrn:imo:mmsi:123456789',
+      }),
+    });
+    // A later delta for the same URN must now route to self.
+    ws.onmessage?.({
+      data: JSON.stringify({
+        context: 'vessels.urn:mrn:imo:mmsi:123456789',
+        updates: [{ values: [{ path: 'navigation.speedOverGround', value: 7 }] }],
+      }),
+    });
+    vi.runAllTimers();
+    expect(frames.at(-1)?.self.get('navigation.speedOverGround')).toBe(7);
+  });
 });

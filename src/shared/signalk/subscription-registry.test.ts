@@ -88,4 +88,20 @@ describe('SubscriptionRegistry', () => {
     reg.resubscribeAll();
     expect(sent).toHaveLength(0);
   });
+
+  it('remove with a non-self context drops only that context path and resubscribeAll skips it', () => {
+    const sent: unknown[] = [];
+    const reg = new SubscriptionRegistry((m) => sent.push(m));
+    reg.add([
+      { path: path('navigation.speedOverGround'), context: 'vessels.*' as Context },
+      { path: path('navigation.headingTrue'), context: 'vessels.*' as Context },
+    ]);
+    reg.remove([path('navigation.speedOverGround')], 'vessels.*' as Context);
+    sent.length = 0;
+    reg.resubscribeAll();
+    // Only the surviving path should be re-sent; the removed one must not reappear.
+    const allSent = JSON.stringify(sent);
+    expect(allSent).toContain('navigation.headingTrue');
+    expect(allSent).not.toContain('navigation.speedOverGround');
+  });
 });

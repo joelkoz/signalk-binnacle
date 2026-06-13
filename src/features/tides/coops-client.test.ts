@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchCurrentEvents, fetchTideEvents, fetchTideStations, utcYmd } from './coops-client';
+import {
+  fetchCurrentEvents,
+  fetchCurrentStations,
+  fetchTideEvents,
+  fetchTideStations,
+  utcYmd,
+} from './coops-client';
 
 function mockFetch(json: unknown, ok = true, status = 200): ReturnType<typeof vi.fn> {
   const mock = vi.fn(async () => ({ ok, status, json: async () => json }));
@@ -17,6 +23,22 @@ describe('coops-client', () => {
     expect(await fetchTideStations()).toEqual([
       { id: '1', name: 'A', latitude: 27.7, longitude: -82.7 },
     ]);
+  });
+
+  it('fetches current stations with the currentpredictions type and maps lat and lng', async () => {
+    const fetchMock = mockFetch({
+      stations: [
+        { id: 'ACT8451', name: 'Tampa Bay Entrance', lat: 27.6, lng: -82.6 },
+        { id: 'PUG1515', name: 'Puget Sound', lat: 47.5, lng: -122.3 },
+      ],
+    });
+    const stations = await fetchCurrentStations();
+    expect(stations).toEqual([
+      { id: 'ACT8451', name: 'Tampa Bay Entrance', latitude: 27.6, longitude: -82.6 },
+      { id: 'PUG1515', name: 'Puget Sound', latitude: 47.5, longitude: -122.3 },
+    ]);
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('type=currentpredictions');
   });
 
   it('parses tide events with meters and a high or low kind', async () => {

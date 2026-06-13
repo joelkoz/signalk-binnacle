@@ -1,12 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import {
+  feetToMeters,
   formatClockTime,
   formatCpaNm,
   formatDayClock,
+  formatDuration,
+  formatLandDistanceOr,
+  formatLengthOr,
   formatMetersOrNm,
+  formatPrecipRateOr,
+  formatPressureOr,
   formatTcpaMin,
+  formatTemperatureOr,
+  kelvinToCelsius,
+  knotsToMetersPerSecond,
+  landDistanceUnit,
+  lengthUnit,
   metersPerSecondToKnots,
   metersToNauticalMiles,
+  nauticalMilesToMeters,
+  pressureValue,
   radiansToBearing,
 } from './units';
 
@@ -70,5 +83,173 @@ describe('formatDayClock', () => {
     // The zone variant appends a non-numeric zone token, so the text grows.
     expect(formatDayClock(at, { zone: true }).length).toBeGreaterThan(formatDayClock(at).length);
     expect(formatDayClock(Number.NaN)).toBe('');
+  });
+});
+
+describe('conversion primitives', () => {
+  it('metersToFeet and feetToMeters are inverse', () => {
+    // 1 foot = 0.3048 m exactly
+    expect(feetToMeters(1)).toBeCloseTo(0.3048, 6);
+    expect(feetToMeters(100)).toBeCloseTo(30.48, 6);
+    // Round-trip: 10 m -> feet -> m should return 10.
+    expect(feetToMeters(10 / 0.3048)).toBeCloseTo(10, 6);
+  });
+
+  it('kelvinToCelsius subtracts 273.15 and returns undefined for null or undefined', () => {
+    expect(kelvinToCelsius(273.15)).toBeCloseTo(0, 6);
+    expect(kelvinToCelsius(373.15)).toBeCloseTo(100, 6);
+    expect(kelvinToCelsius(null)).toBeUndefined();
+    expect(kelvinToCelsius(undefined)).toBeUndefined();
+  });
+
+  it('knotsToMetersPerSecond inverts metersPerSecondToKnots', () => {
+    // 1 knot is exactly 1852 / 3600 m/s.
+    expect(knotsToMetersPerSecond(1)).toBeCloseTo(1852 / 3600, 6);
+    expect(knotsToMetersPerSecond(metersPerSecondToKnots(5) as number)).toBeCloseTo(5, 6);
+  });
+
+  it('nauticalMilesToMeters converts and metersToNauticalMiles round-trips', () => {
+    expect(nauticalMilesToMeters(1)).toBe(1852);
+    expect(metersToNauticalMiles(nauticalMilesToMeters(3))).toBeCloseTo(3, 6);
+  });
+
+  it('pressureValue converts Pascals to hPa or inHg by mode', () => {
+    // 1 standard atmosphere = 101325 Pa = 1013.25 hPa
+    expect(pressureValue(101325, 'metric')).toBeCloseTo(1013.25, 2);
+    // 1 standard atmosphere = 29.921 inHg (approx)
+    expect(pressureValue(101325, 'imperial')).toBeCloseTo(29.921, 2);
+    expect(pressureValue(null, 'metric')).toBeUndefined();
+    expect(pressureValue(undefined, 'imperial')).toBeUndefined();
+  });
+});
+
+describe('lengthUnit and landDistanceUnit labels', () => {
+  it('returns m in metric mode and ft in imperial', () => {
+    expect(lengthUnit('metric')).toBe('m');
+    expect(lengthUnit('imperial')).toBe('ft');
+  });
+
+  it('returns km in metric mode and mi in imperial', () => {
+    expect(landDistanceUnit('metric')).toBe('km');
+    expect(landDistanceUnit('imperial')).toBe('mi');
+  });
+});
+
+describe('formatLengthOr', () => {
+  it('formats meters as-is in metric mode with default one decimal place', () => {
+    expect(formatLengthOr(10, 'metric')).toBe('10.0');
+    expect(formatLengthOr(3.567, 'metric', 2)).toBe('3.57');
+  });
+
+  it('converts to feet in imperial mode', () => {
+    // 1 m = 3.2808... ft; to 1 decimal: "3.3"
+    expect(formatLengthOr(1, 'imperial')).toBe((1 / 0.3048).toFixed(1));
+  });
+
+  it('returns the placeholder for null or undefined', () => {
+    expect(formatLengthOr(null, 'metric')).toBe('--');
+    expect(formatLengthOr(undefined, 'imperial')).toBe('--');
+  });
+});
+
+describe('formatTemperatureOr', () => {
+  it('formats Celsius in metric mode', () => {
+    // 300 K = 26.85 C; default 0 digits rounds to 27
+    expect(formatTemperatureOr(300, 'metric')).toBe('27');
+  });
+
+  it('formats Fahrenheit in imperial mode', () => {
+    // 273.15 K = 32 F
+    expect(formatTemperatureOr(273.15, 'imperial')).toBe('32');
+  });
+
+  it('returns the placeholder for null or undefined', () => {
+    expect(formatTemperatureOr(null, 'metric')).toBe('--');
+    expect(formatTemperatureOr(undefined, 'imperial')).toBe('--');
+  });
+});
+
+describe('formatPressureOr', () => {
+  it('formats whole hectopascals in metric mode', () => {
+    expect(formatPressureOr(101325, 'metric')).toBe('1013');
+  });
+
+  it('formats inHg to two decimal places in imperial mode', () => {
+    // 101325 / 3386.389 = ~29.92 inHg
+    expect(formatPressureOr(101325, 'imperial')).toBe((101325 / 3386.389).toFixed(2));
+  });
+
+  it('returns the placeholder for null or undefined', () => {
+    expect(formatPressureOr(null, 'metric')).toBe('--');
+    expect(formatPressureOr(undefined, 'imperial')).toBe('--');
+  });
+});
+
+describe('formatPrecipRateOr', () => {
+  it('formats mm/h to one decimal in metric mode', () => {
+    expect(formatPrecipRateOr(5, 'metric')).toBe('5.0');
+    expect(formatPrecipRateOr(0.25, 'metric')).toBe('0.3');
+  });
+
+  it('converts to in/h and formats to two decimal places in imperial mode', () => {
+    // 25.4 mm = 1 inch, so 25.4 mm/h = 1.00 in/h
+    expect(formatPrecipRateOr(25.4, 'imperial')).toBe('1.00');
+  });
+
+  it('returns the placeholder for null or undefined', () => {
+    expect(formatPrecipRateOr(null, 'metric')).toBe('--');
+    expect(formatPrecipRateOr(undefined, 'imperial')).toBe('--');
+  });
+});
+
+describe('formatLandDistanceOr', () => {
+  it('converts meters to km and formats to one decimal in metric mode', () => {
+    expect(formatLandDistanceOr(5000, 'metric')).toBe('5.0');
+    expect(formatLandDistanceOr(1234, 'metric')).toBe('1.2');
+  });
+
+  it('converts meters to statute miles in imperial mode', () => {
+    // 1609.344 m = 1 mi
+    expect(formatLandDistanceOr(1609.344, 'imperial')).toBe('1.0');
+  });
+
+  it('returns the placeholder for null or undefined', () => {
+    expect(formatLandDistanceOr(null, 'metric')).toBe('--');
+    expect(formatLandDistanceOr(undefined, 'imperial')).toBe('--');
+  });
+});
+
+describe('formatDuration', () => {
+  it('formats sub-hour durations as whole minutes', () => {
+    expect(formatDuration(0)).toBe('0 min');
+    expect(formatDuration(60)).toBe('1 min');
+    expect(formatDuration(3540)).toBe('59 min');
+  });
+
+  it('formats durations of an hour or more as Xh YYm', () => {
+    expect(formatDuration(3600)).toBe('1h 00m');
+    expect(formatDuration(3660)).toBe('1h 01m');
+    expect(formatDuration(7500)).toBe('2h 05m');
+  });
+
+  it('rounds to the nearest minute', () => {
+    // 89 seconds rounds to 1 minute, not 2
+    expect(formatDuration(89)).toBe('1 min');
+    // 91 seconds rounds to 2 minutes
+    expect(formatDuration(91)).toBe('2 min');
+  });
+});
+
+describe('formatCpaNm and formatTcpaMin boundary values', () => {
+  it('formatCpaNm(0) returns a sane string and does not throw', () => {
+    const result = formatCpaNm(0);
+    expect(typeof result).toBe('string');
+    expect(result).toBe('0.00');
+  });
+
+  it('formatTcpaMin(0) returns a sane string and does not throw', () => {
+    const result = formatTcpaMin(0);
+    expect(typeof result).toBe('string');
+    expect(result).toBe('0');
   });
 });

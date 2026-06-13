@@ -101,4 +101,20 @@ describe('FrameBatcher', () => {
     expect(captured?.get('vessels.a')?.get('navigation.speedOverGround')).toBe(2);
     expect(captured?.get('vessels.b')?.get('navigation.headingTrue')).toBe(0.5);
   });
+
+  it('reset() clears the AIS accumulator so a later putVessel only delivers the new frame', () => {
+    const batcher = new FrameBatcher();
+    const aisFrames: Map<string, Map<string, Value>>[] = [];
+    batcher.onFlush = (_self, ais) => aisFrames.push(ais);
+
+    batcher.putVessel('vessels.a', 'navigation.speedOverGround', 1);
+    batcher.reset();
+    batcher.putVessel('vessels.b', 'navigation.headingTrue', 0.7);
+    vi.runAllTimers();
+
+    expect(aisFrames).toHaveLength(1);
+    // The first vessel was cleared by reset; only the second survives.
+    expect(aisFrames[0].has('vessels.a')).toBe(false);
+    expect(aisFrames[0].get('vessels.b')?.get('navigation.headingTrue')).toBe(0.7);
+  });
 });

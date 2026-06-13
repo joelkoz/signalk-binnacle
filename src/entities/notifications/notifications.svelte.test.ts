@@ -88,4 +88,22 @@ describe('NotificationsStore', () => {
     expect(notifications.list()).toHaveLength(0);
     expect(notifications.version).toBe(store.notificationsVersion);
   });
+
+  it('removes the MOB notification when the clear value is published', () => {
+    // Publish an emergency MOB notification into the store, then clear it with a normal state.
+    // The clear matches what mobClearNotification() returns: state 'normal', which the store
+    // deletes from the notifications mirror (the mirror holds only raised states).
+    const mobPath = 'notifications.mob';
+    const store = new SignalKStore();
+    store.applyFrame(
+      frame({ [mobPath]: { state: 'emergency', method: ['visual', 'sound'], message: 'MOB' } }),
+    );
+    const notifications = new NotificationsStore(store);
+    expect(notifications.list().some((n) => n.path === mobPath)).toBe(true);
+    // Publish the clear value: state 'normal' is not a raised grade, so the store removes it.
+    store.applyFrame(
+      frame({ [mobPath]: { state: 'normal', method: [], message: 'Man overboard cleared' } }),
+    );
+    expect(notifications.list().some((n) => n.path === mobPath)).toBe(false);
+  });
 });

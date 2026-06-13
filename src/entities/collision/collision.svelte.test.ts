@@ -155,6 +155,30 @@ describe('assessContacts downgrade hysteresis', () => {
   });
 });
 
+describe('assessContacts with custom Thresholds', () => {
+  it('uses a supplied thresholds value instead of defaults', () => {
+    // Under DEFAULT_THRESHOLDS, a contact at CPA 200 m and TCPA 120 s is 'danger'
+    // (danger CPA is 926 m). With a custom thresholds where dangerCpaMeters is 100 m,
+    // the same contact sits above the danger band and clears both warn and danger, so it
+    // must not appear in the contact list.
+    const tightThresholds = {
+      dangerCpaMeters: 100,
+      dangerTcpaSeconds: 60,
+      warningCpaMeters: 150,
+      warningTcpaSeconds: 120,
+    };
+    const t = target({ id: 'far', cpaMeters: 200, tcpaSeconds: 120 });
+    // Under defaults this would be danger.
+    expect(assessContacts(ownStationary, [t], DEFAULT_THRESHOLDS).contacts[0]?.severity).toBe(
+      'danger',
+    );
+    // Under tight thresholds, 200 m CPA exceeds the 150 m warning band: contact is clear.
+    const r = assessContacts(ownStationary, [t], tightThresholds);
+    expect(r.contacts).toHaveLength(0);
+    expect(r.worst).toBe('clear');
+  });
+});
+
 describe('CollisionAssessment acknowledge', () => {
   it('suppresses the acknowledged contact and re-arms when the worst contact changes', () => {
     const store = dangerStore('vessels.a');

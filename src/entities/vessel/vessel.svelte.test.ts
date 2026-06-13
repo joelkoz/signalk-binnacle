@@ -32,6 +32,13 @@ describe('OwnVessel', () => {
     expect(vessel.outsidePressurePa).toBe(101325);
   });
 
+  it('exposes depth below the transducer in meters (SI)', () => {
+    const store = new SignalKStore();
+    const vessel = new OwnVessel(store);
+    store.applyFrame(frame({ 'environment.depth.belowTransducer': 12.4 }));
+    expect(vessel.depthMeters).toBe(12.4);
+  });
+
   it('exposes course over ground and heading in radians (SI)', () => {
     const store = new SignalKStore();
     const vessel = new OwnVessel(store);

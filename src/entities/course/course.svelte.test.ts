@@ -171,4 +171,24 @@ describe('CourseGuidance', () => {
     expect(g.distanceToNextMeters).toBeGreaterThan(0);
     expect(typeof g.bearingToNextRad).toBe('number');
   });
+
+  it('computes VMG and TTG end-to-end when calcValues is absent', () => {
+    // Boat at origin, mark due east (roughly 111 km away at 1 degree latitude separation).
+    // SOG 3 m/s, COG due east (Pi/2 radians): VMG toward the mark should equal SOG (full projection).
+    const next = { latitude: 0, longitude: 1 };
+    const store = storeWith({
+      'navigation.position': { latitude: 0, longitude: 0 },
+      'navigation.speedOverGround': 3,
+      'navigation.courseOverGroundTrue': Math.PI / 2,
+      'navigation.course.nextPoint': { position: next },
+    });
+    const g = new CourseGuidance(store, new OwnVessel(store));
+    expect(g.source).toBe('computed');
+    // VMG: SOG * cos(COG - bearingToMark). Mark is due east; COG is due east; cos(0) = 1.
+    expect(g.velocityMadeGoodMps).toBeCloseTo(3, 4);
+    // TTG: distance / SOG. The distance to 1 degree of longitude at equator is ~111 km.
+    const d = g.distanceToNextMeters;
+    expect(d).toBeDefined();
+    expect(g.timeToGoSeconds).toBeCloseTo((d as number) / 3, 0);
+  });
 });

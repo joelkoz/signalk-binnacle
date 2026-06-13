@@ -81,4 +81,34 @@ describe('SkConnection', () => {
     FakeWebSocket.instances[1].onopen?.();
     expect(states.at(-1)).toMatchObject({ phase: 'open', attempt: 0 });
   });
+
+  it('onerror closes the socket and schedules a reconnect', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const states: ConnectionState[] = [];
+    const conn = new SkConnection('ws://test', {
+      onState: (s) => states.push(s),
+      onDelta: () => {},
+    });
+    conn.connect();
+    // onerror calls ws.close(), which triggers onclose, which schedules a reconnect.
+    FakeWebSocket.instances[0].onerror?.();
+    expect(states.at(-1)?.phase).toBe('reconnecting');
+    vi.runOnlyPendingTimers();
+    expect(FakeWebSocket.instances).toHaveLength(2);
+  });
+
+  it('disconnect() ends in closed and the stopped flag blocks any zombie reconnect', () => {
+    const states: ConnectionState[] = [];
+    const conn = new SkConnection('ws://test', {
+      onState: (s) => states.push(s),
+      onDelta: () => {},
+    });
+    conn.connect();
+    FakeWebSocket.instances[0].open();
+    conn.disconnect();
+    expect(states.at(-1)?.phase).toBe('closed');
+    // No new socket must be created even after timers fire.
+    vi.runAllTimers();
+    expect(FakeWebSocket.instances).toHaveLength(1);
+  });
 });

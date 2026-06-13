@@ -256,4 +256,23 @@ describe('AnchorWatch (server mode)', () => {
     store.applyFrame(frame({ 'navigation.anchor.position': null }));
     expect(anchor.mode).toBe('off');
   });
+
+  it('re-arms acknowledge when the server escalates to a more severe grade', () => {
+    const { store, anchor, fix } = setup();
+    // Put the anchor into server mode by publishing a position cell.
+    store.applyFrame(frame({ 'navigation.anchor.position': ANCHOR }));
+    // Raise an alarm-grade drag notification and acknowledge it (alarm and emergency are the
+    // anchor-drag grades; warn is not a dragging state).
+    store.applyFrame(
+      frame({ 'notifications.navigation.anchor': { state: 'alarm', message: 'dragging' } }),
+    );
+    fix(INSIDE);
+    anchor.acknowledge();
+    expect(anchor.acknowledged).toBe(true);
+    // The server escalates to emergency: the acknowledge must not suppress the new grade.
+    store.applyFrame(
+      frame({ 'notifications.navigation.anchor': { state: 'emergency', message: 'dragging!' } }),
+    );
+    expect(anchor.acknowledged).toBe(false);
+  });
 });

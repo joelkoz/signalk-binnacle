@@ -58,4 +58,18 @@ describe('reconcileDelta', () => {
     } as unknown as Delta;
     expect(collect(delta)).toHaveLength(0);
   });
+
+  it('passes a null value to the leaf callback (Signal K path clear)', () => {
+    const delta = {
+      context: 'vessels.self' as Context,
+      updates: [{ values: [{ path: 'notifications.mob', value: null }] }],
+    } as unknown as Delta;
+    const writes = collect(delta);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toEqual({
+      context: 'vessels.self',
+      path: 'notifications.mob',
+      value: null,
+    });
+  });
 });
