@@ -6,6 +6,7 @@ export { default as InlineConfirm } from './InlineConfirm.svelte';
 export { promptRename, promptSaveName } from './prompt';
 export { default as SavedList } from './SavedList.svelte';
 export { default as SlideOver } from './SlideOver.svelte';
+export { scrollEdges } from './scroll-edges';
 export type { Theme } from './theme.svelte';
 export { createThemeController, THEMES, ThemeController } from './theme.svelte';
 export { default as UnitField } from './UnitField.svelte';

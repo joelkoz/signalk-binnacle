@@ -63,7 +63,7 @@ import {
 import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shared/map';
 import type { MapView } from '$shared/settings';
 import { serverOrigin } from '$shared/signalk';
-import { dialog, type Theme } from '$shared/ui';
+import { dialog, scrollEdges, type Theme } from '$shared/ui';
 
 interface Props {
   store: WeatherStore;
@@ -470,7 +470,7 @@ onDestroy(() => {
       </button>
     {/if}
     <h2 class="panel-title">Weather</h2>
-    <div class="layer-bar" role="group" aria-label="Weather layers">
+    <div class="layer-bar" role="group" aria-label="Weather layers" use:scrollEdges>
       {#each fills as item (item.id)}
         <button
           type="button"
@@ -734,7 +734,9 @@ onDestroy(() => {
   padding-inline-end: var(--space-2);
 }
 /* One row at every width: wrapping would grow the header and strand pills under the title, so
-   overflow scrolls instead, and the edge fade says there is more to scroll to. */
+   overflow scrolls instead. The edge fades come from the scrollEdges action and show only while
+   content actually extends past that edge; a permanent fade would clip the last pill's label
+   even when there is nothing more to scroll to. */
 .layer-bar {
   display: flex;
   flex-wrap: nowrap;
@@ -744,7 +746,28 @@ onDestroy(() => {
   min-inline-size: 0;
   overflow-x: auto;
   scrollbar-width: thin;
+}
+/* Pills keep their natural width: .btn-compact's min-inline-size would otherwise let flex
+   shrink them under their labels, compressing the row instead of letting it scroll. */
+.layer-bar > * {
+  flex-shrink: 0;
+}
+/* :global() exempts the runtime-toggled attributes from Svelte's unused-selector pruning; the
+   .layer-bar class keeps the rules component-scoped. */
+.layer-bar:global([data-scroll-end]) {
   mask-image: linear-gradient(to right, black calc(100% - 1.25rem), transparent);
+}
+.layer-bar:global([data-scroll-start]) {
+  mask-image: linear-gradient(to right, transparent, black 1.25rem);
+}
+.layer-bar:global([data-scroll-start][data-scroll-end]) {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 1.25rem,
+    black calc(100% - 1.25rem),
+    transparent
+  );
 }
 .bar-sep {
   inline-size: 1px;
