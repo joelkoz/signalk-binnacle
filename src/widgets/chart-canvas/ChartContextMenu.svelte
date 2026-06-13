@@ -21,6 +21,8 @@ interface Props {
 
 const { x, y, width, height, onGoToHere, onDropWaypoint, onMeasureFrom, onClose }: Props = $props();
 
+let menuEl = $state<HTMLElement>();
+
 // Wide enough for the longest label ("Measure from here") at the inherited font size; the menu
 // is fixed to this width below so the clamp math always matches the rendered box.
 const MENU_WIDTH = 200;
@@ -44,6 +46,22 @@ const top = $derived(above ? y - EDGE : y + EDGE);
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') onClose();
 }
+
+function onMenuKeydown(event: KeyboardEvent): void {
+  const items = [...(menuEl?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])];
+  if (items.length === 0) return;
+  const at = Math.max(
+    0,
+    items.findIndex((el) => el === document.activeElement),
+  );
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    items[(at + 1) % items.length]?.focus();
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    items[(at - 1 + items.length) % items.length]?.focus();
+  }
+}
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -54,6 +72,9 @@ function onKeydown(event: KeyboardEvent): void {
   class="menu"
   role="menu"
   aria-label="Chart actions"
+  tabindex="-1"
+  bind:this={menuEl}
+  onkeydown={onMenuKeydown}
   style="left: {left}px; top: {top}px; inline-size: {MENU_WIDTH}px; transform: translate(-50%, {above
     ? '-100%'
     : '0'});"

@@ -10,6 +10,8 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
+  setLayersVisibility,
 } from '$shared/map';
 
 const SOURCE_ID = 'binnacle-collision';
@@ -116,11 +118,10 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
       ctx.map.setPaintProperty(LAYER_ID, 'circle-stroke-color', strokeColor(paint));
     },
     setVisible(ctx, visible) {
-      ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');
+      setLayersVisibility(ctx.map, [LAYER_ID], visible);
     },
     remove(ctx) {
-      if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
-      if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
+      removeLayersAndSources(ctx.map, [LAYER_ID], [SOURCE_ID]);
     },
   };
 }

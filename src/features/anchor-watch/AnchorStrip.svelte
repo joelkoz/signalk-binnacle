@@ -36,7 +36,7 @@ function tapRaise(): void {
       {#if anchor.acknowledged}
         <span class="note ack-tag">Acknowledged</span>
       {:else}
-        <div class="actions">
+        <div class="actions actions--safety">
           <button type="button" class="ack" onclick={() => anchor.acknowledge()}>
             Acknowledge
           </button>
@@ -58,11 +58,3 @@ function tapRaise(): void {
     </div>
   </aside>
 {/if}
-
-<style>
-/* A wide gutter between Acknowledge and Raise (over the shared .actions gap), so the two safety
-   buttons do not read as twins. */
-.bottom-strip .actions {
-  gap: var(--space-4);
-}
-</style>

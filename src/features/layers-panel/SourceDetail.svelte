@@ -24,8 +24,9 @@ const specRows = $derived([
   { label: 'Bounds', value: fmtBounds(source.bounds) },
 ]);
 
-// Seed the editable name from the source, resyncing if it changes underneath. The panel keys
-// this component by source id, so it starts fresh for each chart.
+// Seed the editable name from the source, re-syncing if it changes underneath. A fine-grained
+// $effect re-runs only when source.name changes, not on every render, so this is the right tool;
+// the panel also keys this component by source id, so it starts fresh for each chart.
 $effect(() => {
   name = source.name;
 });

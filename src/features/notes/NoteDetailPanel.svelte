@@ -152,10 +152,10 @@ function measure(item: NormalizedItem): string {
 
 {#snippet footer()}
   {#if credit}
-    <span class="credit">{credit}</span>
+    <span>{credit}</span>
   {/if}
   {#if extraSources.length > 0}
-    <span class="credit">{extraSources.join(', ')}</span>
+    <span>{extraSources.join(', ')}</span>
   {/if}
   {#if sourceUrl}
     <a class="source-link" href={sourceUrl} target="_blank" rel="noopener noreferrer">
@@ -223,6 +223,8 @@ dd {
   color: var(--text-muted);
   font-weight: 400;
 }
+/* POI hazard badges intentionally use their own pill shape and the --select token so they stay
+   in the night-red band. Do not unify with other badge vocabulary. */
 .badge {
   padding: 0.05rem 0.45rem;
   border: 1px solid var(--border);

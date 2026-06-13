@@ -127,7 +127,7 @@ function cancelDraft(): void {
   {#if busy}
     <p class="status">{draft ? 'Saving chart...' : 'Reading chart...'}</p>
   {:else if error}
-    <p class="status error" role="alert">{error}</p>
+    <p class="alert-note" role="alert">{error}</p>
   {/if}
 
   {#if !draft}
@@ -166,9 +166,6 @@ function cancelDraft(): void {
   margin: 0;
   font-size: var(--text-xs);
   color: var(--text-muted);
-}
-.status.error {
-  color: var(--alarm);
 }
 /* The review-and-rename step shown after an import is staged, before it is saved. */
 .review {

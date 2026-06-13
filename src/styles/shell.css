@@ -169,6 +169,11 @@
 .bottom-strip .actions .ack {
   margin-inline-start: 0;
 }
+/* A wide gutter between paired safety buttons (Mute/Acknowledge, Acknowledge/Raise) so they do
+   not read as twins and a wrong tap in a seaway is less likely. */
+.bottom-strip .actions--safety {
+  gap: var(--space-4);
+}
 /* Acknowledged: the alarm is silenced and the operator has it in hand, so the strip dims but keeps
    its readouts on screen while the condition persists. */
 .bottom-strip.is-ack {

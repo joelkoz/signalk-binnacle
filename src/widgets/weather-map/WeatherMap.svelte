@@ -126,6 +126,9 @@ const clock = new Clock(MINUTE_MS);
 
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
+// Explicit teardown for the canvas keydown listener: map.remove() drops the canvas with it, but
+// an AbortController removes any ambiguity about the listener outliving the component.
+const mapKeyListeners = new AbortController();
 let getBounds: (() => Bbox) | undefined;
 let recolor: ((next: Theme) => void) | undefined;
 let layersView = $state<LayersView | undefined>();
@@ -429,11 +432,15 @@ onMount(() => {
       });
       // The keyboard path to the point readout: Enter on the focused map canvas samples the center
       // (a tap needs a pointer; the canvas is focusable via MapLibre's keyboard support).
-      map.getCanvas().addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter') return;
-        const center = map.getCenter();
-        void onTap(center.lng, center.lat);
-      });
+      map.getCanvas().addEventListener(
+        'keydown',
+        (event) => {
+          if (event.key !== 'Enter') return;
+          const center = map.getCenter();
+          void onTap(center.lng, center.lat);
+        },
+        { signal: mapKeyListeners.signal },
+      );
       runTick(overlays);
     },
   });
@@ -445,6 +452,7 @@ onDestroy(() => {
   if (readoutTimer) clearTimeout(readoutTimer);
   if (zoomNoteTimer) clearTimeout(zoomNoteTimer);
   stopPlay();
+  mapKeyListeners.abort();
   mapHandle?.destroy();
 });
 </script>

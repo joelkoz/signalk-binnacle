@@ -39,7 +39,7 @@ const radiusDisplay = $derived.by(() => {
   return Math.round(mode === 'imperial' ? (metersToFeet(meters) ?? 0) : meters);
 });
 const minRadiusDisplay = $derived(
-  mode === 'imperial' ? Math.round(metersToFeet(MIN_RADIUS_M) ?? 0) : MIN_RADIUS_M,
+  mode === 'imperial' ? Math.round(metersToFeet(MIN_RADIUS_M)!) : MIN_RADIUS_M,
 );
 const distanceText = $derived(formatLengthOr(distance, mode, 0));
 const radiusText = $derived(watching ? formatLengthOr(anchor.radiusMeters, mode, 0) : PLACEHOLDER);
@@ -156,7 +156,7 @@ function captureFromDistance(): void {
       <p class="hint">Drag the anchor marker on the chart to correct the drop point.</p>
     {/if}
     {#if error}
-      <p class="error" role="alert">{error}</p>
+      <p class="alert-note" role="alert">{error}</p>
     {/if}
   </section>
 </SlideOver>
@@ -183,9 +183,5 @@ function captureFromDistance(): void {
   margin: 0;
   color: var(--text-muted);
   font-size: var(--text-sm);
-}
-.error {
-  margin: 0;
-  color: var(--alarm);
 }
 </style>

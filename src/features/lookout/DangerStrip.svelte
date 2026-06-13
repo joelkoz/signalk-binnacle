@@ -21,7 +21,7 @@ const overflow = $derived(Math.max(0, contacts.length - MAX_ROWS));
 const computedFallback = $derived(contacts.some((c) => c.source === 'computed'));
 // Grade the strip by the worst contact (contacts[0] is severity-then-time sorted): a warning-only
 // situation reads as caution, not the full alarm, so the strongest red is reserved for real danger.
-const worstIsDanger = $derived(contacts[0]?.severity !== 'warning');
+const worstIsDanger = $derived(contacts[0]?.severity === 'danger');
 // Acknowledged means the operator has seen it and silenced the sound, but the contact is still
 // closing, so the strip stays on screen in a dimmed state with its CPA and TCPA visible rather than
 // vanishing. An escalation past the inner ring un-dims it and restores the actions, since the alarm
@@ -47,7 +47,7 @@ const acknowledged = $derived(collision.suppressed && !collision.escalating);
         <span class="note">computing locally</span>
       {/if}
       {#if !acknowledged}
-        <div class="actions">
+        <div class="actions actions--safety">
           <!-- A stable "Mute" label with aria-pressed carrying the on state: a label that flips to
                "Unmute" reads as a different action mid-incident, and a mute toggle is not
                destructive, so it stays a plain .ack rather than the warning variant. -->
@@ -76,11 +76,6 @@ const acknowledged = $derived(collision.suppressed && !collision.escalating);
 {/if}
 
 <style>
-/* A wide gutter between Mute and Acknowledge (over the shared .actions gap), so the two safety
-   buttons do not read as twins and a wrong tap in a seaway is less likely. */
-.bottom-strip .actions {
-  gap: var(--space-4);
-}
 /* The pressed visual carries the muted state, since the label stays a stable "Mute". */
 .bottom-strip .ack[aria-pressed="true"] {
   border-color: var(--accent);

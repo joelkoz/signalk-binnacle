@@ -220,10 +220,7 @@ const handleLabel = $derived(groupTitle ?? item.title);
   text-align: end;
   color: var(--text-muted);
 }
-/* The slider styling comes from the shared .range; the opacity line is a secondary fine-adjustment
-   control, so it sits in a shorter row than the primary toggle to keep the layer list compact. */
 .opacity {
   flex: 1;
-  min-block-size: 2rem;
 }
 </style>

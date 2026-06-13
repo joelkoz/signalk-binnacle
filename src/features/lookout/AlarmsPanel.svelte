@@ -242,7 +242,7 @@ const caution = $derived(thresholdsCaution(t));
   border-radius: var(--radius-pill);
   font-size: var(--text-xs);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
 }
 /* Severity colors reuse the alarm and warning tokens, so the tags hold in night-red. */
