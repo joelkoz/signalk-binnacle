@@ -4,17 +4,39 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<a id="unreleased"></a>
+<a id="v061"></a>
 
-## [Unreleased]
+## [0.6.1] - 2026-06-12
+
+Quick access from community feedback: the chart actions a navigator reaches for stay within one
+or two taps, and the weather panel's layer row scrolls honestly instead of clipping its last pill.
 
 ### Added
 
 - Measure from the chart: the long-press and right-click menu gains "Measure from here", arming
   the measure tool with its first point at the pressed position, so measuring starts where you
-  are looking instead of via the app menu.
+  are looking instead of via the app menu. Re-arming mid-measurement deliberately starts fresh;
+  extending an in-progress measurement is a plain chart tap.
 - A Charts pill on the bottom status strip opens Layers and charts in one tap, beside Center,
   Follow, and Forecast, so switching charts no longer goes through the app menu.
+
+### Fixed
+
+- The weather panel's layer pills no longer render the last label clipped: the edge fade shows
+  only while there is actually more to scroll, lifts at the end of the scroll, and the pills
+  keep their natural width instead of compressing when the panel narrows, so the row genuinely
+  scrolls.
+- The chart context menu sizes itself to its longest label, so its edge-clamp math matches the
+  rendered box.
+- Voice control can activate the Charts pill by its visible word, its expanded state is not
+  announced while it is still disabled during chart load, and its tooltip says the chart is
+  loading while it is.
+
+### Internal
+
+- One armMeasure helper replaces the duplicated reveal-then-arm sequence, new measure tests pin
+  the seed-after-arm contract and the deliberate reset on re-arm, and CI test flakes from cold
+  ICU loading are prevented by a per-worker warm-up rather than per-test timeouts.
 
 <a id="v060"></a>
 

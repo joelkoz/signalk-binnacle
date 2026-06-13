@@ -15,34 +15,19 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.6.0
+## What's new in 0.6.1
 
-Offline that actually holds up, a launcher menu, your units everywhere, and 24 hour trends:
+Quick access, straight from community feedback:
 
-- **Offline charts everywhere.** Viewed PMTiles chart areas are cached as blocks in browser
-  storage at the protocol layer, so they render offline in every context, including the
-  plain-http default where no service worker can run. Over https, plugin chart tiles, the
-  overlays, the base style, and tide predictions gain service-worker caching, and when the base
-  style itself is unreachable the map starts on a minimal water fallback instead of staying
-  blank. Tides, chart notes, and the conditions panel survive an offline reload, each item
-  declaring its own age.
-- **Your units, everywhere.** Every readout follows the Signal K server's imperial-or-metric
-  unit preference, converting at the display edge; knots, nautical miles, and bearings stay
-  nautical.
-- **A launcher menu and an Alarms panel.** The menu is now large icon tiles grouped Navigate,
-  Conditions, Safety, and Settings, and a new Alarms panel collects every active alert on the
-  boat with one-tap Silence and Acknowledge that propagate to every station.
-- **Trends and track history.** Depth, apparent wind, pressure, and speed over the last 24 hours
-  as themed graphs from the server's v2 History API, falling back to live session sampling
-  without a provider, plus a dashed 24 hour track-history chart layer.
-- **Standard waypoints, worldwide tides, AIS trails, and chart symbols.** Waypoints live in the
-  server's own resources, tides ride the signalk-tides plugin with NOAA CO-OPS as the fallback,
-  AIS targets get faded wakes from the tracks plugin, and signalk-symbol-manager artwork renders
-  on notes and waypoints, remapped into the red band at night.
-- **Background-tab safety.** Delta batching and AIS pruning moved off the render loop, so live
-  data, the collision watch, and the anchor alarm keep working while the browser tab is hidden.
+- **Measure from here.** Long-press or right-click the chart and start measuring at that exact
+  spot; no trip to the app menu, and your focus never leaves the map.
+- **A Charts button on the map.** The bottom strip gains a Charts pill beside Center, Follow,
+  and Forecast, so the Layers and charts panel is one tap away and switching charts is two.
+- **Honest scrolling in the weather header.** The layer pills keep their full labels at every
+  width: the row scrolls when it must, and the edge fade appears only while there is more to
+  scroll to.
 
-See the [changelog](CHANGELOG.md#v060) for the full list.
+See the [changelog](CHANGELOG.md#v061) for the full list.
 
 ## What it does
 
