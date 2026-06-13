@@ -715,6 +715,14 @@ function setLayerVisible(id: string, visible: boolean): void {
   mapCommands?.applyLayers(next, layerOrder.value);
 }
 
+// Arming always reveals the measure layer first: an armed tool drawing into an invisible layer
+// would read as broken. Arming also resets any prior points; both the menu tile and the chart's
+// "Measure from here" mean "start a fresh measurement".
+function armMeasure(): void {
+  setLayerVisible('measure', true);
+  measure.start();
+}
+
 // The app menu's options, grouped from the data into four intent groups: Navigate (plan and chart),
 // Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings. Center, Follow,
 // Charts, and the Forecast pill live on the bottom status strip too, so the chart and weather
@@ -749,12 +757,7 @@ const menuItems = $derived<MenuItem[]>([
     icon: Ruler,
     group: 'Navigate',
     pressed: measure.active,
-    onSelect: () => {
-      // Re-show a hidden measure layer first: an armed tool drawing into an invisible layer
-      // would read as broken.
-      setLayerVisible('measure', true);
-      measure.start();
-    },
+    onSelect: armMeasure,
   },
   {
     id: 'layers',
@@ -1711,10 +1714,7 @@ onDestroy(() => {
       onUserPan={() => (following = false)}
       {onGoToHere}
       onMeasureFrom={(position) => {
-        // Same order as the menu tile: reveal a hidden measure layer before arming, then seed
-        // the first leg at the pressed position so measuring starts under the cursor.
-        setLayerVisible('measure', true);
-        measure.start();
+        armMeasure();
         measure.add(position);
       }}
       onAnchorMoved={(position) => void onAnchorMoved(position)}
@@ -1743,7 +1743,7 @@ onDestroy(() => {
       </div>
     {/if}
     {#if activePanel === 'layers' && layersView}
-      <div class="panel-slot">
+      <div class="panel-slot" id="layers-panel">
         <LayersPanel
           view={layersView}
           {userCharts}
@@ -2008,14 +2008,16 @@ onDestroy(() => {
         <Navigation size={16} aria-hidden="true" />
         Follow
       </button>
+      <!-- No aria-label: the accessible name must be the visible "Charts" so voice control
+           matches what a user says; the title carries the longer description. -->
       <button
         type="button"
         class="btn btn-pill"
         class:is-on={activePanel === 'layers'}
-        aria-expanded={activePanel === 'layers'}
+        aria-expanded={layersView ? activePanel === 'layers' : undefined}
         aria-haspopup="dialog"
-        aria-label="Layers and charts"
-        title="Layers and charts"
+        aria-controls={activePanel === 'layers' ? 'layers-panel' : undefined}
+        title={layersView ? 'Layers and charts' : 'Layers and charts (chart is loading)'}
         disabled={!layersView}
         onclick={() => (activePanel === 'layers' ? closePanel() : openPanel('layers'))}
       >

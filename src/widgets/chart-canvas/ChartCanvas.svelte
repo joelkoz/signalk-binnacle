@@ -192,7 +192,8 @@ onMount(() => {
     onView: (view) => onViewChange?.(view),
     onUserPan: () => onUserPan?.(),
     onContextMenu: (point) => {
-      // No "go to here" while drawing or editing a route: Terra Draw owns the chart taps then.
+      // No context menu at all while drawing or editing a route (this suppresses every item,
+      // not just "Go to here"): Terra Draw owns the chart taps then.
       if (!onGoToHere || routeStore.working) return;
       chartMenu = {
         x: point.x,

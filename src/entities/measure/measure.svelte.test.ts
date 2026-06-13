@@ -46,6 +46,27 @@ describe('MeasureStore', () => {
     expect(measure.active).toBe(true);
   });
 
+  it('accepts a seed point immediately after arming, the "Measure from here" contract', () => {
+    const measure = new MeasureStore();
+    measure.start();
+    measure.add(A);
+    expect(measure.points).toHaveLength(1);
+    expect(measure.points[0]).toEqual(A);
+  });
+
+  it('re-arming mid-measurement is a deliberate destructive reset', () => {
+    // "Measure from here" means "start a fresh measurement"; extending an in-progress one is a
+    // plain chart tap. A future guard that preserves points on start() would change that contract.
+    const measure = new MeasureStore();
+    measure.start();
+    measure.add(A);
+    measure.add(B);
+    measure.start();
+    measure.add(C);
+    expect(measure.points).toHaveLength(1);
+    expect(measure.points[0]).toEqual(C);
+  });
+
   it('start gives a clean slate and stop clears everything', () => {
     const measure = new MeasureStore();
     measure.start();

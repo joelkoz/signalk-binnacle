@@ -21,7 +21,9 @@ interface Props {
 
 const { x, y, width, height, onGoToHere, onDropWaypoint, onMeasureFrom, onClose }: Props = $props();
 
-const MENU_WIDTH = 170;
+// Wide enough for the longest label ("Measure from here") at the inherited font size; the menu
+// is fixed to this width below so the clamp math always matches the rendered box.
+const MENU_WIDTH = 200;
 const ITEM_HEIGHT = 44;
 const MENU_PADDING = 4;
 const EDGE = 8;
@@ -52,7 +54,9 @@ function onKeydown(event: KeyboardEvent): void {
   class="menu"
   role="menu"
   aria-label="Chart actions"
-  style="left: {left}px; top: {top}px; transform: translate(-50%, {above ? '-100%' : '0'});"
+  style="left: {left}px; top: {top}px; inline-size: {MENU_WIDTH}px; transform: translate(-50%, {above
+    ? '-100%'
+    : '0'});"
 >
   <button type="button" role="menuitem" class="item" use:focusOnMount onclick={onGoToHere}>
     <Navigation size={16} aria-hidden="true" />
