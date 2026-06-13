@@ -4,6 +4,49 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<a id="unreleased"></a>
+
+## [Unreleased]
+
+A full-codebase reliability, correctness, and coherence pass. No new features: this hardens the
+weather overlays, the caching and history layers, the course and anchor logic, and makes a set of
+previously silent failures visible.
+
+### Fixed
+
+- Pressure isobars no longer stay blank after the base map style swaps (the offline fallback or a
+  style reload): the overlay rebuilds its recreated sources instead of seeing an unchanged grid.
+- The in-memory cache no longer evicts a just-refreshed weather grid or tide entry before older
+  ones, so a refreshed view is not dropped early and refetched.
+- A corrupted or legacy profile can no longer render a chart layer transparent or broken: a
+  restored opacity is clamped to a valid range, matching first-registration.
+- A malformed history timestamp no longer disables gap-splitting for the rest of a 24 hour track.
+- The Trends panel can tell a present-but-empty history provider from an unreachable one.
+- An active course's route, next, and arrival geometry survives a cross-station activation even
+  when the continuously-updating calc values stream in before the one-time hydration completes.
+- A dead data link (the worker failing to load, a rejected connect) shows a "Data link failed,
+  reload" indicator instead of sitting forever on a connecting state.
+- One chunk-load failure no longer kills route editing for the rest of the session.
+- A failed track save or delete, a refused anchor drop on a server that advertises the standard
+  Anchor API, a failed user chart registration, an empty-and-failed route fetch, and a chart that
+  did not sync to the server all surface an error or a log breadcrumb now instead of going silent.
+- The arrival alarm is stopped on teardown, profile sync retries after a transient first failure
+  instead of staying local-only for the session, and a unit preset from a previous server is
+  cleared when reconnecting to a different one.
+- The layer opacity slider is a full-size touch target again, panel error lines use the shared
+  alarm framing, and the chart action menu supports arrow-key navigation.
+
+### Internal
+
+- IndexedDB and local-storage degrades, and an unavailable audible alarm, now log a one-line
+  breadcrumb so a field report is diagnosable.
+- Shared cleanups: one safety-button gutter rule, the collision overlay on the shared layer
+  helpers, the tracking token on the alarms tag, anonymous access-request fetches, named collision
+  threshold constants, a once-computed day paint object, and a dropped redundant per-tick sort.
+- New tests cover the stream connection and worker lifecycle, the unit conversion family, the
+  anchor acknowledge escalation, client-computed course VMG and time-to-go, and several boundary
+  and error paths the audit found untested.
+
 <a id="v061"></a>
 
 ## [0.6.1] - 2026-06-12
