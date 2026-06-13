@@ -69,6 +69,9 @@ export function createHistoryTrackOverlay(
       const position = row[1];
       if (!isLatLon(position)) continue;
       const seconds = Date.parse(row[0]) / 1000;
+      // A malformed timestamp yields NaN, which would poison every later gap comparison (NaN
+      // compares false) and silently disable gap-splitting for the rest of the track.
+      if (!Number.isFinite(seconds)) continue;
       if (lastSeconds !== undefined && seconds - lastSeconds > GAP_SECONDS) {
         if (line.length > 1) lines.push(line);
         line = [];

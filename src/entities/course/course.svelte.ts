@@ -63,16 +63,29 @@ export class CourseGuidance {
     calc: CourseCalculations | undefined,
     asOf: number = Date.now(),
   ): void {
-    for (const path of COURSE_CELL_PATHS) {
-      if (this.#store.cell(path).epoch >= asOf) return;
-    }
+    // Per cell, not all-or-nothing: calcValues streams continuously, so a single calcValues delta
+    // landing before a slow hydrate would otherwise drop the whole seed, including the info cells
+    // (nextPoint, previousPoint, activeRoute, arrivalCircle) that only the REST read can supply
+    // under subscribe=none. Each cell is seeded only when no stream write landed at or after the
+    // hydrate began, so a fresh streamed value is never clobbered by the slower REST snapshot.
+    const unstreamed = (path: string): boolean => this.#store.cell(path).epoch < asOf;
     if (info) {
-      this.#store.cell(SK_PATHS.courseNextPoint).value = info.nextPoint;
-      this.#store.cell(SK_PATHS.coursePreviousPoint).value = info.previousPoint;
-      this.#store.cell(SK_PATHS.courseActiveRoute).value = info.activeRoute;
-      this.#store.cell(SK_PATHS.courseArrivalCircle).value = info.arrivalCircle;
+      if (unstreamed(SK_PATHS.courseNextPoint)) {
+        this.#store.cell(SK_PATHS.courseNextPoint).value = info.nextPoint;
+      }
+      if (unstreamed(SK_PATHS.coursePreviousPoint)) {
+        this.#store.cell(SK_PATHS.coursePreviousPoint).value = info.previousPoint;
+      }
+      if (unstreamed(SK_PATHS.courseActiveRoute)) {
+        this.#store.cell(SK_PATHS.courseActiveRoute).value = info.activeRoute;
+      }
+      if (unstreamed(SK_PATHS.courseArrivalCircle)) {
+        this.#store.cell(SK_PATHS.courseArrivalCircle).value = info.arrivalCircle;
+      }
     }
-    if (calc) this.#store.cell(SK_PATHS.courseCalcValues).value = calc;
+    if (calc && unstreamed(SK_PATHS.courseCalcValues)) {
+      this.#store.cell(SK_PATHS.courseCalcValues).value = calc;
+    }
   }
 
   // Clear every course cell on stop, so no previousPoint, activeRoute, arrivalCircle, or calcValues

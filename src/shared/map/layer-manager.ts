@@ -213,9 +213,12 @@ export class LayerManager {
         state.visible = next.visible;
         module.setVisible(this.#ctx, next.visible);
       }
-      if (next.opacity !== state.opacity) {
-        state.opacity = next.opacity;
-        module.setOpacity?.(this.#ctx, next.opacity);
+      // Coerce as #addModule does: a corrupted or legacy snapshot opacity (NaN or out of range)
+      // would otherwise flow into setOpacity and render the layer transparent or broken.
+      const opacity = Number.isFinite(next.opacity) ? Math.max(0, Math.min(1, next.opacity)) : 1;
+      if (opacity !== state.opacity) {
+        state.opacity = opacity;
+        module.setOpacity?.(this.#ctx, opacity);
       }
     }
     this.#explicitOrder = [...order];

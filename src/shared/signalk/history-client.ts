@@ -68,14 +68,18 @@ export async function fetchHistoryValues(
     values?: unknown;
     data?: unknown;
   }>(`${base}${HISTORY_API}/values?${params}`, authInit(token));
-  if (!body || !Array.isArray(body.data) || !Array.isArray(body.values)) return undefined;
+  // A non-ok or malformed body is undefined (unreachable); a 2xx with columns but missing or empty
+  // data is a real empty result (provider present, no samples in the window), kept distinct so the
+  // panel can say "no data" rather than treating it as a transport failure.
+  if (!body || !Array.isArray(body.values)) return undefined;
   const columns: HistoryColumn[] = [];
   for (const value of body.values) {
     const { path, method } = (value ?? {}) as { path?: unknown; method?: unknown };
     if (typeof path !== 'string') return undefined;
     columns.push({ path, method: typeof method === 'string' ? method : '' });
   }
-  const rows = body.data.filter(
+  const data = Array.isArray(body.data) ? body.data : [];
+  const rows = data.filter(
     (row): row is [string, ...unknown[]] =>
       Array.isArray(row) && typeof row[0] === 'string' && row.length === columns.length + 1,
   );

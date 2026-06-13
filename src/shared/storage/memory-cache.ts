@@ -37,6 +37,9 @@ export class MemoryCache<V> {
 
   #insert(key: string, value: V, expires: number, now: number): void {
     for (const [k, entry] of this.#entries) if (entry.expires <= now) this.#entries.delete(k);
+    // Delete before set so a refreshed key moves to the newest insertion position; otherwise it
+    // keeps its original slot and the oldest-first eviction drops a just-refreshed entry early.
+    this.#entries.delete(key);
     this.#entries.set(key, { value, expires });
     while (this.#entries.size > this.#maxEntries) {
       const oldest = this.#entries.keys().next().value;
