@@ -1,4 +1,4 @@
-import { isFiniteNumber } from '$shared/lib';
+import { isFiniteNumber, nauticalMilesToMeters } from '$shared/lib';
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -32,8 +32,10 @@ export class PersistedValue<T> {
     this.value = next;
     try {
       this.#storage?.setItem(this.#key, JSON.stringify(next));
-    } catch {
-      // A failed persist (quota exceeded, private mode) must not break the in-memory update.
+    } catch (error) {
+      // A failed persist (quota exceeded, private mode) must not break the in-memory update; a
+      // breadcrumb makes "my settings stopped persisting" diagnosable without breaking anything.
+      console.warn(`Could not persist "${this.#key}".`, error);
     }
   }
 
@@ -107,10 +109,10 @@ export interface Thresholds {
 }
 
 export const DEFAULT_THRESHOLDS: Thresholds = {
-  dangerCpaMeters: 926, // 0.5 nm
-  dangerTcpaSeconds: 600, // 10 min
-  warningCpaMeters: 1852, // 1 nm
-  warningTcpaSeconds: 1200, // 20 min
+  dangerCpaMeters: Math.round(nauticalMilesToMeters(0.5)),
+  dangerTcpaSeconds: 10 * 60,
+  warningCpaMeters: Math.round(nauticalMilesToMeters(1)),
+  warningTcpaSeconds: 20 * 60,
 };
 
 export function createThresholds(storage?: StorageLike): PersistedValue<Thresholds> {

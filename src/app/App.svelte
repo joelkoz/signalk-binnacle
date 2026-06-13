@@ -202,7 +202,10 @@ function publishDelta(path: string, value: unknown): void {
 let collisionAlertId: string | undefined;
 const collisionNotifier = new CollisionNotifier({
   publish: async (path, value) => {
-    if (!notificationsApi) {
+    // Capture the derived flag once so an await mid-publish cannot see it flip when features
+    // resolve, which would mix a v1 delta and a v2 raise on the same assessment change.
+    const apiAvailable = notificationsApi;
+    if (!apiAvailable) {
       publishDelta(path, value);
       return;
     }
@@ -268,21 +271,30 @@ const notificationsStore = new NotificationsStore(store);
 // (auth, transport) surfaces in the panel, since the alarm keeping on sounding looks identical
 // to a slow stream echo otherwise.
 let alarmActionError = $state<string | undefined>();
-function onSilenceNotification(notification: ActiveNotification): void {
+function runNotificationAction(
+  notification: ActiveNotification,
+  action: (base: string, token: string | undefined, id: string) => Promise<boolean>,
+  failMessage: string,
+): void {
   if (!notification.id) return;
   alarmActionError = undefined;
-  void silenceNotification(serverOrigin(), chartsToken, notification.id).then((ok) => {
-    if (!ok) alarmActionError = 'Could not silence the alert. Check the connection and access.';
+  void action(serverOrigin(), chartsToken, notification.id).then((ok) => {
+    if (!ok) alarmActionError = failMessage;
   });
 }
+function onSilenceNotification(notification: ActiveNotification): void {
+  runNotificationAction(
+    notification,
+    silenceNotification,
+    'Could not silence the alert. Check the connection and access.',
+  );
+}
 function onAcknowledgeNotification(notification: ActiveNotification): void {
-  if (!notification.id) return;
-  alarmActionError = undefined;
-  void acknowledgeNotification(serverOrigin(), chartsToken, notification.id).then((ok) => {
-    if (!ok) {
-      alarmActionError = 'Could not acknowledge the alert. Check the connection and access.';
-    }
-  });
+  runNotificationAction(
+    notification,
+    acknowledgeNotification,
+    'Could not acknowledge the alert. Check the connection and access.',
+  );
 }
 
 // The anchor watch: server-driven when the anchoralarm plugin answers, client-side otherwise. The
@@ -579,8 +591,12 @@ let profilesSynced = false;
 $effect(() => {
   if (profilesSynced) return;
   if (auth.status !== 'authenticated' || !auth.token) return;
-  profilesSynced = true;
-  void profileStore.syncWithServer(new SignalKProfileAdapter(serverOrigin(), auth.token));
+  const adapter = new SignalKProfileAdapter(serverOrigin(), auth.token);
+  // Latch only on a resolved sync, so a transient failure at first auth does not permanently
+  // strand profiles local-only: a later reconnect or token change re-enters and retries.
+  void profileStore.syncWithServer(adapter).then((ok) => {
+    if (ok) profilesSynced = true;
+  });
 });
 
 function onApplyProfile(id: string): void {
@@ -627,7 +643,13 @@ const userChartsStore = new PersistedValue<UserChartSource[]>('binnacle:user-cha
 // the write only earns a 401, so do not bother.
 function syncUrlChartToServer(source: UserChartSource): void {
   if (chartsToken) {
-    void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url));
+    void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url)).then(
+      (ok) => {
+        // A failed sync leaves the chart visible only on this station, defeating the cross-station
+        // intent; a breadcrumb makes "my other helm does not see it" diagnosable.
+        if (!ok) console.warn(`User chart "${source.id}" did not sync to the server.`);
+      },
+    );
   }
 }
 
@@ -981,6 +1003,12 @@ async function onDropAnchor(): Promise<void> {
   // the server owns the watch (and keeps alarming with the browser closed) and the stream reflects
   // it back. Any failure degrades to the client-side watch; the panel's mode line says which.
   if (await anchorTransport.drop(radius)) return;
+  // A server whose standard Anchor API was feature-detected and then refused the drop has a problem
+  // the silent local fallback would hide; surface it, then still start the local watch so the boat
+  // is covered. The plugin-probe path cannot tell absent from refused, so it degrades quietly.
+  if (anchorTransport.kind === 'standard') {
+    anchorError = 'Could not drop the anchor on the server. Check the connection.';
+  }
   anchor.dropLocal(position, radius);
 }
 
@@ -1064,7 +1092,15 @@ async function addUserChartOverlay(
   source: UserChartSource,
   registrar: UserChartRegistrar,
 ): Promise<void> {
-  await registrar.register(userChartToSignalK(source, source.origin.url));
+  try {
+    await registrar.register(userChartToSignalK(source, source.origin.url));
+  } catch (error) {
+    // The slot was reserved before this async register; a rejected register (a bad URL or a
+    // MapLibre source error) must release it, or the reconcile effect never retries this chart.
+    console.error('User chart overlay failed to register', error);
+    registeredUserCharts.delete(source.id);
+    return;
+  }
   // If it was removed during registration, undo the overlay rather than leave a ghost layer.
   if (!registeredUserCharts.has(source.id)) {
     registrar.unregister(source.id);
@@ -1082,10 +1118,18 @@ async function refreshSavedTracks(): Promise<void> {
   bumpSaved();
 }
 
+// A failed track save or delete shown in the panel until the next action, so a refused server
+// write is not a silent no-op (matching routeError and waypointError).
+let trackError = $state<string | undefined>();
+
 async function onSaveTrack(name: string): Promise<void> {
   if (recorder.points.length < 2) return;
+  trackError = undefined;
   const id = uuidv4();
-  if (!(await saveTrack(serverOrigin(), chartsToken, id, name, recorder.points))) return;
+  if (!(await saveTrack(serverOrigin(), chartsToken, id, name, recorder.points))) {
+    trackError = 'Could not save the track. Check the connection and access.';
+    return;
+  }
   recorder.clear();
   // Show the new track, then refresh: refreshSavedTracks bumps the version once with both the
   // new list and the new shown set in place.
@@ -1094,7 +1138,11 @@ async function onSaveTrack(name: string): Promise<void> {
 }
 
 async function onDeleteSavedTrack(id: string): Promise<void> {
-  if (!(await deleteTrack(serverOrigin(), chartsToken, id))) return;
+  trackError = undefined;
+  if (!(await deleteTrack(serverOrigin(), chartsToken, id))) {
+    trackError = 'Could not delete the track. Check the connection and access.';
+    return;
+  }
   const next = new Set(shownSaved);
   next.delete(id);
   shownSaved = next;
@@ -1126,7 +1174,15 @@ async function refreshRoutes(): Promise<void> {
   // undefined means both endpoints were unreachable: keep the current list rather than blanking the
   // routes the user is looking at over a transient failure. An empty array (reachable, no routes)
   // does clear it.
-  if (routes) routeStore.setRoutes(routes);
+  if (routes) {
+    routeStore.setRoutes(routes);
+    return;
+  }
+  // A never-loaded list must not read as "no routes": that claims an empty boat when the fetch
+  // failed, the same asymmetry refreshWaypoints guards against.
+  if (routeStore.routes.length === 0) {
+    flagRouteError('Could not load routes. Check the connection.');
+  }
 }
 
 // A routing error shown in the panel until the next route action or the panel closes. A boat error
@@ -1481,11 +1537,19 @@ const accessRequestsUrl = `${serverOrigin()}/admin/#/security/access/requests`;
 // not as a one-shot blocking step. A token that arrives after a tab refocus, or from another
 // tab, then connects without a reload.
 let streamConnected = false;
+let streamError = $state(false);
 $effect(() => {
   if (streamConnected) return;
   if (auth.status !== 'authenticated' && auth.status !== 'unsecured') return;
   streamConnected = true;
-  void connectStream(auth.token ?? undefined);
+  // A rejected connect (the worker failed to load, a Comlink call threw) would otherwise leave
+  // streamConnected latched true with no live data and no signal, indistinguishable from
+  // connecting. Surface it; recovery is a reload, so we do not re-enter the effect (that would
+  // spin against a dead worker).
+  connectStream(auth.token ?? undefined).catch((error) => {
+    console.error('Signal K stream failed to connect', error);
+    streamError = true;
+  });
 });
 
 // On a stream reconnect, re-hydrate what the resubscribe cannot redeliver. The v2 navigation.course
@@ -1622,6 +1686,7 @@ onDestroy(() => {
   lookoutAlarm.stop();
   anchorAlarm.stop();
   mobAlarm.stop();
+  arrivalAlarm.stop();
   auth.stop();
   net.dispose();
   clock.dispose();
@@ -1717,6 +1782,8 @@ onDestroy(() => {
         armMeasure();
         measure.add(position);
       }}
+      onRouteEditorError={() =>
+        flagRouteError('Could not load the route editor. Check the connection and try again.')}
       onAnchorMoved={(position) => void onAnchorMoved(position)}
     />
     <div class="banner-slot">
@@ -1800,6 +1867,7 @@ onDestroy(() => {
           onDelete={onDeleteSavedTrack}
           {onToggleSaved}
           onExport={onExportSavedTrack}
+          error={trackError}
           onClose={closePanel}
           onBack={backToMenu}
         />
@@ -1948,6 +2016,11 @@ onDestroy(() => {
         <span class="conn-dot" aria-hidden="true"></span>
         <span class="visually-hidden">{connectionLabel}</span>
       </span>
+      {#if streamError}
+        <span class="readout fix-lost" role="alert" aria-live="assertive">
+          Data link failed, reload
+        </span>
+      {/if}
       {#if !net.online}
         <span class="readout offline" role="status" aria-live="polite">Offline</span>
       {/if}

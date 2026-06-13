@@ -18,6 +18,8 @@ interface Props {
   onDelete: (id: string) => void;
   onToggleSaved: (id: string) => void;
   onExport: (track: SavedTrack) => void;
+  // A failed save or delete, shown until the next action, matching the routes and waypoints panels.
+  error?: string;
   onClose: () => void;
   onBack?: () => void;
 }
@@ -33,6 +35,7 @@ const {
   onDelete,
   onToggleSaved,
   onExport,
+  error,
   onClose,
   onBack,
 }: Props = $props();
@@ -86,6 +89,9 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 </script>
 
 <SlideOver title="Tracks" bodyFlex {onClose} {onBack}>
+  {#if error}
+    <p class="alert-note" role="alert">{error}</p>
+  {/if}
   <div class="panel-controls">
     {#if recorder.paused}
       <button type="button" class="btn" onclick={() => recorder.resume()}>

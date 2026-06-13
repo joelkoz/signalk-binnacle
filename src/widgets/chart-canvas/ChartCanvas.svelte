@@ -106,6 +106,8 @@ interface Props {
   onDropWaypoint?: (position: LatLon) => void;
   // Arm the measure tool seeded with the long-pressed chart position as its first point.
   onMeasureFrom?: (position: LatLon) => void;
+  // The lazily-imported route editor chunk failed to load, so the app can surface it.
+  onRouteEditorError?: () => void;
   // Whether the server runs the tracks plugin, read per tick so trails light up when known.
   aisTrailsAvailable?: () => boolean;
   // Connectivity, so the notes overlay can serve expired cached POIs while offline instead of
@@ -151,6 +153,7 @@ const {
   onGoToHere,
   onDropWaypoint,
   onMeasureFrom,
+  onRouteEditorError,
   aisTrailsAvailable,
   isOnline,
   historyProviders,
@@ -281,19 +284,29 @@ onMount(() => {
       const editorBeforeId = ctx.beforeIdFor('routes');
       let editorLoading: Promise<RouteEditor | undefined> | undefined;
       const loadRouteEditor = (): Promise<RouteEditor | undefined> => {
-        editorLoading ??= import('$features/route-edit').then(({ createRouteEditor }) => {
-          if (isDestroyed()) return undefined;
-          routeEditor = createRouteEditor({
-            map,
-            beforeId: editorBeforeId,
-            theme,
-            onChange: (waypoints) => {
-              const working = routeStore.working;
-              if (working) routeStore.setWorking({ ...working, waypoints });
-            },
+        editorLoading ??= import('$features/route-edit')
+          .then(({ createRouteEditor }) => {
+            if (isDestroyed()) return undefined;
+            routeEditor = createRouteEditor({
+              map,
+              beforeId: editorBeforeId,
+              theme,
+              onChange: (waypoints) => {
+                const working = routeStore.working;
+                if (working) routeStore.setWorking({ ...working, waypoints });
+              },
+            });
+            return routeEditor;
+          })
+          .catch((error) => {
+            // A chunk-load failure (offline, a cache miss over a flaky link) must not leave a
+            // permanently rejected memoized promise that kills route editing for the session;
+            // clear it so a later attempt re-imports, and surface the failure.
+            console.error('Route editor failed to load', error);
+            editorLoading = undefined;
+            onRouteEditorError?.();
+            return undefined;
           });
-          return routeEditor;
-        });
         return editorLoading;
       };
 

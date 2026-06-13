@@ -112,8 +112,11 @@ export class ProfileStore {
   // (and an empty server is seeded from this device). Idempotent for the success case: once a server is
   // attached this is a no-op, so a second call (a component remount, a re-auth) does not re-merge, while
   // a prior failure leaves no server attached so a later call can still retry.
-  async syncWithServer(server: AsyncProfileAdapter): Promise<void> {
-    if (this.#server) return;
+  // Resolves true when profiles are synced to the server (already attached, or attached on this
+  // call), false when it stayed local because the server was unavailable, so the caller can retry
+  // on a later auth or reconnect rather than latching after one transient failure.
+  async syncWithServer(server: AsyncProfileAdapter): Promise<boolean> {
+    if (this.#server) return true;
     let remote: ProfilesState | undefined;
     try {
       remote = await server.load();
@@ -123,10 +126,11 @@ export class ProfileStore {
     // undefined means the server is unavailable (unsecured, the token lacks access, or unreachable):
     // stay local and do not attach the adapter, so no further writes are attempted and the console is
     // not flooded with failures. A reachable server (even an empty one) attaches and pushes once.
-    if (remote === undefined) return;
+    if (remote === undefined) return false;
     this.#server = server;
     this.#mergeRemote(remote);
     this.#schedulePush();
+    return true;
   }
 
   #mergeRemote(remote: ProfilesState): void {

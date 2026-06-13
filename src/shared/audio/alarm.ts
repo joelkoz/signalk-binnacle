@@ -44,6 +44,7 @@ export class Alarm implements AlarmControl {
   #ctx: AudioContext | undefined;
   #timer: ReturnType<typeof setInterval> | undefined;
   #tone: AlarmTone | undefined;
+  #warnedNoAudio = false;
 
   // Create and resume the audio context. Must run from a user gesture (autoplay policy).
   prime(): void {
@@ -64,7 +65,16 @@ export class Alarm implements AlarmControl {
     }
     this.stop();
     const ctx = this.#context();
-    if (!ctx) return;
+    if (!ctx) {
+      // No Web Audio: the audible alarm is unavailable. The visual strip and the assertive live
+      // region still fire, so the watch is not silent, but a one-time breadcrumb makes a
+      // tone-only failure diagnosable rather than a mystery.
+      if (!this.#warnedNoAudio) {
+        console.warn('Audible alarm unavailable: no Web Audio context; alerts remain visual only.');
+        this.#warnedNoAudio = true;
+      }
+      return;
+    }
     if (ctx.state === 'suspended') void ctx.resume();
     this.#tone = tone;
     this.#burst(ctx, tone);

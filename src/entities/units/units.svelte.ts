@@ -32,6 +32,8 @@ export function modeFromPreset(preset: PresetCategories | undefined): UnitsMode 
 export class UnitsStore {
   #local: PersistedValue<UnitsMode>;
   #server = $state<UnitsMode | undefined>(undefined);
+  // The origin the resolved preset belongs to, so a switch to a different server clears it.
+  #syncedOrigin: string | undefined;
 
   constructor(local = new PersistedValue<UnitsMode>('binnacle:units', 'metric')) {
     this.#local = local;
@@ -42,9 +44,6 @@ export class UnitsStore {
   }
 
   // Where the active mode came from, so settings UI can say "following the server preference".
-  // Known edge: a resolved server mode is kept through later failures (stability over churn), so
-  // after reconnecting to a DIFFERENT server that lacks unit preferences, 'server' describes the
-  // prior server's preset until a successful re-sync.
   get source(): 'server' | 'local' {
     return this.#server !== undefined ? 'server' : 'local';
   }
@@ -59,6 +58,13 @@ export class UnitsStore {
   // admin UI's resolution), then the global active preset. A transport failure or 404 leaves the
   // current value, so a flaky link cannot flip units mid-passage.
   async syncFromServer(base: string, fetchFn?: typeof fetch): Promise<void> {
+    // Clear a resolved preset only when the origin actually changed, so a server switch falls back
+    // to local rather than carrying the prior server's preset, while a same-server flaky re-sync
+    // keeps the value (stability over churn: a transient failure must not flip units mid-passage).
+    if (base !== this.#syncedOrigin) {
+      this.#server = undefined;
+      this.#syncedOrigin = base;
+    }
     const userPref = await fetchJsonOrUndefined<{ activePreset?: string }>(
       `${base}${USER_PREF_PATH}`,
       { credentials: 'include' },
