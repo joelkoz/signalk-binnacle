@@ -11,12 +11,13 @@ All notable changes to Binnacle are documented here. The format follows
 ### Added
 
 - AI route drafting. Describe a passage in plain language, for example "from here to Avalon, stay 3 nm
-  off the coast", and the OpenRouter companion plugin drafts a route you review and save. The draft
-  opens as an editable working route with a not-chart-verified banner, the read-as destination, the
-  model's note, a fuel estimate in your units, and any land, deep-water-only, or fuel flags above the
-  leg table. It cannot be minimized while a draft is up, and it saves only behind an armed "I checked
-  every leg" confirm. The control appears only when the companion plugin is installed; on a stock
-  server it stays hidden, with no error.
+  off the coast", and signalk-crows-nest drafts a route you review and save. The draft opens as an
+  editable working route with a not-chart-verified banner, the read-as destination, the model's note,
+  a fuel estimate in your units, and any land, shallow, hazard, or fuel flags above the leg table.
+  Each leg is checked against the NOAA ENC charted depth-area contour, charted land, and charted point
+  hazards. It cannot be minimized while a draft is up, and it saves only behind an armed "I checked
+  every leg" confirm. The control appears only when signalk-crows-nest is installed at a version that
+  ships the route-draft endpoint; on a stock server it stays hidden, with no error.
 - AIS course vectors. Each moving AIS target draws a short predictor line projecting its position
   about ten minutes ahead along its course at its speed, red for a danger contact and amber for a
   warning, so a crowded screen shows at a glance which targets are moving and which way. A
@@ -28,8 +29,10 @@ All notable changes to Binnacle are documented here. The format follows
   the map tiles use, so re-adding the same chart, and its first render once added, hit the
   IndexedDB block cache instead of refetching over the network.
 - Internal consolidation with no behavior change: the map overlay lifecycle, the rhumb-line
-  geometry, the weather and tides display helpers, the GPX coordinate guards, and the panel and
-  icon-button styles now route through the existing shared primitives and design tokens.
+  geometry, the weather and tides display helpers, the GPX coordinate guards, the bounding-box and
+  number-format helpers, the symbol registry, the map layer ordering, and the panel, icon-button, and
+  numeric-readout styles now route through the existing shared primitives, design tokens, and utility
+  classes.
 
 ### Fixed
 
