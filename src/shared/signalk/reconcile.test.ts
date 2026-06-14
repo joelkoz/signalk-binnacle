@@ -72,4 +72,23 @@ describe('reconcileDelta', () => {
       value: null,
     });
   });
+
+  it('skips a malformed values element without a string path', () => {
+    const delta = {
+      context: 'vessels.self' as Context,
+      updates: [
+        {
+          values: [
+            null,
+            { value: 1 },
+            { path: 42, value: 2 },
+            { path: 'navigation.speedOverGround', value: 3.85 },
+          ],
+        },
+      ],
+    } as unknown as Delta;
+    const writes = collect(delta);
+    expect(writes).toHaveLength(1);
+    expect(writes[0].path).toBe('navigation.speedOverGround');
+  });
 });

@@ -18,6 +18,9 @@ export function reconcileDelta(
     const values: PathValue[] | undefined = update.values;
     if (!Array.isArray(values)) continue;
     for (const pv of values) {
+      // A malformed element (null, or a missing or non-string path) would key the frame Map with a
+      // non-string and throw in applyFrame's path.startsWith, aborting the whole frame's update.
+      if (!pv || typeof pv.path !== 'string') continue;
       onLeaf(context, pv.path, pv.value);
     }
   }

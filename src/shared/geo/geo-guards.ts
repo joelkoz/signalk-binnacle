@@ -32,7 +32,9 @@ export type LonLat = [number, number];
 // A GeoJSON [lon, lat] coordinate pair. Shared by the route and track GeoJSON parsers, which all
 // filter raw coordinate arrays down to numeric pairs before mapping them to LatLon.
 export function isLonLat(value: unknown): value is LonLat {
-  return Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number';
+  // Finite, not just number, matching isLatLon: JSON.parse turns an extreme literal into Infinity,
+  // and a non-finite coordinate poisons every distance, bounds, and rendered line downstream.
+  return Array.isArray(value) && Number.isFinite(value[0]) && Number.isFinite(value[1]);
 }
 
 export function lonLatToLatLon([longitude, latitude]: LonLat): LatLon {
@@ -44,5 +46,6 @@ export function latLonToLonLat(position: LatLon): LonLat {
 }
 
 export function asNumber(value: unknown): number | undefined {
-  return typeof value === 'number' ? value : undefined;
+  // Finite only: a NaN reaching the store would flow into display math and data-driven expressions.
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
