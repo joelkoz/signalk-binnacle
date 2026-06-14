@@ -31,6 +31,20 @@ interface CollisionOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
 }
 
+// The ring features for the current contacts, built once so add() and sync() share the same mapping.
+function contactsToFeatures(contacts: readonly DangerContact[]): GeoJSON.FeatureCollection {
+  return featureCollection(
+    contacts.map((contact) => ({
+      type: 'Feature' as const,
+      geometry: {
+        type: 'Point' as const,
+        coordinates: [contact.position.longitude, contact.position.latitude],
+      },
+      properties: { severity: contact.severity },
+    })),
+  );
+}
+
 // A graded ring around each dangerous AIS target, colored by severity from the theme.
 function strokeColor(paint: MapThemePaint): ExpressionSpecification {
   return [
@@ -63,16 +77,7 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
       if (!ctx.map.getSource(SOURCE_ID)) {
         const source: GeoJSONSourceSpecification = {
           type: 'geojson',
-          data: featureCollection(
-            contacts.map((contact) => ({
-              type: 'Feature' as const,
-              geometry: {
-                type: 'Point' as const,
-                coordinates: [contact.position.longitude, contact.position.latitude],
-              },
-              properties: { severity: contact.severity },
-            })),
-          ),
+          data: contactsToFeatures(contacts),
         };
         ctx.map.addSource(SOURCE_ID, source);
       }
@@ -113,18 +118,7 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
       if (contacts === lastContacts) return;
       lastContacts = contacts;
       const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      source?.setData(
-        featureCollection(
-          contacts.map((contact) => ({
-            type: 'Feature' as const,
-            geometry: {
-              type: 'Point' as const,
-              coordinates: [contact.position.longitude, contact.position.latitude],
-            },
-            properties: { severity: contact.severity },
-          })),
-        ),
-      );
+      source?.setData(contactsToFeatures(contacts));
     },
     applyTheme(ctx, paint) {
       ctx.map.setPaintProperty(LAYER_ID, 'circle-stroke-color', strokeColor(paint));
