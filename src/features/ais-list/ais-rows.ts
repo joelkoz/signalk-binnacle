@@ -22,10 +22,14 @@ export interface AisListRow {
 // Sort comparators put targets with no value for the key last, so the unknowns do not bury the
 // nearest or most pressing contacts.
 function byOptional(a: number | undefined, b: number | undefined): number {
-  if (a === undefined && b === undefined) return 0;
-  if (a === undefined) return 1;
-  if (b === undefined) return -1;
-  return a - b;
+  // Treat a non-finite value (a NaN from a degenerate distance) as missing so it sorts last with the
+  // unknowns rather than scrambling the order, since every comparison against NaN is false.
+  const av = a != null && Number.isFinite(a) ? a : undefined;
+  const bv = b != null && Number.isFinite(b) ? b : undefined;
+  if (av === undefined && bv === undefined) return 0;
+  if (av === undefined) return 1;
+  if (bv === undefined) return -1;
+  return av - bv;
 }
 
 export function buildAisRows(
