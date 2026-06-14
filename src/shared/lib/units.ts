@@ -61,7 +61,7 @@ export function kelvinToCelsius(value: number | null | undefined): number | unde
 // A null-safe fixed-digit reading: the placeholder when absent, otherwise the value to `digits`.
 // Centralized so the readouts that show "value or --" do not each re-implement it.
 export function formatFixed(value: number | null | undefined, digits: number): string {
-  return value == null ? PLACEHOLDER : value.toFixed(digits);
+  return value == null || Number.isNaN(value) ? PLACEHOLDER : value.toFixed(digits);
 }
 
 // Placeholder-aware speed and bearing readouts. Unlike formatKnots (which shows 0.0 for an absent
@@ -298,13 +298,27 @@ export function formatDayClock(
   return new Date(timeMs).toLocaleString([], fmt);
 }
 
+export interface DurationParts {
+  value: string;
+  unit: string;
+}
+
+// The split form of formatDuration for column layouts like the route plan's stat grid: under an hour
+// the value is the bare minute count and the unit is "min", so it lines up in the unit column under a
+// distance's "nm"; an hour or more uses the compound "2h 05m", which carries its own units, so the
+// unit cell stays empty.
+export function formatDurationParts(seconds: number): DurationParts {
+  const totalMinutes = Math.round(seconds / 60);
+  if (totalMinutes < 60) return { value: `${totalMinutes}`, unit: 'min' };
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return { value: `${hours}h ${minutes.toString().padStart(2, '0')}m`, unit: '' };
+}
+
 // A time-to-go readout with its own unit: minutes under an hour ("45 min"), hours and minutes above
 // ("2h 05m"). TTG on a passage routinely exceeds an hour, where a bare minute count ("420 min")
 // reads as nonsense, so the unit is built in rather than appended by the caller.
 export function formatDuration(seconds: number): string {
-  const totalMinutes = Math.round(seconds / 60);
-  if (totalMinutes < 60) return `${totalMinutes} min`;
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+  const { value, unit } = formatDurationParts(seconds);
+  return unit ? `${value} ${unit}` : value;
 }

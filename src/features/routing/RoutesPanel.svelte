@@ -15,6 +15,7 @@ import { type Route, routeDistanceMeters, routeLegs } from '$entities/route';
 import {
   formatBearingOr,
   formatDuration,
+  formatDurationParts,
   formatNm,
   knotsToMetersPerSecond,
   PLACEHOLDER,
@@ -138,10 +139,11 @@ const workingLegs = $derived.by(() => {
 // The whole-route distance is the last leg's cumulative, so the total and the table cannot drift.
 const workingDistanceMeters = $derived(workingLegs.at(-1)?.cumulativeMeters ?? 0);
 const workingDistanceNm = $derived(formatNm(workingDistanceMeters));
-// The whole-passage time at the planning speed, shown alongside the total distance.
+// The whole-passage time at the planning speed, shown alongside the total distance. Split into value
+// and unit so a minutes reading lines its "min" up in the unit column under the distance's "nm".
 const totalTime = $derived.by(() => {
   const seconds = etaSeconds(workingDistanceMeters, planSpeedMps);
-  return seconds == null ? PLACEHOLDER : formatDuration(seconds);
+  return seconds == null ? null : formatDurationParts(seconds);
 });
 
 // Minimize collapses the panel to its header on a phone, so the chart is usable while waypoints are
@@ -310,7 +312,10 @@ $effect(() => {
           <span class="unit">nm</span>
         </dd>
         <dt>Time</dt>
-        <dd><span class="num">{totalTime}</span><span class="unit"></span></dd>
+        <dd>
+          <span class="num">{totalTime ? totalTime.value : PLACEHOLDER}</span>
+          <span class="unit">{totalTime ? totalTime.unit : ''}</span>
+        </dd>
       </dl>
       <UnitField
         label="Plan speed"

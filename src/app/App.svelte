@@ -1370,21 +1370,25 @@ async function onDraftRoute(prompt: string): Promise<void> {
   };
 }
 
-function onNewRoute(): void {
+function beginNewRoute(initialPoint?: LatLon): void {
   clearRouteError();
   clearDraftState();
   // A client-chosen route id, known before the PUT, so activation needs no create-response parse.
   // The Signal K resources API requires a UUID for standard route ids, so this must be a real UUID.
   routeStore.setWorking({ id: uuidv4(), name: '', waypoints: [] });
-  mapCommands?.startRouteEdit();
+  mapCommands?.startRouteEdit(undefined, initialPoint);
 }
 
-// Start a route from the chart context menu: open the routes panel so the editor controls show, then
-// begin a fresh route in drawing mode. The navigator taps the first waypoint at the chosen spot, the
-// same as the panel's New route, just reachable straight from the chart.
-function onStartRouteHere(): void {
+function onNewRoute(): void {
+  beginNewRoute();
+}
+
+// Start a route from the chart context menu: open the routes panel so the editor controls show, begin
+// a fresh route, and seed its first waypoint at the chosen spot, so the navigator continues by tapping
+// the rest of the passage instead of placing the start by hand.
+function onStartRouteHere(position: LatLon): void {
   openPanel('routes');
-  onNewRoute();
+  beginNewRoute(position);
 }
 
 function onEditRoute(id: string): void {

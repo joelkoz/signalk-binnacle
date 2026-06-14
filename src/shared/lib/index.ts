@@ -17,6 +17,7 @@ export {
   formatCpaNm,
   formatDayClock,
   formatDuration,
+  formatDurationParts,
   formatFixed,
   formatHectopascalsOr,
   formatKnots,

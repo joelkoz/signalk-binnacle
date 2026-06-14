@@ -378,8 +378,8 @@ onMount(() => {
         },
         getBounds: () => lngLatBoundsToBbox4(map.getBounds()),
         clearNoteSelection: () => notesOverlay.deselect(ctx),
-        startRouteEdit: (route) => {
-          void loadRouteEditor().then((editor) => editor?.start(route));
+        startRouteEdit: (route, initialPoint) => {
+          void loadRouteEditor().then((editor) => editor?.start(route, initialPoint));
         },
         stopRouteEdit: () => routeEditor?.stop(),
         applyLayers: (settings, order) => {

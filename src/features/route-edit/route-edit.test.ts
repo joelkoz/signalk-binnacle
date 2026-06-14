@@ -13,19 +13,21 @@ vi.mock('terra-draw', () => {
     id?: string | number;
     type: 'Feature';
     properties: Record<string, unknown>;
-    geometry: { type: string; coordinates: number[][] };
+    geometry: { type: string; coordinates: number[][] | number[] };
   }
   class FakeTerraDraw {
     static instances: FakeTerraDraw[] = [];
     features: StoreFeature[] = [];
-    #listeners: Array<() => void> = [];
+    #listeners: Array<(ids: Array<string | number>, type: string) => void> = [];
+    #finishListeners: Array<() => void> = [];
     #nextId = 1;
     #clock = 1000;
     constructor() {
       FakeTerraDraw.instances.push(this);
     }
-    on(event: string, cb: () => void): void {
+    on(event: string, cb: (ids: Array<string | number>, type: string) => void): void {
       if (event === 'change') this.#listeners.push(cb);
+      else if (event === 'finish') this.#finishListeners.push(cb as () => void);
     }
     start(): void {}
     stop(): void {}
@@ -66,8 +68,23 @@ vi.mock('terra-draw', () => {
         },
       ]);
     }
+    // Terra Draw's cursor and closing points are Point features that carry the SAME mode tag as the
+    // line; this models one so the geometry-type filter can be exercised.
+    addCursorPoint(coordinates: number[]): void {
+      this.features.push({
+        type: 'Feature',
+        id: this.#nextId++,
+        properties: { mode: 'linestring', createdAt: this.#clock, updatedAt: this.#clock },
+        geometry: { type: 'Point', coordinates },
+      });
+      this.#clock += 1;
+      this.#emit();
+    }
+    finishLine(): void {
+      for (const cb of [...this.#finishListeners]) cb();
+    }
     #emit(): void {
-      for (const cb of [...this.#listeners]) cb();
+      for (const cb of [...this.#listeners]) cb([], 'update');
     }
   }
   return {
@@ -82,10 +99,12 @@ interface FakeDraw {
   features: Array<{
     id?: string | number;
     properties: Record<string, unknown>;
-    geometry: { type: string; coordinates: number[][] };
+    geometry: { type: string; coordinates: number[][] | number[] };
   }>;
   mutateLine(coordinates: number[][]): void;
   addLine(coordinates: number[][]): void;
+  addCursorPoint(coordinates: number[]): void;
+  finishLine(): void;
 }
 
 function lastInstance(): FakeDraw {
@@ -101,6 +120,18 @@ function startEditor(waypoints: Waypoint[]): { draw: FakeDraw; emitted: Waypoint
     onChange: (next) => emitted.push(next),
   });
   editor.start({ id: 'r', name: 'R', waypoints });
+  return { draw: lastInstance(), emitted };
+}
+
+// Start with no route, which puts the editor in linestring drawing mode (drawing = true).
+function startDrawing(): { draw: FakeDraw; emitted: Waypoint[][] } {
+  const emitted: Waypoint[][] = [];
+  const editor = createRouteEditor({
+    map: {} as MapLibreMap,
+    theme: 'day',
+    onChange: (next) => emitted.push(next),
+  });
+  editor.start();
   return { draw: lastInstance(), emitted };
 }
 
@@ -241,5 +272,60 @@ describe('createRouteEditor working-line pruning', () => {
     expect(emitted.length).toBe(before + 1);
     await Promise.resolve();
     expect(emitted.length).toBe(before + 1);
+  });
+});
+
+describe('createRouteEditor drawing-mode reads', () => {
+  it('drops the trailing cursor ghost so each tap counts as one placed waypoint', () => {
+    const { draw, emitted } = startDrawing();
+    // First tap: Terra Draw makes a two-coordinate line, the second being the cursor ghost.
+    draw.addLine([
+      [0, 0],
+      [0, 0],
+    ]);
+    expect(emitted.at(-1)).toEqual([{ position: { latitude: 0, longitude: 0 } }]);
+    // Second tap committed: [P1, P2, ghost]. The ghost is dropped, so two placed waypoints.
+    draw.mutateLine([
+      [0, 0],
+      [1, 1],
+      [1, 1],
+    ]);
+    expect(emitted.at(-1)).toEqual([
+      { position: { latitude: 0, longitude: 0 } },
+      { position: { latitude: 1, longitude: 1 } },
+    ]);
+  });
+
+  it('ignores a cursor Point that carries the linestring mode tag', () => {
+    const { draw, emitted } = startDrawing();
+    draw.addLine([
+      [0, 0],
+      [2, 2],
+    ]);
+    // A Point feature tagged mode 'linestring' (Terra Draw's cursor point) is appended last. Without
+    // the geometry-type filter, workingLine would pick it and read zero waypoints (the vanishing-route
+    // bug); the working line must stay the LineString.
+    draw.addCursorPoint([2, 2]);
+    expect(emitted.at(-1)).toEqual([{ position: { latitude: 0, longitude: 0 } }]);
+  });
+
+  it('keeps every coordinate once the line is finished and the ghost is removed', () => {
+    const { draw, emitted } = startDrawing();
+    draw.addLine([
+      [0, 0],
+      [1, 1],
+      [1, 1],
+    ]);
+    expect(emitted.at(-1)).toHaveLength(2);
+    // Finishing removes the ghost; the editor stops dropping a coordinate.
+    draw.finishLine();
+    draw.mutateLine([
+      [0, 0],
+      [1, 1],
+    ]);
+    expect(emitted.at(-1)).toEqual([
+      { position: { latitude: 0, longitude: 0 } },
+      { position: { latitude: 1, longitude: 1 } },
+    ]);
   });
 });

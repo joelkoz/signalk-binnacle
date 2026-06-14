@@ -42,16 +42,6 @@ function positionsMatch(a: LatLon, b: LatLon): boolean {
   );
 }
 
-// Terra Draw stamps tracked features with createdAt and updatedAt (epoch ms) in properties.
-function featureStamp(feature: GeoJSONStoreFeatures): number {
-  const created = feature.properties.createdAt;
-  const updated = feature.properties.updatedAt;
-  return Math.max(
-    typeof created === 'number' ? created : 0,
-    typeof updated === 'number' ? updated : 0,
-  );
-}
-
 // The single waypoints-to-LineString mapper, in the narrower store-feature shape (non-null
 // Record<string, JSON> properties) that Terra Draw's addFeatures wants.
 export function routeToStoreFeature(route: Route): GeoJSONStoreFeatures<GeoJSON.LineString> {
@@ -66,7 +56,7 @@ export function routeToStoreFeature(route: Route): GeoJSONStoreFeatures<GeoJSON.
 }
 
 export interface RouteEditor {
-  start(route?: Route): void;
+  start(route?: Route, initialPoint?: LatLon): void;
   setTheme(theme: Theme): void;
   stop(): void;
 }
@@ -118,6 +108,15 @@ export function createRouteEditor(opts: {
     anyNamed = waypoints.some((w) => w.name != null);
   };
 
+  // While a fresh route is being drawn, Terra Draw keeps a trailing "ghost" coordinate on the line
+  // that follows the cursor until the next tap commits it, so the in-progress line always carries
+  // one coordinate more than the points the navigator has actually placed. We drop that ghost from
+  // the emitted waypoints so the panel count, the save gate, and a saved route reflect placed points,
+  // not the cursor. When editing a saved route in select mode every coordinate is real, so nothing
+  // is dropped. The finish event (double-tap or Enter completes the line and removes the ghost)
+  // clears the flag so the completed line's coordinates are then all kept.
+  let drawing = false;
+
   // Re-attach names: a rebuilt coordinate that equals a remembered waypoint's position keeps that
   // waypoint's name, consuming remembered entries in order so a route that visits the same point
   // twice keeps both names in sequence. A dragged point matches nothing and loses its name, which
@@ -136,31 +135,35 @@ export function createRouteEditor(opts: {
     });
   };
 
+  // The route linestrings in the store. Terra Draw stamps its auxiliary cursor and closing-point
+  // features with the SAME properties.mode as the line, so the geometry type is checked too: a Point
+  // carrying mode 'linestring' is the cursor point, not the route, and reading it as the working line
+  // would emit zero waypoints and make the drawn line vanish. Matching on mode alone is the bug.
+  const linestrings = (): GeoJSONStoreFeatures[] =>
+    draw
+      .getSnapshot()
+      .filter((f) => f.properties.mode === LINESTRING_MODE && f.geometry.type === 'LineString');
+
   // The change handler must never mutate the Terra Draw store synchronously. Terra Draw commits a
-  // tapped coordinate by firing a change event from inside its own update (firstUpdateToLine), and
-  // removing a feature during that window clears Terra Draw's in-progress drawing id, so its next
-  // history snapshot throws "No feature with this id (undefined), can not get geometry copy" and
-  // route drawing dies on the second waypoint. So read() selects the working line synchronously for
-  // the panel, and the stale extras are dropped in a microtask, after Terra Draw has finished its
-  // commit. pruning suppresses the nested change the removal fires; prunePending coalesces repeated
-  // schedules into one. The microtask queue drains between two taps, so the next tap sees one line.
+  // tapped coordinate by firing a change event from inside its own update, and removing a feature
+  // during that window clears Terra Draw's in-progress drawing id, so its next history snapshot
+  // throws "No feature with this id (undefined), can not get geometry copy" and route drawing dies.
+  // So read() selects the working line synchronously for the panel, and the stale extras are dropped
+  // in a microtask, after Terra Draw has finished its commit. pruning suppresses the nested change
+  // the removal fires; prunePending coalesces repeated schedules into one. The microtask queue drains
+  // between two taps, so the next tap sees one line.
   let pruning = false;
   let prunePending = false;
 
-  // The freshest linestring is the working line (ties keep the later snapshot entry, so the choice
-  // is deterministic); any others are stale extras left when a line is finished and a new one tapped.
+  // Terra Draw appends features in creation order, so the line being drawn or edited is the last
+  // entry; any earlier linestrings are stale extras left when one line was finished and a new one
+  // started, and those get pruned.
   const workingLine = (
     lines: GeoJSONStoreFeatures[],
   ): { line: GeoJSONStoreFeatures; extraIds: Array<string | number> } => {
-    // The common case once drawing is under way: one line, no extras, so skip the scan and the
-    // three-pass filter on the hot read path (read runs on every Terra Draw change event).
-    if (lines.length === 1) return { line: lines[0], extraIds: [] };
-    let line = lines[0];
-    for (const f of lines) {
-      if (featureStamp(f) >= featureStamp(line)) line = f;
-    }
+    const line = lines[lines.length - 1];
     const extraIds = lines
-      .filter((f) => f !== line)
+      .slice(0, -1)
       .map((f) => f.id)
       .filter((id): id is string | number => id != null);
     return { line, extraIds };
@@ -168,7 +171,7 @@ export function createRouteEditor(opts: {
 
   const prune = (): void => {
     prunePending = false;
-    const lines = draw.getSnapshot().filter((f) => f.properties.mode === LINESTRING_MODE);
+    const lines = linestrings();
     if (lines.length <= 1) return;
     const { extraIds } = workingLine(lines);
     if (extraIds.length === 0) return;
@@ -181,14 +184,17 @@ export function createRouteEditor(opts: {
   };
 
   const read = (): Waypoint[] => {
-    const lines = draw.getSnapshot().filter((f) => f.properties.mode === LINESTRING_MODE);
+    const lines = linestrings();
     if (lines.length === 0) return [];
     const { line, extraIds } = workingLine(lines);
     if (extraIds.length > 0 && !prunePending) {
       prunePending = true;
       queueMicrotask(prune);
     }
-    return reconcileNames(drawFeatureToWaypoints(line));
+    const placed = drawFeatureToWaypoints(line);
+    // Drop the trailing cursor ghost while drawing a fresh route (see `drawing` above).
+    const waypoints = drawing && placed.length > 0 ? placed.slice(0, -1) : placed;
+    return reconcileNames(waypoints);
   };
 
   draw.on('change', () => {
@@ -198,15 +204,48 @@ export function createRouteEditor(opts: {
     opts.onChange(next);
   });
 
+  // Completing a line (double-tap or Enter) removes Terra Draw's trailing ghost, so stop dropping a
+  // coordinate; the finished line's coordinates are then all placed points.
+  draw.on('finish', () => {
+    drawing = false;
+  });
+
+  // "Start a route here" seeds the first waypoint at a chosen spot. Terra Draw has no API to seed an
+  // in-progress line, so replay the exact path a real opening tap takes: dispatch a pointer down and
+  // up at the point's screen pixel on the map canvas, which Terra Draw's adapter reads as the first
+  // click. Deferred a microtask so linestring mode's listeners are attached first.
+  const placeFirstPoint = (point: LatLon): void => {
+    queueMicrotask(() => {
+      const canvas = opts.map.getCanvas();
+      const rect = canvas.getBoundingClientRect();
+      const { x, y } = opts.map.project([point.longitude, point.latitude]);
+      const event = {
+        clientX: rect.left + x,
+        clientY: rect.top + y,
+        bubbles: true,
+        cancelable: true,
+        pointerId: 1,
+        pointerType: 'mouse',
+        isPrimary: true,
+        button: 0,
+      } as const;
+      canvas.dispatchEvent(new PointerEvent('pointerdown', event));
+      canvas.dispatchEvent(new PointerEvent('pointerup', event));
+    });
+  };
+
   return {
-    start(route) {
+    start(route, initialPoint) {
       remember(route ? route.waypoints.slice() : []);
       draw.start();
       if (route && route.waypoints.length > 0) {
+        drawing = false;
         draw.addFeatures([routeToStoreFeature(route)]);
         draw.setMode('select');
       } else {
+        drawing = true;
         draw.setMode(LINESTRING_MODE);
+        if (initialPoint) placeFirstPoint(initialPoint);
       }
     },
     setTheme(theme) {
