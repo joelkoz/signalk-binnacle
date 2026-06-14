@@ -10,7 +10,7 @@ export interface PwaController {
 // precache, so app code owns this deletion.
 function deleteOrphanCaches(): void {
   if (typeof caches === 'undefined') return;
-  void caches.delete('binnacle-pmtiles').catch(() => {
+  caches.delete('binnacle-pmtiles').catch(() => {
     // Best-effort: a failure leaves a dead cache behind, nothing more.
   });
 }

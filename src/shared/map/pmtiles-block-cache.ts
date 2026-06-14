@@ -217,16 +217,23 @@ export function createBlockStore(options: BlockStoreOptions = {}): BlockStore {
       idb.write(
         async () => {
           const conn = await db();
-          const metaStore = conn.transaction(META, 'readonly').objectStore(META);
-          const keys = await reqPromise<IDBValidKey[]>(metaStore.getAllKeys());
+          // Read the keys and delete inside ONE readwrite transaction: reading on a separate
+          // readonly transaction first leaves a window where a concurrent putBlocks for this archive
+          // writes blocks the captured key list misses, orphaning them. The deletes are issued from
+          // the getAllKeys success so they queue while the transaction is still active (awaiting the
+          // request, then issuing more on the same transaction, would let it auto-commit first).
           const prefix = `${url}\n`;
-          const mine = keys.map(String).filter((key) => key.startsWith(prefix));
           const tx = conn.transaction([BLOCKS, META, ARCHIVES], 'readwrite');
-          for (const key of mine) {
-            tx.objectStore(BLOCKS).delete(key);
-            tx.objectStore(META).delete(key);
-          }
-          tx.objectStore(ARCHIVES).delete(url);
+          const metaStore = tx.objectStore(META);
+          const blocksStore = tx.objectStore(BLOCKS);
+          const keysReq = metaStore.getAllKeys();
+          keysReq.onsuccess = () => {
+            for (const key of keysReq.result.map(String).filter((k) => k.startsWith(prefix))) {
+              blocksStore.delete(key);
+              metaStore.delete(key);
+            }
+            tx.objectStore(ARCHIVES).delete(url);
+          };
           await txDone(tx);
         },
         () => memory.purgeArchive(url),
@@ -430,10 +437,15 @@ export class BlockCachedSource implements Source {
   }
 
   async #archiveEtag(url: string): Promise<string | undefined> {
-    if (!this.#etagLoaded) {
-      this.#etag = await this.#store.getValidator(url);
+    if (this.#etagLoaded) return this.#etag;
+    const stored = await this.#store.getValidator(url);
+    // Latch as loaded only once a validator is actually known. An undefined result means the header
+    // block has not been fetched yet, so leaving it unlatched lets a later block-0 header fetch
+    // populate the etag instead of pinning undefined for the life of the source.
+    if (stored !== undefined) {
+      this.#etag = stored;
       this.#etagLoaded = true;
     }
-    return this.#etag;
+    return stored;
   }
 }

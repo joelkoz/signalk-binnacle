@@ -91,9 +91,11 @@ export class SymbolsStore {
     this.#svgTexts.set(symbol.uuid, loading);
     // A transient failure (an expired token, a flaky link) must not be negative-cached for the
     // session: dropping the entry lets the next consumer retry, while a success stays cached.
-    void loading.then((text) => {
-      if (text === undefined) this.#svgTexts.delete(symbol.uuid);
-    });
+    void loading
+      .then((text) => {
+        if (text === undefined) this.#svgTexts.delete(symbol.uuid);
+      })
+      .catch(() => this.#svgTexts.delete(symbol.uuid));
     return loading;
   }
 

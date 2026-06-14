@@ -14,12 +14,19 @@ export interface TrackStore<T> {
 const DB_NAME = 'binnacle';
 const STORE = 'track-points';
 
-function memoryStore<T>(): TrackStore<T> {
+// The in-RAM fallback log. degradeToMemory mirrors every write here so a mid-session IndexedDB
+// degrade keeps recent history, but with IndexedDB healthy that mirror is never read and would grow
+// for the whole session, so the redundant mirror is bounded to a recent window. The no-IndexedDB
+// primary store (Node, private mode) passes no cap, since it is the only copy of the track.
+const MEMORY_MIRROR_CAP = 20_000;
+
+function memoryStore<T>(cap = Number.POSITIVE_INFINITY): TrackStore<T> {
   let items: T[] = [];
   return {
     all: async () => items.slice(),
     append: async (item) => {
       items.push(item);
+      if (items.length > cap) items.splice(0, items.length - cap);
     },
     clear: async () => {
       items = [];
@@ -32,7 +39,7 @@ export function createTrackStore<T>(
 ): TrackStore<T> {
   if (!factory) return memoryStore<T>();
 
-  const memory = memoryStore<T>();
+  const memory = memoryStore<T>(MEMORY_MIRROR_CAP);
   const { run } = openIdbStore(factory, DB_NAME, STORE, (db) =>
     db.createObjectStore(STORE, { autoIncrement: true }),
   );

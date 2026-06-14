@@ -129,7 +129,7 @@ export const runtimeCaching = [
     options: {
       cacheName: 'binnacle-tides',
       networkTimeoutSeconds: 8,
-      expiration: { maxEntries: 32, maxAgeSeconds: 36 * 60 * 60 },
+      expiration: { maxEntries: 32, maxAgeSeconds: 36 * 60 * 60, purgeOnQuotaError: true },
       cacheableResponse: { statuses: [200] },
     },
   },
@@ -140,7 +140,7 @@ export const runtimeCaching = [
     options: {
       cacheName: 'binnacle-weather',
       networkTimeoutSeconds: 8,
-      expiration: { maxEntries: 64, maxAgeSeconds: 6 * 60 * 60 },
+      expiration: { maxEntries: 64, maxAgeSeconds: 6 * 60 * 60, purgeOnQuotaError: true },
       cacheableResponse: { statuses: [200] },
     },
   },
@@ -151,7 +151,7 @@ export const runtimeCaching = [
     options: {
       cacheName: 'binnacle-radar-index',
       networkTimeoutSeconds: 6,
-      expiration: { maxEntries: 4, maxAgeSeconds: TWO_HOURS_SECONDS },
+      expiration: { maxEntries: 4, maxAgeSeconds: TWO_HOURS_SECONDS, purgeOnQuotaError: true },
       cacheableResponse: { statuses: [200] },
     },
   },
@@ -162,7 +162,7 @@ export const runtimeCaching = [
     handler: 'CacheFirst',
     options: {
       cacheName: 'binnacle-radar-tiles',
-      expiration: { maxEntries: 600, maxAgeSeconds: TWO_HOURS_SECONDS },
+      expiration: { maxEntries: 600, maxAgeSeconds: TWO_HOURS_SECONDS, purgeOnQuotaError: true },
       cacheableResponse: { statuses: [200] },
     },
   },

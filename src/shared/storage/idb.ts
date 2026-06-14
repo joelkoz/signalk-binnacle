@@ -36,7 +36,13 @@ export function openIdbDatabase(
       const pending = new Promise<IDBDatabase>((resolve, reject) => {
         const req = factory.open(dbName, version);
         req.onupgradeneeded = () => upgrade(req.result);
-        req.onsuccess = () => resolve(req.result);
+        req.onsuccess = () => {
+          const conn = req.result;
+          // This connection is memoized for the session, so a later tab opening a higher version
+          // would block on it indefinitely; close on versionchange so that upgrade can proceed.
+          conn.onversionchange = () => conn.close();
+          resolve(conn);
+        };
         req.onerror = () => reject(req.error);
         // A second tab holding the prior version blocks the upgrade; reject instead of hanging.
         req.onblocked = () => reject(new Error('indexedDB open blocked'));
