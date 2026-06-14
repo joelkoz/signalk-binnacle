@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeBounds } from './bounds';
+import { boundsOfPoints, normalizeBounds, padBbox } from './bounds';
 
 describe('normalizeBounds', () => {
   it('passes a normal box straight through', () => {
@@ -35,5 +35,55 @@ describe('normalizeBounds', () => {
     expect(e).toBeGreaterThan(5);
     expect(s).toBeLessThan(5);
     expect(n).toBeGreaterThan(5);
+  });
+});
+
+describe('boundsOfPoints', () => {
+  it('returns undefined for an empty set', () => {
+    expect(boundsOfPoints([])).toBeUndefined();
+  });
+
+  it('encloses a normal set with west below east', () => {
+    expect(
+      boundsOfPoints([
+        { latitude: 36, longitude: -122 },
+        { latitude: 37, longitude: -121 },
+      ]),
+    ).toEqual([-122, 36, -121, 37]);
+  });
+
+  it('returns a west > east crossing box for an antimeridian-straddling set', () => {
+    // 179 and -179 are 2 degrees apart across the seam, not 358 the long way around.
+    expect(
+      boundsOfPoints([
+        { latitude: 0, longitude: 179 },
+        { latitude: 10, longitude: -179 },
+      ]),
+    ).toEqual([179, 0, -179, 10]);
+  });
+
+  it('keeps the naive box for a wide non-crossing set', () => {
+    // -10 to 10 is 20 degrees the direct way, narrower than crossing the seam, so no wrap.
+    expect(
+      boundsOfPoints([
+        { latitude: 0, longitude: -10 },
+        { latitude: 0, longitude: 10 },
+      ]),
+    ).toEqual([-10, 0, 10, 0]);
+  });
+});
+
+describe('padBbox', () => {
+  it('pads a normal box outward by the fraction', () => {
+    expect(padBbox([0, 0, 10, 20], 0.1)).toEqual([-1, -2, 11, 22]);
+  });
+
+  it('pads an antimeridian-crossing box across the seam', () => {
+    // The span is 20 degrees the short way (170 east across 180 to -170), so 0.1 pads 2 a side.
+    const padded = padBbox([170, 0, -170, 10], 0.1);
+    expect(padded[0]).toBeCloseTo(168);
+    expect(padded[2]).toBeCloseTo(-168);
+    // Still a crossing box (west > east), which normalizeBounds unwraps for the fit.
+    expect(padded[0]).toBeGreaterThan(padded[2]);
   });
 });

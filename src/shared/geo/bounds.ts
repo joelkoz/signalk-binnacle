@@ -41,7 +41,10 @@ export function clampToWorld([west, south, east, north]: Bbox4): Bbox4 {
 // Mercator latitude limit, so one padded fetch covers more than the visible area and a small pan
 // reuses it. Shared by the notes and AIS-trails overlays.
 export function padBbox([west, south, east, north]: Bbox4, fraction: number): Bbox4 {
-  const dx = (east - west) * fraction;
+  // East below west is the antimeridian-crossing convention: measure the longitude span the short
+  // way across the seam, not the negative naive east - west.
+  const lonSpan = east < west ? east + 360 - west : east - west;
+  const dx = lonSpan * fraction;
   const dy = (north - south) * fraction;
   return clampToWorld([west - dx, south - dy, east + dx, north + dy]);
 }
@@ -68,18 +71,34 @@ export function lngLatBoundsToBbox4(b: LngLatBoundsLike): Bbox4 {
 }
 
 // The bounding box enclosing a set of positions, or undefined when empty, for fitting the chart to a
-// route or a track. A single point yields a zero-area box the caller pads before fitting.
+// route or a track. A single point yields a zero-area box the caller pads before fitting. A set that
+// straddles the antimeridian yields a box in the west > east crossing convention, so the fit takes
+// the short way across 180 rather than framing nearly the whole globe.
 export function boundsOfPoints(points: readonly LatLon[]): Bbox4 | undefined {
   if (points.length === 0) return undefined;
   let west = Number.POSITIVE_INFINITY;
   let south = Number.POSITIVE_INFINITY;
   let east = Number.NEGATIVE_INFINITY;
   let north = Number.NEGATIVE_INFINITY;
+  // The same longitudes with the western hemisphere shifted to follow the eastern (lon < 0 becomes
+  // lon + 360). When this wrapped interval is narrower than the naive one, the points straddle the
+  // antimeridian and the box that crosses the seam is the intended fit.
+  let shiftedWest = Number.POSITIVE_INFINITY;
+  let shiftedEast = Number.NEGATIVE_INFINITY;
   for (const { latitude, longitude } of points) {
     if (longitude < west) west = longitude;
     if (longitude > east) east = longitude;
     if (latitude < south) south = latitude;
     if (latitude > north) north = latitude;
+    const shifted = longitude < 0 ? longitude + 360 : longitude;
+    if (shifted < shiftedWest) shiftedWest = shifted;
+    if (shifted > shiftedEast) shiftedEast = shifted;
+  }
+  if (shiftedEast - shiftedWest < east - west) {
+    // Express the crossing box in the west > east convention padBbox and normalizeBounds handle,
+    // wrapping a shifted longitude past 180 back into [-180, 180].
+    const wrap = (lon: number): number => (lon > 180 ? lon - 360 : lon);
+    return [wrap(shiftedWest), south, wrap(shiftedEast), north];
   }
   return [west, south, east, north];
 }

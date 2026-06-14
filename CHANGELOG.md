@@ -44,7 +44,9 @@ All notable changes to Binnacle are documented here. The format follows
   the recorded-track in-memory fallback is bounded, the PMTiles and IndexedDB stores survive a
   concurrent write and another tab's upgrade, and the Escape-dismiss stack and arrow-key focus are
   made robust. The course readout uses a server-supplied ETA for a single-mark destination, and a
-  route saved from a draft with no name falls back to a dated name.
+  route saved from a draft with no name falls back to a dated name. The layer manager now owns
+  invalidating each overlay's change-detection cache on a base-style swap, so a cached overlay does
+  not stay blank after a style reload, rather than each overlay carrying that duty itself.
 
 ### Fixed
 
@@ -75,6 +77,8 @@ All notable changes to Binnacle are documented here. The format follows
   error instead of leaving the app stuck on "connecting" with no signal.
 - Weather precipitation, wave-height, and tide-station overlays redraw after the base map style
   reloads (the offline fallback) instead of staying blank until their underlying data next changes.
+- A route or track that crosses the antimeridian (180 degrees) fits the chart the short way across
+  the dateline instead of framing nearly the whole globe.
 
 <a id="v062"></a>
 
