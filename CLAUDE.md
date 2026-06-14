@@ -93,16 +93,17 @@ gitignored `tmp/` directory at the repo root, never loose at the root or inside 
 
 The working rhythm: write every file, run the gate capturing each result to a file and reading it
 back (shell output on this Pi intermittently truncates, so trust the file, not a glanced line),
-confirm all green, and only then commit and push. Run heavy commands one at a time. Prefer
-lead-driven implementation over agent teams on this Pi; `TeamCreate` teams have dropped lane files
-silently ("Lock file is already being held" on spawn), which is how broken trees reached commits.
+confirm all green, and only then commit and push. Swap covers concurrent heavy commands now, so
+running several gate steps at once is fine (see "Pi memory" below). Prefer lead-driven
+implementation over agent teams on this Pi; `TeamCreate` teams have dropped lane files silently
+("Lock file is already being held" on spawn), which is how broken trees reached commits.
 
 When a team IS explicitly requested for implementation, use parallel **Agent-tool subagents scoped
 to disjoint files, not `TeamCreate`** (the Agent tool has no lane-lock plumbing, so it avoids that
 failure; it is also what `/cleanup` uses for read-only audits). Each implementer subagent edits a
 non-overlapping file set, is forbidden from running heavy commands and git, and reports back; the
-lead integrates the shared and wiring files itself, runs the single gate one heavy command at a
-time, commits in logical chunks, and only then optionally runs review subagents (code-reviewer,
+lead integrates the shared and wiring files itself, runs the gate, commits in logical chunks, and
+only then optionally runs review subagents (code-reviewer,
 silent-failure-hunter) on the integrated diff and fixes every finding. No tmux panes or
 `shutdown_request` to manage because there is no `TeamCreate`.
 
@@ -266,16 +267,17 @@ full to every release.
   low and nit. The only acceptable skip is factually refuted or by-design after honest
   scrutiny, with a one-line reason.
 - Verification: after fixing, run type-check, tests, lint, and build, and confirm green before
-  claiming a step done. Respect the Pi memory budget below.
+  claiming a step done.
 - Each numbered step in the spec's build order is a major step under this policy.
 
-## Pi memory budget: one heavy verification at a time
+## Pi memory: swap covers concurrent heavy commands
 
-This runs on a Raspberry Pi 5 (8 GB RAM, 4 cores). Concurrent heavy verification commands
-(type-check, lint, test, build) will OOM-kill the session. Never run more than one heavy
-command at a time, whether by the lead or by spawned agents. Agent prompts must explicitly
-forbid running heavy commands; agents do edits, the lead runs verification. Prefix heavy
-invocations with `NODE_OPTIONS="--max-old-space-size=2048"` as a backstop.
+This runs on a Raspberry Pi 5 (8 GB RAM, 4 cores) with 9 GB of swap configured, so concurrent
+heavy verification commands (type-check, lint, test, build) no longer OOM-kill the session: the
+earlier one-heavy-command-at-a-time restriction is lifted. Running several at once is fine when it
+saves wall-clock; expect swap to slow each one under memory pressure, so do not fan out so wide
+that thrashing costs more than it saves. `NODE_OPTIONS="--max-old-space-size=2048"` is no longer
+required, though it remains a harmless backstop on a memory-heavy run.
 
 ## Style rules (override defaults)
 
