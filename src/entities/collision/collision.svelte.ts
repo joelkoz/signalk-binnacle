@@ -1,6 +1,7 @@
 import type { AisTargets, AisTargetView } from '$entities/ais';
 import type { OwnVessel } from '$entities/vessel';
 import type { LatLon } from '$shared/geo';
+import { knotsToMetersPerSecond } from '$shared/lib';
 import { computeCpa } from '$shared/nav';
 import type { PersistedValue, Thresholds } from '$shared/settings';
 
@@ -36,6 +37,12 @@ const SEVERITY_RANK: Record<Severity, number> = { danger: 0, warning: 1, clear: 
 // genuinely close, imminent contact.
 const ESCALATE_CPA_METERS = 185; // about 0.1 nm
 const ESCALATE_TCPA_SECONDS = 120;
+
+// A target slower than this is a moored or swinging boat, not a vessel making way. When the own
+// vessel is also near stationary (anchored, or under this same speed), such a target is the
+// busy-marina and at-anchor nuisance the alarm must not fire on; a genuinely moving target, or own
+// vessel underway toward a slow target, still alarms. One knot.
+const SLOW_TARGET_SOG_MPS = knotsToMetersPerSecond(1);
 
 // Severity is sticky on the way down: an upgrade applies immediately (an escalation is never
 // delayed), but a downgrade only happens once the value clears its old band by this margin, so GPS
@@ -89,6 +96,7 @@ export function assessContacts(
   targets: AisTargetView[],
   thresholds: Thresholds,
   previous?: ReadonlyMap<string, Severity>,
+  anchored = false,
 ): Assessment {
   const ownK = own
     ? {
@@ -116,12 +124,19 @@ export function assessContacts(
       // Computing CPA needs a live own fix; the provider branch above does not (its CPA and TCPA
       // come from the server), so a lost fix stands down only the locally computed geometry.
       if (!ownK) continue;
+      // A reported SOG with no COG has no usable track; defaulting the course to due north would
+      // fabricate closing geometry, so such a target counts as stationary instead.
+      const targetSogMps = t.cogRad === undefined ? 0 : (t.sogMps ?? 0);
+      // The busy-marina and at-anchor false-alarm case: a near-stationary target (a moored or
+      // swinging boat) is not a collision risk to an own vessel that is itself not making way. Own
+      // vessel counts as stationary when anchored, so GPS wander at anchor cannot reinstate the
+      // noise. This gate is computed-branch only: a provider's CPA and TCPA are left authoritative.
+      const ownStationary = anchored || ownK.sogMps < SLOW_TARGET_SOG_MPS;
+      if (ownStationary && targetSogMps < SLOW_TARGET_SOG_MPS) continue;
       const r = computeCpa(ownK, {
         latitude: t.position.latitude,
         longitude: t.position.longitude,
-        // A reported SOG with no COG has no usable track; defaulting the course to due north
-        // would fabricate closing geometry, so such a target counts as stationary instead.
-        sogMps: t.cogRad === undefined ? 0 : (t.sogMps ?? 0),
+        sogMps: targetSogMps,
         cogRad: t.cogRad ?? 0,
       });
       if (!r.closing) continue;
@@ -153,6 +168,10 @@ export class CollisionAssessment {
   #vessel: OwnVessel;
   #targets: AisTargets;
   #thresholds: PersistedValue<Thresholds>;
+  // Reads anchor-watch state so an anchored own vessel treats moored and swinging boats as the
+  // non-hazards they are, silencing the busy-anchorage nuisance. A callback, not the anchor entity,
+  // keeps this entity from importing a sibling and lets the composition root wire the dependency.
+  #anchored: () => boolean;
 
   // The worst-contact signature (id and severity) that was acknowledged. The alert is
   // suppressed only while the current worst contact still matches it, so a new or more
@@ -190,6 +209,7 @@ export class CollisionAssessment {
       this.#targets.list(),
       this.#thresholds.value,
       this.#lastSeverities,
+      this.#anchored(),
     );
     if (next.contacts.length === 0) {
       this.#lastSeverities = undefined;
@@ -202,10 +222,16 @@ export class CollisionAssessment {
     return next;
   });
 
-  constructor(vessel: OwnVessel, targets: AisTargets, thresholds: PersistedValue<Thresholds>) {
+  constructor(
+    vessel: OwnVessel,
+    targets: AisTargets,
+    thresholds: PersistedValue<Thresholds>,
+    anchored: () => boolean = () => false,
+  ) {
     this.#vessel = vessel;
     this.#targets = targets;
     this.#thresholds = thresholds;
+    this.#anchored = anchored;
   }
 
   get assessment(): Assessment {

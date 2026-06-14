@@ -201,7 +201,7 @@ describe('createRouteEditor name reconciliation', () => {
 });
 
 describe('createRouteEditor working-line pruning', () => {
-  it('keeps the most recently created linestring and removes the extras from the store', () => {
+  it('keeps the most recently created linestring and removes the extras from the store', async () => {
     const { draw, emitted } = startEditor([
       { position: { latitude: 0, longitude: 0 } },
       { position: { latitude: 1, longitude: 1 } },
@@ -210,18 +210,24 @@ describe('createRouteEditor working-line pruning', () => {
       [5, 5],
       [6, 6],
     ]);
+    // read() returns the working line synchronously, but the extra is pruned in a microtask so the
+    // removal never runs inside Terra Draw's own commit; flush it before asserting the store shrank.
+    expect(emitted.at(-1)).toEqual([
+      { position: { latitude: 5, longitude: 5 } },
+      { position: { latitude: 6, longitude: 6 } },
+    ]);
+    // The store still holds both lines synchronously: the prune did not run inside the change handler
+    // (doing so mid-commit is what crashed Terra Draw on the second waypoint).
+    expect(draw.features).toHaveLength(2);
+    await Promise.resolve();
     expect(draw.features).toHaveLength(1);
     expect(draw.features[0].geometry.coordinates).toEqual([
       [5, 5],
       [6, 6],
     ]);
-    expect(emitted.at(-1)).toEqual([
-      { position: { latitude: 5, longitude: 5 } },
-      { position: { latitude: 6, longitude: 6 } },
-    ]);
   });
 
-  it('the nested removal change does not emit a duplicate waypoint set', () => {
+  it('the deferred removal change does not emit a duplicate waypoint set', async () => {
     const { draw, emitted } = startEditor([
       { position: { latitude: 0, longitude: 0 } },
       { position: { latitude: 1, longitude: 1 } },
@@ -231,6 +237,9 @@ describe('createRouteEditor working-line pruning', () => {
       [5, 5],
       [6, 6],
     ]);
+    // One emit for the tap; the microtask prune's nested change is suppressed, so still one after.
+    expect(emitted.length).toBe(before + 1);
+    await Promise.resolve();
     expect(emitted.length).toBe(before + 1);
   });
 });

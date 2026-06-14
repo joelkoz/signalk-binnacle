@@ -3,6 +3,7 @@ import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
 import type { AnchorWatch } from '$entities/anchor';
 import type { CollisionAssessment } from '$entities/collision';
+import type { CourseGuidance } from '$entities/course';
 import type { MeasureStore } from '$entities/measure';
 import type { MobStore } from '$entities/mob';
 import type { RouteStore } from '$entities/route';
@@ -13,7 +14,11 @@ import type { UnitsStore } from '$entities/units';
 import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
 import type { WaypointsStore } from '$entities/waypoint';
-import { createAisOverlay, createAisTrailsOverlay } from '$features/ais-layer';
+import {
+  createAisOverlay,
+  createAisTrailsOverlay,
+  createAisVectorsOverlay,
+} from '$features/ais-layer';
 import { createAnchorOverlay } from '$features/anchor-watch';
 import { BOUNDARY_SOURCES, createBoundaryOverlay } from '$features/boundaries-overlay';
 import { fetchCharts } from '$features/charts';
@@ -26,7 +31,7 @@ import { createMpaOverlay, MPA_SOURCES } from '$features/mpa-overlays';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { buildOceanSources, createOceanOverlay } from '$features/ocean-conditions';
 import type { RouteEditor } from '$features/route-edit';
-import { createRouteOverlay } from '$features/route-layer';
+import { createCourseOverlay, createRouteOverlay } from '$features/route-layer';
 import { createSeamarkOverlay, SEAMARK_SOURCES } from '$features/seamark-overlay';
 import { createTidesOverlay } from '$features/tides';
 import {
@@ -63,6 +68,9 @@ interface Props {
   // The measure tool; while armed, chart taps append measurement points.
   measure: MeasureStore;
   collision: CollisionAssessment;
+  // Active-navigation guidance, drawn as the vessel-to-destination course line and destination
+  // marker so a single-point "go to here" and an active route's current leg show on the chart.
+  guidance: CourseGuidance;
   recorder: TrackRecorder;
   // The route store, drawn by the route overlay and edited on the chart via Terra Draw.
   routeStore: RouteStore;
@@ -130,6 +138,7 @@ const {
   waypoints,
   symbols,
   collision,
+  guidance,
   recorder,
   routeStore,
   tides,
@@ -249,6 +258,7 @@ onMount(() => {
         createAnchorOverlay(anchor, vessel, onAnchorMoved),
         createMeasureOverlay(measure, units),
         createRouteOverlay(routeStore),
+        createCourseOverlay(guidance, vessel),
         createWaypointOverlay(waypoints, symbols),
         notesOverlay,
         createAisTrailsOverlay(
@@ -257,6 +267,7 @@ onMount(() => {
           aisTrailsAvailable ?? (() => false),
           () => store.selfContext,
         ),
+        createAisVectorsOverlay(aisTargets, () => collision.assessment),
         createAisOverlay(aisTargets, store),
         createCollisionOverlay(collision),
         createMobOverlay(mob, vessel),

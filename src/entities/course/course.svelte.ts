@@ -140,6 +140,13 @@ export class CourseGuidance {
     return this.#info.nextPoint?.name;
   }
 
+  // The active destination position (the next point of the course or single-mark "go to"), for the
+  // map to draw the destination marker and the vessel-to-destination course line. Undefined when no
+  // course is active. Decimal degrees, like every position.
+  get nextPosition(): LatLon | undefined {
+    return this.#next;
+  }
+
   // The server's estimated time of arrival as an ISO-8601 instant, preferred over a client clock
   // estimate when a provider populates calcValues. Only meaningful when source is 'server'; when the
   // values are computed client-side it is undefined and the consumer falls back to now plus its own

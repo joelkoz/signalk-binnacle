@@ -136,34 +136,57 @@ export function createRouteEditor(opts: {
     });
   };
 
-  // Pruning extras below fires a nested change event from removeFeatures; the flag keeps that
-  // nested event from emitting a second, identical waypoint set.
+  // The change handler must never mutate the Terra Draw store synchronously. Terra Draw commits a
+  // tapped coordinate by firing a change event from inside its own update (firstUpdateToLine), and
+  // removing a feature during that window clears Terra Draw's in-progress drawing id, so its next
+  // history snapshot throws "No feature with this id (undefined), can not get geometry copy" and
+  // route drawing dies on the second waypoint. So read() selects the working line synchronously for
+  // the panel, and the stale extras are dropped in a microtask, after Terra Draw has finished its
+  // commit. pruning suppresses the nested change the removal fires; prunePending coalesces repeated
+  // schedules into one. The microtask queue drains between two taps, so the next tap sees one line.
   let pruning = false;
+  let prunePending = false;
+
+  // The freshest linestring is the working line (ties keep the later snapshot entry, so the choice
+  // is deterministic); any others are stale extras left when a line is finished and a new one tapped.
+  const workingLine = (
+    lines: GeoJSONStoreFeatures[],
+  ): { line: GeoJSONStoreFeatures; extraIds: Array<string | number> } => {
+    // The common case once drawing is under way: one line, no extras, so skip the scan and the
+    // three-pass filter on the hot read path (read runs on every Terra Draw change event).
+    if (lines.length === 1) return { line: lines[0], extraIds: [] };
+    let line = lines[0];
+    for (const f of lines) {
+      if (featureStamp(f) >= featureStamp(line)) line = f;
+    }
+    const extraIds = lines
+      .filter((f) => f !== line)
+      .map((f) => f.id)
+      .filter((id): id is string | number => id != null);
+    return { line, extraIds };
+  };
+
+  const prune = (): void => {
+    prunePending = false;
+    const lines = draw.getSnapshot().filter((f) => f.properties.mode === LINESTRING_MODE);
+    if (lines.length <= 1) return;
+    const { extraIds } = workingLine(lines);
+    if (extraIds.length === 0) return;
+    pruning = true;
+    try {
+      draw.removeFeatures(extraIds);
+    } finally {
+      pruning = false;
+    }
+  };
 
   const read = (): Waypoint[] => {
     const lines = draw.getSnapshot().filter((f) => f.properties.mode === LINESTRING_MODE);
     if (lines.length === 0) return [];
-    let line = lines[0];
-    if (lines.length > 1) {
-      // Finishing a line and tapping again starts a second feature the panel would otherwise
-      // ignore. Keep the most recently created or updated linestring as the working line (ties
-      // keep the later snapshot entry, so the choice is deterministic) and drop the rest, so the
-      // chart and the panel agree. The common one-line case skips all of this.
-      for (const f of lines) {
-        if (featureStamp(f) >= featureStamp(line)) line = f;
-      }
-      const extras = lines
-        .filter((f) => f !== line)
-        .map((f) => f.id)
-        .filter((id): id is string | number => id != null);
-      if (extras.length > 0) {
-        pruning = true;
-        try {
-          draw.removeFeatures(extras);
-        } finally {
-          pruning = false;
-        }
-      }
+    const { line, extraIds } = workingLine(lines);
+    if (extraIds.length > 0 && !prunePending) {
+      prunePending = true;
+      queueMicrotask(prune);
     }
     return reconcileNames(drawFeatureToWaypoints(line));
   };

@@ -4,3 +4,9 @@
 export function emptyFeatureCollection(): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
+
+// Wrap a feature list in a FeatureCollection, so the overlays that build features for setData share
+// one spelling of the wrapper instead of each writing the literal.
+export function featureCollection(features: GeoJSON.Feature[]): GeoJSON.FeatureCollection {
+  return { type: 'FeatureCollection', features };
+}

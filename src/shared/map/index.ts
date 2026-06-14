@@ -2,7 +2,7 @@ export { chartSourceId } from './chart-adapter';
 export { createChartOverlay } from './chart-overlay';
 export type { SignalKChart } from './chart-types';
 export { DARK_SCRIM, rgbaCss } from './contrast';
-export { emptyFeatureCollection } from './feature-collection';
+export { emptyFeatureCollection, featureCollection } from './feature-collection';
 export type { Rgba } from './icon-raster';
 export { rasterIcon, rasterIconColored } from './icon-raster';
 export type { LayerListItem, LayerSettings } from './layer-manager';

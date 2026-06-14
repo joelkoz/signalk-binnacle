@@ -38,6 +38,29 @@ export function geodesicCircleRing(
   return ring;
 }
 
+// Project a point along a great-circle bearing for a distance. bearing is radians clockwise from
+// true north. Returns [longitude, latitude] in decimal degrees (GeoJSON order).
+export function geodesicDestination(
+  latitude: number,
+  longitude: number,
+  bearingRad: number,
+  distanceMeters: number,
+): [number, number] {
+  const d = distanceMeters / EARTH_RADIUS_M;
+  const lat1 = latitude * DEG_TO_RAD;
+  const lon1 = longitude * DEG_TO_RAD;
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(bearingRad),
+  );
+  const lon2 =
+    lon1 +
+    Math.atan2(
+      Math.sin(bearingRad) * Math.sin(d) * Math.cos(lat1),
+      Math.cos(d) - Math.sin(lat1) * Math.sin(lat2),
+    );
+  return [lon2 / DEG_TO_RAD, lat2 / DEG_TO_RAD];
+}
+
 // Great-circle distance between two lat/lon points in meters.
 export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const dLat = (lat2 - lat1) * DEG_TO_RAD;

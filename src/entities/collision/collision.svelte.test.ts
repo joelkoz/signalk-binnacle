@@ -115,6 +115,45 @@ describe('assessContacts', () => {
   });
 });
 
+describe('assessContacts near-stationary gate', () => {
+  // A slow target closing on the own vessel: about 111 m north, drifting south at 0.3 m/s (under
+  // 1 kt). Without the gate this is a computed danger; the gate is what suppresses the marina noise.
+  const slowCloser = target({
+    id: 'moored',
+    position: { latitude: 0.001, longitude: 0 },
+    sogMps: 0.3,
+    cogRad: degreesToRadians(180),
+  });
+  const ownUnderway = {
+    position: { latitude: 0, longitude: 0 },
+    sogMps: knotsToMetersPerSecond(5),
+    cogRad: degreesToRadians(0),
+  };
+
+  it('skips a near-stationary target when the own vessel is also near stationary', () => {
+    const r = assessContacts(ownStationary, [slowCloser], DEFAULT_THRESHOLDS);
+    expect(r.contacts).toHaveLength(0);
+  });
+
+  it('still alarms when the own vessel is making way toward a slow target', () => {
+    const r = assessContacts(ownUnderway, [slowCloser], DEFAULT_THRESHOLDS);
+    expect(r.contacts).toHaveLength(1);
+  });
+
+  it('skips a slow target when anchored even if the own fix shows speed from GPS wander', () => {
+    const anchored = assessContacts(ownUnderway, [slowCloser], DEFAULT_THRESHOLDS, undefined, true);
+    expect(anchored.contacts).toHaveLength(0);
+    const underway = assessContacts(
+      ownUnderway,
+      [slowCloser],
+      DEFAULT_THRESHOLDS,
+      undefined,
+      false,
+    );
+    expect(underway.contacts).toHaveLength(1);
+  });
+});
+
 describe('assessContacts downgrade hysteresis', () => {
   // DEFAULT_THRESHOLDS: danger 926 m / 600 s, warning 1852 m / 1200 s.
   const previous = (severity: 'danger' | 'warning') =>

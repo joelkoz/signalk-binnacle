@@ -185,7 +185,9 @@ const client = createSignalKClient();
 const auth = new AuthController(serverOrigin());
 const net = new OnlineStatus();
 const thresholds = createThresholds();
-const collision = new CollisionAssessment(vessel, aisTargets, thresholds);
+// Anchored own vessel treats moored and swinging boats as non-hazards, silencing the busy-anchorage
+// nuisance; the callback reads anchor (constructed below) lazily, only from inside the assessment.
+const collision = new CollisionAssessment(vessel, aisTargets, thresholds, () => anchor.watching);
 const lookoutAlarm = new LookoutAlarm();
 // The collision mute is session-only with a bounded auto-expiring window (see CollisionMute): a mute
 // set in a crowded anchorage must never carry silently into the next passage or across a reload, and
@@ -861,6 +863,7 @@ $effect(() => {
     collision.suppressed,
     collisionMute.active,
     collision.escalating,
+    anchor.watching,
   );
 });
 
@@ -1250,8 +1253,8 @@ function onToggleRouteShown(id: string, shown: boolean): void {
   if (shown) flyToRouteStart(id);
 }
 
-// AI route drafting consumes the OpenRouter companion plugin: the control is hidden unless the plugin
-// is detected at the version that ships the route-draft endpoint, and every value the model returns is
+// AI route drafting is served by signalk-crows-nest: the control is hidden unless that plugin is
+// detected at the version that ships the route-draft endpoint, and every value the model returns is
 // an unverified draft the navigator must check leg by leg before saving.
 const draftAvailable = $derived(routeDraftAvailable(serverFeatures?.plugins));
 let draftLoading = $state(false);
@@ -1267,15 +1270,15 @@ let draftSeq = 0;
 
 const DRAFT_ERROR_MESSAGES: Record<DraftError, string> = {
   budget:
-    'The daily AI budget is used up. Try again later, or raise the cap in the companion plugin.',
+    'The daily AI budget is used up. Try again later, or raise the cap in the route-drafting plugin.',
   'no-route':
     'The AI could not draft a usable route for that. Try rephrasing, or a shorter passage.',
   'model-error': 'The AI returned an unusable response. Try again, or rephrase the request.',
   timeout: 'The draft timed out. Check the connection and try again.',
   unreachable:
-    'Could not reach the AI companion. Check it is installed and the server is reachable.',
+    'Could not reach the route-drafting plugin. Check it is installed and the server is reachable.',
   unauthorized:
-    'Binnacle needs write access for AI drafting. Approve its access request in the admin.',
+    'AI route drafting needs a Signal K admin session. Sign in to the server as an administrator.',
   'bad-request': 'The draft request was rejected. Try rephrasing the passage.',
 };
 
@@ -1877,6 +1880,7 @@ onDestroy(() => {
       {mob}
       {measure}
       {collision}
+      guidance={courseGuidance}
       {recorder}
       {routeStore}
       tides={tidesStore}

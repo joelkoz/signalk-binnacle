@@ -17,6 +17,34 @@ All notable changes to Binnacle are documented here. The format follows
   leg table. It cannot be minimized while a draft is up, and it saves only behind an armed "I checked
   every leg" confirm. The control appears only when the companion plugin is installed; on a stock
   server it stays hidden, with no error.
+- AIS course vectors. Each moving AIS target draws a short predictor line projecting its position
+  about ten minutes ahead along its course at its speed, red for a danger contact and amber for a
+  warning, so a crowded screen shows at a glance which targets are moving and which way. A
+  stationary target shows no vector. (#3)
+
+### Changed
+
+- Adding a chart by URL now reads its header and metadata through the same cached, retrying source
+  the map tiles use, so re-adding the same chart, and its first render once added, hit the
+  IndexedDB block cache instead of refetching over the network.
+- Internal consolidation with no behavior change: the map overlay lifecycle, the rhumb-line
+  geometry, the weather and tides display helpers, the GPX coordinate guards, and the panel and
+  icon-button styles now route through the existing shared primitives and design tokens.
+
+### Fixed
+
+- Drawing a route on the chart no longer breaks on the second waypoint. Tapping the second point
+  could throw inside the draw library and leave the route stuck as a single dot; the chart editor
+  now defers its working-line cleanup so the draw completes normally. (#1)
+- "Go to here" now draws the course line from the vessel to the destination, and a destination
+  marker, on the chart, not just the destination readout in the nav strip. The same line shows the
+  current leg of a route under way. (#2)
+- AIS collision alerts no longer cry wolf in a busy marina or at anchor. A moored or swinging boat
+  (under one knot) is no longer flagged as a danger to a vessel that is itself anchored or near
+  stationary, and the audible alarm is silenced while anchored, with the danger strip still visible
+  and a genuinely close, imminent contact still sounding. (#4)
+- A Signal K data worker that fails to load (a bundling or chunk error) now surfaces a connection
+  error instead of leaving the app stuck on "connecting" with no signal.
 
 <a id="v062"></a>
 
