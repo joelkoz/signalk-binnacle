@@ -13,6 +13,7 @@ import { DAY_MS } from '$shared/lib';
 import {
   DARK_SCRIM,
   emptyFeatureCollection,
+  featureCollection,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
@@ -99,34 +100,56 @@ function iconFor(note: NotePoint): string {
   return poiIconId(note.category);
 }
 
-function featureCollection(
+const CENTERED_OFFSET: [number, number] = [0, 0];
+
+// Build the icon-offset as a match on the icon id. MapLibre coerces an array-valued GeoJSON property
+// to a JSON string crossing to the worker, so a per-feature offset cannot ride on the feature as
+// ['get', 'iconOffset']; the match keeps each provided symbol's anchor offset as a real LITERAL array
+// in the style, and every centered category disc falls through to [0, 0].
+function iconOffsetExpression(
+  offsets: ReadonlyMap<string, readonly [number, number]>,
+): ExpressionSpecification | [number, number] {
+  if (offsets.size === 0) return CENTERED_OFFSET;
+  const match: unknown[] = ['match', ['get', 'icon']];
+  for (const [iconId, offset] of offsets) {
+    match.push(iconId, ['literal', offset]);
+  }
+  match.push(['literal', CENTERED_OFFSET]);
+  return match as ExpressionSpecification;
+}
+
+// One pass over the notes builds both the source data and the icon-offset match: each note resolves
+// to a provided symbol or its built-in category disc, and a provided symbol with a non-zero anchor
+// offset contributes one match arm keyed on its icon id.
+function buildRender(
   notes: readonly NotePoint[],
   managedIcon: (note: NotePoint) => SymbolIconEntry | undefined,
-): GeoJSON.FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: notes.map((note): GeoJSON.Feature => {
-      const managed = managedIcon(note);
-      return {
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [note.position.longitude, note.position.latitude],
-        },
-        properties: {
-          id: note.id,
-          name: note.name,
-          category: note.category,
-          rank: categoryRank(note.category),
-          icon: managed?.iconId ?? iconFor(note),
-          iconOffset: managed?.offset ?? [0, 0],
-          url: note.url ?? '',
-          source: note.source ?? '',
-          attribution: note.attribution ?? '',
-        },
-      };
-    }),
-  };
+): { data: GeoJSON.FeatureCollection; iconOffset: ExpressionSpecification | [number, number] } {
+  const offsets = new Map<string, readonly [number, number]>();
+  const features = notes.map((note): GeoJSON.Feature => {
+    const managed = managedIcon(note);
+    if (managed && (managed.offset[0] !== 0 || managed.offset[1] !== 0)) {
+      offsets.set(managed.iconId, managed.offset);
+    }
+    return {
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [note.position.longitude, note.position.latitude],
+      },
+      properties: {
+        id: note.id,
+        name: note.name,
+        category: note.category,
+        rank: categoryRank(note.category),
+        icon: managed?.iconId ?? iconFor(note),
+        url: note.url ?? '',
+        source: note.source ?? '',
+        attribution: note.attribution ?? '',
+      },
+    };
+  });
+  return { data: featureCollection(features), iconOffset: iconOffsetExpression(offsets) };
 }
 
 const EMPTY: GeoJSON.FeatureCollection = emptyFeatureCollection();
@@ -228,7 +251,11 @@ export function createNotesOverlay(
   function render(ctx: OverlayContext, notes: NotePoint[]): void {
     if (notes === renderedNotes) return;
     renderedNotes = notes;
-    setData(ctx, featureCollection(notes, managedIcon));
+    const { data, iconOffset } = buildRender(notes, managedIcon);
+    setData(ctx, data);
+    // The offset is a layer property, not a feature one (MapLibre stringifies an array feature
+    // property), so it is restyled here. The getLayer guard mirrors setData's missing-source degrade.
+    if (ctx.map.getLayer(LAYER_ID)) ctx.map.setLayoutProperty(LAYER_ID, 'icon-offset', iconOffset);
     ensurePendingIcons(ctx, notes);
   }
 
@@ -273,10 +300,9 @@ export function createNotesOverlay(
       source.setData(EMPTY);
       return;
     }
-    source.setData({
-      type: 'FeatureCollection',
-      features: [{ type: 'Feature', geometry: feature.geometry, properties: {} }],
-    });
+    source.setData(
+      featureCollection([{ type: 'Feature', geometry: feature.geometry, properties: {} }]),
+    );
   }
 
   return {
@@ -407,9 +433,10 @@ export function createNotesOverlay(
           layout: {
             'icon-image': ['get', 'icon'],
             'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 0.9],
-            // Every feature carries an iconOffset ([0, 0] for the centered category discs); a
-            // provided symbol's offset pins its declared anchor pixel to the point.
-            'icon-offset': ['get', 'iconOffset'],
+            // Default offset; render() sets a per-icon match via setLayoutProperty (a provided
+            // symbol's offset pins its declared anchor pixel to the point). The offset cannot ride on
+            // the feature as a ['get'], because MapLibre coerces an array-valued property to a string.
+            'icon-offset': [0, 0],
             'icon-allow-overlap': true,
             'text-field': ['get', 'name'],
             'text-font': ['Noto Sans Regular'],

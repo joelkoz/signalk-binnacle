@@ -27,6 +27,7 @@ function viewCtx(state: { zoom: number; lng: number; lat: number }): OverlayCont
       getNorth: () => state.lat + 1,
     }),
     getSource: () => undefined,
+    getLayer: () => undefined,
   };
   return { map: map as never, beforeIdFor: () => undefined };
 }
@@ -149,10 +150,16 @@ describe('notes overlay', () => {
     await settle();
     expect(map.hasImage(symbolIconId('u9'))).toBe(true);
     const fc = map.sources.get('binnacle-notes')?.data as GeoJSON.FeatureCollection;
-    expect(fc.features[0].properties).toMatchObject({
-      icon: symbolIconId('u9'),
-      iconOffset: [0, -12],
-    });
+    expect(fc.features[0].properties).toMatchObject({ icon: symbolIconId('u9') });
+    // The anchor offset rides on the layer's icon-offset match (keyed on the icon id), not on the
+    // feature: MapLibre would coerce an array-valued feature property to a string.
+    expect(map.setLayoutProperty).toHaveBeenLastCalledWith('binnacle-notes-symbol', 'icon-offset', [
+      'match',
+      ['get', 'icon'],
+      symbolIconId('u9'),
+      ['literal', [0, -12]],
+      ['literal', [0, 0]],
+    ]);
   });
 
   it('degrades to the category disc when the symbol SVG fetch fails', async () => {
@@ -167,10 +174,13 @@ describe('notes overlay', () => {
     await settle();
     expect(map.hasImage(symbolIconId('u9'))).toBe(false);
     const fc = map.sources.get('binnacle-notes')?.data as GeoJSON.FeatureCollection;
-    expect(fc.features[0].properties).toMatchObject({
-      icon: 'binnacle-poi-marina',
-      iconOffset: [0, 0],
-    });
+    expect(fc.features[0].properties).toMatchObject({ icon: 'binnacle-poi-marina' });
+    // No provided symbol, so the layer's icon-offset stays the centered default.
+    expect(map.setLayoutProperty).toHaveBeenLastCalledWith(
+      'binnacle-notes-symbol',
+      'icon-offset',
+      [0, 0],
+    );
   });
 
   it('uses the category disc with a centered offset when no symbols store is passed', async () => {
@@ -182,10 +192,13 @@ describe('notes overlay', () => {
     overlay.sync(ctx);
     await settle();
     const fc = map.sources.get('binnacle-notes')?.data as GeoJSON.FeatureCollection;
-    expect(fc.features[0].properties).toMatchObject({
-      icon: 'binnacle-poi-marina',
-      iconOffset: [0, 0],
-    });
+    expect(fc.features[0].properties).toMatchObject({ icon: 'binnacle-poi-marina' });
+    // No provided symbol, so the layer's icon-offset stays the centered default.
+    expect(map.setLayoutProperty).toHaveBeenLastCalledWith(
+      'binnacle-notes-symbol',
+      'icon-offset',
+      [0, 0],
+    );
   });
 
   it('serves a persisted note set to a fresh overlay (a reload) without fetching', async () => {
