@@ -6,6 +6,7 @@ import type {
 } from 'maplibre-gl';
 import type { CollisionAssessment, DangerContact } from '$entities/collision';
 import {
+  featureCollection,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
@@ -43,20 +44,6 @@ function strokeColor(paint: MapThemePaint): ExpressionSpecification {
   ];
 }
 
-function featureCollection(contacts: readonly DangerContact[]): GeoJSON.FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: contacts.map((contact) => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [contact.position.longitude, contact.position.latitude],
-      },
-      properties: { severity: contact.severity },
-    })),
-  };
-}
-
 export function createCollisionOverlay(collision: CollisionAssessment): CollisionOverlay {
   // The assessment is a memoized derived value, so its contacts array keeps the same identity
   // until traffic, the own fix, or the thresholds actually change. A reference check is the
@@ -76,7 +63,16 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
       if (!ctx.map.getSource(SOURCE_ID)) {
         const source: GeoJSONSourceSpecification = {
           type: 'geojson',
-          data: featureCollection(contacts),
+          data: featureCollection(
+            contacts.map((contact) => ({
+              type: 'Feature' as const,
+              geometry: {
+                type: 'Point' as const,
+                coordinates: [contact.position.longitude, contact.position.latitude],
+              },
+              properties: { severity: contact.severity },
+            })),
+          ),
         };
         ctx.map.addSource(SOURCE_ID, source);
       }
@@ -117,7 +113,18 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
       if (contacts === lastContacts) return;
       lastContacts = contacts;
       const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      source?.setData(featureCollection(contacts));
+      source?.setData(
+        featureCollection(
+          contacts.map((contact) => ({
+            type: 'Feature' as const,
+            geometry: {
+              type: 'Point' as const,
+              coordinates: [contact.position.longitude, contact.position.latitude],
+            },
+            properties: { severity: contact.severity },
+          })),
+        ),
+      );
     },
     applyTheme(ctx, paint) {
       ctx.map.setPaintProperty(LAYER_ID, 'circle-stroke-color', strokeColor(paint));

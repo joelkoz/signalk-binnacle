@@ -84,6 +84,21 @@ describe('formatDayClock', () => {
     expect(formatDayClock(at, { zone: true }).length).toBeGreaterThan(formatDayClock(at).length);
     expect(formatDayClock(Number.NaN)).toBe('');
   });
+
+  it('omits the minute field when minute:false, producing a shorter string', () => {
+    const at = Date.UTC(2026, 5, 11, 14, 32, 5);
+    const withMinute = formatDayClock(at);
+    const withoutMinute = formatDayClock(at, { minute: false });
+    // Fewer characters when the minute is suppressed.
+    expect(withoutMinute.length).toBeLessThan(withMinute.length);
+  });
+
+  it('omits the minute field with zone:true, producing a shorter string than the zone+minute form', () => {
+    const at = Date.UTC(2026, 5, 11, 14, 32, 5);
+    const withMinuteAndZone = formatDayClock(at, { zone: true });
+    const withoutMinuteWithZone = formatDayClock(at, { zone: true, minute: false });
+    expect(withoutMinuteWithZone.length).toBeLessThan(withMinuteAndZone.length);
+  });
 });
 
 describe('conversion primitives', () => {

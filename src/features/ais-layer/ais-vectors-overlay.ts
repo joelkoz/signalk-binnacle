@@ -26,6 +26,7 @@ const BAND = 'traffic';
 
 // Project each target 10 minutes along its COG at its SOG.
 const VECTOR_MINUTES = 10;
+const SECONDS_PER_MINUTE = 60;
 // GPS scatter on a stationary vessel can produce a small apparent SOG. Targets below this
 // threshold (about 0.5 kt) are treated as stationary and show no vector.
 const MIN_SOG_MPS = 0.25;
@@ -54,7 +55,7 @@ export function buildFeatures(
     if (target.cogRad === undefined) continue;
     const sog = target.sogMps ?? 0;
     if (sog < MIN_SOG_MPS) continue;
-    const distanceMeters = sog * VECTOR_MINUTES * 60;
+    const distanceMeters = sog * VECTOR_MINUTES * SECONDS_PER_MINUTE;
     const origin: [number, number] = [target.position.longitude, target.position.latitude];
     const tip = geodesicDestination(
       target.position.latitude,

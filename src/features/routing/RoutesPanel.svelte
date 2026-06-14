@@ -160,6 +160,7 @@ $effect(() => {
 // the save confirm is armed.
 let draftOpen = $state(false);
 let draftPrompt = $state('');
+const trimmedPrompt = $derived(draftPrompt.trim());
 let saveArmed = $state(false);
 
 // Draft save name: seeded from the draft's name when the working route first becomes a draft, but not
@@ -240,9 +241,9 @@ $effect(() => {
           <button
             type="button"
             class="btn btn-primary btn--grow"
-            disabled={draftLoading || draftPrompt.trim() === ''}
+            disabled={draftLoading || trimmedPrompt === ''}
             onclick={() => {
-              onDraft(draftPrompt.trim());
+              onDraft(trimmedPrompt);
             }}
           >
             Draft
@@ -326,9 +327,9 @@ $effect(() => {
             {@const seconds = etaSeconds(leg.cumulativeMeters, planSpeedMps)}
             <li>
               <span class="leg-no">{leg.fromIndex + 1}</span>
-              <span class="leg-dist">{formatNm(leg.distanceMeters)} nm</span>
-              <span class="leg-brg">{formatBearingOr(leg.bearingRad)}&deg;T</span>
-              <span class="leg-time">
+              <span class="leg-dist num">{formatNm(leg.distanceMeters)} nm</span>
+              <span class="leg-brg num">{formatBearingOr(leg.bearingRad)}&deg;T</span>
+              <span class="leg-time num">
                 {seconds == null ? PLACEHOLDER : formatDuration(seconds)}
               </span>
             </li>
@@ -352,7 +353,7 @@ $effect(() => {
               question="I checked every leg. Save this route?"
               onConfirm={() => {
                 saveArmed = false;
-                onSave(saveName.trim() || (draft?.name ?? ''));
+                onSave(saveName.trim() || draft.name);
               }}
               onCancel={() => (saveArmed = false)}
             />
@@ -511,18 +512,12 @@ $effect(() => {
   font-variant-numeric: tabular-nums;
 }
 .leg-dist {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 .leg-brg {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
 .leg-time {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
   color: var(--accent);
   text-align: end;
 }

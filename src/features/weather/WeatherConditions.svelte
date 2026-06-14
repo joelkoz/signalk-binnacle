@@ -20,10 +20,6 @@ import {
 } from '$shared/lib';
 import { GRID_SOURCE_LABEL } from './fills';
 
-const knots = (v: number | undefined): string => formatKnotsOr(v, 0);
-const pct = (v: number | undefined): string =>
-  formatFixed(v === undefined ? undefined : v * 100, 0);
-
 import { createPointConditionsLoader } from './point-conditions';
 import {
   conditionsFromSignalK,
@@ -42,6 +38,10 @@ import {
   readoutAtBracket,
   type WeatherReadout,
 } from './weather-readout';
+
+const knots = (v: number | undefined): string => formatKnotsOr(v, 0);
+const pct = (v: number | undefined): string =>
+  formatFixed(v === undefined ? undefined : v * 100, 0);
 
 interface Props {
   origin: string;
@@ -93,15 +93,15 @@ const parsedPos = $derived.by<[number, number] | undefined>(() => {
 // Provider data: fetch only when the rounded position or the provider changes, not on every scrub
 // or GPS jitter; the deriveds below re-pick the step for the selected time without a request.
 $effect(() => {
-  const key = posKey;
+  const pos = parsedPos;
   const provider = providerName;
   // Without a position or a provider there is no provider data to show: clear any stale answers
   // (a provider that disappears at runtime must not keep its warnings on screen).
-  if (!key || !provider) {
+  if (!pos || !provider) {
     clear();
     return;
   }
-  const [lat, lon] = parsedPos ?? [0, 0];
+  const [lat, lon] = pos;
   void loadProvider(provider, lat, lon);
 });
 

@@ -18,7 +18,9 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
   rgbaCss,
+  setLayersVisibility,
 } from '$shared/map';
 import { type SkSymbol, str } from '$shared/signalk';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
@@ -582,10 +584,7 @@ export function createNotesOverlay(
     },
     setVisible(ctx, isVisible) {
       visible = isVisible;
-      const value = isVisible ? 'visible' : 'none';
-      for (const id of LAYERS) {
-        ctx.map.setLayoutProperty(id, 'visibility', value);
-      }
+      setLayersVisibility(ctx.map, LAYERS, isVisible);
       // If the theme changed while hidden, refresh the icons now that the layer is shown again.
       if (isVisible && pendingIconPaint) {
         const paint = pendingIconPaint;
@@ -613,12 +612,7 @@ export function createNotesOverlay(
         if (onEnter) ctx.map.off('mouseenter', id, onEnter);
         if (onLeave) ctx.map.off('mouseleave', id, onLeave);
       }
-      for (const id of LAYERS) {
-        if (ctx.map.getLayer(id)) ctx.map.removeLayer(id);
-      }
-      for (const id of [SOURCE_ID, SELECT_SOURCE]) {
-        if (ctx.map.getSource(id)) ctx.map.removeSource(id);
-      }
+      removeLayersAndSources(ctx.map, LAYERS, [SOURCE_ID, SELECT_SOURCE]);
     },
   };
 }

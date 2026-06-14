@@ -2,14 +2,15 @@
 // unit-testable pure functions. The build serializes each urlPattern via Function.toString into the
 // generated worker WITHOUT its module scope, so every matcher must be SELF-CONTAINED: inline its
 // regexes and host lists, and never reference a module-level const or helper (it would be undefined
-// in the worker and throw ReferenceError on the first matched fetch, breaking all caching). Inline
-// every regex and host list into its matcher. Nothing here may touch browser globals either.
-// Layering: the worker caches byte-level GET assets (tiles,
-// styles, WMS images) and only exists over trusted https; parsed application data (weather
-// grids, tides, notes, PMTiles blocks) is cached in IndexedDB by app code, which also works
-// over the plain-http boat LAN. The worker never touches /signalk/v1/api/ or /signalk/v2/api/
-// (auth-bearing, mutation-carrying), and every entry pins statuses to [200]: caching opaque
-// (status 0) responses would burn quota at roughly 7 MB of padding per entry.
+// in the worker and throw ReferenceError on the first matched fetch, breaking all caching). Nothing
+// here may touch browser globals either.
+//
+// Layering: the worker caches byte-level GET assets (tiles, styles, WMS images) and only exists
+// over trusted https; parsed application data (weather grids, tides, notes, PMTiles blocks) is
+// cached in IndexedDB by app code, which also works over the plain-http boat LAN. The worker never
+// touches /signalk/v1/api/ or /signalk/v2/api/ (auth-bearing, mutation-carrying), and every entry
+// pins statuses to [200]: caching opaque (status 0) responses would burn quota at roughly 7 MB of
+// padding per entry.
 
 const DAY_SECONDS = 60 * 60 * 24;
 const TWO_HOURS_SECONDS = 60 * 60 * 2;
@@ -39,16 +40,14 @@ export const isChartTile = ({ url, sameOrigin }: MatchContext): boolean =>
 // GIBS). The host list is inlined, not a shared const, so the serialized worker matcher stays
 // self-contained (file header). One shared cache with a 7 day TTL bounds chart-edition staleness.
 export const isOverlayTile = ({ url }: MatchContext): boolean =>
-  [
-    'gis.charttools.noaa.gov',
-    'nowcoast.noaa.gov',
-    'wms.gebco.net',
-    'ows.emodnet-bathymetry.eu',
-    'ows.emodnet-humanactivities.eu',
-    'geo.vliz.be',
-    'tiles.openseamap.org',
-    'gibs.earthdata.nasa.gov',
-  ].includes(url.hostname);
+  url.hostname === 'gis.charttools.noaa.gov' ||
+  url.hostname === 'nowcoast.noaa.gov' ||
+  url.hostname === 'wms.gebco.net' ||
+  url.hostname === 'ows.emodnet-bathymetry.eu' ||
+  url.hostname === 'ows.emodnet-humanactivities.eu' ||
+  url.hostname === 'geo.vliz.be' ||
+  url.hostname === 'tiles.openseamap.org' ||
+  url.hostname === 'gibs.earthdata.nasa.gov';
 
 export const isCoopsRequest = ({ url }: MatchContext): boolean =>
   url.hostname === 'api.tidesandcurrents.noaa.gov';

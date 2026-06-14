@@ -61,8 +61,8 @@ export interface LngLatBoundsLike {
   getNorth(): number;
 }
 
-// A MapLibre LngLatBounds as a [west, south, east, north] box, the visible area as a Bbox4. Shared by
-// the chart viewport read and the notes and AIS-trails overlays.
+// A MapLibre LngLatBounds as a [west, south, east, north] box (the visible area as a Bbox4).
+// Shared by the chart viewport read and the notes and AIS-trails overlays.
 export function lngLatBoundsToBbox4(b: LngLatBoundsLike): Bbox4 {
   return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
 }

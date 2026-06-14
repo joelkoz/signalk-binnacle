@@ -279,8 +279,6 @@
   margin: 0 0.4rem 0 0;
 }
 .card-stats .num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--text);
 }
@@ -346,8 +344,6 @@
   display: contents;
 }
 .stat-grid .num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--text);
   text-align: end;

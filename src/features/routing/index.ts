@@ -13,6 +13,7 @@ export type {
   DraftError,
   DraftedRoute,
   DraftFlag,
+  DraftFlagItem,
   DraftFuel,
   DraftResult,
   DraftRouteRequest,

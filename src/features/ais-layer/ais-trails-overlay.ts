@@ -7,6 +7,7 @@ import type {
 import { bboxContains, lngLatBoundsToBbox4, padBbox } from '$shared/geo';
 import {
   emptyFeatureCollection,
+  featureCollection,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
@@ -31,19 +32,6 @@ const REFETCH_MS = 30_000;
 const MAX_STALE_FETCHES = 4;
 // Fetch this fraction beyond every viewport edge so a small pan stays inside the last fetch's area.
 const PAD_FRACTION = 0.5;
-
-function featureCollection(trails: readonly AisTrail[]): GeoJSON.FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: trails.map(
-      (trail): GeoJSON.Feature => ({
-        type: 'Feature',
-        geometry: { type: 'LineString', coordinates: trail.line },
-        properties: { context: trail.context },
-      }),
-    ),
-  };
-}
 
 export interface AisTrailsOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -90,7 +78,18 @@ export function createAisTrailsOverlay(
     }
     if (signature === renderedSignature) return;
     renderedSignature = signature;
-    setData(ctx, featureCollection(shown));
+    setData(
+      ctx,
+      featureCollection(
+        shown.map(
+          (trail): GeoJSON.Feature => ({
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: trail.line },
+            properties: { context: trail.context },
+          }),
+        ),
+      ),
+    );
   }
 
   function clearRendered(ctx: OverlayContext): void {

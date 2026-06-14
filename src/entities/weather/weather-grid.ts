@@ -8,8 +8,6 @@ export interface Bbox {
   north: number;
 }
 
-export type { LngLatBoundsLike };
-
 export function boundsToBbox(b: LngLatBoundsLike): Bbox {
   const [west, south, east, north] = lngLatBoundsToBbox4(b);
   return { west, south, east, north };

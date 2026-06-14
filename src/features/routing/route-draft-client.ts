@@ -100,6 +100,7 @@ export function routeDraftAvailable(plugins: ReadonlyMap<string, string> | undef
 }
 
 const MAX_WAYPOINTS = 60;
+// Larger than a standard fetch timeout because an AI draft round-trip includes model inference time.
 const DRAFT_TIMEOUT_MS = 25_000;
 
 const FLAG_KINDS = new Set<DraftFlag['kind']>(['land', 'shallow', 'hazard', 'fuel', 'other']);
@@ -176,9 +177,11 @@ export async function draftRoute(
   req: DraftRouteRequest,
   signal?: AbortSignal,
 ): Promise<DraftResult> {
-  const signals: AbortSignal[] = [AbortSignal.timeout(DRAFT_TIMEOUT_MS)];
-  if (signal) signals.push(signal);
-  const combined = AbortSignal.any(signals);
+  const timeout = AbortSignal.timeout(DRAFT_TIMEOUT_MS);
+  const combined =
+    typeof AbortSignal.any === 'function'
+      ? AbortSignal.any(signal ? [timeout, signal] : [timeout])
+      : (signal ?? timeout);
 
   let response: Response;
   try {
