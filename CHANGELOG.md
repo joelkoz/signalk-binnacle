@@ -4,6 +4,20 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<a id="unreleased"></a>
+
+## [Unreleased]
+
+### Added
+
+- AI route drafting. Describe a passage in plain language, for example "from here to Avalon, stay 3 nm
+  off the coast", and the OpenRouter companion plugin drafts a route you review and save. The draft
+  opens as an editable working route with a not-chart-verified banner, the read-as destination, the
+  model's note, a fuel estimate in your units, and any land, deep-water-only, or fuel flags above the
+  leg table. It cannot be minimized while a draft is up, and it saves only behind an armed "I checked
+  every leg" confirm. The control appears only when the companion plugin is installed; on a stock
+  server it stays hidden, with no error.
+
 <a id="v062"></a>
 
 ## [0.6.2] - 2026-06-13
