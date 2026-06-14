@@ -1,4 +1,10 @@
-import { isFiniteNumber, litersToVolume, type UnitsMode, volumeUnit } from '$shared/lib';
+import {
+  capitalize,
+  isFiniteNumber,
+  litersToVolume,
+  type UnitsMode,
+  volumeUnit,
+} from '$shared/lib';
 import type { DraftFlag, DraftFlagItem, DraftFuel } from './route-draft-client';
 
 // Land first (a route crossing land is the worst case), then charted shallow water, then charted
@@ -17,34 +23,28 @@ export function orderDraftFlags(flags: readonly DraftFlag[]): DraftFlag[] {
 
 // A single leg can cross many charted point hazards (a busy river charts dozens), so collapse the
 // hazard flags on each leg into one summary line plus a deduped, counted breakdown of the hazard
-// types. Every other flag kind passes through unchanged, and the kind order from orderDraftFlags is
-// preserved by splicing the hazard groups back where the hazards sat.
+// types. Other kinds pass through unchanged: land and shallow sort before hazards and fuel and other
+// after, so partitioning on FLAG_ORDER keeps the kind order with no insertion-position bookkeeping.
 export function groupDraftFlags(flags: readonly DraftFlag[]): DraftFlagItem[] {
-  const ordered = orderDraftFlags(flags);
-  const items: DraftFlagItem[] = [];
-  const legOrder: (number | undefined)[] = [];
+  const before: DraftFlagItem[] = [];
+  const after: DraftFlagItem[] = [];
   const countsByLeg = new Map<number | undefined, Map<string, number>>();
-  let hazardsAt = -1;
-  for (const flag of ordered) {
-    if (flag.kind !== 'hazard') {
-      items.push({ kind: flag.kind, message: flag.message });
-      continue;
+  for (const flag of orderDraftFlags(flags)) {
+    if (flag.kind === 'hazard') {
+      let counts = countsByLeg.get(flag.leg);
+      if (counts === undefined) {
+        counts = new Map();
+        countsByLeg.set(flag.leg, counts);
+      }
+      counts.set(flag.message, (counts.get(flag.message) ?? 0) + 1);
+    } else if (FLAG_ORDER[flag.kind] < FLAG_ORDER.hazard) {
+      before.push({ kind: flag.kind, message: flag.message });
+    } else {
+      after.push({ kind: flag.kind, message: flag.message });
     }
-    if (hazardsAt < 0) hazardsAt = items.length;
-    let counts = countsByLeg.get(flag.leg);
-    if (counts === undefined) {
-      counts = new Map();
-      countsByLeg.set(flag.leg, counts);
-      legOrder.push(flag.leg);
-    }
-    counts.set(flag.message, (counts.get(flag.message) ?? 0) + 1);
   }
-  if (legOrder.length === 0) return items;
-  const groups = legOrder.map((leg) =>
-    hazardGroup(leg, countsByLeg.get(leg) as Map<string, number>),
-  );
-  items.splice(hazardsAt, 0, ...groups);
-  return items;
+  const groups = Array.from(countsByLeg, ([leg, counts]) => hazardGroup(leg, counts));
+  return [...before, ...groups, ...after];
 }
 
 function hazardGroup(leg: number | undefined, counts: Map<string, number>): DraftFlagItem {
@@ -55,7 +55,7 @@ function hazardGroup(leg: number | undefined, counts: Map<string, number>): Draf
     return { kind: 'hazard', message };
   }
   const where = leg === undefined ? 'near the route' : `near leg ${leg + 1}`;
-  const detail = [...counts.entries()].map(([message, n]) => {
+  const detail = Array.from(counts, ([message, n]) => {
     const label = hazardLabel(message);
     return n > 1 ? `${label} ×${n}` : label;
   });
@@ -66,13 +66,18 @@ function hazardGroup(leg: number | undefined, counts: Map<string, number>): Draf
   };
 }
 
-// Shorten a hazard message for the per-leg breakdown by dropping the shared "Charted ... within the
-// leg corridor" framing the summary already conveys. Falls back to the full message when it does not
-// match, so a server rewording degrades gracefully rather than blanking the line.
+// The shared framing every hazard message carries ("Charted <type> within the leg corridor"). The
+// per-leg summary already conveys it, so the breakdown strips it. Module scope to compile once.
+const HAZARD_PREFIX = /^Charted /;
+const HAZARD_SUFFIX = / within the leg corridor$/;
+
+// Shorten a hazard message for the per-leg breakdown by dropping the shared framing above. When
+// neither end matches, the full message is returned unchanged, so a server rewording degrades to the
+// original line rather than a blank.
 function hazardLabel(message: string): string {
-  const stripped = message.replace(/^Charted /, '').replace(/ within the leg corridor$/, '');
+  const stripped = message.replace(HAZARD_PREFIX, '').replace(HAZARD_SUFFIX, '');
   if (stripped === '' || stripped === message) return message;
-  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+  return capitalize(stripped);
 }
 
 // One display line for the server-computed fuel estimate, in the navigator's unit system. The numbers

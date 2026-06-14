@@ -1,4 +1,4 @@
-import { fetchJsonOrUndefined, HOUR_MS, MINUTE_MS, nearestBy } from '$shared/lib';
+import { capitalize, fetchJsonOrUndefined, HOUR_MS, MINUTE_MS, nearestBy } from '$shared/lib';
 import { asKeyedObject, authInit } from '$shared/signalk';
 import type { WeatherReadout } from './weather-readout';
 
@@ -115,7 +115,7 @@ const PROVIDER_WORD_SPLIT = /[-_]+/;
 function prettyProviderId(id: string): string {
   const words = id.replace(PROVIDER_PREFIX, '').split(PROVIDER_WORD_SPLIT).filter(Boolean);
   if (words.length === 0) return id;
-  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return words.map(capitalize).join(' ');
 }
 
 function pointUrl(origin: string, path: string, lat: number, lon: number, count?: number): string {
