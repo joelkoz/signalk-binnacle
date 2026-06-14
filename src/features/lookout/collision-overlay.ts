@@ -71,40 +71,45 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
     supportsOpacity: false,
     layerIds: [LAYER_ID],
     add(ctx) {
+      lastContacts = undefined;
       const contacts = collision.assessment.contacts;
-      const source: GeoJSONSourceSpecification = {
-        type: 'geojson',
-        data: featureCollection(contacts),
-      };
-      ctx.map.addSource(SOURCE_ID, source);
-      const layer: CircleLayerSpecification = {
-        id: LAYER_ID,
-        type: 'circle',
-        source: SOURCE_ID,
-        paint: {
-          'circle-radius': [
-            'match',
-            ['get', 'severity'],
-            'danger',
-            RING_RADIUS.danger,
-            'warning',
-            RING_RADIUS.warning,
-            RING_RADIUS.warning,
-          ],
-          'circle-color': 'rgba(0, 0, 0, 0)',
-          'circle-stroke-width': [
-            'match',
-            ['get', 'severity'],
-            'danger',
-            RING_STROKE_WIDTH.danger,
-            'warning',
-            RING_STROKE_WIDTH.warning,
-            RING_STROKE_WIDTH.warning,
-          ],
-          'circle-stroke-color': strokeColor(mapThemePaint('day')),
-        },
-      };
-      ctx.map.addLayer(layer, ctx.beforeIdFor('safety'));
+      if (!ctx.map.getSource(SOURCE_ID)) {
+        const source: GeoJSONSourceSpecification = {
+          type: 'geojson',
+          data: featureCollection(contacts),
+        };
+        ctx.map.addSource(SOURCE_ID, source);
+      }
+      if (!ctx.map.getLayer(LAYER_ID)) {
+        const layer: CircleLayerSpecification = {
+          id: LAYER_ID,
+          type: 'circle',
+          source: SOURCE_ID,
+          paint: {
+            'circle-radius': [
+              'match',
+              ['get', 'severity'],
+              'danger',
+              RING_RADIUS.danger,
+              'warning',
+              RING_RADIUS.warning,
+              RING_RADIUS.warning,
+            ],
+            'circle-color': 'rgba(0, 0, 0, 0)',
+            'circle-stroke-width': [
+              'match',
+              ['get', 'severity'],
+              'danger',
+              RING_STROKE_WIDTH.danger,
+              'warning',
+              RING_STROKE_WIDTH.warning,
+              RING_STROKE_WIDTH.warning,
+            ],
+            'circle-stroke-color': strokeColor(mapThemePaint('day')),
+          },
+        };
+        ctx.map.addLayer(layer, ctx.beforeIdFor('safety'));
+      }
       lastContacts = contacts;
     },
     sync(ctx) {

@@ -286,134 +286,149 @@ export function createNotesOverlay(
     supportsOpacity: true,
     layerIds: LAYERS,
     async add(ctx) {
-      const paint = mapThemePaint('day');
       const before = ctx.beforeIdFor('routes');
 
-      const source: GeoJSONSourceSpecification = {
-        type: 'geojson',
-        data: EMPTY,
-        cluster: true,
-        clusterMaxZoom: CLUSTER_MAX_ZOOM,
-        clusterRadius: CLUSTER_RADIUS,
-        // Carry the highest member rank up to the cluster so it can show that member's icon.
-        clusterProperties: { maxRank: ['max', ['get', 'rank']] },
-      };
-      ctx.map.addSource(SOURCE_ID, source);
-      ctx.map.addSource(SELECT_SOURCE, { type: 'geojson', data: EMPTY });
+      if (!ctx.map.getSource(SOURCE_ID)) {
+        const source: GeoJSONSourceSpecification = {
+          type: 'geojson',
+          data: EMPTY,
+          cluster: true,
+          clusterMaxZoom: CLUSTER_MAX_ZOOM,
+          clusterRadius: CLUSTER_RADIUS,
+          // Carry the highest member rank up to the cluster so it can show that member's icon.
+          clusterProperties: { maxRank: ['max', ['get', 'rank']] },
+        };
+        ctx.map.addSource(SOURCE_ID, source);
+      }
+      if (!ctx.map.getSource(SELECT_SOURCE)) {
+        ctx.map.addSource(SELECT_SOURCE, { type: 'geojson', data: EMPTY });
+      }
 
       // Selection ring sits below the markers so the icon draws on top of it; a dark casing ring below
       // it (a wider stroke at the same radius) gives the amber ring contrast on light day water.
-      const selectCasing: CircleLayerSpecification = {
-        id: SELECT_CASING_LAYER,
-        type: 'circle',
-        source: SELECT_SOURCE,
-        minzoom: MIN_ZOOM,
-        paint: {
-          'circle-radius': 15,
-          'circle-color': 'rgba(0,0,0,0)',
-          'circle-stroke-color': SELECT_CASING_COLOR,
-          'circle-stroke-width': 5,
-        },
-      };
-      ctx.map.addLayer(selectCasing, before);
-      const selectLayer: CircleLayerSpecification = {
-        id: SELECT_LAYER,
-        type: 'circle',
-        source: SELECT_SOURCE,
-        minzoom: MIN_ZOOM,
-        paint: {
-          'circle-radius': 15,
-          'circle-color': 'rgba(0,0,0,0)',
-          'circle-stroke-color': paint.select,
-          'circle-stroke-width': 3,
-        },
-      };
-      ctx.map.addLayer(selectLayer, before);
+      if (!ctx.map.getLayer(SELECT_CASING_LAYER)) {
+        const selectCasing: CircleLayerSpecification = {
+          id: SELECT_CASING_LAYER,
+          type: 'circle',
+          source: SELECT_SOURCE,
+          minzoom: MIN_ZOOM,
+          paint: {
+            'circle-radius': 15,
+            'circle-color': 'rgba(0,0,0,0)',
+            'circle-stroke-color': SELECT_CASING_COLOR,
+            'circle-stroke-width': 5,
+          },
+        };
+        ctx.map.addLayer(selectCasing, before);
+      }
+      if (!ctx.map.getLayer(SELECT_LAYER)) {
+        const selectLayer: CircleLayerSpecification = {
+          id: SELECT_LAYER,
+          type: 'circle',
+          source: SELECT_SOURCE,
+          minzoom: MIN_ZOOM,
+          paint: {
+            'circle-radius': 15,
+            'circle-color': 'rgba(0,0,0,0)',
+            'circle-stroke-color': themePaint.select,
+            'circle-stroke-width': 3,
+          },
+        };
+        ctx.map.addLayer(selectLayer, before);
+      }
 
       // The group ring behind the cluster icon, so a cluster never reads as a single POI; its
       // radius steps up with the contained count.
-      const clusterRing: CircleLayerSpecification = {
-        id: CLUSTER_RING_LAYER,
-        type: 'circle',
-        source: SOURCE_ID,
-        filter: ['has', 'point_count'],
-        minzoom: MIN_ZOOM,
-        paint: {
-          'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 50, 28],
-          'circle-color': 'rgba(0,0,0,0)',
-          'circle-stroke-color': paint.markerGlyph,
-          'circle-stroke-width': 2.5,
-          'circle-stroke-opacity': 0.9,
-        },
-      };
-      ctx.map.addLayer(clusterRing, before);
+      if (!ctx.map.getLayer(CLUSTER_RING_LAYER)) {
+        const clusterRing: CircleLayerSpecification = {
+          id: CLUSTER_RING_LAYER,
+          type: 'circle',
+          source: SOURCE_ID,
+          filter: ['has', 'point_count'],
+          minzoom: MIN_ZOOM,
+          paint: {
+            'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 50, 28],
+            'circle-color': 'rgba(0,0,0,0)',
+            'circle-stroke-color': themePaint.markerGlyph,
+            'circle-stroke-width': 2.5,
+            'circle-stroke-opacity': 0.9,
+          },
+        };
+        ctx.map.addLayer(clusterRing, before);
+      }
 
-      const clusterIcon: SymbolLayerSpecification = {
-        id: CLUSTER_ICON_LAYER,
-        type: 'symbol',
-        source: SOURCE_ID,
-        filter: ['has', 'point_count'],
-        minzoom: MIN_ZOOM,
-        layout: {
-          'icon-image': CLUSTER_ICON_IMAGE,
-          'icon-size': 0.85,
-          'icon-allow-overlap': true,
-        },
-      };
-      ctx.map.addLayer(clusterIcon, before);
+      if (!ctx.map.getLayer(CLUSTER_ICON_LAYER)) {
+        const clusterIcon: SymbolLayerSpecification = {
+          id: CLUSTER_ICON_LAYER,
+          type: 'symbol',
+          source: SOURCE_ID,
+          filter: ['has', 'point_count'],
+          minzoom: MIN_ZOOM,
+          layout: {
+            'icon-image': CLUSTER_ICON_IMAGE,
+            'icon-size': 0.85,
+            'icon-allow-overlap': true,
+          },
+        };
+        ctx.map.addLayer(clusterIcon, before);
+      }
 
       // The count badge at the upper-right corner, haloed so it reads over the icon and the ring.
-      const clusterCount: SymbolLayerSpecification = {
-        id: CLUSTER_COUNT_LAYER,
-        type: 'symbol',
-        source: SOURCE_ID,
-        filter: ['has', 'point_count'],
-        minzoom: MIN_ZOOM,
-        layout: {
-          'text-field': ['get', 'point_count_abbreviated'],
-          'text-font': ['Noto Sans Regular'],
-          'text-size': 11,
-          'text-offset': [1.2, -1.2],
-          'text-allow-overlap': true,
-        },
-        paint: {
-          'text-color': paint.markerGlyph,
-          'text-halo-color': paint.note,
-          'text-halo-width': 2.4,
-        },
-      };
-      ctx.map.addLayer(clusterCount, before);
+      if (!ctx.map.getLayer(CLUSTER_COUNT_LAYER)) {
+        const clusterCount: SymbolLayerSpecification = {
+          id: CLUSTER_COUNT_LAYER,
+          type: 'symbol',
+          source: SOURCE_ID,
+          filter: ['has', 'point_count'],
+          minzoom: MIN_ZOOM,
+          layout: {
+            'text-field': ['get', 'point_count_abbreviated'],
+            'text-font': ['Noto Sans Regular'],
+            'text-size': 11,
+            'text-offset': [1.2, -1.2],
+            'text-allow-overlap': true,
+          },
+          paint: {
+            'text-color': themePaint.markerGlyph,
+            'text-halo-color': themePaint.note,
+            'text-halo-width': 2.4,
+          },
+        };
+        ctx.map.addLayer(clusterCount, before);
+      }
 
       // Unclustered points: the per-category icon, with its name once zoomed in.
-      const layer: SymbolLayerSpecification = {
-        id: LAYER_ID,
-        type: 'symbol',
-        source: SOURCE_ID,
-        filter: ['!', ['has', 'point_count']],
-        layout: {
-          'icon-image': ['get', 'icon'],
-          'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 0.9],
-          // Every feature carries an iconOffset ([0, 0] for the centered category discs); a
-          // provided symbol's offset pins its declared anchor pixel to the point.
-          'icon-offset': ['get', 'iconOffset'],
-          'icon-allow-overlap': true,
-          'text-field': ['get', 'name'],
-          'text-font': ['Noto Sans Regular'],
-          'text-size': 11,
-          'text-offset': [0, 1.1],
-          'text-anchor': 'top',
-          'text-optional': true,
-          'text-max-width': 9,
-          'text-padding': 6,
-        },
-        paint: {
-          'text-color': paint.note,
-          'text-halo-color': paint.background,
-          'text-halo-width': 1.2,
-        },
-        minzoom: MIN_ZOOM,
-      };
-      ctx.map.addLayer(layer, before);
+      if (!ctx.map.getLayer(LAYER_ID)) {
+        const layer: SymbolLayerSpecification = {
+          id: LAYER_ID,
+          type: 'symbol',
+          source: SOURCE_ID,
+          filter: ['!', ['has', 'point_count']],
+          layout: {
+            'icon-image': ['get', 'icon'],
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 0.9],
+            // Every feature carries an iconOffset ([0, 0] for the centered category discs); a
+            // provided symbol's offset pins its declared anchor pixel to the point.
+            'icon-offset': ['get', 'iconOffset'],
+            'icon-allow-overlap': true,
+            'text-field': ['get', 'name'],
+            'text-font': ['Noto Sans Regular'],
+            'text-size': 11,
+            'text-offset': [0, 1.1],
+            'text-anchor': 'top',
+            'text-optional': true,
+            'text-max-width': 9,
+            'text-padding': 6,
+          },
+          paint: {
+            'text-color': themePaint.note,
+            'text-halo-color': themePaint.background,
+            'text-halo-width': 1.2,
+          },
+          minzoom: MIN_ZOOM,
+        };
+        ctx.map.addLayer(layer, before);
+      }
 
       onClick = (event) => {
         const feature = event.features?.[0];
@@ -460,8 +475,8 @@ export function createNotesOverlay(
       }
       // Load the category and navaid icons after the layers exist; resilient, so a failure
       // here leaves the markers as text labels rather than breaking overlay setup.
-      await registerPoiIcons(ctx.map, paint);
-      await registerNavaidIcons(ctx.map, paint);
+      await registerPoiIcons(ctx.map, themePaint);
+      await registerNavaidIcons(ctx.map, themePaint);
     },
     sync(ctx) {
       // A hidden layer pays nothing: no network fetch, no clustering, no GeoJSON rebuild. The next

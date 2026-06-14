@@ -1268,7 +1268,7 @@ let draftView = $state<DraftView | undefined>();
 let draftAbort: AbortController | undefined;
 let draftSeq = 0;
 
-const DRAFT_ERROR_MESSAGES: Record<DraftError, string> = {
+const DRAFT_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
   budget:
     'The daily AI budget is used up. Try again later, or raise the cap in the route-drafting plugin.',
   'no-route':
@@ -1347,7 +1347,11 @@ async function onDraftRoute(prompt: string): Promise<void> {
   if (mine !== draftSeq) return;
   draftLoading = false;
   if (!result.ok) {
-    draftError = DRAFT_ERROR_MESSAGES[result.error];
+    // A cancelled draft was aborted by a newer request or a clear. The sequence
+    // guard above drops the superseded ones, so a cancel stays silent here too.
+    if (result.error !== 'cancelled') {
+      draftError = DRAFT_ERROR_MESSAGES[result.error];
+    }
     return;
   }
   const { route } = result;

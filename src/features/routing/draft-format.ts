@@ -1,4 +1,4 @@
-import { litersToVolume, type UnitsMode, volumeUnit } from '$shared/lib';
+import { isFiniteNumber, litersToVolume, type UnitsMode, volumeUnit } from '$shared/lib';
 import type { DraftFlag, DraftFuel } from './route-draft-client';
 
 // Land first (a route crossing land is the worst case), then charted shallow water, then charted
@@ -21,8 +21,8 @@ export function formatDraftFuel(fuel: DraftFuel, mode: UnitsMode): string {
   const unit = volumeUnit(mode);
   const show = (liters: number) => Math.round(litersToVolume(liters, mode));
   const parts = [`needs ~${show(fuel.neededL)} ${unit}`];
-  if (typeof fuel.aboardL === 'number') parts.push(`~${show(fuel.aboardL)} ${unit} aboard`);
-  if (typeof fuel.marginPct === 'number') parts.push(`${Math.round(fuel.marginPct)}% margin`);
+  if (isFiniteNumber(fuel.aboardL)) parts.push(`~${show(fuel.aboardL)} ${unit} aboard`);
+  if (isFiniteNumber(fuel.marginPct)) parts.push(`${Math.round(fuel.marginPct)}% margin`);
   const line = `Fuel: ${parts.join(', ')}.`;
   return fuel.derateNote ? `${line} ${fuel.derateNote}` : line;
 }

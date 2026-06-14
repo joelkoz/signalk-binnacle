@@ -171,8 +171,19 @@ $effect(() => {
   if (draft && !wasDraft) saveName = draft.name;
   wasDraft = draft !== undefined;
 });
+// When the caller clears the draft (after a save, cancel, or new route), collapse the disclosure and
+// clear the local draft state so re-opening starts clean.
+$effect(() => {
+  if (draft === undefined) {
+    draftOpen = false;
+    draftPrompt = '';
+    saveArmed = false;
+    saveName = '';
+  }
+});
 </script>
 
+<!-- Disable minimize while a draft is shown: the draft warning and flag list are verification-critical and must not be collapsible. -->
 <SlideOver
   title="Routes"
   bodyFlex
@@ -274,7 +285,7 @@ $effect(() => {
         {/if}
         {#if draft.flags && draft.flags.length > 0}
           <ul class="draft-flags">
-            {#each draft.flags as flag, i (i)}
+            {#each draft.flags as flag}
               <li class="alert-note">{flag.message}</li>
             {/each}
           </ul>

@@ -59,6 +59,7 @@ const DRAFT_ERRORS = [
   'unreachable',
   'unauthorized',
   'bad-request',
+  'cancelled',
 ] as const;
 export type DraftError = (typeof DRAFT_ERRORS)[number];
 
@@ -106,6 +107,7 @@ function validateWaypoints(raw: unknown): Waypoint[] | undefined {
     const obj = item as Record<string, unknown>;
     // Reject lat/lng aliases; only latitude/longitude are valid.
     if ('lat' in obj || 'lng' in obj || 'lon' in obj) return undefined;
+    // A single invalid waypoint fails the entire set: a partial route with unknown gaps is worse than no route.
     if (!isLatitude(obj.latitude) || !isLongitude(obj.longitude)) return undefined;
     waypoints.push({
       position: { latitude: obj.latitude, longitude: obj.longitude },
@@ -115,9 +117,8 @@ function validateWaypoints(raw: unknown): Waypoint[] | undefined {
   return waypoints;
 }
 
-// The model's JSON is untrusted: each flag is validated element by element (a null or a string would
-// otherwise throw on property access and strand the caller), an unknown kind is dropped (it would make
-// the display-order comparator return NaN), and an out-of-range wp or leg index is dropped.
+// The model's JSON is untrusted: each flag is validated element by element, an unknown kind is dropped
+// (it would make the display-order comparator return NaN), and an out-of-range wp or leg index is dropped.
 function validateFlags(raw: unknown, wpCount: number): DraftFlag[] {
   if (!Array.isArray(raw)) return [];
   const flags: DraftFlag[] = [];
@@ -186,8 +187,7 @@ export async function draftRoute(
       if (err.name === 'TimeoutError') return { ok: false, error: 'timeout', message: err.message };
       // A deliberate cancel (a newer draft or a clear) aborts the caller signal. The caller always
       // drops this result via its sequence guard, so the outward error class here is immaterial.
-      if (err.name === 'AbortError')
-        return { ok: false, error: 'unreachable', message: 'cancelled' };
+      if (err.name === 'AbortError') return { ok: false, error: 'cancelled', message: 'cancelled' };
     }
     return { ok: false, error: 'unreachable', message: String(err) };
   }
