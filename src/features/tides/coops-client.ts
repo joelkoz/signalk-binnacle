@@ -1,5 +1,5 @@
 import type { CurrentEvent, TideEvent, TideStation } from '$entities/tides';
-import { withTimeout } from '$shared/lib';
+import { isFiniteNumber, withTimeout } from '$shared/lib';
 
 // NOAA CO-OPS, the US tide and tidal-current authority. Public domain, key-free, CORS-open. The
 // metadata API lists stations; the datagetter returns predictions for one station.
@@ -70,7 +70,7 @@ export async function fetchTideEvents(stationId: string): Promise<TideEvent[]> {
   return (data.predictions ?? []).flatMap((p) => {
     const timeMs = parseGmtTime(p.t);
     const heightMeters = Number.parseFloat(p.v);
-    if (!Number.isFinite(timeMs) || !Number.isFinite(heightMeters)) return [];
+    if (!isFiniteNumber(timeMs) || !isFiniteNumber(heightMeters)) return [];
     return [{ timeMs, heightMeters, kind: p.type === 'H' ? 'high' : 'low' } as TideEvent];
   });
 }
@@ -95,7 +95,7 @@ export async function fetchCurrentEvents(stationId: string): Promise<CurrentEven
   const cp = data.current_predictions?.cp ?? [];
   return cp.flatMap((c) => {
     const timeMs = parseGmtTime(c.Time);
-    if (!Number.isFinite(timeMs) || !Number.isFinite(c.Velocity_Major)) return [];
+    if (!isFiniteNumber(timeMs) || !isFiniteNumber(c.Velocity_Major)) return [];
     const kind = c.Type === 'flood' ? 'flood' : c.Type === 'ebb' ? 'ebb' : 'slack';
     const directionDeg =
       kind === 'flood' ? c.meanFloodDir : kind === 'ebb' ? c.meanEbbDir : undefined;

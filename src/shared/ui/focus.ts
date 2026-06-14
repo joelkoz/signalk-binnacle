@@ -13,8 +13,8 @@ export const focusOnMount: Action<HTMLElement> = (node) => {
 // The listener lives in the action, not a template onkeydown, so the host element can carry a
 // non-interactive role without tripping the a11y interaction lint.
 export const rovingFocus: Action<HTMLElement, string> = (node, selector) => {
-  let sel = selector;
-  const items = (): HTMLElement[] => [...node.querySelectorAll<HTMLElement>(sel)];
+  // The selector is captured once: both consumers pass a literal, so the action needs no update.
+  const items = (): HTMLElement[] => [...node.querySelectorAll<HTMLElement>(selector)];
   items()[0]?.focus({ preventScroll: true });
   function onKeydown(event: KeyboardEvent): void {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
@@ -32,9 +32,6 @@ export const rovingFocus: Action<HTMLElement, string> = (node, selector) => {
   }
   node.addEventListener('keydown', onKeydown);
   return {
-    update(next: string): void {
-      sel = next;
-    },
     destroy(): void {
       node.removeEventListener('keydown', onKeydown);
     },

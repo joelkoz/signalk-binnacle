@@ -1,6 +1,7 @@
 import { type AisTargetView, vesselLabel } from '$entities/ais';
 import type { DangerContact, Severity } from '$entities/collision';
 import type { LatLon } from '$shared/geo';
+import { isFiniteNumber } from '$shared/lib';
 import { haversineMeters, rhumbBearingRad } from '$shared/nav';
 
 export type AisSort = 'range' | 'cpa' | 'name';
@@ -24,8 +25,8 @@ export interface AisListRow {
 function byOptional(a: number | undefined, b: number | undefined): number {
   // Treat a non-finite value (a NaN from a degenerate distance) as missing so it sorts last with the
   // unknowns rather than scrambling the order, since every comparison against NaN is false.
-  const av = a != null && Number.isFinite(a) ? a : undefined;
-  const bv = b != null && Number.isFinite(b) ? b : undefined;
+  const av = isFiniteNumber(a) ? a : undefined;
+  const bv = isFiniteNumber(b) ? b : undefined;
   if (av === undefined && bv === undefined) return 0;
   if (av === undefined) return 1;
   if (bv === undefined) return -1;
