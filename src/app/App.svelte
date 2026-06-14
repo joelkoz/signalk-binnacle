@@ -80,12 +80,19 @@ import {
   activationFromCourse,
   advancePoint,
   clearCourse,
+  type DraftError,
+  type DraftFlag,
+  type DraftResult,
   deleteRoute,
   downloadRouteGpx,
+  draftRoute,
   fetchRoutes,
+  formatDraftFuel,
   hydrateCourse,
+  orderDraftFlags,
   parseGpxRoutes,
   RoutesPanel,
+  routeDraftAvailable,
   routeHref,
   saveRoute,
   setDestination,
@@ -116,7 +123,7 @@ import {
   WEATHER_LAYER_IDS,
 } from '$features/weather';
 import { GatedAlarm } from '$shared/audio';
-import type { LatLon } from '$shared/geo';
+import { type Bbox4, boundsOfPoints, type LatLon, padBbox } from '$shared/geo';
 import {
   Clock,
   formatBearingOr,
@@ -1243,8 +1250,130 @@ function onToggleRouteShown(id: string, shown: boolean): void {
   if (shown) flyToRouteStart(id);
 }
 
+// AI route drafting consumes the OpenRouter companion plugin: the control is hidden unless the plugin
+// is detected at the version that ships the route-draft endpoint, and every value the model returns is
+// an unverified draft the navigator must check leg by leg before saving.
+const draftAvailable = $derived(routeDraftAvailable(serverFeatures?.plugins));
+let draftLoading = $state(false);
+let draftError = $state<string | undefined>();
+// True while the working route is an AI draft awaiting verify-and-save, so the panel shows the draft
+// banner and the armed save instead of the normal hand-drawn save.
+let draftActive = $state(false);
+let draftName = $state('');
+let draftDestination = $state<string | undefined>();
+let draftNote = $state<string | undefined>();
+let draftFuel = $state<string | undefined>();
+let draftFlags = $state<DraftFlag[] | undefined>();
+// One in-flight draft at a time: a newer request aborts the prior fetch, and the sequence guard drops
+// a stale or cancelled response that resolves after a newer one was issued.
+let draftAbort: AbortController | undefined;
+let draftSeq = 0;
+
+const DRAFT_ERROR_MESSAGES: Record<DraftError, string> = {
+  budget:
+    'The daily AI budget is used up. Try again later, or raise the cap in the companion plugin.',
+  'no-route':
+    'The AI could not draft a usable route for that. Try rephrasing, or a shorter passage.',
+  'model-error': 'The AI returned an unusable response. Try again, or rephrase the request.',
+  timeout: 'The draft timed out. Check the connection and try again.',
+  unreachable:
+    'Could not reach the AI companion. Check it is installed and the server is reachable.',
+  unauthorized:
+    'Binnacle needs write access for AI drafting. Approve its access request in the admin.',
+  'bad-request': 'The draft request was rejected. Try rephrasing the passage.',
+};
+
+function clearDraftState(): void {
+  draftAbort?.abort();
+  draftAbort = undefined;
+  // Bump the sequence so any in-flight draft orphans itself instead of landing after a cancel or save.
+  draftSeq++;
+  draftLoading = false;
+  draftActive = false;
+  draftError = undefined;
+  draftName = '';
+  draftDestination = undefined;
+  draftNote = undefined;
+  draftFuel = undefined;
+  draftFlags = undefined;
+}
+
+// The companion scopes nearby notes and POIs to an area of interest. The live map viewport is that
+// area, read via mapCommands.getBounds(); this coarse box around the vessel is only the fallback for
+// the rare case a draft is triggered before the map command surface is ready.
+function vesselAreaBounds({ latitude, longitude }: LatLon): Bbox4 {
+  const half = 0.5;
+  return [
+    Math.max(-180, longitude - half),
+    Math.max(-85, latitude - half),
+    Math.min(180, longitude + half),
+    Math.min(85, latitude + half),
+  ];
+}
+
+async function onDraftRoute(prompt: string): Promise<void> {
+  clearRouteError();
+  draftError = undefined;
+  const from = vessel.position;
+  if (!from) {
+    draftError = 'No vessel position yet. Wait for a GPS fix before drafting.';
+    return;
+  }
+  if (vessel.positionStale) {
+    draftError = 'Vessel position is stale. Wait for a fresh GPS fix before drafting.';
+    return;
+  }
+  draftAbort?.abort();
+  const controller = new AbortController();
+  draftAbort = controller;
+  const mine = ++draftSeq;
+  draftLoading = true;
+  let result: DraftResult;
+  try {
+    result = await draftRoute(
+      serverOrigin(),
+      chartsToken,
+      {
+        prompt,
+        from,
+        bounds: mapCommands?.getBounds() ?? vesselAreaBounds(from),
+        units: units.mode,
+      },
+      controller.signal,
+    );
+  } catch {
+    // The client classifies every error itself, so a throw here is unexpected. Guard anyway: a future
+    // regression must never strand the spinner with no error and no way back but cancel.
+    if (mine !== draftSeq) return;
+    draftLoading = false;
+    draftError = DRAFT_ERROR_MESSAGES['model-error'];
+    return;
+  }
+  // A newer draft (or a cancel) superseded this one: drop the result without touching the UI.
+  if (mine !== draftSeq) return;
+  draftLoading = false;
+  if (!result.ok) {
+    draftError = DRAFT_ERROR_MESSAGES[result.error];
+    return;
+  }
+  const { route } = result;
+  const working = { id: uuidv4(), name: route.name ?? '', waypoints: route.waypoints };
+  routeStore.setWorking(working);
+  mapCommands?.startRouteEdit(working);
+  // Frame the whole drafted passage so every leg is visible before the navigator verifies it.
+  const box = boundsOfPoints(route.waypoints.map((w) => w.position));
+  if (box) mapCommands?.fitBounds(padBbox(box, 0.15));
+  draftName = route.name ?? '';
+  draftDestination = route.destination?.name;
+  draftNote = route.note || undefined;
+  draftFuel = route.fuel ? formatDraftFuel(route.fuel, units.mode) : undefined;
+  draftFlags = route.flags ? orderDraftFlags(route.flags) : undefined;
+  draftActive = true;
+}
+
 function onNewRoute(): void {
   clearRouteError();
+  clearDraftState();
   // A client-chosen route id, known before the PUT, so activation needs no create-response parse.
   // The Signal K resources API requires a UUID for standard route ids, so this must be a real UUID.
   routeStore.setWorking({ id: uuidv4(), name: '', waypoints: [] });
@@ -1273,6 +1402,7 @@ async function onSaveRoute(name: string): Promise<void> {
   }
   mapCommands?.stopRouteEdit();
   routeStore.setWorking(undefined);
+  clearDraftState();
   routeStore.toggleShown(route.id, true);
   await refreshRoutes();
 }
@@ -1280,6 +1410,7 @@ async function onSaveRoute(name: string): Promise<void> {
 function onCancelRouteEdit(): void {
   mapCommands?.stopRouteEdit();
   routeStore.setWorking(undefined);
+  clearDraftState();
 }
 
 // Seed the course cells once from a REST GET, then the stream keeps them live. The v2
@@ -1841,6 +1972,16 @@ onDestroy(() => {
           onImportGpx={onImportRouteGpx}
           planningSpeed={planningSpeedKn}
           onDelete={onDeleteRoute}
+          {draftAvailable}
+          {draftLoading}
+          {draftError}
+          onDraft={onDraftRoute}
+          isDraft={draftActive}
+          {draftName}
+          {draftDestination}
+          {draftNote}
+          {draftFuel}
+          {draftFlags}
           onClose={() => {
             onCancelRouteEdit();
             clearRouteError();

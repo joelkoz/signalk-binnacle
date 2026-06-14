@@ -30,6 +30,7 @@ import {
   UnitField,
   VisibilityToggle,
 } from '$shared/ui';
+import type { DraftFlag } from './route-draft-client';
 
 interface Props {
   routes: Route[];
@@ -61,6 +62,20 @@ interface Props {
   onDelete: (id: string) => void;
   onClose: () => void;
   onBack?: () => void;
+  // AI route drafting: shown only when the companion plugin is detected.
+  draftAvailable: boolean;
+  draftLoading: boolean;
+  draftError: string | undefined;
+  onDraft: (prompt: string) => void;
+  // True when the current working route is an AI draft (vs a hand-drawn edit).
+  isDraft: boolean;
+  draftName: string;
+  draftDestination: string | undefined;
+  draftNote: string | undefined;
+  // Pre-formatted fuel line in display units, supplied by the caller.
+  draftFuel: string | undefined;
+  // Already ordered by the caller: land, then deep-water-only, then fuel.
+  draftFlags: readonly DraftFlag[] | undefined;
 }
 
 const {
@@ -84,6 +99,16 @@ const {
   onDelete,
   onClose,
   onBack,
+  draftAvailable,
+  draftLoading,
+  draftError,
+  onDraft,
+  isDraft,
+  draftName,
+  draftDestination,
+  draftNote,
+  draftFuel,
+  draftFlags,
 }: Props = $props();
 
 function promptSave(): void {
@@ -141,13 +166,29 @@ $effect(() => {
   if (editing && !wasEditing) minimized = false;
   wasEditing = editing;
 });
+
+// Draft input state: tracks whether the disclosure is open, the user's prompt text, and whether
+// the save confirm is armed.
+let draftOpen = $state(false);
+let draftPrompt = $state('');
+let saveArmed = $state(false);
+
+// Draft save name: seeded from draftName when the working route first becomes a draft, but not
+// overwritten while the user is typing. The wasDraft guard prevents the effect from fighting
+// a user edit on subsequent renders.
+let saveName = $state('');
+let wasDraft = false;
+$effect(() => {
+  if (isDraft && !wasDraft) saveName = draftName;
+  wasDraft = isDraft;
+});
 </script>
 
 <SlideOver
   title="Routes"
   bodyFlex
   closeLabel="Close routes panel"
-  minimize={{ collapsed: minimized, onToggle: () => (minimized = !minimized) }}
+  minimize={isDraft ? undefined : { collapsed: minimized, onToggle: () => (minimized = !minimized) }}
   {onClose}
   {onBack}
 >
@@ -171,8 +212,70 @@ $effect(() => {
     </button>
   </div>
 
+  {#if draftAvailable && working === undefined}
+    <div class="draft-control">
+      <button
+        type="button"
+        class="btn btn--grow"
+        onclick={() => (draftOpen = !draftOpen)}
+        aria-expanded={draftOpen}
+      >
+        Draft a route with AI
+      </button>
+      {#if draftOpen}
+        <textarea
+          class="input draft-prompt"
+          placeholder="Describe your passage, e.g. 'from here to Avalon, stay 3 nm off the coast'"
+          bind:value={draftPrompt}
+          disabled={draftLoading}
+          rows={3}
+        ></textarea>
+        {#if draftError}
+          <p class="alert-note" role="alert">{draftError}</p>
+        {/if}
+        {#if draftLoading}
+          <p class="muted-note">Drafting...</p>
+        {/if}
+        <div class="panel-controls">
+          <button
+            type="button"
+            class="btn btn-primary btn--grow"
+            disabled={draftLoading || draftPrompt.trim() === ''}
+            onclick={() => {
+              onDraft(draftPrompt.trim());
+            }}
+          >
+            Draft
+          </button>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   {#if working}
     <div class="editing" role="group" aria-label="Route under edit">
+      {#if isDraft}
+        <p class="alert-note" role="alert">
+          Not chart-verified. Check every leg against the chart. AI draft, sanity-checked for land
+          and open water only, not charted depths.
+        </p>
+        {#if draftDestination}
+          <p class="muted-note">Read as: {draftDestination}</p>
+        {/if}
+        {#if draftNote}
+          <p class="muted-note">{draftNote}</p>
+        {/if}
+        {#if draftFuel}
+          <p class="muted-note">{draftFuel}</p>
+        {/if}
+        {#if draftFlags && draftFlags.length > 0}
+          <ul class="draft-flags">
+            {#each draftFlags as flag, i (i)}
+              <li class="alert-note">{flag.message}</li>
+            {/each}
+          </ul>
+        {/if}
+      {/if}
       <dl class="stat-grid">
         <dt>Waypoints</dt>
         <dd><span class="num">{working.waypoints.length}</span></dd>
@@ -211,21 +314,59 @@ $effect(() => {
       <p class="muted-note">
         Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
       </p>
-      <div class="panel-controls">
-        <button
-          type="button"
-          class="btn btn-primary btn--grow"
-          onclick={promptSave}
-          disabled={working.waypoints.length < 2}
-        >
-          <Save size={16} aria-hidden="true" />
-          Save
-        </button>
-        <button type="button" class="btn" onclick={onCancelEdit}>
-          <X size={16} aria-hidden="true" />
-          Cancel
-        </button>
-      </div>
+      {#if isDraft}
+        <div class="draft-save">
+          <input
+            type="text"
+            class="input"
+            aria-label="Route name"
+            placeholder="Route name"
+            bind:value={saveName}
+          >
+          {#if saveArmed}
+            <InlineConfirm
+              question="I checked every leg. Save this route?"
+              onConfirm={() => {
+                saveArmed = false;
+                onSave(saveName.trim() || draftName);
+              }}
+              onCancel={() => (saveArmed = false)}
+            />
+          {:else}
+            <div class="panel-controls">
+              <button
+                type="button"
+                class="btn btn-primary btn--grow"
+                disabled={working.waypoints.length < 2}
+                onclick={() => (saveArmed = true)}
+              >
+                <Save size={16} aria-hidden="true" />
+                Save
+              </button>
+              <button type="button" class="btn" onclick={onCancelEdit}>
+                <X size={16} aria-hidden="true" />
+                Cancel
+              </button>
+            </div>
+          {/if}
+        </div>
+      {:else}
+        <div class="panel-controls">
+          <button
+            type="button"
+            class="btn btn-primary btn--grow"
+            onclick={promptSave}
+            disabled={working.waypoints.length < 2}
+          >
+            <Save size={16} aria-hidden="true" />
+            Save
+          </button>
+          <button type="button" class="btn" onclick={onCancelEdit}>
+            <X size={16} aria-hidden="true" />
+            Cancel
+          </button>
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -388,6 +529,37 @@ $effect(() => {
   font-variant-numeric: tabular-nums;
   color: var(--accent);
   text-align: end;
+}
+.draft-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.5rem 0;
+}
+/* The box, border, and type come from the global .input utility; only the textarea-specific resize,
+   block padding (.input is a single-line control with inline padding only), and disabled dimming are
+   scoped here. */
+.draft-prompt {
+  box-sizing: border-box;
+  resize: vertical;
+  padding-block: var(--space-2);
+}
+.draft-prompt:disabled {
+  opacity: 0.6;
+}
+/* The flags list inherits the .alert-note appearance per item; no border on the list itself. */
+.draft-flags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.draft-save {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 /* The inline alarm note and the armed delete confirm come from the global .alert-note rule and the
    shared InlineConfirm component. */
