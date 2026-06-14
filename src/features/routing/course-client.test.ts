@@ -4,6 +4,7 @@ import {
   activationFromCourse,
   advancePoint,
   clearCourse,
+  hydrateCourse,
   setDestination,
 } from './course-client';
 
@@ -68,5 +69,32 @@ describe('activationFromCourse', () => {
 
   it('reports nothing known for an absent snapshot', () => {
     expect(activationFromCourse(undefined)).toBeUndefined();
+  });
+});
+
+describe('hydrateCourse', () => {
+  it('reads the course snapshot and calcValues together on connect', async () => {
+    const info = { nextPoint: { position: { latitude: 1, longitude: 2 } } };
+    const calc = { crossTrackError: 5 };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const body = String(url).endsWith('/calcValues') ? calc : info;
+      return { ok: true, json: async () => body } as Response;
+    });
+    const result = await hydrateCourse('http://pi', 'tok');
+    expect(result.info?.nextPoint?.position).toEqual({ latitude: 1, longitude: 2 });
+    expect(result.calc?.crossTrackError).toBe(5);
+  });
+
+  it('degrades the calcValues half when its fetch is not ok, keeping the course', async () => {
+    const info = { nextPoint: { position: { latitude: 0, longitude: 0 } } };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      if (String(url).endsWith('/calcValues')) {
+        return { ok: false, status: 404, json: async () => ({}) } as Response;
+      }
+      return { ok: true, json: async () => info } as Response;
+    });
+    const result = await hydrateCourse('http://pi', undefined);
+    expect(result.info?.nextPoint).toBeDefined();
+    expect(result.calc).toBeUndefined();
   });
 });

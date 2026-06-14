@@ -397,4 +397,30 @@ describe('LayerManager', () => {
     expect(items.find((i) => i.id === 'a')?.visible).toBe(true);
     expect(items.find((i) => i.id === 'b')?.visible).toBe(true);
   });
+
+  it('reorder realizes the order on the map via moveLayer over the registered layers', async () => {
+    const ctx = fakeCtx();
+    const map = ctx.map as unknown as ReturnType<typeof createFakeMap>;
+    // An overlay whose add() actually registers its layer, so #applyOrder finds it on the map and
+    // chains moveLayer; the standard fakeOverlay only records events and adds no layer.
+    const layerOverlay = (id: string): OverlayModule => ({
+      id,
+      title: id,
+      band: 'traffic',
+      supportsOpacity: true,
+      layerIds: [`${id}-layer`],
+      add: (c) => {
+        c.map.addLayer({ id: `${id}-layer`, type: 'background' });
+      },
+      remove: () => {},
+      setVisible: () => {},
+    });
+    const manager = new LayerManager(ctx);
+    await manager.register(layerOverlay('a'));
+    await manager.register(layerOverlay('b'));
+    manager.reorder('a', 0);
+    expect(map.moveLayer).toHaveBeenCalled();
+    const moved = map.moveLayer.mock.calls.map((call) => call[0]);
+    expect(moved).toEqual(expect.arrayContaining(['a-layer', 'b-layer']));
+  });
 });

@@ -66,6 +66,24 @@ export function createFakeMap() {
     setPaintProperty: vi.fn(),
     on: vi.fn(),
     off: vi.fn(),
+    once: vi.fn(),
+    // Read-only accessors several overlays call (anchor, notes, ais-trails, wind, base-theme), with
+    // benign defaults, so an overlay tested against the bare fake exercises its logic instead of
+    // throwing. A test that needs a specific value overrides the method on the returned object.
+    getCanvas: () => ({
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }),
+      dispatchEvent: () => true,
+      style: {} as CSSStyleDeclaration,
+    }),
+    getZoom: () => 10,
+    getCenter: () => ({ lng: 0, lat: 0 }),
+    getBounds: () => ({
+      getWest: () => -1,
+      getSouth: () => -1,
+      getEast: () => 1,
+      getNorth: () => 1,
+    }),
+    getStyle: () => ({ layers: [] as unknown[], sources: {} as Record<string, unknown> }),
   };
 }
 

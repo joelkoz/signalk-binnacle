@@ -41,8 +41,18 @@ describe('mapPmtilesMeta', () => {
     expect(meta.bounds).toEqual([-122.5, 37.7, -122.3, 37.9]);
   });
 
-  it('treats every non-MVT tile type as raster', () => {
-    for (const tileType of [TileType.Png, TileType.Jpeg, TileType.Webp, TileType.Avif]) {
+  it('maps an MLT header to a vector kind', () => {
+    expect(mapPmtilesMeta(header({ tileType: TileType.Mlt }), {}).kind).toBe('vector');
+  });
+
+  it('treats every non-vector tile type as raster', () => {
+    for (const tileType of [
+      TileType.Png,
+      TileType.Jpeg,
+      TileType.Webp,
+      TileType.Avif,
+      TileType.Unknown,
+    ]) {
       expect(mapPmtilesMeta(header({ tileType }), {}).kind).toBe('raster');
     }
   });

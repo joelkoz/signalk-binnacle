@@ -30,7 +30,7 @@ function block(fill: number, length = BS): ArrayBuffer {
 
 interface FakeInner {
   source: Source;
-  calls: Array<{ offset: number; length: number }>;
+  calls: Array<{ offset: number; length: number; signal?: AbortSignal; etag?: string }>;
   options: { etag?: string; failing?: boolean };
 }
 
@@ -41,8 +41,8 @@ function fakeInner(archive: Uint8Array, options: FakeInner['options'] = {}): Fak
   const calls: FakeInner['calls'] = [];
   const source: Source = {
     getKey: () => URL_A,
-    getBytes: async (offset, length) => {
-      calls.push({ offset, length });
+    getBytes: async (offset, length, signal, etag) => {
+      calls.push({ offset, length, signal, etag });
       if (options.failing) throw new TypeError('network down');
       if (offset >= archive.length) {
         throw new Error(`PMTiles fetch failed: 416 for ${URL_A}`);
@@ -80,6 +80,18 @@ describe('BlockCachedSource block alignment', () => {
 
     expect(inner.calls).toEqual([{ offset: 16, length: 16 }]);
     expect(bytes(out.data)).toEqual([...archive.slice(20, 28)]);
+  });
+
+  it('forwards the abort signal and etag through to the inner source', async () => {
+    const archive = pattern(64);
+    const inner = fakeInner(archive);
+    const source = cachedSource(inner, memStore());
+    const controller = new AbortController();
+
+    await source.getBytes(20, 8, controller.signal, 'W/"v1"');
+
+    expect(inner.calls[0].signal).toBe(controller.signal);
+    expect(inner.calls[0].etag).toBe('W/"v1"');
   });
 
   it('coalesces a read spanning two blocks into one aligned range', async () => {
