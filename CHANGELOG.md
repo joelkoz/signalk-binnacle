@@ -14,8 +14,10 @@ All notable changes to Binnacle are documented here. The format follows
   off the coast", and signalk-crows-nest drafts a route you review and save. The draft opens as an
   editable working route with a not-chart-verified banner, the read-as destination, the model's note,
   a fuel estimate in your units, and any land, shallow, hazard, or fuel flags above the leg table.
-  Each leg is checked against the NOAA ENC charted depth-area contour, charted land, and charted point
-  hazards. It cannot be minimized while a draft is up, and it saves only behind an armed "I checked
+  Charted point hazards are grouped per leg, so a hazard-dense river or harbor passage reads as one
+  count plus a short breakdown rather than dozens of lines. Each leg is checked against the NOAA ENC
+  charted depth-area contour, charted land, and charted point hazards. It cannot be minimized while a
+  draft is up, and it saves only behind an armed "I checked
   every leg" confirm. The control appears only when signalk-crows-nest is installed at a version that
   ships the route-draft endpoint; on a stock server it stays hidden, with no error.
 - AIS course vectors. Each moving AIS target draws a short predictor line projecting its position
@@ -36,6 +38,15 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- Offline and runtime caching works again in a secure context. The service worker's chart-tile,
+  overlay, weather, and radar cache rules referenced module constants that did not survive into the
+  generated worker, so the first matched fetch threw "CHART_TILE_PATH is not defined" and broke
+  caching wherever the worker is active (HTTPS). The cache matchers are now self-contained.
+- The route panel's Waypoints and Time readouts line up in their columns again. Their rows lacked the
+  empty unit cell the three-column stat grid needs, so every value below shifted out of its column.
+- Charted notes sit on their charted point again, and a console error on every map hover is gone. A
+  provided symbol's pixel offset was read from an array feature property, which MapLibre coerces to a
+  string; the offset now rides on the layer as a per-icon match.
 - Drawing a route on the chart no longer breaks on the second waypoint. Tapping the second point
   could throw inside the draw library and leave the route stuck as a single dot; the chart editor
   now defers its working-line cleanup so the draw completes normally. (#1)
