@@ -328,4 +328,44 @@ describe('createRouteEditor drawing-mode reads', () => {
       { position: { latitude: 1, longitude: 1 } },
     ]);
   });
+
+  it('seeds the first waypoint by dispatching an opening tap at the projected pixel', async () => {
+    // "Start a route here" replays a real opening tap; stub PointerEvent (absent in the node test
+    // env) and a minimal map exposing only the canvas and projection placeFirstPoint uses.
+    class StubPointerEvent {
+      type: string;
+      clientX: number;
+      clientY: number;
+      constructor(type: string, init: { clientX: number; clientY: number }) {
+        this.type = type;
+        this.clientX = init.clientX;
+        this.clientY = init.clientY;
+      }
+    }
+    vi.stubGlobal('PointerEvent', StubPointerEvent);
+    try {
+      const dispatched: Array<{ type: string; x: number; y: number }> = [];
+      const canvas = {
+        getBoundingClientRect: () => ({ left: 100, top: 50 }),
+        dispatchEvent: (e: { type: string; clientX: number; clientY: number }) => {
+          dispatched.push({ type: e.type, x: e.clientX, y: e.clientY });
+          return true;
+        },
+      };
+      const map = {
+        getCanvas: () => canvas,
+        project: () => ({ x: 12, y: 8 }),
+      } as unknown as MapLibreMap;
+      const editor = createRouteEditor({ map, theme: 'day', onChange: () => {} });
+      editor.start(undefined, { latitude: 1, longitude: 2 });
+      await Promise.resolve(); // placeFirstPoint defers via queueMicrotask
+      // rect.left + project.x, rect.top + project.y, as a down then up at the same pixel.
+      expect(dispatched).toEqual([
+        { type: 'pointerdown', x: 112, y: 58 },
+        { type: 'pointerup', x: 112, y: 58 },
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

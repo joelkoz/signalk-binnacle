@@ -45,6 +45,14 @@ describe('postNotification', () => {
       postNotification(BASE, undefined, { state: 'alarm', message: 'x' }),
     ).resolves.toBeUndefined();
   });
+
+  it('reports an unparseable 200 raise body as missing rather than throwing', async () => {
+    // A 200 whose body fails to parse must degrade to "no id", not reject the publish.
+    stubFetch({ ok: true, rejectJson: true });
+    await expect(
+      postNotification(BASE, undefined, { state: 'alarm', message: 'x' }),
+    ).resolves.toBeUndefined();
+  });
 });
 
 describe('updateNotification', () => {
