@@ -1,6 +1,10 @@
 // The service worker's runtime caching table, extracted from vite.config.ts so the matchers are
-// unit-testable pure functions. The build serializes these into the generated worker; nothing
-// here may touch browser globals. Layering: the worker caches byte-level GET assets (tiles,
+// unit-testable pure functions. The build serializes each urlPattern via Function.toString into the
+// generated worker WITHOUT its module scope, so every matcher must be SELF-CONTAINED: inline its
+// regexes and host lists, and never reference a module-level const or helper (it would be undefined
+// in the worker and throw ReferenceError on the first matched fetch, breaking all caching). Inline
+// every regex and host list into its matcher. Nothing here may touch browser globals either.
+// Layering: the worker caches byte-level GET assets (tiles,
 // styles, WMS images) and only exists over trusted https; parsed application data (weather
 // grids, tides, notes, PMTiles blocks) is cached in IndexedDB by app code, which also works
 // over the plain-http boat LAN. The worker never touches /signalk/v1/api/ or /signalk/v2/api/
@@ -15,25 +19,6 @@ interface MatchContext {
   sameOrigin: boolean;
 }
 
-// The cross-origin overlay tile and WMS hosts Binnacle renders (NOAA ENC and MPA, GEBCO, the two
-// EMODnet services, BlueTopo via nowcoast, Marine Regions boundaries, OpenSeaMap seamarks, and
-// NASA GIBS). WMS GetMap responses cache by their full URL; GIBS bakes the date into the path, so
-// its entries are immutable. One shared cache with a 7 day TTL bounds chart-edition staleness.
-export const OVERLAY_TILE_HOSTS: ReadonlySet<string> = new Set([
-  'gis.charttools.noaa.gov',
-  'nowcoast.noaa.gov',
-  'wms.gebco.net',
-  'ows.emodnet-bathymetry.eu',
-  'ows.emodnet-humanactivities.eu',
-  'geo.vliz.be',
-  'tiles.openseamap.org',
-  'gibs.earthdata.nasa.gov',
-]);
-
-// Raster chart tiles served by any Signal K charts plugin (@signalk/charts-plugin and kin) at
-// /charts/<id>/{z}/{x}/{y}, tolerating @2x and an extension. Same-origin only.
-export const CHART_TILE_PATH = /^\/charts\/[^/]+\/\d+\/\d+\/\d+(?:@2x)?(?:\.\w+)?$/;
-
 export const isBasemapStyle = ({ url }: MatchContext): boolean =>
   url.origin === 'https://tiles.openfreemap.org' && url.pathname.startsWith('/styles/');
 
@@ -43,28 +28,44 @@ export const isBasemapStyle = ({ url }: MatchContext): boolean =>
 export const isBasemapAsset = ({ url }: MatchContext): boolean =>
   url.origin === 'https://tiles.openfreemap.org';
 
+// Raster chart tiles served by any Signal K charts plugin (@signalk/charts-plugin and kin) at
+// /charts/<id>/{z}/{x}/{y}, tolerating @2x and an extension. Same-origin only. The pattern is
+// inlined, not a shared const, so the serialized worker matcher stays self-contained (file header).
 export const isChartTile = ({ url, sameOrigin }: MatchContext): boolean =>
-  sameOrigin && CHART_TILE_PATH.test(url.pathname);
+  sameOrigin && /^\/charts\/[^/]+\/\d+\/\d+\/\d+(?:@2x)?(?:\.\w+)?$/.test(url.pathname);
 
+// The cross-origin overlay tile and WMS hosts Binnacle renders (NOAA ENC and MPA, GEBCO, the two
+// EMODnet services, BlueTopo via nowcoast, Marine Regions boundaries, OpenSeaMap seamarks, and NASA
+// GIBS). The host list is inlined, not a shared const, so the serialized worker matcher stays
+// self-contained (file header). One shared cache with a 7 day TTL bounds chart-edition staleness.
 export const isOverlayTile = ({ url }: MatchContext): boolean =>
-  OVERLAY_TILE_HOSTS.has(url.hostname);
+  [
+    'gis.charttools.noaa.gov',
+    'nowcoast.noaa.gov',
+    'wms.gebco.net',
+    'ows.emodnet-bathymetry.eu',
+    'ows.emodnet-humanactivities.eu',
+    'geo.vliz.be',
+    'tiles.openseamap.org',
+    'gibs.earthdata.nasa.gov',
+  ].includes(url.hostname);
 
 export const isCoopsRequest = ({ url }: MatchContext): boolean =>
   url.hostname === 'api.tidesandcurrents.noaa.gov';
 
-// The domain itself or a real subdomain; a bare endsWith would also match a hostname that
-// merely ends with the same letters (evil-open-meteo.com style lookalikes).
-const isHost = (hostname: string, domain: string): boolean =>
-  hostname === domain || hostname.endsWith(`.${domain}`);
-
+// Each weather and radar matcher inlines its own host check, the host itself or a real subdomain (a
+// bare endsWith would also match an evil-open-meteo.com style lookalike). The check is repeated, not
+// a shared helper, so each serialized worker matcher stays self-contained (file header).
 export const isOpenMeteo = ({ url }: MatchContext): boolean =>
-  isHost(url.hostname, 'open-meteo.com');
+  url.hostname === 'open-meteo.com' || url.hostname.endsWith('.open-meteo.com');
 
 export const isRadarIndex = ({ url }: MatchContext): boolean =>
-  isHost(url.hostname, 'rainviewer.com') && url.pathname.endsWith('.json');
+  (url.hostname === 'rainviewer.com' || url.hostname.endsWith('.rainviewer.com')) &&
+  url.pathname.endsWith('.json');
 
 export const isRadarTile = ({ url }: MatchContext): boolean =>
-  isHost(url.hostname, 'rainviewer.com') && url.pathname.endsWith('.png');
+  (url.hostname === 'rainviewer.com' || url.hostname.endsWith('.rainviewer.com')) &&
+  url.pathname.endsWith('.png');
 
 // PMTiles archives are deliberately ABSENT: their range requests answer 206, which the Cache API
 // refuses to store, so a worker route can never cache them. They are cached as aligned blocks in
