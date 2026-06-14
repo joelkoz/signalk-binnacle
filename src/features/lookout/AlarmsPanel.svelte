@@ -70,10 +70,9 @@ function setMeters(key: 'dangerCpaMeters' | 'warningCpaMeters', nm: number): voi
   thresholds.set({ ...thresholds.value, [key]: nauticalMilesToMeters(nm) });
 }
 
-const SECONDS_PER_MINUTE = 60;
 function setSeconds(key: 'dangerTcpaSeconds' | 'warningTcpaSeconds', minutes: number): void {
   if (!Number.isFinite(minutes) || minutes < 0) return;
-  thresholds.set({ ...thresholds.value, [key]: minutes * SECONDS_PER_MINUTE });
+  thresholds.set({ ...thresholds.value, [key]: minutes * 60 });
 }
 
 const cpaNm = (meters: number): number => Number(formatCpaNm(meters));

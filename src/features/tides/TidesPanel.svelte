@@ -92,9 +92,9 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
     </button>
   {/if}
   {#if !tide && store.status === 'loading'}
-    <p class="status" role="status">Finding nearby tide stations...</p>
+    <p class="muted-note" role="status">Finding nearby tide stations...</p>
   {:else if store.status === 'no-coverage'}
-    <p class="status" role="status">
+    <p class="muted-note" role="status">
       No tide station nearby. NOAA tide predictions cover US waters only.
     </p>
   {:else if tide}
@@ -155,7 +155,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
     {/if}
 
     {#if store.status === 'error'}
-      <p class="status stale" role="status">
+      <p class="muted-note stale" role="status">
         Showing the last update; the latest refresh did not reach NOAA.
       </p>
     {/if}
@@ -165,9 +165,11 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
     {/if}
     <p class="footnote">Heights above MLLW, times in the device's local time.</p>
   {:else if store.status === 'error'}
-    <p class="status stale" role="status">Could not load tide predictions. Check the connection.</p>
+    <p class="muted-note stale" role="status">
+      Could not load tide predictions. Check the connection.
+    </p>
   {:else}
-    <p class="status" role="status">Pan to a US coast to see tide predictions.</p>
+    <p class="muted-note" role="status">Pan to a US coast to see tide predictions.</p>
   {/if}
 </SlideOver>
 
@@ -210,8 +212,6 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
   color: var(--text-muted);
 }
 .stats .num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--text);
 }
@@ -240,12 +240,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
   padding-block-start: var(--space-2);
   border-block-start: 1px solid var(--border);
 }
-.status {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-.status.stale {
+.stale {
   color: var(--warning);
 }
 /* The provenance note sits with the footnote, so it drops to the same fine-print scale. */

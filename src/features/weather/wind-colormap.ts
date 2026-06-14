@@ -21,12 +21,18 @@ const NIGHT: Array<[number, Rgba]> = [
 
 const EXPR_SPEEDS = [0, 3, 7, 12, 18, 26];
 
+const windColorExpressionCache = new Map<Theme, unknown[]>();
+
 // A MapLibre interpolate expression that colors a feature by its numeric `speed` property (m/s) for
 // the theme. Returned as a plain nested array so this module stays free of MapLibre types; the
 // overlay casts it to ExpressionSpecification.
 export function windColorExpression(theme: Theme): unknown[] {
+  const cached = windColorExpressionCache.get(theme);
+  if (cached) return cached;
   const stops = EXPR_SPEEDS.flatMap((s) => [s, rgbaCss(windColor(s, theme))]);
-  return ['interpolate', ['linear'], ['get', 'speed'], ...stops];
+  const expr: unknown[] = ['interpolate', ['linear'], ['get', 'speed'], ...stops];
+  windColorExpressionCache.set(theme, expr);
+  return expr;
 }
 
 export const windColor = themedRamp(DAY, NIGHT);

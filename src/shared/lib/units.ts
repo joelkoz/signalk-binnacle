@@ -250,15 +250,35 @@ export function formatTcpaMin(seconds: number, digits = 0): string {
   return (seconds / 60).toFixed(digits);
 }
 
+const CLOCK_OPTS_HM: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+const CLOCK_OPTS_HMS: Intl.DateTimeFormatOptions = {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+};
+const DAY_CLOCK_OPTS_HM: Intl.DateTimeFormatOptions = {
+  weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+};
+const DAY_CLOCK_OPTS_H: Intl.DateTimeFormatOptions = { weekday: 'short', hour: '2-digit' };
+const DAY_CLOCK_OPTS_HMZ: Intl.DateTimeFormatOptions = {
+  weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZoneName: 'short',
+};
+const DAY_CLOCK_OPTS_HZ: Intl.DateTimeFormatOptions = {
+  weekday: 'short',
+  hour: '2-digit',
+  timeZoneName: 'short',
+};
+
 // A wall-clock time as hour and minute, shared so the nav strip, the tides display, and any other
 // readout format an absolute time the same way. The seconds opt-in serves the readouts that get
 // written in a log or relayed on the VHF (the MOB mark time), where minute resolution is too coarse.
 export function formatClockTime(timeMs: number, opts?: { seconds?: boolean }): string {
-  return new Date(timeMs).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    ...(opts?.seconds ? { second: '2-digit' } : {}),
-  });
+  return new Date(timeMs).toLocaleTimeString([], opts?.seconds ? CLOCK_OPTS_HMS : CLOCK_OPTS_HM);
 }
 
 // A weekday wall-clock label ("Thu, 12:00 PM"), optionally with the zone, and optionally hour-only
@@ -270,12 +290,12 @@ export function formatDayClock(
   opts?: { zone?: boolean; minute?: boolean },
 ): string {
   if (Number.isNaN(timeMs)) return '';
-  return new Date(timeMs).toLocaleString([], {
-    weekday: 'short',
-    hour: '2-digit',
-    ...(opts?.minute === false ? {} : { minute: '2-digit' }),
-    ...(opts?.zone ? { timeZoneName: 'short' } : {}),
-  });
+  const noMinute = opts?.minute === false;
+  const zone = opts?.zone;
+  let fmt: Intl.DateTimeFormatOptions;
+  if (zone) fmt = noMinute ? DAY_CLOCK_OPTS_HZ : DAY_CLOCK_OPTS_HMZ;
+  else fmt = noMinute ? DAY_CLOCK_OPTS_H : DAY_CLOCK_OPTS_HM;
+  return new Date(timeMs).toLocaleString([], fmt);
 }
 
 // A time-to-go readout with its own unit: minutes under an hour ("45 min"), hours and minutes above

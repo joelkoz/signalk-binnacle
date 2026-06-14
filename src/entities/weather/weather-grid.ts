@@ -1,3 +1,4 @@
+import { type LngLatBoundsLike, lngLatBoundsToBbox4 } from '$shared/geo';
 import { lerp, nearestBy } from '$shared/lib';
 
 export interface Bbox {
@@ -7,18 +8,11 @@ export interface Bbox {
   north: number;
 }
 
-// The corner-getter surface of a MapLibre LngLatBounds, so the bbox conversion does not depend on
-// the map library type.
-export interface MapBoundsLike {
-  getWest(): number;
-  getSouth(): number;
-  getEast(): number;
-  getNorth(): number;
-}
+export type { LngLatBoundsLike };
 
-// A MapLibre bounds object to a plain Bbox, shared by every map surface that fetches for its view.
-export function boundsToBbox(b: MapBoundsLike): Bbox {
-  return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
+export function boundsToBbox(b: LngLatBoundsLike): Bbox {
+  const [west, south, east, north] = lngLatBoundsToBbox4(b);
+  return { west, south, east, north };
 }
 
 // A regular lat/lon forecast grid. Variable arrays are indexed [timeIndex][cellIndex], where
@@ -97,13 +91,15 @@ export function bilinearAt(
 // Find the interval [axis[i], axis[i+1]] bracketing v and the blend fraction within it. Assumes
 // axis is sorted ascending and axis[0] <= v <= axis[last]; callers handle the out-of-range cases.
 function bracket(axis: number[], v: number): { i: number; f: number } {
-  for (let i = 0; i < axis.length - 1; i += 1) {
-    if (v <= axis[i + 1]) {
-      const span = axis[i + 1] - axis[i] || 1;
-      return { i, f: (v - axis[i]) / span };
-    }
+  let lo = 0;
+  let hi = axis.length - 2;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (v <= axis[mid + 1]) hi = mid;
+    else lo = mid + 1;
   }
-  return { i: axis.length - 2, f: 1 };
+  const span = axis[lo + 1] - axis[lo] || 1;
+  return { i: lo, f: (v - axis[lo]) / span };
 }
 
 function frac(axisVals: number[], v: number): { i: number; f: number } | undefined {

@@ -22,6 +22,13 @@ interface Demand {
   entry: Resolved;
 }
 
+interface SubscribeMessage {
+  path: string;
+  period: number;
+  policy: SubscribePolicy;
+  minPeriod?: number;
+}
+
 export class SubscriptionRegistry {
   #demand = new Map<string, Demand>();
   #send: (message: unknown) => void;
@@ -72,7 +79,7 @@ export class SubscriptionRegistry {
 
   resubscribeAll(): void {
     // Batch by context so a reconnect re-sends one subscribe message per context, not one per path.
-    const byContext = new Map<Context, Record<string, unknown>[]>();
+    const byContext = new Map<Context, SubscribeMessage[]>();
     for (const { entry } of this.#demand.values()) {
       const list = byContext.get(entry.context);
       if (list) list.push(this.#subscription(entry));
@@ -107,14 +114,14 @@ export class SubscriptionRegistry {
     };
   }
 
-  #subscription(entry: Resolved): Record<string, unknown> {
-    const subscription: Record<string, unknown> = {
+  #subscription(entry: Resolved): SubscribeMessage {
+    const msg: SubscribeMessage = {
       path: entry.path,
       period: entry.period,
       policy: entry.policy,
     };
-    if (entry.minPeriod !== undefined) subscription.minPeriod = entry.minPeriod;
-    return subscription;
+    if (entry.minPeriod !== undefined) msg.minPeriod = entry.minPeriod;
+    return msg;
   }
 
   #sendSubscribe(entry: Resolved): void {

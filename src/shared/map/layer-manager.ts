@@ -55,7 +55,7 @@ export class LayerManager {
   // The explicit user order (bottom to top) of non-pinned overlays; seeds the effective order.
   #explicitOrder: string[];
   #onOrderChange?: (order: string[]) => void;
-  #pinned: string[];
+  #pinned: Set<string>;
   #exclusive: string[][];
   // The last theme paint broadcast, so a module registered after the first recolor (an imported
   // user chart) is themed at add time instead of staying day-colored until the next theme change.
@@ -67,7 +67,7 @@ export class LayerManager {
     this.#onChange = options.onChange;
     this.#explicitOrder = options.savedOrder ? [...options.savedOrder] : [];
     this.#onOrderChange = options.onOrderChange;
-    this.#pinned = options.pinned ?? [];
+    this.#pinned = new Set(options.pinned ?? []);
     this.#exclusive = options.exclusive ?? [];
   }
 
@@ -184,11 +184,11 @@ export class LayerManager {
   // Move a non-pinned overlay to a new index in the non-pinned, top-to-bottom display order
   // (index 0 is the top of the map). Pinned layers are never moved or displaced.
   reorder(id: string, toIndex: number): void {
-    if (this.#pinned.includes(id) || !this.#modules.has(id)) return;
+    if (this.#pinned.has(id) || !this.#modules.has(id)) return;
     // A sub-layer is never reordered on its own; it stays directly above its parent.
     if (this.#isChild(id)) return;
     const topDown = this.#effectiveOrder()
-      .filter((other) => !this.#pinned.includes(other) && !this.#isChild(other))
+      .filter((other) => !this.#pinned.has(other) && !this.#isChild(other))
       .reverse();
     const from = topDown.indexOf(id);
     topDown.splice(from, 1);
@@ -245,7 +245,7 @@ export class LayerManager {
   #effectiveOrder(): string[] {
     const bandRank = (id: string): number =>
       Z_ORDER.indexOf(this.#modules.get(id)?.band ?? 'basemap');
-    const nonPinned = [...this.#modules.keys()].filter((id) => !this.#pinned.includes(id));
+    const nonPinned = [...this.#modules.keys()].filter((id) => !this.#pinned.has(id));
     // Order the top-level overlays only. A sub-layer is not positioned on its own: it is slotted
     // directly above its parent below, so it never drifts from the chart it annotates and never
     // becomes its own reorderable row.
@@ -265,7 +265,7 @@ export class LayerManager {
       if (at >= 0) seq.splice(at + 1, 0, id);
       else seq.push(id);
     }
-    const pinned = this.#pinned.filter((id) => this.#modules.has(id));
+    const pinned = [...this.#pinned].filter((id) => this.#modules.has(id));
     return [...seq, ...pinned];
   }
 
@@ -274,7 +274,7 @@ export class LayerManager {
   #applyOrder(): void {
     // Band insertion already yields the default order, so a restack only matters once a saved
     // order or a pin makes the desired order differ from the plain band sequence.
-    if (!this.#explicitOrder.length && !this.#pinned.length) return;
+    if (!this.#explicitOrder.length && !this.#pinned.size) return;
     const desired: string[] = [];
     for (const id of this.#effectiveOrder()) {
       const module = this.#modules.get(id);
@@ -332,7 +332,7 @@ export class LayerManager {
             visible: state.visible,
             opacity: state.opacity,
             supportsOpacity: module.supportsOpacity,
-            pinned: this.#pinned.includes(id),
+            pinned: this.#pinned.has(id),
             band: module.band,
             parent: module.parent,
             group: module.group,

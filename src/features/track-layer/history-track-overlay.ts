@@ -23,7 +23,7 @@ const BAND = 'track';
 // Dashed and faded so the server-recorded past stays visually behind the live track line.
 const LINE_WIDTH = 2;
 const LINE_OPACITY = 0.6;
-const DASH: number[] = [2, 2];
+const DASH = [2, 2];
 const WINDOW_SECONDS = 24 * 60 * 60;
 const RESOLUTION_SECONDS = 60;
 const REFRESH_MS = HOUR_MS / 4;

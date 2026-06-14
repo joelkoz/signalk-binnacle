@@ -19,6 +19,11 @@ import {
   temperatureUnit,
 } from '$shared/lib';
 import { GRID_SOURCE_LABEL } from './fills';
+
+const knots = (v: number | undefined): string => formatKnotsOr(v, 0);
+const pct = (v: number | undefined): string =>
+  formatFixed(v === undefined ? undefined : v * 100, 0);
+
 import { createPointConditionsLoader } from './point-conditions';
 import {
   conditionsFromSignalK,
@@ -79,10 +84,11 @@ const posKey = $derived(
   position ? `${position.latitude.toFixed(3)},${position.longitude.toFixed(3)}` : '',
 );
 
-function posCoords(key: string): [number, number] {
-  const [lat, lon] = key.split(',').map(Number);
+const parsedPos = $derived.by<[number, number] | undefined>(() => {
+  if (!posKey) return undefined;
+  const [lat, lon] = posKey.split(',').map(Number);
   return [lat, lon];
-}
+});
 
 // Provider data: fetch only when the rounded position or the provider changes, not on every scrub
 // or GPS jitter; the deriveds below re-pick the step for the selected time without a request.
@@ -95,7 +101,7 @@ $effect(() => {
     clear();
     return;
   }
-  const [lat, lon] = posCoords(key);
+  const [lat, lon] = parsedPos ?? [0, 0];
   void loadProvider(provider, lat, lon);
 });
 
@@ -161,8 +167,8 @@ function conditionsFromReadout(r: WeatherReadout, timeMs: number): PointConditio
 
 // The free-grid sample at the vessel, blended across the time bracket like the drawn fields.
 const freeCurrent = $derived.by<PointConditions | undefined>(() => {
-  if (!posKey || !store.grid) return undefined;
-  const [lat, lon] = posCoords(posKey);
+  if (!parsedPos || !store.grid) return undefined;
+  const [lat, lon] = parsedPos;
   const r = readoutAtBracket(store.grid, lon, lat, store.bracket);
   return r ? conditionsFromReadout(r, store.selectedTime) : undefined;
 });
@@ -175,8 +181,8 @@ const currentObserved = $derived(providerCurrent?.observed ?? false);
 const tendencyText = $derived.by<string | undefined>(() => {
   const fromProvider = providerCurrent?.cond.pressureTendency;
   if (fromProvider) return fromProvider;
-  if (!posKey || !store.grid) return undefined;
-  const [lat, lon] = posCoords(posKey);
+  if (!parsedPos || !store.grid) return undefined;
+  const [lat, lon] = parsedPos;
   const dPa = pressureTrendPa(store.grid, lon, lat, targetMs);
   if (dPa === undefined) return undefined;
   const dHpa = dPa / PA_PER_HPA;
@@ -204,8 +210,8 @@ const forecast = $derived.by<PointConditions[]>(() => {
     // An empty or fully-past provider series must not suppress the free-grid forecast.
     if (rows.length > 0) return rows;
   }
-  if (!posKey) return [];
-  const [lat, lon] = posCoords(posKey);
+  if (!parsedPos) return [];
+  const [lat, lon] = parsedPos;
   return freeForecast(lat, lon);
 });
 
@@ -247,16 +253,14 @@ function severityRank(type: string): number {
   return 4;
 }
 const sortedWarnings = $derived(
-  [...warnings].sort((a, b) => severityRank(a.type) - severityRank(b.type)),
+  warnings.slice().sort((a, b) => severityRank(a.type) - severityRank(b.type)),
 );
 
-const knots = (v: number | undefined) => formatKnotsOr(v, 0);
 const bearing = formatBearingOr;
 const pressure = (v: number | undefined) => formatPressureOr(v, units.mode);
 const temp = (v: number | undefined) => formatTemperatureOr(v, units.mode);
 const height = (v: number | undefined) => formatLengthOr(v, units.mode);
 const precip = (v: number | undefined) => formatPrecipRateOr(v, units.mode);
-const pct = (v: number | undefined) => formatFixed(v === undefined ? undefined : v * 100, 0);
 
 function stepLabel(timeMs: number): string {
   return formatDayClock(timeMs, { minute: false });
@@ -275,7 +279,7 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
   </header>
 
   {#if !position}
-    <p class="cond-empty" role="status">Waiting for a vessel position.</p>
+    <p class="muted-note" role="status">Waiting for a vessel position.</p>
   {:else}
     {#if sortedWarnings.length > 0}
       <ul class="warnings" role="alert">
@@ -294,7 +298,7 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
     {:else if !providerName}
       <!-- Silence must be labeled: an empty list would read as "no warnings active" when the free
            sources simply carry none. -->
-      <p class="cond-note">Warnings unavailable without a weather provider.</p>
+      <p class="muted-note">Warnings unavailable without a weather provider.</p>
     {/if}
 
     {#if current}
@@ -390,11 +394,11 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
         {/if}
       </dl>
     {:else if loading}
-      <p class="cond-empty" role="status">Loading conditions.</p>
+      <p class="muted-note" role="status">Loading conditions.</p>
     {:else if !providerName && !store.grid}
-      <p class="cond-empty" role="status">Turn on a weather layer to load conditions.</p>
+      <p class="muted-note" role="status">Turn on a weather layer to load conditions.</p>
     {:else}
-      <p class="cond-empty" role="status">No conditions for this point.</p>
+      <p class="muted-note" role="status">No conditions for this point.</p>
     {/if}
 
     {#if forecast.length > 0}
@@ -443,12 +447,6 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
 }
 .cond-source {
   font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.cond-empty,
-.cond-note {
-  margin: 0;
-  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 /* Whether the block is an observation or model output, and for when: forecast data styled as

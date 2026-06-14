@@ -63,7 +63,7 @@ export class SymbolsStore {
   // include the requested role; a symbol declaring no roles claims nothing, so it is not
   // excluded from any.
   resolve(idOrAlias: string, role?: string): SkSymbol | undefined {
-    const symbol = this.lookup(idOrAlias);
+    const symbol = this.#lookup(idOrAlias);
     if (!symbol) return undefined;
     if (role && symbol.roles.length > 0 && !symbol.roles.includes(role)) return undefined;
     return symbol;
@@ -87,7 +87,7 @@ export class SymbolsStore {
     const cached = this.#svgTexts.get(symbol.uuid);
     if (cached) return cached;
     const url = /^https?:/.test(symbol.url) ? symbol.url : `${this.#base}${symbol.url}`;
-    const loading = this.loadSvgText(url);
+    const loading = this.#loadSvgText(url);
     this.#svgTexts.set(symbol.uuid, loading);
     // A transient failure (an expired token, a flaky link) must not be negative-cached for the
     // session: dropping the entry lets the next consumer retry, while a success stays cached.
@@ -97,7 +97,7 @@ export class SymbolsStore {
     return loading;
   }
 
-  private async loadSvgText(url: string): Promise<string | undefined> {
+  async #loadSvgText(url: string): Promise<string | undefined> {
     try {
       const response = await fetch(url, withTimeout(authInit(this.#token)));
       if (!response.ok) return undefined;
@@ -110,7 +110,7 @@ export class SymbolsStore {
     }
   }
 
-  private lookup(idOrAlias: string): SkSymbol | undefined {
+  #lookup(idOrAlias: string): SkSymbol | undefined {
     if (idOrAlias.startsWith('default:')) return undefined;
     if (idOrAlias.includes(':')) return this.#byQualified.get(idOrAlias);
     const hit = this.#byId.get(idOrAlias);

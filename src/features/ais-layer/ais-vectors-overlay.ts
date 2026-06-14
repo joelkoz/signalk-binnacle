@@ -83,6 +83,7 @@ export function createAisVectorsOverlay(
   let visible = true;
   let lastVersion = -1;
   let lastContacts: Assessment['contacts'] | undefined;
+  const severityById = new Map<string, Severity>();
 
   return {
     id: 'ais-vectors',
@@ -124,7 +125,7 @@ export function createAisVectorsOverlay(
       if (version === lastVersion && contacts === lastContacts) return;
       lastVersion = version;
       lastContacts = contacts;
-      const severityById = new Map<string, Severity>();
+      severityById.clear();
       for (const contact of contacts) severityById.set(contact.id, contact.severity);
       const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
       source?.setData(featureCollection(buildFeatures(targets.list(), severityById)));

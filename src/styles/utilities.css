@@ -43,6 +43,13 @@
   font-size: var(--text-sm);
 }
 
+/* Monospaced tabular numerals for any inline number span that must align across rows, shared
+   across the tides, nav-strip, and saved-card readouts. Font-size is left to the context. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 /* A primary action that stretches to fill its controls row (Routes and Profiles); not the default,
    since a three-button row (Tracks) keeps its primary natural-width. */
 .btn--grow {
