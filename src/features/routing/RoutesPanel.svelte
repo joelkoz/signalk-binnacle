@@ -62,7 +62,7 @@ interface Props {
   onDelete: (id: string) => void;
   onClose: () => void;
   onBack?: () => void;
-  // AI route drafting: shown only when the companion plugin is detected.
+  // AI route drafting: shown only when the route-drafting plugin is detected.
   draftAvailable: boolean;
   draftLoading: boolean;
   draftError: string | undefined;
@@ -257,8 +257,11 @@ $effect(() => {
       {/snippet}
       {#if draft}
         <p class="alert-note" role="alert">
-          Not chart-verified. Check every leg against the chart. AI draft, sanity-checked for land
-          and open water only, not charted depths.
+          Not chart-verified. Check every leg against the chart and save only what you have
+          verified. This AI draft is checked against the NOAA ENC charted depth-area contour,
+          charted land, and charted point hazards (wrecks, rocks, and obstructions) along each leg.
+          It is advisory, online, and US waters only, it is not a substitute for the chart, and a
+          charted area can still hold an isolated sounding shoaler than its contour.
         </p>
         {#if draft.destination}
           <p class="muted-note">Read as: {draft.destination}</p>
@@ -538,16 +541,8 @@ $effect(() => {
    shared InlineConfirm component. */
 /* The route-edit working-plan stats use the global .stat-grid system in app.css. */
 /* The card list, wrapper, stats, and actions come from the shared SavedList plus the global .saved
-   system in app.css. The .saved wrapper lives in SavedList, so the ancestor is matched with :global
-   while the .name and .card-stats elements stay scoped to this panel's card snippet. Only the
-   active-route accent treatment and the name's locate interactivity are Routes-specific. */
-:global(.saved) .name {
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-:global(.saved) .name:hover {
-  color: var(--accent);
-}
+   system in app.css, including the name's hover-to-accent locate interactivity (.saved button.name).
+   Only the active-route accent treatment is Routes-specific. */
 /* The active-card accent bar, fill, and the "Active" badge are the shared .saved system in app.css. */
 /* On the active card (its background is the accent tint), lift the muted stat labels to the body text
    color so they stay readable, especially in night-red where muted-on-tint is the lowest-contrast

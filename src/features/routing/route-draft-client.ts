@@ -1,12 +1,12 @@
 import type { Waypoint } from '$entities/route';
 import { isLatitude, isLongitude } from '$shared/geo';
 import { isFiniteNumber } from '$shared/lib';
-import { authInit } from '$shared/signalk/resource';
+import { authInit } from '$shared/signalk';
 
-export const ROUTE_DRAFT_PATH = '/plugins/signalk-openrouter-companion/api/route-draft';
-export const OPENROUTER_COMPANION_PLUGIN_ID = 'signalk-openrouter-companion';
-// Update this to the companion version that first ships route-draft when it is released.
-export const OPENROUTER_COMPANION_MIN_VERSION = '0.6.0';
+export const ROUTE_DRAFT_PATH = '/plugins/signalk-crows-nest/api/route-draft';
+export const ROUTE_DRAFT_PLUGIN_ID = 'signalk-crows-nest';
+// The signalk-crows-nest version that first ships the route-draft endpoint.
+export const ROUTE_DRAFT_PLUGIN_MIN_VERSION = '0.10.0';
 
 export interface DraftRouteRequest {
   prompt: string;
@@ -25,7 +25,7 @@ export interface DraftFuel {
 export interface DraftFlag {
   wp?: number;
   leg?: number;
-  kind: 'land' | 'deep-water-only' | 'fuel' | 'other';
+  kind: 'land' | 'shallow' | 'hazard' | 'fuel' | 'other';
   message: string;
 }
 
@@ -84,15 +84,15 @@ function compareSemver(a: string, b: string): number {
 
 export function routeDraftAvailable(plugins: ReadonlyMap<string, string> | undefined): boolean {
   if (!plugins) return false;
-  const version = plugins.get(OPENROUTER_COMPANION_PLUGIN_ID);
+  const version = plugins.get(ROUTE_DRAFT_PLUGIN_ID);
   if (!version) return false;
-  return compareSemver(version, OPENROUTER_COMPANION_MIN_VERSION) >= 0;
+  return compareSemver(version, ROUTE_DRAFT_PLUGIN_MIN_VERSION) >= 0;
 }
 
 const MAX_WAYPOINTS = 60;
 const DRAFT_TIMEOUT_MS = 25_000;
 
-const FLAG_KINDS = new Set<DraftFlag['kind']>(['land', 'deep-water-only', 'fuel', 'other']);
+const FLAG_KINDS = new Set<DraftFlag['kind']>(['land', 'shallow', 'hazard', 'fuel', 'other']);
 
 function isFlagKind(v: unknown): v is DraftFlag['kind'] {
   return typeof v === 'string' && FLAG_KINDS.has(v as DraftFlag['kind']);

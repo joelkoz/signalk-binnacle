@@ -20,9 +20,9 @@ export type {
 } from './route-draft-client';
 export {
   draftRoute,
-  OPENROUTER_COMPANION_MIN_VERSION,
-  OPENROUTER_COMPANION_PLUGIN_ID,
   ROUTE_DRAFT_PATH,
+  ROUTE_DRAFT_PLUGIN_ID,
+  ROUTE_DRAFT_PLUGIN_MIN_VERSION,
   routeDraftAvailable,
 } from './route-draft-client';
 export { downloadRouteGpx } from './route-gpx';

@@ -3,16 +3,18 @@ import { formatDraftFuel, orderDraftFlags } from './draft-format';
 import type { DraftFlag } from './route-draft-client';
 
 describe('orderDraftFlags', () => {
-  it('orders land, then deep-water-only, then fuel, then other', () => {
+  it('orders land, then shallow, then hazard, then fuel, then other', () => {
     const flags: DraftFlag[] = [
       { kind: 'other', message: 'o' },
       { kind: 'fuel', message: 'f' },
+      { kind: 'hazard', message: 'h' },
       { kind: 'land', message: 'l' },
-      { kind: 'deep-water-only', message: 'd' },
+      { kind: 'shallow', message: 's' },
     ];
     expect(orderDraftFlags(flags).map((f) => f.kind)).toEqual([
       'land',
-      'deep-water-only',
+      'shallow',
+      'hazard',
       'fuel',
       'other',
     ]);

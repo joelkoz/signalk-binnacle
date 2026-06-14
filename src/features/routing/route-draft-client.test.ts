@@ -3,9 +3,9 @@ import { stubFetch } from '$shared/testing/fetch-stub';
 import {
   type DraftRouteRequest,
   draftRoute,
-  OPENROUTER_COMPANION_MIN_VERSION,
-  OPENROUTER_COMPANION_PLUGIN_ID,
   ROUTE_DRAFT_PATH,
+  ROUTE_DRAFT_PLUGIN_ID,
+  ROUTE_DRAFT_PLUGIN_MIN_VERSION,
   routeDraftAvailable,
 } from './route-draft-client';
 
@@ -391,10 +391,10 @@ describe('draftRoute trust-boundary validation', () => {
 
 describe('routeDraftAvailable', () => {
   const plugins = (version: string) =>
-    new Map([[OPENROUTER_COMPANION_PLUGIN_ID, version]]) as ReadonlyMap<string, string>;
+    new Map([[ROUTE_DRAFT_PLUGIN_ID, version]]) as ReadonlyMap<string, string>;
 
   it('returns true when the plugin is present at the minimum version', () => {
-    expect(routeDraftAvailable(plugins(OPENROUTER_COMPANION_MIN_VERSION))).toBe(true);
+    expect(routeDraftAvailable(plugins(ROUTE_DRAFT_PLUGIN_MIN_VERSION))).toBe(true);
   });
 
   it('returns true when the plugin version is above the minimum', () => {

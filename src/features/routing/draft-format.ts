@@ -1,13 +1,14 @@
 import { litersToVolume, type UnitsMode, volumeUnit } from '$shared/lib';
 import type { DraftFlag, DraftFuel } from './route-draft-client';
 
-// Land first (a route crossing land is the worst case), then coarse-bathymetry deep-water warnings,
-// then fuel, then anything else. Same-kind flags keep the server's order under a stable sort.
+// Land first (a route crossing land is the worst case), then charted shallow water, then charted
+// hazards, then fuel, then anything else. Same-kind flags keep the server's order under a stable sort.
 const FLAG_ORDER: Record<DraftFlag['kind'], number> = {
   land: 0,
-  'deep-water-only': 1,
-  fuel: 2,
-  other: 3,
+  shallow: 1,
+  hazard: 2,
+  fuel: 3,
+  other: 4,
 };
 
 export function orderDraftFlags(flags: readonly DraftFlag[]): DraftFlag[] {
@@ -15,7 +16,7 @@ export function orderDraftFlags(flags: readonly DraftFlag[]): DraftFlag[] {
 }
 
 // One display line for the server-computed fuel estimate, in the navigator's unit system. The numbers
-// are the companion's; this never does burn math, only the unit conversion and the phrasing.
+// come from the plugin server-side; this never does burn math, only the unit conversion and phrasing.
 export function formatDraftFuel(fuel: DraftFuel, mode: UnitsMode): string {
   const unit = volumeUnit(mode);
   const show = (liters: number) => Math.round(litersToVolume(liters, mode));
