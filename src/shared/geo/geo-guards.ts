@@ -14,6 +14,16 @@ export function isLatLon(value: unknown): value is LatLon {
   );
 }
 
+// A finite latitude in [-90, 90] or longitude in [-180, 180]. The one place the coordinate ranges are
+// spelled out, so a stored view, an untrusted API position, and any other caller share the bounds.
+export function isLatitude(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= -90 && value <= 90;
+}
+
+export function isLongitude(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= -180 && value <= 180;
+}
+
 // GeoJSON coordinate order is longitude first; Signal K positions and the Course API use a
 // {latitude, longitude} object. These two functions are the only place that crosses the two
 // orderings, so a mismatch lives in exactly one tested spot.

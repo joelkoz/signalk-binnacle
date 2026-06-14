@@ -31,24 +31,40 @@ export function normalizeBounds(bbox: Bbox4): CornerBounds | null {
   ];
 }
 
+// Clamp a box to the world and the Web Mercator latitude limit, the bounds a map fit cannot exceed.
+// Shared by padBbox and the vessel area-of-interest fallback so the limits live in one place.
+export function clampToWorld([west, south, east, north]: Bbox4): Bbox4 {
+  return [Math.max(-180, west), Math.max(-85, south), Math.min(180, east), Math.min(85, north)];
+}
+
 // Expand a viewport bbox outward by `fraction` on each side, clamped to the world and the Web
 // Mercator latitude limit, so one padded fetch covers more than the visible area and a small pan
 // reuses it. Shared by the notes and AIS-trails overlays.
 export function padBbox([west, south, east, north]: Bbox4, fraction: number): Bbox4 {
   const dx = (east - west) * fraction;
   const dy = (north - south) * fraction;
-  return [
-    Math.max(-180, west - dx),
-    Math.max(-85, south - dy),
-    Math.min(180, east + dx),
-    Math.min(85, north + dy),
-  ];
+  return clampToWorld([west - dx, south - dy, east + dx, north + dy]);
 }
 
 export function bboxContains(outer: Bbox4, inner: Bbox4): boolean {
   return (
     outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3]
   );
+}
+
+// The four edge getters a MapLibre LngLatBounds exposes, typed structurally so $shared/geo does not
+// depend on maplibre-gl and a test can pass a plain object.
+export interface LngLatBoundsLike {
+  getWest(): number;
+  getSouth(): number;
+  getEast(): number;
+  getNorth(): number;
+}
+
+// A MapLibre LngLatBounds as a [west, south, east, north] box, the visible area as a Bbox4. Shared by
+// the chart viewport read and the notes and AIS-trails overlays.
+export function lngLatBoundsToBbox4(b: LngLatBoundsLike): Bbox4 {
+  return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
 }
 
 // The bounding box enclosing a set of positions, or undefined when empty, for fitting the chart to a

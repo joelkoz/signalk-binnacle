@@ -120,6 +120,7 @@ const METERS_PER_FOOT = 0.3048;
 const MM_PER_INCH = 25.4;
 const PA_PER_INHG = 3386.389;
 export const METERS_PER_MILE = 1609.344;
+const LITERS_PER_US_GALLON = 3.785_411_784;
 // Imperial readouts hand a short range to nautical miles at 1000 ft (the conventional plotter
 // switch point); metric ones at one nautical mile, where whole meters stop reading well.
 const IMPERIAL_NM_FLOOR_METERS = feetToMeters(1000);
@@ -145,6 +146,16 @@ export function formatLengthOr(
 ): string {
   const value = mode === 'imperial' ? metersToFeet(meters) : meters;
   return formatFixed(value, digits);
+}
+
+// The unit label for a mode-dependent volume (fuel, tankage): US gallons in imperial, liters metric.
+export function volumeUnit(mode: UnitsMode): 'L' | 'gal' {
+  return mode === 'imperial' ? 'gal' : 'L';
+}
+
+// A volume in the display unit, US gallons in imperial and liters metric. The store keeps liters.
+export function litersToVolume(liters: number, mode: UnitsMode): number {
+  return mode === 'imperial' ? liters / LITERS_PER_US_GALLON : liters;
 }
 
 export function temperatureUnit(mode: UnitsMode): string {

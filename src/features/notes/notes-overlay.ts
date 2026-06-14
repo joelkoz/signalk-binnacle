@@ -8,6 +8,7 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
+import { lngLatBoundsToBbox4 } from '$shared/geo';
 import { DAY_MS } from '$shared/lib';
 import {
   DARK_SCRIM,
@@ -477,8 +478,7 @@ export function createNotesOverlay(
         clearRendered(ctx);
         return;
       }
-      const b = ctx.map.getBounds();
-      const viewport: Bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      const viewport: Bbox = lngLatBoundsToBbox4(ctx.map.getBounds());
       // A recent fetch whose padded area still covers the viewport serves the markers with no
       // network. This runs before the in-flight guard, so a cache hit renders even mid-fetch.
       // Offline, an expired entry still answers: stale POIs beat a chart that goes blank.
@@ -510,13 +510,7 @@ export function createNotesOverlay(
           render(ctx, notes);
           // The map may have moved while the fetch was in flight; when this fetch no longer covers
           // the current viewport, drop the fast-path anchor so the next sync serves the new area.
-          const after = ctx.map.getBounds();
-          const current: Bbox = [
-            after.getWest(),
-            after.getSouth(),
-            after.getEast(),
-            after.getNorth(),
-          ];
+          const current: Bbox = lngLatBoundsToBbox4(ctx.map.getBounds());
           if (!bboxContains(fetchBbox, current)) invalidateIdleAnchor();
         })
         .finally(() => {

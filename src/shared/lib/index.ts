@@ -35,6 +35,7 @@ export {
   knotsToMetersPerSecond,
   landDistanceUnit,
   lengthUnit,
+  litersToVolume,
   METERS_PER_MILE,
   MINUTE_MS,
   metersPerSecondToKnots,
@@ -46,4 +47,5 @@ export {
   pressureValue,
   temperatureUnit,
   type UnitsMode,
+  volumeUnit,
 } from './units';

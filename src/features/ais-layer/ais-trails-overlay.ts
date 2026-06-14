@@ -4,7 +4,7 @@ import type {
   LineLayerSpecification,
 } from 'maplibre-gl';
 
-import { bboxContains, padBbox } from '$shared/geo';
+import { bboxContains, lngLatBoundsToBbox4, padBbox } from '$shared/geo';
 import {
   emptyFeatureCollection,
   mapThemePaint,
@@ -156,8 +156,7 @@ export function createAisTrailsOverlay(
       }
       if (now - lastMoveAt < SETTLE_MS) return;
       if (fetching) return;
-      const b = ctx.map.getBounds();
-      const viewport: Bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      const viewport: Bbox = lngLatBoundsToBbox4(ctx.map.getBounds());
       // Inside the last padded fetch and within the cadence: the shown wakes are current enough.
       // A viewport that left that area fetches as soon as it settles.
       if (now < nextFetchAt && fetchedBbox && bboxContains(fetchedBbox, viewport)) return;

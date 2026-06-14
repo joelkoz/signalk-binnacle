@@ -36,7 +36,7 @@ import {
 } from '$features/track-layer';
 import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
 import { createWaypointOverlay } from '$features/waypoints';
-import { type LatLon, normalizeBounds } from '$shared/geo';
+import { type LatLon, lngLatBoundsToBbox4, normalizeBounds } from '$shared/geo';
 import { prefersReducedMotion } from '$shared/lib';
 import {
   chartSourceId,
@@ -362,10 +362,7 @@ onMount(() => {
             duration: prefersReducedMotion() ? 0 : 800,
           });
         },
-        getBounds: () => {
-          const b = map.getBounds();
-          return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
-        },
+        getBounds: () => lngLatBoundsToBbox4(map.getBounds()),
         clearNoteSelection: () => notesOverlay.deselect(ctx),
         startRouteEdit: (route) => {
           void loadRouteEditor().then((editor) => editor?.start(route));

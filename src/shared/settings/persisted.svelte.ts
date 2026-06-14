@@ -1,3 +1,4 @@
+import { isLatitude, isLongitude } from '$shared/geo';
 import { isFiniteNumber, nauticalMilesToMeters } from '$shared/lib';
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
@@ -65,15 +66,7 @@ export function isMapView(value: unknown): value is MapView {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
   return (
-    isFiniteNumber(v.lat) &&
-    v.lat >= -90 &&
-    v.lat <= 90 &&
-    isFiniteNumber(v.lon) &&
-    v.lon >= -180 &&
-    v.lon <= 180 &&
-    isFiniteNumber(v.zoom) &&
-    v.zoom >= 0 &&
-    v.zoom <= 24
+    isLatitude(v.lat) && isLongitude(v.lon) && isFiniteNumber(v.zoom) && v.zoom >= 0 && v.zoom <= 24
   );
 }
 
