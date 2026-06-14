@@ -362,6 +362,10 @@ onMount(() => {
             duration: prefersReducedMotion() ? 0 : 800,
           });
         },
+        getBounds: () => {
+          const b = map.getBounds();
+          return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+        },
         clearNoteSelection: () => notesOverlay.deselect(ctx),
         startRouteEdit: (route) => {
           void loadRouteEditor().then((editor) => editor?.start(route));

@@ -1,5 +1,5 @@
 export type { Bbox4 } from './bounds';
-export { bboxContains, normalizeBounds, padBbox } from './bounds';
+export { bboxContains, boundsOfPoints, normalizeBounds, padBbox } from './bounds';
 export type { LatLon, LonLat } from './geo-guards';
 export {
   asNumber,

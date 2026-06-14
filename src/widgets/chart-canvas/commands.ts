@@ -16,6 +16,9 @@ export interface MapCommands {
   // Fit the map to a [west, south, east, north] bounding box, animated; used after importing a
   // chart so the imported area comes into view.
   fitBounds: (bounds: Bbox4) => void;
+  // The current viewport as a [west, south, east, north] box, read straight from the map, for code
+  // that needs the visible area (for example scoping an AI route draft's nearby notes and POIs).
+  getBounds: () => Bbox4;
   // Start on-chart route editing (Terra Draw): with a route, edit it; without one, draw a fresh
   // route. stopRouteEdit tears the editor down.
   startRouteEdit: (route?: Route) => void;

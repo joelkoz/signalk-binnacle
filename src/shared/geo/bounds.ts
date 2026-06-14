@@ -1,3 +1,5 @@
+import type { LatLon } from './geo-guards';
+
 // A geographic bounding box as [west, south, east, north] in degrees, the shape a chart descriptor
 // carries.
 export type Bbox4 = [number, number, number, number];
@@ -47,4 +49,21 @@ export function bboxContains(outer: Bbox4, inner: Bbox4): boolean {
   return (
     outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3]
   );
+}
+
+// The bounding box enclosing a set of positions, or undefined when empty, for fitting the chart to a
+// route or a track. A single point yields a zero-area box the caller pads before fitting.
+export function boundsOfPoints(points: readonly LatLon[]): Bbox4 | undefined {
+  if (points.length === 0) return undefined;
+  let west = Number.POSITIVE_INFINITY;
+  let south = Number.POSITIVE_INFINITY;
+  let east = Number.NEGATIVE_INFINITY;
+  let north = Number.NEGATIVE_INFINITY;
+  for (const { latitude, longitude } of points) {
+    if (longitude < west) west = longitude;
+    if (longitude > east) east = longitude;
+    if (latitude < south) south = latitude;
+    if (latitude > north) north = latitude;
+  }
+  return [west, south, east, north];
 }
