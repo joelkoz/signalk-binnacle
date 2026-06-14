@@ -88,8 +88,8 @@ import {
   draftRoute,
   fetchRoutes,
   formatDraftFuel,
+  groupDraftFlags,
   hydrateCourse,
-  orderDraftFlags,
   parseGpxRoutes,
   RoutesPanel,
   routeDraftAvailable,
@@ -1366,7 +1366,7 @@ async function onDraftRoute(prompt: string): Promise<void> {
     destination: route.destination?.name,
     note: route.note || undefined,
     fuel: route.fuel ? formatDraftFuel(route.fuel, units.mode) : undefined,
-    flags: route.flags ? orderDraftFlags(route.flags) : undefined,
+    flags: route.flags ? groupDraftFlags(route.flags) : undefined,
   };
 }
 

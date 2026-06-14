@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDraftFuel, orderDraftFlags } from './draft-format';
+import { formatDraftFuel, groupDraftFlags, orderDraftFlags } from './draft-format';
 import type { DraftFlag } from './route-draft-client';
 
 describe('orderDraftFlags', () => {
@@ -35,6 +35,52 @@ describe('orderDraftFlags', () => {
     ];
     orderDraftFlags(flags);
     expect(flags.map((f) => f.kind)).toEqual(['fuel', 'land']);
+  });
+});
+
+describe('groupDraftFlags', () => {
+  it('collapses several hazards on one leg into a summary with deduped counts', () => {
+    const flags: DraftFlag[] = [
+      { kind: 'hazard', leg: 1, message: 'Charted rock within the leg corridor' },
+      { kind: 'hazard', leg: 1, message: 'Charted rock within the leg corridor' },
+      { kind: 'hazard', leg: 1, message: 'Charted snag/stump within the leg corridor' },
+    ];
+    const [group] = groupDraftFlags(flags);
+    expect(group.kind).toBe('hazard');
+    expect(group.message).toBe('3 charted hazards near leg 2, verify on the chart');
+    expect(group.detail).toEqual(['Rock ×2', 'Snag/stump']);
+  });
+
+  it('leaves a lone hazard on a leg as a single line with no detail', () => {
+    const flags: DraftFlag[] = [
+      { kind: 'hazard', leg: 0, message: 'Charted dangerous wreck within the leg corridor' },
+    ];
+    const [item] = groupDraftFlags(flags);
+    expect(item.message).toBe('Charted dangerous wreck within the leg corridor');
+    expect(item.detail).toBeUndefined();
+  });
+
+  it('keeps non-hazard flags in kind order around the hazard groups', () => {
+    const flags: DraftFlag[] = [
+      { kind: 'other', message: 'o' },
+      { kind: 'hazard', leg: 0, message: 'Charted rock within the leg corridor' },
+      { kind: 'hazard', leg: 0, message: 'Charted rock within the leg corridor' },
+      { kind: 'land', message: 'l' },
+    ];
+    expect(groupDraftFlags(flags).map((f) => f.kind)).toEqual(['land', 'hazard', 'other']);
+  });
+
+  it('emits one summary per leg', () => {
+    const flags: DraftFlag[] = [
+      { kind: 'hazard', leg: 0, message: 'Charted rock within the leg corridor' },
+      { kind: 'hazard', leg: 0, message: 'Charted rock within the leg corridor' },
+      { kind: 'hazard', leg: 1, message: 'Charted snag/stump within the leg corridor' },
+      { kind: 'hazard', leg: 1, message: 'Charted snag/stump within the leg corridor' },
+    ];
+    const groups = groupDraftFlags(flags);
+    expect(groups).toHaveLength(2);
+    expect(groups[0].message).toContain('near leg 1');
+    expect(groups[1].message).toContain('near leg 2');
   });
 });
 

@@ -286,7 +286,16 @@ $effect(() => {
         {#if draft.flags && draft.flags.length > 0}
           <ul class="draft-flags">
             {#each draft.flags as flag}
-              <li class="alert-note">{flag.message}</li>
+              <li class="alert-note">
+                {flag.message}
+                {#if flag.detail}
+                  <ul class="draft-hazards">
+                    {#each flag.detail as hazard}
+                      <li>{hazard}</li>
+                    {/each}
+                  </ul>
+                {/if}
+              </li>
             {/each}
           </ul>
         {/if}
@@ -542,6 +551,14 @@ $effect(() => {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+/* The per-leg hazard breakdown under a grouped hazard summary: a compact, muted, indented list. */
+.draft-hazards {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  list-style: disc;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
 .draft-save {
   display: flex;

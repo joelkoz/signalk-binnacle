@@ -39,14 +39,23 @@ export interface DraftedRoute {
   flags?: DraftFlag[];
 }
 
-// The draft as the panel shows it: display strings the app has already formatted, plus the ordered
+// One displayed flag line. A leg with several charted hazards collapses into a single summary whose
+// `detail` lists the deduped hazard types with counts, so a hazard-dense leg reads as one count plus a
+// short breakdown rather than dozens of near-identical lines. A lone flag carries no `detail`.
+export interface DraftFlagItem {
+  kind: DraftFlag['kind'];
+  message: string;
+  detail?: string[];
+}
+
+// The draft as the panel shows it: display strings the app has already formatted, plus the grouped
 // flags. Undefined for a hand-drawn working route. Shared so the app and the panel agree on the shape.
 export interface DraftView {
   name: string;
   destination?: string;
   note?: string;
   fuel?: string;
-  flags?: readonly DraftFlag[];
+  flags?: readonly DraftFlagItem[];
 }
 
 // The single source for the error set: the type is derived from this list and the runtime guard reads
