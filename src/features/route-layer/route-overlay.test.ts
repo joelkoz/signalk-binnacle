@@ -47,7 +47,7 @@ describe('route overlay', () => {
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     overlay.sync(ctxFor(map));
-    map.sources.get('binnacle-route-lines')?.setData('marker');
+    map.sources.get('binnacle-route-lines')?.setData?.('marker');
     overlay.sync(ctxFor(map));
     expect(map.sources.get('binnacle-route-lines')?.data).toBe('marker');
   });

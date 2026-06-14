@@ -2,6 +2,8 @@
 export class FakeWebSocket {
   static CONNECTING = 0;
   static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
   static instances: FakeWebSocket[] = [];
   onopen: (() => void) | null = null;
   onclose: (() => void) | null = null;
@@ -32,6 +34,9 @@ export class FakeWebSocket {
 
   close(): void {
     this.closed = true;
+    // Mirror the browser: a closed socket reports CLOSED, so a send-after-close guard keyed on
+    // readyState behaves in tests as it does in the browser.
+    this.readyState = FakeWebSocket.CLOSED;
     this.onclose?.();
   }
 

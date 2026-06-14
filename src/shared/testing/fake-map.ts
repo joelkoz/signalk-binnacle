@@ -6,9 +6,9 @@ export function createFakeMap() {
   const sources = new Map<
     string,
     {
-      setData: (data: unknown) => void;
-      setCoordinates: (coordinates: unknown) => void;
-      setTiles: (tiles: unknown) => void;
+      setData?: (data: unknown) => void;
+      setCoordinates?: (coordinates: unknown) => void;
+      setTiles?: (tiles: unknown) => void;
       data: unknown;
       maxzoom?: number;
       tiles?: unknown;
@@ -29,17 +29,30 @@ export function createFakeMap() {
       updatedImages.push(id);
       images.add(id);
     },
-    addSource: (id: string, spec: { data?: unknown; maxzoom?: number; tiles?: unknown }) => {
-      sources.set(id, {
-        data: spec.data,
-        maxzoom: spec.maxzoom,
-        tiles: spec.tiles,
-        setData(data: unknown) {
-          this.data = data;
-        },
-        setCoordinates: vi.fn(),
-        setTiles: vi.fn(),
-      });
+    addSource: (
+      id: string,
+      spec: { type?: string; data?: unknown; maxzoom?: number; tiles?: unknown },
+    ) => {
+      // A real MapLibre source carries only its own type's mutator, so attach just that one: a
+      // wrong-type call then throws in tests as in the browser instead of silently succeeding.
+      const source: {
+        setData?: (data: unknown) => void;
+        setCoordinates?: (coordinates: unknown) => void;
+        setTiles?: (tiles: unknown) => void;
+        data: unknown;
+        maxzoom?: number;
+        tiles?: unknown;
+      } = { data: spec.data, maxzoom: spec.maxzoom, tiles: spec.tiles };
+      if (spec.type === 'geojson') {
+        source.setData = (data: unknown) => {
+          source.data = data;
+        };
+      } else if (spec.type === 'canvas' || spec.type === 'image') {
+        source.setCoordinates = vi.fn();
+      } else if (spec.type === 'raster' || spec.type === 'vector' || spec.type === 'raster-dem') {
+        source.setTiles = vi.fn();
+      }
+      sources.set(id, source);
     },
     getSource: (id: string) => sources.get(id),
     isSourceLoaded: (id: string) => sources.has(id),

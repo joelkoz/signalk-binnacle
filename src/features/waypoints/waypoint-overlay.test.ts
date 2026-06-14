@@ -69,7 +69,7 @@ describe('waypoint overlay', () => {
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     overlay.sync(ctxFor(map));
-    map.sources.get('binnacle-waypoints')?.setData('marker');
+    map.sources.get('binnacle-waypoints')?.setData?.('marker');
     overlay.sync(ctxFor(map));
     expect(map.sources.get('binnacle-waypoints')?.data).toBe('marker');
   });
