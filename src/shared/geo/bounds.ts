@@ -11,6 +11,12 @@ export type CornerBounds = [[number, number], [number, number]];
 // extreme zoom trying to frame nothing. About 55 m.
 const DEGENERATE_PAD_DEG = 0.0005;
 
+// East below west is the antimeridian-crossing convention; unwrap east past 180 so a span or a fit is
+// measured the short way across the seam, not the long way around.
+function unwrapEast(west: number, east: number): number {
+  return east < west ? east + 360 : east;
+}
+
 // Normalize a bounding box for a map fit, or return null when it is unusable. A box with any
 // non-finite coordinate, or with south above north, is rejected (a malformed descriptor: unlike
 // west greater than east, latitude has no wraparound to explain the inversion). A west greater
@@ -20,7 +26,7 @@ export function normalizeBounds(bbox: Bbox4): CornerBounds | null {
   const [west, south, east, north] = bbox;
   if (![west, south, east, north].every(Number.isFinite)) return null;
   if (south > north) return null;
-  const unwrappedEast = east < west ? east + 360 : east;
+  const unwrappedEast = unwrapEast(west, east);
   const w = unwrappedEast === west ? west - DEGENERATE_PAD_DEG : west;
   const e = unwrappedEast === west ? unwrappedEast + DEGENERATE_PAD_DEG : unwrappedEast;
   const s = north === south ? south - DEGENERATE_PAD_DEG : south;
@@ -32,7 +38,10 @@ export function normalizeBounds(bbox: Bbox4): CornerBounds | null {
 }
 
 // Clamp a box to the world and the Web Mercator latitude limit, the bounds a map fit cannot exceed.
-// Shared by padBbox and the vessel area-of-interest fallback so the limits live in one place.
+// Shared by padBbox and the vessel area-of-interest fallback so the limits live in one place. Non-
+// crossing boxes only: it clamps each longitude into [-180, 180], so an antimeridian-crossing box
+// (east < west) would be flattened. padBbox keeps its crossing output within range, so the clamp is a
+// no-op there.
 export function clampToWorld([west, south, east, north]: Bbox4): Bbox4 {
   return [Math.max(-180, west), Math.max(-85, south), Math.min(180, east), Math.min(85, north)];
 }
@@ -41,14 +50,17 @@ export function clampToWorld([west, south, east, north]: Bbox4): Bbox4 {
 // Mercator latitude limit, so one padded fetch covers more than the visible area and a small pan
 // reuses it. Shared by the notes and AIS-trails overlays.
 export function padBbox([west, south, east, north]: Bbox4, fraction: number): Bbox4 {
-  // East below west is the antimeridian-crossing convention: measure the longitude span the short
-  // way across the seam, not the negative naive east - west.
-  const lonSpan = east < west ? east + 360 - west : east - west;
+  // unwrapEast measures the longitude span the short way across the seam for a crossing box, rather
+  // than the negative naive east - west.
+  const lonSpan = unwrapEast(west, east) - west;
   const dx = lonSpan * fraction;
   const dy = (north - south) * fraction;
   return clampToWorld([west - dx, south - dy, east + dx, north + dy]);
 }
 
+// Whether outer fully encloses inner, for cache-coverage checks. Non-crossing boxes only: the edge
+// comparisons are meaningless for a box that wraps the antimeridian (east < west). Its callers pass
+// viewport boxes, which MapLibre reports non-crossing.
 export function bboxContains(outer: Bbox4, inner: Bbox4): boolean {
   return (
     outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3]
@@ -65,7 +77,8 @@ export interface LngLatBoundsLike {
 }
 
 // A MapLibre LngLatBounds as a [west, south, east, north] box (the visible area as a Bbox4).
-// Shared by the chart viewport read and the notes and AIS-trails overlays.
+// Shared by the chart viewport read and the notes and AIS-trails overlays. MapLibre reports a
+// non-crossing viewport, so the box feeds the non-crossing padBbox and bboxContains path.
 export function lngLatBoundsToBbox4(b: LngLatBoundsLike): Bbox4 {
   return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
 }

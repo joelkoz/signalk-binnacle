@@ -124,9 +124,8 @@ export function createRadarOverlay(
     defaultVisible: false,
     defaultOpacity: DEFAULT_OPACITY,
     layerIds: [LAYER_ID],
-    add() {
-      // Nothing is created until a frame lands; sync points the source at the latest frame.
-    },
+    // Nothing is created until a frame lands; sync points the source at the latest frame.
+    add() {},
     reset() {
       // The manager calls this on a base-style swap (which recreated nothing), so the next sync
       // re-points the source instead of assuming it is current.
