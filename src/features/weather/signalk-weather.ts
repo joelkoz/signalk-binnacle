@@ -107,13 +107,13 @@ export function defaultProviderName(
   return info.name ?? prettyProviderId(id);
 }
 
+const PROVIDER_PREFIX = /^(signalk-|sk-)/;
+const PROVIDER_WORD_SPLIT = /[-_]+/;
+
 // A raw plugin id like "signalk-weather-accuweather" reads poorly as a source label on readouts;
 // strip the convention prefixes and title-case the words.
 function prettyProviderId(id: string): string {
-  const words = id
-    .replace(/^(signalk-|sk-)/, '')
-    .split(/[-_]+/)
-    .filter(Boolean);
+  const words = id.replace(PROVIDER_PREFIX, '').split(PROVIDER_WORD_SPLIT).filter(Boolean);
   if (words.length === 0) return id;
   return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }

@@ -156,10 +156,9 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
         'source-layer': sourceLayer,
         paint: {
           'line-color': color,
-          'line-width':
-            sourceLayer === 'boundaries' || sourceLayer === 'boundary'
-              ? BOUNDARY_LINE_WIDTH
-              : FEATURE_LINE_WIDTH,
+          // Boundary source-layers carry paint 'boundary' in DRAW_LAYERS; key the wider stroke off
+          // that category so adding a boundary source-layer to the table needs no second edit here.
+          'line-width': style.paint === 'boundary' ? BOUNDARY_LINE_WIDTH : FEATURE_LINE_WIDTH,
         },
         metadata,
         ...minzoom,

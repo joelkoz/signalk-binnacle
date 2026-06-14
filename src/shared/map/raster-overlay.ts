@@ -1,5 +1,6 @@
 import type { RasterLayerSpecification, RasterSourceSpecification } from 'maplibre-gl';
 import { applyRasterTheme } from './map-theme';
+import { removeLayersAndSources, setLayersVisibility } from './overlay-helpers';
 import type { OverlayModule, ZBand } from './types';
 
 // The id prefix on every hosted-raster overlay source and layer. The base-theme recolor skips ids
@@ -92,11 +93,10 @@ export function createRasterOverlay(source: RasterOverlaySource, band: ZBand): O
       }
     },
     remove(ctx) {
-      if (ctx.map.getLayer(layerId)) ctx.map.removeLayer(layerId);
-      if (ctx.map.getSource(sourceId)) ctx.map.removeSource(sourceId);
+      removeLayersAndSources(ctx.map, [layerId], [sourceId]);
     },
     setVisible(ctx, visible) {
-      ctx.map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+      setLayersVisibility(ctx.map, [layerId], visible);
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(layerId, 'raster-opacity', opacity);

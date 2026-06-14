@@ -261,15 +261,19 @@ export function formatClockTime(timeMs: number, opts?: { seconds?: boolean }): s
   });
 }
 
-// A weekday wall-clock label ("Thu, 12:00 PM"), optionally with the zone. The weather valid-time
-// labels carry the zone so a crew keeping ship's time in UTC cannot misread a front by hours; one
-// helper so the scrubber label and the conditions panel cannot drift apart.
-export function formatDayClock(timeMs: number, opts?: { zone?: boolean }): string {
+// A weekday wall-clock label ("Thu, 12:00 PM"), optionally with the zone, and optionally hour-only
+// (minute: false) for the compact forecast step columns. The weather valid-time labels carry the
+// zone so a crew keeping ship's time in UTC cannot misread a front by hours; one helper so the
+// scrubber label, the forecast steps, and the conditions panel cannot drift apart.
+export function formatDayClock(
+  timeMs: number,
+  opts?: { zone?: boolean; minute?: boolean },
+): string {
   if (Number.isNaN(timeMs)) return '';
   return new Date(timeMs).toLocaleString([], {
     weekday: 'short',
     hour: '2-digit',
-    minute: '2-digit',
+    ...(opts?.minute === false ? {} : { minute: '2-digit' }),
     ...(opts?.zone ? { timeZoneName: 'short' } : {}),
   });
 }

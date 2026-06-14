@@ -50,6 +50,9 @@
   --row-size: 2.5rem;
   --tracking-caps: 0.06em;
   --disabled-opacity: 0.45;
+  /* The pressed-feedback dim shared by the bordered button, the icon pill, and the strip ack pill,
+     so a press reads the same depth across the chrome. */
+  --brightness-press: 0.94;
   /* One hover and press timing for the whole UI, so interactive feedback feels uniform. */
   --transition-fast: 0.12s ease;
 

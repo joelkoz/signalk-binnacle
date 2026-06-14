@@ -24,7 +24,7 @@ export interface SignalkTidesOptions {
   now?: () => number;
 }
 
-function asNumber(value: unknown): number | undefined {
+function toFiniteNumber(value: unknown): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
     const parsed = Number.parseFloat(value);
@@ -52,7 +52,7 @@ function parseExtremes(raw: unknown): TideEvent[] {
     if (!entry || typeof entry !== 'object') continue;
     const record = entry as Record<string, unknown>;
     const kind = eventKind(record);
-    const heightMeters = asNumber(record.value ?? record.level);
+    const heightMeters = toFiniteNumber(record.value ?? record.level);
     const timeMs = typeof record.time === 'string' ? Date.parse(record.time) : Number.NaN;
     if (!kind || heightMeters === undefined || !Number.isFinite(timeMs)) continue;
     events.push({ timeMs, heightMeters, kind });
@@ -66,8 +66,8 @@ function parseStation(raw: unknown, lat: number, lon: number): TideStation {
     record.position && typeof record.position === 'object'
       ? (record.position as Record<string, unknown>)
       : undefined;
-  const latitude = asNumber(record.latitude ?? position?.latitude);
-  const longitude = asNumber(record.longitude ?? position?.longitude);
+  const latitude = toFiniteNumber(record.latitude ?? position?.latitude);
+  const longitude = toFiniteNumber(record.longitude ?? position?.longitude);
   return {
     id: typeof record.id === 'string' && record.id.length > 0 ? record.id : SIGNALK_TIDES_PLUGIN_ID,
     name:

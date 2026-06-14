@@ -234,12 +234,16 @@ function freeForecast(lat: number, lon: number): PointConditions[] {
 }
 
 // Severity order for the warnings list: the gale must never sit under a marginal advisory.
+const WARN_HURRICANE = /hurricane|typhoon/;
+const WARN_STORM = /storm/;
+const WARN_GALE = /gale/;
+const WARN_SMALL_CRAFT = /small craft/;
 function severityRank(type: string): number {
   const t = type.toLowerCase();
-  if (/hurricane|typhoon/.test(t)) return 0;
-  if (/storm/.test(t)) return 1;
-  if (/gale/.test(t)) return 2;
-  if (/small craft/.test(t)) return 3;
+  if (WARN_HURRICANE.test(t)) return 0;
+  if (WARN_STORM.test(t)) return 1;
+  if (WARN_GALE.test(t)) return 2;
+  if (WARN_SMALL_CRAFT.test(t)) return 3;
   return 4;
 }
 const sortedWarnings = $derived(
@@ -255,8 +259,7 @@ const precip = (v: number | undefined) => formatPrecipRateOr(v, units.mode);
 const pct = (v: number | undefined) => formatFixed(v === undefined ? undefined : v * 100, 0);
 
 function stepLabel(timeMs: number): string {
-  if (Number.isNaN(timeMs)) return '';
-  return new Date(timeMs).toLocaleString([], { weekday: 'short', hour: '2-digit' });
+  return formatDayClock(timeMs, { minute: false });
 }
 
 // The current block's valid time carries the zone (the formatDayClock rationale).

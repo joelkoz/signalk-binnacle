@@ -94,15 +94,21 @@ export function bilinearAt(
   return lerp(top, bot, cy.f);
 }
 
-function frac(axisVals: number[], v: number): { i: number; f: number } | undefined {
-  if (v < axisVals[0] || v > axisVals[axisVals.length - 1]) return undefined;
-  for (let i = 0; i < axisVals.length - 1; i += 1) {
-    if (v <= axisVals[i + 1]) {
-      const span = axisVals[i + 1] - axisVals[i] || 1;
-      return { i, f: (v - axisVals[i]) / span };
+// Find the interval [axis[i], axis[i+1]] bracketing v and the blend fraction within it. Assumes
+// axis is sorted ascending and axis[0] <= v <= axis[last]; callers handle the out-of-range cases.
+function bracket(axis: number[], v: number): { i: number; f: number } {
+  for (let i = 0; i < axis.length - 1; i += 1) {
+    if (v <= axis[i + 1]) {
+      const span = axis[i + 1] - axis[i] || 1;
+      return { i, f: (v - axis[i]) / span };
     }
   }
-  return { i: axisVals.length - 2, f: 1 };
+  return { i: axis.length - 2, f: 1 };
+}
+
+function frac(axisVals: number[], v: number): { i: number; f: number } | undefined {
+  if (v < axisVals[0] || v > axisVals[axisVals.length - 1]) return undefined;
+  return bracket(axisVals, v);
 }
 
 export interface TimeBracket {
@@ -124,11 +130,6 @@ export function timeBracket(grid: WeatherGrid, time: number): TimeBracket {
   const t = grid.times;
   if (t.length === 0 || time <= t[0]) return { lo: 0, hi: 0, frac: 0 };
   if (time >= t[t.length - 1]) return { lo: t.length - 1, hi: t.length - 1, frac: 0 };
-  for (let i = 0; i < t.length - 1; i += 1) {
-    if (time <= t[i + 1]) {
-      const span = t[i + 1] - t[i] || 1;
-      return { lo: i, hi: i + 1, frac: (time - t[i]) / span };
-    }
-  }
-  return { lo: t.length - 1, hi: t.length - 1, frac: 0 };
+  const { i, f } = bracket(t, time);
+  return { lo: i, hi: i + 1, frac: f };
 }

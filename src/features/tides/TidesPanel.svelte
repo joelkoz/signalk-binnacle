@@ -2,7 +2,7 @@
 import { onDestroy } from 'svelte';
 import type { TidesStore } from '$entities/tides';
 import type { UnitsStore } from '$entities/units';
-import { formatClockTime } from '$shared/lib';
+import { Clock, formatClockTime } from '$shared/lib';
 import { SlideOver } from '$shared/ui';
 import {
   formatCurrentRate,
@@ -37,20 +37,17 @@ const stationDistanceText = $derived(
 // A live clock so "next" events and the now-marker stay current while the panel is open, not frozen
 // at the last refresh (a stationary boat may not trigger a reload for hours). Ticks once a minute,
 // which is fine for tide and current events that turn over hours apart.
-let now = $state(Date.now());
-const clock = setInterval(() => {
-  now = Date.now();
-}, 60_000);
-onDestroy(() => clearInterval(clock));
+const clock = new Clock(60_000);
+onDestroy(() => clock.dispose());
 
 // The upcoming high and low events, computed once, so next-high and next-low each scan the same
 // sorted list rather than re-filtering and re-sorting the events twice per recompute.
-const upcoming = $derived(tide ? upcomingEvents(tide.events, now) : []);
+const upcoming = $derived(tide ? upcomingEvents(tide.events, clock.now) : []);
 const nextHigh = $derived(upcoming.find((e) => e.kind === 'high'));
 const nextLow = $derived(upcoming.find((e) => e.kind === 'low'));
 const curve = $derived(tide ? tideCurvePoints(tide.events) : []);
-const nowFrac = $derived(tide ? nowFraction(tide.events, now) : undefined);
-const nextCurrent = $derived(current ? nextCurrentEvent(current.events, now) : undefined);
+const nowFrac = $derived(tide ? nowFraction(tide.events, clock.now) : undefined);
+const nextCurrent = $derived(current ? nextCurrentEvent(current.events, clock.now) : undefined);
 const sourceNote = $derived(tideSourceNote(store.source));
 // The rate and set as one string, so no stray whitespace creeps in between the rate and the comma.
 const currentRate = $derived(

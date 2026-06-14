@@ -11,6 +11,8 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
+  setLayersVisibility,
 } from '$shared/map';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
 import { douglasPeucker } from './simplify';
@@ -203,21 +205,14 @@ export function createTrackOverlay(
       ctx.map.setPaintProperty(SAVED_LAYER, 'line-color', paint.trackSolid);
     },
     setVisible(ctx, visible) {
-      const value = visible ? 'visible' : 'none';
-      ctx.map.setLayoutProperty(ACTIVE_LAYER, 'visibility', value);
-      ctx.map.setLayoutProperty(SAVED_LAYER, 'visibility', value);
+      setLayersVisibility(ctx.map, [ACTIVE_LAYER, SAVED_LAYER], visible);
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(ACTIVE_LAYER, 'line-opacity', opacity);
       ctx.map.setPaintProperty(SAVED_LAYER, 'line-opacity', opacity);
     },
     remove(ctx) {
-      for (const id of [ACTIVE_LAYER, SAVED_LAYER]) {
-        if (ctx.map.getLayer(id)) ctx.map.removeLayer(id);
-      }
-      for (const id of [ACTIVE_SOURCE, SAVED_SOURCE]) {
-        if (ctx.map.getSource(id)) ctx.map.removeSource(id);
-      }
+      removeLayersAndSources(ctx.map, [ACTIVE_LAYER, SAVED_LAYER], [ACTIVE_SOURCE, SAVED_SOURCE]);
     },
   };
 }

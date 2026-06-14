@@ -12,10 +12,16 @@ export interface SignalKClient {
 export function createSignalKClient(): SignalKClient {
   const worker = new Worker(new URL('./sk.worker.ts', import.meta.url), { type: 'module' });
   // A worker that fails to load (the "Class extends value undefined" trap, a chunk miss) otherwise
-  // dies silently: no frames, no connection deltas, and the UI looks identical to "still
-  // connecting". Surface it in the console; connect() rejects so the caller can show an error.
+  // dies silently: the Comlink call to connect() never resolves or rejects, so the UI looks
+  // identical to "still connecting". Capture the first load error and reject any in-flight connect()
+  // with it, so the caller (App.svelte) surfaces the failure instead of latching on forever.
+  let rejectPendingConnect: ((error: Error) => void) | undefined;
   worker.onerror = (event) => {
-    console.error('Signal K worker failed to load or threw', event.message ?? event);
+    const error = new Error(
+      `Signal K worker failed to load or threw: ${event.message ?? 'unknown'}`,
+    );
+    console.error(error.message, event);
+    rejectPendingConnect?.(error);
   };
   worker.onmessageerror = (event) => {
     console.error('Signal K worker message could not be deserialized', event);
@@ -24,7 +30,14 @@ export function createSignalKClient(): SignalKClient {
   return {
     raw,
     async connect(url, onFrame) {
-      await raw.connect(url, Comlink.proxy(onFrame));
+      const workerFailed = new Promise<never>((_, reject) => {
+        rejectPendingConnect = reject;
+      });
+      try {
+        await Promise.race([raw.connect(url, Comlink.proxy(onFrame)), workerFailed]);
+      } finally {
+        rejectPendingConnect = undefined;
+      }
     },
     async publish(delta) {
       await raw.publish(delta);

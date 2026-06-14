@@ -100,7 +100,7 @@
   background: var(--accent-tint);
 }
 .btn:active:not(:disabled) {
-  filter: brightness(0.94);
+  filter: brightness(var(--brightness-press));
 }
 .btn:disabled {
   opacity: var(--disabled-opacity);
@@ -247,6 +247,16 @@
   font-weight: 600;
   text-align: start;
 }
+/* When the name is a button (the Routes and Waypoints locate action) it lights to the accent on
+   hover; a non-interactive span name (Tracks) is left untouched. Shared so the two locate panels do
+   not each re-declare the interactivity. */
+.saved button.name {
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+.saved button.name:hover {
+  color: var(--accent);
+}
 /* The at-a-glance stats line. Mono, tabular numerals echo the NavStrip readouts so a saved card and
    the active-route strip read as one instrument family. */
 .card-stats {
@@ -378,7 +388,13 @@
   background: var(--accent);
 }
 
-/* The close button shared by the panels: a transparent icon button that highlights on hover. */
+/* The transparent icon-only button shared by the list-row actions (show or hide, edit, activate,
+   delete, manage, drag) and the panel close and minimize controls: a control-size square that
+   highlights on hover. The accent modifier holds a persistent accent for an active action; the
+   danger modifier turns the icon to the alarm on hover for a destructive one. The panel controls
+   share only the base and hover; the :active, :disabled, pressed, and modifier rules stay scoped to
+   .icon-btn proper. */
+.icon-btn,
 .panel-close,
 .panel-minimize {
   display: inline-flex;
@@ -396,38 +412,9 @@
     background-color var(--transition-fast),
     color var(--transition-fast);
 }
+.icon-btn:hover,
 .panel-close:hover,
 .panel-minimize:hover {
-  background: var(--surface);
-  color: var(--text);
-}
-/* Minimizing collapses the bottom sheet to its header, which only frees space on a phone, so the
-   control and the collapse apply at phone widths only (see the slide-over media query below). */
-.panel-minimize {
-  display: none;
-}
-
-/* The transparent icon-only button shared by the list-row actions (show or hide, edit, activate,
-   delete, manage, drag): a control-size square that highlights on hover. The accent modifier holds
-   a persistent accent for an active action; the danger modifier turns the icon to the alarm on
-   hover for a destructive one. */
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--control-size);
-  min-inline-size: var(--control-size);
-  padding: var(--space-1);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition:
-    background-color var(--transition-fast),
-    color var(--transition-fast);
-}
-.icon-btn:hover {
   background: var(--surface);
   color: var(--text);
 }
@@ -446,6 +433,12 @@
 }
 .icon-btn--danger:hover {
   color: var(--alarm);
+}
+/* Minimizing collapses the bottom sheet to its header, which only frees space on a phone, so the
+   control is hidden by default and the slide-over media query in shell.css shows it. Placed after the
+   shared .icon-btn base so this default wins on source order. */
+.panel-minimize {
+  display: none;
 }
 
 /* A round chrome icon button on the raised surface with an accent icon, shared by the top-bar
@@ -473,7 +466,7 @@
   background: var(--accent-tint);
 }
 .icon-pill:active:not(:disabled) {
-  filter: brightness(0.94);
+  filter: brightness(var(--brightness-press));
 }
 
 /* The lit "engaged" state shared by the chrome toggles (the Follow and Forecast strip pills, the

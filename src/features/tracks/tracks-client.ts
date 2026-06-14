@@ -1,5 +1,6 @@
 import { computeStats, type TrackPoint, toLonLat } from '$entities/track';
 import { isLonLat } from '$shared/geo';
+import { isFiniteNumber } from '$shared/lib';
 import { deleteResource, fetchKeyedResource, putResource } from '$shared/signalk';
 import { toGeoJsonFeature } from './track-export';
 
@@ -97,7 +98,7 @@ function trackMetric(value: unknown, key: 'distance' | 'timespan'): number | und
     feature?: { properties?: Record<string, unknown> };
   };
   const raw = v.properties?.[key] ?? v.feature?.properties?.[key];
-  return typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+  return isFiniteNumber(raw) ? raw : undefined;
 }
 
 // Map one keyed track record to a SavedTrack, or undefined when it carries no drawable line.

@@ -112,7 +112,8 @@ export class SignalKStore {
         a.id === b.id &&
         sameFlags(a.status, b.status)
       ) {
-        this.notifications.set(path, value);
+        // Structurally identical to the stored value: leave the mirror untouched. Re-storing the
+        // fresh-but-equal object would write the Map every delta cycle for a persistent alarm.
         return;
       }
     }

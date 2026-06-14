@@ -37,6 +37,9 @@ export const CHART_TILE_PATH = /^\/charts\/[^/]+\/\d+\/\d+\/\d+(?:@2x)?(?:\.\w+)
 export const isBasemapStyle = ({ url }: MatchContext): boolean =>
   url.origin === 'https://tiles.openfreemap.org' && url.pathname.startsWith('/styles/');
 
+// A superset of isBasemapStyle (same origin, any path). Workbox routes first-match, so the style
+// rule MUST stay listed before this one in runtimeCaching; reorder them and style documents fall
+// through to CacheFirst here and pin a stale style whose tile references have aged out.
 export const isBasemapAsset = ({ url }: MatchContext): boolean =>
   url.origin === 'https://tiles.openfreemap.org';
 

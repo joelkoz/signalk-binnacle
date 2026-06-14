@@ -1,5 +1,5 @@
 import { type Header, PMTiles, TileType } from 'pmtiles';
-import { NoStoreSource } from './pmtiles';
+import { createArchiveSource } from './pmtiles';
 
 export interface PmtilesMeta {
   name?: string;
@@ -57,10 +57,12 @@ export function mapPmtilesMeta(header: Header, metadata: unknown): PmtilesMeta {
   };
 }
 
-// Read a PMTiles archive header and metadata from a remote URL, using NoStoreSource for the same
-// uncached, retrying range reads the map tiles use.
+// Read a PMTiles archive header and metadata from a remote URL through the same block-cached,
+// retrying archive source the map tiles use, so the header and metadata range reads are cached in
+// IndexedDB: re-probing the same URL, and the first render once the chart is registered, hit the
+// cache instead of refetching. A blob: URL is local bytes, so createArchiveSource skips the cache.
 export async function readPmtilesMeta(url: string): Promise<PmtilesMeta> {
-  const pm = new PMTiles(new NoStoreSource(url));
+  const pm = new PMTiles(createArchiveSource(url));
   const header = await pm.getHeader();
   // Metadata is optional convenience data (name, vector_layers); a malformed or absent
   // metadata block must not sink an otherwise-readable archive.

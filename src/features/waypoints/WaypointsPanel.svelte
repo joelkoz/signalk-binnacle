@@ -123,13 +123,6 @@ function confirmDelete(id: string): void {
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }
-/* The tappable name is the locate action, the Routes panel idiom; the box and button reset come
-   from the global .saved system, only the interactivity is local. */
-:global(.saved) .name {
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-:global(.saved) .name:hover {
-  color: var(--accent);
-}
+/* The tappable name is the locate action; the box, button reset, and the hover-to-accent
+   interactivity come from the global .saved button.name rule. */
 </style>

@@ -1,4 +1,5 @@
 import type { Route, Waypoint } from '$entities/route';
+import { isLatitude, isLongitude } from '$shared/geo';
 import { uuidv4 } from '$shared/lib';
 import { unescapeXml } from './xml-entities';
 
@@ -19,14 +20,7 @@ function parseWaypoints(block: string): Waypoint[] {
   for (const pt of block.matchAll(RTEPT)) {
     const latitude = attrNumber(pt[1], LAT);
     const longitude = attrNumber(pt[1], LON);
-    if (
-      !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude) ||
-      Math.abs(latitude) > 90 ||
-      Math.abs(longitude) > 180
-    ) {
-      continue;
-    }
+    if (!isLatitude(latitude) || !isLongitude(longitude)) continue;
     const nameMatch = pt[2]?.match(NAME);
     const name = nameMatch ? unescapeXml(nameMatch[1]).trim() : '';
     waypoints.push(

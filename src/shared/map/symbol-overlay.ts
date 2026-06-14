@@ -6,6 +6,7 @@ import type {
 import type { Rgba } from './icon-raster';
 import { setMapImage } from './map-image';
 import type { MapThemePaint } from './map-theme';
+import { removeLayersAndSources, setLayersVisibility } from './overlay-helpers';
 import type { OverlayContext, OverlayModule, ZBand } from './types';
 
 export interface SymbolOverlay extends OverlayModule {
@@ -86,14 +87,13 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
       setMapImage(ctx.map, config.iconId, image, config.pixelRatio ?? 1);
     },
     setVisible(ctx, visible) {
-      ctx.map.setLayoutProperty(config.layerId, 'visibility', visible ? 'visible' : 'none');
+      setLayersVisibility(ctx.map, [config.layerId], visible);
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(config.layerId, 'icon-opacity', opacity);
     },
     remove(ctx) {
-      if (ctx.map.getLayer(config.layerId)) ctx.map.removeLayer(config.layerId);
-      if (ctx.map.getSource(config.sourceId)) ctx.map.removeSource(config.sourceId);
+      removeLayersAndSources(ctx.map, [config.layerId], [config.sourceId]);
       if (ctx.map.hasImage(config.iconId)) ctx.map.removeImage(config.iconId);
     },
   };

@@ -2,13 +2,19 @@ import type { LatLon } from '$shared/geo';
 import { DEG_TO_RAD } from '$shared/lib';
 import { EARTH_RADIUS_M, haversineMeters, normalizeLonDeltaDeg } from './distance';
 
+// The Mercator isometric-latitude difference between two latitudes (radians), the stretched-latitude
+// term shared by the rhumb distance and bearing. Both run per waypoint leg on every course update.
+function rhumbDPhi(lat1Rad: number, lat2Rad: number): number {
+  return Math.log(Math.tan(Math.PI / 4 + lat2Rad / 2) / Math.tan(Math.PI / 4 + lat1Rad / 2));
+}
+
 // Rhumb-line (constant-bearing) distance: the line you actually steer over a short to medium leg.
 export function rhumbDistanceMeters(from: LatLon, to: LatLon): number {
   const dLatRad = (to.latitude - from.latitude) * DEG_TO_RAD;
   const dLonRad = normalizeLonDeltaDeg(to.longitude - from.longitude) * DEG_TO_RAD;
   const lat1 = from.latitude * DEG_TO_RAD;
   const lat2 = to.latitude * DEG_TO_RAD;
-  const dPhi = Math.log(Math.tan(Math.PI / 4 + lat2 / 2) / Math.tan(Math.PI / 4 + lat1 / 2));
+  const dPhi = rhumbDPhi(lat1, lat2);
   const q = Math.abs(dPhi) > 1e-12 ? dLatRad / dPhi : Math.cos(lat1);
   return Math.hypot(dLatRad, q * dLonRad) * EARTH_RADIUS_M;
 }
@@ -18,7 +24,7 @@ export function rhumbBearingRad(from: LatLon, to: LatLon): number {
   const dLonRad = normalizeLonDeltaDeg(to.longitude - from.longitude) * DEG_TO_RAD;
   const lat1 = from.latitude * DEG_TO_RAD;
   const lat2 = to.latitude * DEG_TO_RAD;
-  const dPhi = Math.log(Math.tan(Math.PI / 4 + lat2 / 2) / Math.tan(Math.PI / 4 + lat1 / 2));
+  const dPhi = rhumbDPhi(lat1, lat2);
   return (Math.atan2(dLonRad, dPhi) + 2 * Math.PI) % (2 * Math.PI);
 }
 

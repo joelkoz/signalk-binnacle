@@ -145,7 +145,7 @@
   background: var(--accent-tint);
 }
 .bottom-strip .ack:active {
-  filter: brightness(0.94);
+  filter: brightness(var(--brightness-press));
 }
 /* A caution variant of the strip action (the collision Mute), warning-colored so the two safety
    buttons (Mute and the accent Acknowledge) do not read as twins. The pressed state tints with the

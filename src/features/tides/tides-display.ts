@@ -64,11 +64,16 @@ export function nextCurrentEvent(events: CurrentEvent[], nowMs: number): Current
 export function tideCurvePoints(events: TideEvent[]): Array<{ x: number; y: number }> {
   if (events.length === 0) return [];
   // Events are pre-sorted ascending by time, so the span ends are the first and last, no spread.
-  const heights = events.map((e) => e.heightMeters);
   const t0 = events[0].timeMs;
-  const h0 = Math.min(...heights);
   const tSpan = events[events.length - 1].timeMs - t0 || 1;
-  const hSpan = Math.max(...heights) - h0 || 1;
+  // One pass for the height extent, no spread into Math.min/max (which is unbounded in arg count).
+  let h0 = events[0].heightMeters;
+  let hMax = h0;
+  for (const e of events) {
+    if (e.heightMeters < h0) h0 = e.heightMeters;
+    else if (e.heightMeters > hMax) hMax = e.heightMeters;
+  }
+  const hSpan = hMax - h0 || 1;
   return events.map((e) => ({ x: (e.timeMs - t0) / tSpan, y: (e.heightMeters - h0) / hSpan }));
 }
 

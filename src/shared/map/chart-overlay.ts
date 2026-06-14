@@ -2,6 +2,7 @@ import type { Map as MapLibreMap, MapSourceDataEvent } from 'maplibre-gl';
 import { chartSourceId, chartToSpecs, PMTILES_SCHEME, THEME_PAINT_KEY } from './chart-adapter';
 import type { SignalKChart } from './chart-types';
 import { applyRasterTheme, type MapColorKey } from './map-theme';
+import { removeLayersAndSources, setLayersVisibility } from './overlay-helpers';
 import { registerPmtilesArchive, unregisterPmtilesArchive } from './pmtiles';
 import type { OverlayModule, ZBand } from './types';
 
@@ -118,20 +119,21 @@ export function createChartOverlay(
         ctx.map.off('sourcedata', onSourceData);
         onSourceData = undefined;
       }
-      for (const layer of layers) {
-        if (ctx.map.getLayer(layer.id)) ctx.map.removeLayer(layer.id);
-      }
-      for (const sourceId of sourceIds) {
-        if (ctx.map.getSource(sourceId)) ctx.map.removeSource(sourceId);
-      }
+      removeLayersAndSources(
+        ctx.map,
+        layers.map((layer) => layer.id),
+        sourceIds,
+      );
       for (const url of pmtilesUrls) {
         unregisterPmtilesArchive(url);
       }
     },
     setVisible(ctx, visible) {
-      for (const layer of layers) {
-        ctx.map.setLayoutProperty(layer.id, 'visibility', visible ? 'visible' : 'none');
-      }
+      setLayersVisibility(
+        ctx.map,
+        layers.map((layer) => layer.id),
+        visible,
+      );
     },
     setOpacity(ctx, opacity) {
       for (const layer of layers) {
