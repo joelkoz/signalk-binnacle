@@ -4,9 +4,9 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<a id="unreleased"></a>
+<a id="v062"></a>
 
-## [Unreleased]
+## [0.6.2] - 2026-06-13
 
 A full-codebase reliability, correctness, and coherence pass, plus a weather-panel layer menu. It
 hardens the weather overlays, the caching and history layers, the course and anchor logic, makes a

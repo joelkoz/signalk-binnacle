@@ -15,19 +15,22 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.6.1
+## What's new in 0.6.2
 
-Quick access, straight from community feedback:
+A weather layers menu and a deep reliability pass:
 
-- **Measure from here.** Long-press or right-click the chart and start measuring at that exact
-  spot; no trip to the app menu, and your focus never leaves the map.
-- **A Charts button on the map.** The bottom strip gains a Charts pill beside Center, Follow,
-  and Forecast, so the Layers and charts panel is one tap away and switching charts is two.
-- **Honest scrolling in the weather header.** The layer pills keep their full labels at every
-  width: the row scrolls when it must, and the edge fade appears only while there is more to
-  scroll to.
+- **A weather layers menu.** The weather panel's layer toggles move from the header, which ran out
+  of room, into a single menu opened from a floating button at the upper left of the mini-map. The
+  button lights and shows a count when layers are on, the menu groups the area fill and the
+  overlays, it stays open while you toggle several layers, and it docks as a bottom sheet on a
+  narrow screen. There is now room to add more options without crowding.
+- **Reliability and correctness.** A full pass across the weather overlays, the caching and history
+  layers, and the course and anchor logic: pressure isobars no longer blank after a map style swap,
+  caches stop evicting just-refreshed entries, an active course keeps its route geometry across a
+  cross-station handoff, and a set of failures that used to fail silently (a dead data link, a
+  failed track or chart save, a refused anchor drop) now tell you.
 
-See the [changelog](CHANGELOG.md#v061) for the full list.
+See the [changelog](CHANGELOG.md#v062) for the full list.
 
 ## What it does
 
