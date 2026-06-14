@@ -30,7 +30,7 @@ import {
   UnitField,
   VisibilityToggle,
 } from '$shared/ui';
-import type { DraftFlag } from './route-draft-client';
+import type { DraftView } from './route-draft-client';
 
 interface Props {
   routes: Route[];
@@ -67,15 +67,9 @@ interface Props {
   draftLoading: boolean;
   draftError: string | undefined;
   onDraft: (prompt: string) => void;
-  // True when the current working route is an AI draft (vs a hand-drawn edit).
-  isDraft: boolean;
-  draftName: string;
-  draftDestination: string | undefined;
-  draftNote: string | undefined;
-  // Pre-formatted fuel line in display units, supplied by the caller.
-  draftFuel: string | undefined;
-  // Already ordered by the caller: land, then deep-water-only, then fuel.
-  draftFlags: readonly DraftFlag[] | undefined;
+  // The active AI draft as display strings (the caller formats the fuel line and orders the flags),
+  // or undefined for a hand-drawn working route. Its presence is what makes the route a draft.
+  draft: DraftView | undefined;
 }
 
 const {
@@ -103,12 +97,7 @@ const {
   draftLoading,
   draftError,
   onDraft,
-  isDraft,
-  draftName,
-  draftDestination,
-  draftNote,
-  draftFuel,
-  draftFlags,
+  draft,
 }: Props = $props();
 
 function promptSave(): void {
@@ -173,14 +162,14 @@ let draftOpen = $state(false);
 let draftPrompt = $state('');
 let saveArmed = $state(false);
 
-// Draft save name: seeded from draftName when the working route first becomes a draft, but not
-// overwritten while the user is typing. The wasDraft guard prevents the effect from fighting
-// a user edit on subsequent renders.
+// Draft save name: seeded from the draft's name when the working route first becomes a draft, but not
+// overwritten while the user is typing. The wasDraft guard prevents the effect from fighting a user
+// edit on subsequent renders.
 let saveName = $state('');
 let wasDraft = false;
 $effect(() => {
-  if (isDraft && !wasDraft) saveName = draftName;
-  wasDraft = isDraft;
+  if (draft && !wasDraft) saveName = draft.name;
+  wasDraft = draft !== undefined;
 });
 </script>
 
@@ -188,7 +177,7 @@ $effect(() => {
   title="Routes"
   bodyFlex
   closeLabel="Close routes panel"
-  minimize={isDraft ? undefined : { collapsed: minimized, onToggle: () => (minimized = !minimized) }}
+  minimize={draft ? undefined : { collapsed: minimized, onToggle: () => (minimized = !minimized) }}
   {onClose}
   {onBack}
 >
@@ -254,23 +243,35 @@ $effect(() => {
 
   {#if working}
     <div class="editing" role="group" aria-label="Route under edit">
-      {#if isDraft}
+      {#snippet saveStrip(onSaveClick: () => void, disabled: boolean)}
+        <div class="panel-controls">
+          <button type="button" class="btn btn-primary btn--grow" {disabled} onclick={onSaveClick}>
+            <Save size={16} aria-hidden="true" />
+            Save
+          </button>
+          <button type="button" class="btn" onclick={onCancelEdit}>
+            <X size={16} aria-hidden="true" />
+            Cancel
+          </button>
+        </div>
+      {/snippet}
+      {#if draft}
         <p class="alert-note" role="alert">
           Not chart-verified. Check every leg against the chart. AI draft, sanity-checked for land
           and open water only, not charted depths.
         </p>
-        {#if draftDestination}
-          <p class="muted-note">Read as: {draftDestination}</p>
+        {#if draft.destination}
+          <p class="muted-note">Read as: {draft.destination}</p>
         {/if}
-        {#if draftNote}
-          <p class="muted-note">{draftNote}</p>
+        {#if draft.note}
+          <p class="muted-note">{draft.note}</p>
         {/if}
-        {#if draftFuel}
-          <p class="muted-note">{draftFuel}</p>
+        {#if draft.fuel}
+          <p class="muted-note">{draft.fuel}</p>
         {/if}
-        {#if draftFlags && draftFlags.length > 0}
+        {#if draft.flags && draft.flags.length > 0}
           <ul class="draft-flags">
-            {#each draftFlags as flag, i (i)}
+            {#each draft.flags as flag, i (i)}
               <li class="alert-note">{flag.message}</li>
             {/each}
           </ul>
@@ -314,7 +315,7 @@ $effect(() => {
       <p class="muted-note">
         Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
       </p>
-      {#if isDraft}
+      {#if draft}
         <div class="draft-save">
           <input
             type="text"
@@ -328,44 +329,16 @@ $effect(() => {
               question="I checked every leg. Save this route?"
               onConfirm={() => {
                 saveArmed = false;
-                onSave(saveName.trim() || draftName);
+                onSave(saveName.trim() || (draft?.name ?? ''));
               }}
               onCancel={() => (saveArmed = false)}
             />
           {:else}
-            <div class="panel-controls">
-              <button
-                type="button"
-                class="btn btn-primary btn--grow"
-                disabled={working.waypoints.length < 2}
-                onclick={() => (saveArmed = true)}
-              >
-                <Save size={16} aria-hidden="true" />
-                Save
-              </button>
-              <button type="button" class="btn" onclick={onCancelEdit}>
-                <X size={16} aria-hidden="true" />
-                Cancel
-              </button>
-            </div>
+            {@render saveStrip(() => (saveArmed = true), working.waypoints.length < 2)}
           {/if}
         </div>
       {:else}
-        <div class="panel-controls">
-          <button
-            type="button"
-            class="btn btn-primary btn--grow"
-            onclick={promptSave}
-            disabled={working.waypoints.length < 2}
-          >
-            <Save size={16} aria-hidden="true" />
-            Save
-          </button>
-          <button type="button" class="btn" onclick={onCancelEdit}>
-            <X size={16} aria-hidden="true" />
-            Cancel
-          </button>
-        </div>
+        {@render saveStrip(promptSave, working.waypoints.length < 2)}
       {/if}
     </div>
   {/if}

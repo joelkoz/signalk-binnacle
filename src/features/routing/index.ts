@@ -16,6 +16,7 @@ export type {
   DraftFuel,
   DraftResult,
   DraftRouteRequest,
+  DraftView,
 } from './route-draft-client';
 export {
   draftRoute,

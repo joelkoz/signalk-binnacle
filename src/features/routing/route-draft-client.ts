@@ -1,4 +1,6 @@
 import type { Waypoint } from '$entities/route';
+import { isLatitude, isLongitude } from '$shared/geo';
+import { isFiniteNumber } from '$shared/lib';
 import { authInit } from '$shared/signalk/resource';
 
 export const ROUTE_DRAFT_PATH = '/plugins/signalk-openrouter-companion/api/route-draft';
@@ -31,26 +33,25 @@ export interface DraftedRoute {
   waypoints: Waypoint[];
   name?: string;
   note: string;
-  destination?: { name: string; latitude?: number; longitude?: number };
+  destination?: { name: string };
   confidence?: 'high' | 'low';
   fuel?: DraftFuel;
   flags?: DraftFlag[];
 }
 
-export type DraftError =
-  | 'budget'
-  | 'no-route'
-  | 'model-error'
-  | 'timeout'
-  | 'unreachable'
-  | 'unauthorized'
-  | 'bad-request';
+// The draft as the panel shows it: display strings the app has already formatted, plus the ordered
+// flags. Undefined for a hand-drawn working route. Shared so the app and the panel agree on the shape.
+export interface DraftView {
+  name: string;
+  destination?: string;
+  note?: string;
+  fuel?: string;
+  flags?: readonly DraftFlag[];
+}
 
-export type DraftResult =
-  | { ok: true; route: DraftedRoute }
-  | { ok: false; error: DraftError; message: string };
-
-const KNOWN_ERRORS = new Set<DraftError>([
+// The single source for the error set: the type is derived from this list and the runtime guard reads
+// the same list, so the two cannot drift.
+const DRAFT_ERRORS = [
   'budget',
   'no-route',
   'model-error',
@@ -58,37 +59,38 @@ const KNOWN_ERRORS = new Set<DraftError>([
   'unreachable',
   'unauthorized',
   'bad-request',
-]);
+] as const;
+export type DraftError = (typeof DRAFT_ERRORS)[number];
+
+export type DraftResult =
+  | { ok: true; route: DraftedRoute }
+  | { ok: false; error: DraftError; message: string };
+
+const KNOWN_ERRORS = new Set<DraftError>(DRAFT_ERRORS);
 
 function isKnownError(v: unknown): v is DraftError {
   return typeof v === 'string' && KNOWN_ERRORS.has(v as DraftError);
 }
 
+function parseSemver(s: string): number[] {
+  return s.split('.').map((n) => (Number.isFinite(+n) ? +n : 0));
+}
+
 function compareSemver(a: string, b: string): number {
-  const parse = (s: string) => s.split('.').map((n) => (Number.isFinite(+n) ? +n : 0));
-  const [aMaj = 0, aMin = 0, aPat = 0] = parse(a);
-  const [bMaj = 0, bMin = 0, bPat = 0] = parse(b);
+  const [aMaj = 0, aMin = 0, aPat = 0] = parseSemver(a);
+  const [bMaj = 0, bMin = 0, bPat = 0] = parseSemver(b);
   return aMaj !== bMaj ? aMaj - bMaj : aMin !== bMin ? aMin - bMin : aPat - bPat;
 }
 
 export function routeDraftAvailable(plugins: ReadonlyMap<string, string> | undefined): boolean {
   if (!plugins) return false;
   const version = plugins.get(OPENROUTER_COMPANION_PLUGIN_ID);
-  if (version === undefined) return false;
   if (!version) return false;
   return compareSemver(version, OPENROUTER_COMPANION_MIN_VERSION) >= 0;
 }
 
 const MAX_WAYPOINTS = 60;
 const DRAFT_TIMEOUT_MS = 25_000;
-
-function isFiniteNumber(v: unknown): v is number {
-  return typeof v === 'number' && Number.isFinite(v);
-}
-
-function isFiniteInRange(v: unknown, lo: number, hi: number): v is number {
-  return isFiniteNumber(v) && v >= lo && v <= hi;
-}
 
 const FLAG_KINDS = new Set<DraftFlag['kind']>(['land', 'deep-water-only', 'fuel', 'other']);
 
@@ -104,8 +106,7 @@ function validateWaypoints(raw: unknown): Waypoint[] | undefined {
     const obj = item as Record<string, unknown>;
     // Reject lat/lng aliases; only latitude/longitude are valid.
     if ('lat' in obj || 'lng' in obj || 'lon' in obj) return undefined;
-    if (!isFiniteInRange(obj.latitude, -90, 90)) return undefined;
-    if (!isFiniteInRange(obj.longitude, -180, 180)) return undefined;
+    if (!isLatitude(obj.latitude) || !isLongitude(obj.longitude)) return undefined;
     waypoints.push({
       position: { latitude: obj.latitude, longitude: obj.longitude },
       ...(typeof obj.name === 'string' ? { name: obj.name } : {}),
@@ -150,17 +151,13 @@ function validateFuel(raw: unknown): DraftFuel | undefined {
   };
 }
 
-// A resolved destination is kept when it has a name; its coordinates are carried only when valid, so a
-// name-only destination still drives the panel's "read as" line without claiming bogus coordinates.
+// A resolved destination is kept when it has a name, which drives the panel's "read as" line. Its
+// coordinates are not carried: no consumer reads them yet, so validating and storing them would be
+// dead data, and a future "go to destination" action would re-add them at its own use site.
 function validateDestination(raw: unknown): DraftedRoute['destination'] | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
-  const d = raw as Record<string, unknown>;
-  if (typeof d.name !== 'string') return undefined;
-  return {
-    name: d.name,
-    ...(isFiniteInRange(d.latitude, -90, 90) ? { latitude: d.latitude } : {}),
-    ...(isFiniteInRange(d.longitude, -180, 180) ? { longitude: d.longitude } : {}),
-  };
+  const name = (raw as Record<string, unknown>).name;
+  return typeof name === 'string' ? { name } : undefined;
 }
 
 export async function draftRoute(

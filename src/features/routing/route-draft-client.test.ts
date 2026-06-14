@@ -366,26 +366,26 @@ describe('draftRoute trust-boundary validation', () => {
     expect(result.route.fuel).toBeUndefined();
   });
 
-  it('keeps a name-only destination and omits absent coordinates', async () => {
-    stubFetch({ ok: true, body: { ...GOOD_BODY, destination: { name: 'Avalon' } } });
-    const result = await draftRoute(BASE, TOKEN, REQ);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.route.destination?.name).toBe('Avalon');
-    expect(result.route.destination?.latitude).toBeUndefined();
-  });
-
-  it('drops an out-of-range destination coordinate but keeps the name', async () => {
+  it('keeps a destination that has a name, carrying only the name', async () => {
     stubFetch({
       ok: true,
-      body: { ...GOOD_BODY, destination: { name: 'Avalon', latitude: 999, longitude: -118.32 } },
+      body: { ...GOOD_BODY, destination: { name: 'Avalon', latitude: 33.35, longitude: -118.32 } },
     });
     const result = await draftRoute(BASE, TOKEN, REQ);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.route.destination?.name).toBe('Avalon');
-    expect(result.route.destination?.latitude).toBeUndefined();
-    expect(result.route.destination?.longitude).toBe(-118.32);
+    expect(result.route.destination).toEqual({ name: 'Avalon' });
+  });
+
+  it('drops a destination with no name', async () => {
+    stubFetch({
+      ok: true,
+      body: { ...GOOD_BODY, destination: { latitude: 33.35, longitude: -118.32 } },
+    });
+    const result = await draftRoute(BASE, TOKEN, REQ);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.route.destination).toBeUndefined();
   });
 });
 

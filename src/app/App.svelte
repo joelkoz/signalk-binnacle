@@ -81,8 +81,8 @@ import {
   advancePoint,
   clearCourse,
   type DraftError,
-  type DraftFlag,
   type DraftResult,
+  type DraftView,
   deleteRoute,
   downloadRouteGpx,
   draftRoute,
@@ -123,7 +123,7 @@ import {
   WEATHER_LAYER_IDS,
 } from '$features/weather';
 import { GatedAlarm } from '$shared/audio';
-import { type Bbox4, boundsOfPoints, type LatLon, padBbox } from '$shared/geo';
+import { type Bbox4, boundsOfPoints, clampToWorld, type LatLon, padBbox } from '$shared/geo';
 import {
   Clock,
   formatBearingOr,
@@ -1256,14 +1256,10 @@ function onToggleRouteShown(id: string, shown: boolean): void {
 const draftAvailable = $derived(routeDraftAvailable(serverFeatures?.plugins));
 let draftLoading = $state(false);
 let draftError = $state<string | undefined>();
-// True while the working route is an AI draft awaiting verify-and-save, so the panel shows the draft
-// banner and the armed save instead of the normal hand-drawn save.
-let draftActive = $state(false);
-let draftName = $state('');
-let draftDestination = $state<string | undefined>();
-let draftNote = $state<string | undefined>();
-let draftFuel = $state<string | undefined>();
-let draftFlags = $state<DraftFlag[] | undefined>();
+// The active AI draft as the panel shows it, or undefined for a hand-drawn working route. These move
+// together, so one object beats six cells: setting it marks the working route a draft, clearing it
+// returns to the normal hand-drawn save.
+let draftView = $state<DraftView | undefined>();
 // One in-flight draft at a time: a newer request aborts the prior fetch, and the sequence guard drops
 // a stale or cancelled response that resolves after a newer one was issued.
 let draftAbort: AbortController | undefined;
@@ -1289,26 +1285,21 @@ function clearDraftState(): void {
   // Bump the sequence so any in-flight draft orphans itself instead of landing after a cancel or save.
   draftSeq++;
   draftLoading = false;
-  draftActive = false;
   draftError = undefined;
-  draftName = '';
-  draftDestination = undefined;
-  draftNote = undefined;
-  draftFuel = undefined;
-  draftFlags = undefined;
+  draftView = undefined;
 }
 
 // The companion scopes nearby notes and POIs to an area of interest. The live map viewport is that
 // area, read via mapCommands.getBounds(); this coarse box around the vessel is only the fallback for
 // the rare case a draft is triggered before the map command surface is ready.
+const VESSEL_AREA_HALF_DEG = 0.5;
 function vesselAreaBounds({ latitude, longitude }: LatLon): Bbox4 {
-  const half = 0.5;
-  return [
-    Math.max(-180, longitude - half),
-    Math.max(-85, latitude - half),
-    Math.min(180, longitude + half),
-    Math.min(85, latitude + half),
-  ];
+  return clampToWorld([
+    longitude - VESSEL_AREA_HALF_DEG,
+    latitude - VESSEL_AREA_HALF_DEG,
+    longitude + VESSEL_AREA_HALF_DEG,
+    latitude + VESSEL_AREA_HALF_DEG,
+  ]);
 }
 
 async function onDraftRoute(prompt: string): Promise<void> {
@@ -1363,12 +1354,13 @@ async function onDraftRoute(prompt: string): Promise<void> {
   // Frame the whole drafted passage so every leg is visible before the navigator verifies it.
   const box = boundsOfPoints(route.waypoints.map((w) => w.position));
   if (box) mapCommands?.fitBounds(padBbox(box, 0.15));
-  draftName = route.name ?? '';
-  draftDestination = route.destination?.name;
-  draftNote = route.note || undefined;
-  draftFuel = route.fuel ? formatDraftFuel(route.fuel, units.mode) : undefined;
-  draftFlags = route.flags ? orderDraftFlags(route.flags) : undefined;
-  draftActive = true;
+  draftView = {
+    name: route.name ?? '',
+    destination: route.destination?.name,
+    note: route.note || undefined,
+    fuel: route.fuel ? formatDraftFuel(route.fuel, units.mode) : undefined,
+    flags: route.flags ? orderDraftFlags(route.flags) : undefined,
+  };
 }
 
 function onNewRoute(): void {
@@ -1976,12 +1968,7 @@ onDestroy(() => {
           {draftLoading}
           {draftError}
           onDraft={onDraftRoute}
-          isDraft={draftActive}
-          {draftName}
-          {draftDestination}
-          {draftNote}
-          {draftFuel}
-          {draftFlags}
+          draft={draftView}
           onClose={() => {
             onCancelRouteEdit();
             clearRouteError();
