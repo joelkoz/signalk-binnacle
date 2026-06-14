@@ -55,6 +55,7 @@ export interface DraftView {
   destination?: string;
   note?: string;
   fuel?: string;
+  confidence?: 'high' | 'low';
   flags?: readonly DraftFlagItem[];
 }
 
@@ -83,7 +84,16 @@ function isKnownError(v: unknown): v is DraftError {
 }
 
 function parseSemver(s: string): number[] {
-  return s.split('.').map((n) => (Number.isFinite(+n) ? +n : 0));
+  // Strip a leading v and parse the leading integer of each dotted segment, so a v-prefixed or
+  // suffixed version (v1.2.0, 1.2.0-rc.1) reads its numbers rather than 0. A prerelease of the floor
+  // version compares equal to the release, which is acceptable for an author-controlled companion.
+  return s
+    .replace(/^v/i, '')
+    .split('.')
+    .map((n) => {
+      const parsed = Number.parseInt(n, 10);
+      return Number.isFinite(parsed) ? parsed : 0;
+    });
 }
 
 function compareSemver(a: string, b: string): number {
@@ -178,10 +188,20 @@ export async function draftRoute(
   signal?: AbortSignal,
 ): Promise<DraftResult> {
   const timeout = AbortSignal.timeout(DRAFT_TIMEOUT_MS);
-  const combined =
-    typeof AbortSignal.any === 'function'
-      ? AbortSignal.any(signal ? [timeout, signal] : [timeout])
-      : (signal ?? timeout);
+  let combined: AbortSignal;
+  if (typeof AbortSignal.any === 'function') {
+    combined = AbortSignal.any(signal ? [timeout, signal] : [timeout]);
+  } else {
+    // Fallback for a runtime without AbortSignal.any: forward both the timeout and the caller's
+    // signal into one controller so the draft still times out rather than hanging on the caller.
+    const controller = new AbortController();
+    const abort = (): void => controller.abort();
+    for (const s of signal ? [timeout, signal] : [timeout]) {
+      if (s.aborted) abort();
+      else s.addEventListener('abort', abort, { once: true });
+    }
+    combined = controller.signal;
+  }
 
   let response: Response;
   try {
@@ -245,13 +265,22 @@ export async function draftRoute(
     return { ok: false, error: 'no-route', message: 'response waypoints failed shape validation' };
   }
 
-  const capped = waypoints.slice(0, MAX_WAYPOINTS);
-  const flags = validateFlags(b.flags, capped.length);
+  // Reject rather than truncate a route over the cap: silently slicing would render a passage that
+  // ends partway with a destination it never reaches, which a navigator would read as complete. A
+  // route this long is also a likely model runaway, so re-prompting is the safe path.
+  if (waypoints.length > MAX_WAYPOINTS) {
+    return {
+      ok: false,
+      error: 'no-route',
+      message: `drafted route has ${waypoints.length} waypoints, over the ${MAX_WAYPOINTS} limit`,
+    };
+  }
+  const flags = validateFlags(b.flags, waypoints.length);
   const fuel = validateFuel(b.fuel);
   const destination = validateDestination(b.destination);
 
   const route: DraftedRoute = {
-    waypoints: capped,
+    waypoints,
     note: typeof b.note === 'string' ? b.note : '',
     ...(typeof b.name === 'string' ? { name: b.name } : {}),
     ...(destination ? { destination } : {}),

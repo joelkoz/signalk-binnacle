@@ -277,6 +277,11 @@ $effect(() => {
           It is advisory, online, and US waters only, it is not a substitute for the chart, and a
           charted area can still hold an isolated sounding shoaler than its contour.
         </p>
+        {#if draft.confidence === 'low'}
+          <p class="alert-note" role="alert">
+            The model flagged this draft as low confidence. Scrutinize every leg with extra care.
+          </p>
+        {/if}
         {#if draft.destination}
           <p class="muted-note">Read as: {draft.destination}</p>
         {/if}

@@ -169,7 +169,7 @@ import {
   updateNotification,
 } from '$shared/signalk';
 import { createTrackStore } from '$shared/storage';
-import { createThemeController, promptSaveName, type Theme } from '$shared/ui';
+import { createThemeController, defaultSaveName, promptSaveName, type Theme } from '$shared/ui';
 import { ChartCanvas, type MapCommands, type UserChartRegistrar } from '$widgets/chart-canvas';
 import { WeatherMap } from '$widgets/weather-map';
 
@@ -1366,6 +1366,7 @@ async function onDraftRoute(prompt: string): Promise<void> {
     destination: route.destination?.name,
     note: route.note !== '' ? route.note : undefined,
     fuel: route.fuel ? formatDraftFuel(route.fuel, units.mode) : undefined,
+    confidence: route.confidence,
     flags: route.flags ? groupDraftFlags(route.flags) : undefined,
   };
 }
@@ -1403,7 +1404,9 @@ async function onSaveRoute(name: string): Promise<void> {
   clearRouteError();
   const working = routeStore.working;
   if (!working || working.waypoints.length < 2) return;
-  const route = { ...working, name };
+  // A drafted route can reach here with an empty name (no model name and a cleared field), unlike the
+  // hand-drawn path that prompts; fall back to a dated name so a route is never saved unnamed.
+  const route = { ...working, name: name.trim() || defaultSaveName('Route') };
   if (!(await saveRoute(serverOrigin(), chartsToken, route))) {
     // A failed write (offline, no write permission, server error) must not lose the work: keep the
     // route under edit, with its name, so the navigator can retry, and tell them it did not save.

@@ -3,7 +3,7 @@ export { dialog, registerDismiss } from './dialog';
 export { pickTextFile } from './file-pick';
 export { focusOnMount, focusTrap, rovingFocus } from './focus';
 export { default as InlineConfirm } from './InlineConfirm.svelte';
-export { promptRename, promptSaveName } from './prompt';
+export { defaultSaveName, promptRename, promptSaveName } from './prompt';
 export { default as SavedList } from './SavedList.svelte';
 export { default as SlideOver } from './SlideOver.svelte';
 export type { Theme } from './theme.svelte';

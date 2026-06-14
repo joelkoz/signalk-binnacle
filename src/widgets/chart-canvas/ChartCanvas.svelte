@@ -175,6 +175,9 @@ const {
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
 let routeEditor: RouteEditor | undefined;
+// Bumped on every start and stop so a route edit cancelled before the lazily-loaded editor resolves
+// does not start on a route that is no longer current.
+let editGeneration = 0;
 // The open "go to here" menu, anchored at the press point in chart pixels with the chart size
 // captured for edge clamping, or undefined when closed.
 let chartMenu = $state<
@@ -379,9 +382,15 @@ onMount(() => {
         getBounds: () => lngLatBoundsToBbox4(map.getBounds()),
         clearNoteSelection: () => notesOverlay.deselect(ctx),
         startRouteEdit: (route, initialPoint) => {
-          void loadRouteEditor().then((editor) => editor?.start(route, initialPoint));
+          const generation = ++editGeneration;
+          void loadRouteEditor().then((editor) => {
+            if (generation === editGeneration) editor?.start(route, initialPoint);
+          });
         },
-        stopRouteEdit: () => routeEditor?.stop(),
+        stopRouteEdit: () => {
+          editGeneration += 1;
+          routeEditor?.stop();
+        },
         applyLayers: (settings, order) => {
           manager.applySnapshot(settings, order);
           view.refresh();
