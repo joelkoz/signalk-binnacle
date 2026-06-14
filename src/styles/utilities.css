@@ -328,7 +328,8 @@
 /* The labeled current-item stats grid: the route editor's working plan and the current-track readout.
    Label, value, and unit in three columns, with the values end-aligned in a shared column so they line
    up with no trailing whitespace. The dd is display: contents so its number and unit become direct grid
-   items; a row with no unit leaves a blank unit cell without nudging the number out of the column. The
+   items, so a row with no unit MUST still include an empty <span class="unit"></span>; omit it and grid
+   auto-flow shifts the unit cell of every following row out of its column (the readout looks skewed). The
    mono, tabular .num echoes the saved-card and NavStrip readouts. Shared by the Routes and Tracks panels. */
 .stat-grid {
   display: grid;
