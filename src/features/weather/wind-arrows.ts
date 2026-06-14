@@ -22,7 +22,8 @@ export function windArrowFeatures(
     const u = lerp(u0[i], u1[i], bracket.frac);
     const v = lerp(v0[i], v1[i], bracket.frac);
     const speed = Math.hypot(u, v);
-    if (speed < MIN_SPEED) return undefined;
+    // Negated >= so a NaN speed (a foreign or partial bracket) is also skipped: NaN < MIN is false.
+    if (!(speed >= MIN_SPEED)) return undefined;
     return { u: u / speed, v: v / speed, props: { speed } };
   });
 }

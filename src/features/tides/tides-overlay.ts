@@ -95,10 +95,19 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
     defaultVisible: false,
     layerIds: LAYERS,
     add(ctx) {
+      // A base-style swap recreates the source emptied, so force the next sync to repopulate the
+      // stations rather than early-return on unchanged readings (which would leave them blank).
+      seeded = false;
+      lastTide = undefined;
+      lastCurrent = undefined;
+      lastLabelMinute = -1;
+      lastMode = undefined;
       const paint = mapThemePaint('day');
       const before = ctx.beforeIdFor('safety');
-      const source: GeoJSONSourceSpecification = { type: 'geojson', data: EMPTY };
-      ctx.map.addSource(SOURCE_ID, source);
+      if (!ctx.map.getSource(SOURCE_ID)) {
+        const source: GeoJSONSourceSpecification = { type: 'geojson', data: EMPTY };
+        ctx.map.addSource(SOURCE_ID, source);
+      }
 
       const circle: CircleLayerSpecification = {
         id: CIRCLE_LAYER,
@@ -111,7 +120,7 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
           'circle-stroke-width': 2,
         },
       };
-      ctx.map.addLayer(circle, before);
+      if (!ctx.map.getLayer(CIRCLE_LAYER)) ctx.map.addLayer(circle, before);
 
       const label: SymbolLayerSpecification = {
         id: LABEL_LAYER,
@@ -132,7 +141,7 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
           'text-halo-width': 1.2,
         },
       };
-      ctx.map.addLayer(label, before);
+      if (!ctx.map.getLayer(LABEL_LAYER)) ctx.map.addLayer(label, before);
     },
     sync(ctx) {
       const tide = store.tide;

@@ -127,6 +127,11 @@ export function createFieldOverlay(
     defaultOpacity,
     layerIds: [layerId],
     add(ctx) {
+      // A base-style swap recreates this source emptied, so force the next sync to redraw the field
+      // rather than early-return on an unchanged grid reference (which would leave it blank).
+      lastGrid = undefined;
+      lastTime = Number.NaN;
+      lastTheme = undefined;
       if (!ctx.map.getSource(sourceId)) {
         const source: CanvasSourceSpecification = {
           type: 'canvas',

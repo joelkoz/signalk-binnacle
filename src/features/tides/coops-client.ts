@@ -30,7 +30,12 @@ export function utcYmd(ms: number, sep = ''): string {
 async function fetchJson(url: string): Promise<unknown> {
   const response = await fetch(url, withTimeout());
   if (!response.ok) throw new Error(`CO-OPS ${response.status}`);
-  return response.json();
+  const data = await response.json();
+  // The datagetter answers 200 with an { error } body for an unknown station or out-of-range
+  // request, which the service worker would otherwise cache as if it were data. Treat it as a
+  // failure so a no-data response is never stored or rendered as predictions.
+  if (data && typeof data === 'object' && 'error' in data) throw new Error('CO-OPS error response');
+  return data;
 }
 
 async function fetchStations(
@@ -62,11 +67,12 @@ export async function fetchTideEvents(stationId: string): Promise<TideEvent[]> {
   const data = (await fetchJson(url)) as {
     predictions?: Array<{ t: string; v: string; type: string }>;
   };
-  return (data.predictions ?? []).map((p) => ({
-    timeMs: parseGmtTime(p.t),
-    heightMeters: Number.parseFloat(p.v),
-    kind: p.type === 'H' ? 'high' : 'low',
-  }));
+  return (data.predictions ?? []).flatMap((p) => {
+    const timeMs = parseGmtTime(p.t);
+    const heightMeters = Number.parseFloat(p.v);
+    if (!Number.isFinite(timeMs) || !Number.isFinite(heightMeters)) return [];
+    return [{ timeMs, heightMeters, kind: p.type === 'H' ? 'high' : 'low' } as TideEvent];
+  });
 }
 
 export async function fetchCurrentEvents(stationId: string): Promise<CurrentEvent[]> {
@@ -87,15 +93,12 @@ export async function fetchCurrentEvents(stationId: string): Promise<CurrentEven
     };
   };
   const cp = data.current_predictions?.cp ?? [];
-  return cp.map((c) => {
+  return cp.flatMap((c) => {
+    const timeMs = parseGmtTime(c.Time);
+    if (!Number.isFinite(timeMs) || !Number.isFinite(c.Velocity_Major)) return [];
     const kind = c.Type === 'flood' ? 'flood' : c.Type === 'ebb' ? 'ebb' : 'slack';
     const directionDeg =
       kind === 'flood' ? c.meanFloodDir : kind === 'ebb' ? c.meanEbbDir : undefined;
-    return {
-      timeMs: parseGmtTime(c.Time),
-      velocityMps: Math.abs(c.Velocity_Major) / 100,
-      directionDeg,
-      kind,
-    };
+    return [{ timeMs, velocityMps: Math.abs(c.Velocity_Major) / 100, directionDeg, kind }];
   });
 }
