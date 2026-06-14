@@ -22,7 +22,7 @@
   },
   "overrides": [
     {
-      "includes": ["src/app.css"],
+      "includes": ["src/app.css", "src/styles/vendor.css"],
       "linter": {
         "rules": {
           "complexity": {

@@ -38,6 +38,7 @@ export function buildNotification(assessment: Assessment): SkNotification {
 // REST-backed strategy, injected so the notifier never knows which. A returned promise is
 // fire-and-forget; the strategy owns its own degrade contract and never rejects.
 export interface NotificationPublishStrategy {
+  // biome-ignore lint/suspicious/noConfusingVoidType: a strategy is either sync (void, the v1 delta publish) or async (a Promise, the v2 REST raise), and the caller fire-and-forgets either, so the union is intentional.
   publish(path: string, value: SkNotification): void | Promise<unknown>;
 }
 

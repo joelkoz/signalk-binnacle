@@ -64,10 +64,7 @@ $effect(() => {
 function onCardKeydown(event: KeyboardEvent): void {
   const tiles = [...(card?.querySelectorAll<HTMLButtonElement>('.tile:not([disabled])') ?? [])];
   if (tiles.length === 0) return;
-  const at = Math.max(
-    0,
-    tiles.findIndex((tile) => tile === document.activeElement),
-  );
+  const at = Math.max(0, tiles.indexOf(document.activeElement as HTMLButtonElement));
   if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
     event.preventDefault();
     tiles[(at + 1) % tiles.length]?.focus();

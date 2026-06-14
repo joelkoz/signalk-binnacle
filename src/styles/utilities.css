@@ -83,6 +83,7 @@
 
 /* One button vocabulary for the panels: the bordered base, plus a filled-primary and a danger
    modifier, so panels share these instead of each re-declaring the accent fill and hover feel. */
+/* biome-ignore lint/style/noDescendingSpecificity: .btn is the base button vocabulary; the .segmented .btn rules above are intentionally more specific scoped overrides, so the cascade resolves by specificity, not source order. */
 .btn {
   display: flex;
   align-items: center;

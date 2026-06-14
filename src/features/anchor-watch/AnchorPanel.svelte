@@ -39,7 +39,7 @@ const radiusDisplay = $derived.by(() => {
   return Math.round(mode === 'imperial' ? (metersToFeet(meters) ?? 0) : meters);
 });
 const minRadiusDisplay = $derived(
-  mode === 'imperial' ? Math.round(metersToFeet(MIN_RADIUS_M)!) : MIN_RADIUS_M,
+  mode === 'imperial' ? Math.round(metersToFeet(MIN_RADIUS_M) ?? 0) : MIN_RADIUS_M,
 );
 const distanceText = $derived(formatLengthOr(distance, mode, 0));
 const radiusText = $derived(watching ? formatLengthOr(anchor.radiusMeters, mode, 0) : PLACEHOLDER);

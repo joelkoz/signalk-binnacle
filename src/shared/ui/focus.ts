@@ -20,10 +20,7 @@ export const rovingFocus: Action<HTMLElement, string> = (node, selector) => {
     const list = items();
     if (list.length === 0) return;
     event.preventDefault();
-    const at = Math.max(
-      0,
-      list.findIndex((el) => el === document.activeElement),
-    );
+    const at = Math.max(0, list.indexOf(document.activeElement as HTMLElement));
     const next = event.key === 'ArrowDown' ? at + 1 : at - 1 + list.length;
     list[next % list.length]?.focus();
   }
