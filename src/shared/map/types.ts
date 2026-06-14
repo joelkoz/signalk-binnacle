@@ -68,5 +68,10 @@ export interface OverlayModule {
   setVisible(ctx: OverlayContext, visible: boolean): void;
   setOpacity?(ctx: OverlayContext, opacity: number): void;
   reattach?(ctx: OverlayContext): void | Promise<void>;
+  // Invalidate the overlay's change-detection cache so its next sync repopulates from scratch. The
+  // manager calls this on a base-style swap, which recreates the overlay's sources empty: an overlay
+  // that skips a sync when its data is unchanged implements this so it does not stay blank afterward,
+  // instead of each one remembering to self-reset inside add().
+  reset?(): void;
   applyTheme?(ctx: OverlayContext, paint: MapThemePaint): void;
 }

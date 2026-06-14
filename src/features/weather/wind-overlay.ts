@@ -209,13 +209,14 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
     // absent one is skipped and a restack never drops the one that is present.
     layerIds: [GL_LAYER_ID, LAYER_ID],
     add(ctx) {
-      // Reset the dirty-check so a re-add after a base-style swap repopulates the source. Without
-      // this the arrow fallback stays blank when the grid object is unchanged, the same hazard
-      // radar-overlay guards against.
-      lastGrid = undefined;
-      lastTime = Number.NaN;
       if (useParticles) addParticleLayer(ctx);
       else addArrowLayer(ctx);
+    },
+    reset() {
+      // The manager calls this on a base-style swap; without it the arrow fallback stays blank when
+      // the grid object is unchanged, the same hazard radar-overlay guards against.
+      lastGrid = undefined;
+      lastTime = Number.NaN;
     },
     sync(ctx) {
       const grid = store.grid;

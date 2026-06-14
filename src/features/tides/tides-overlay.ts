@@ -94,14 +94,16 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
     supportsOpacity: true,
     defaultVisible: false,
     layerIds: LAYERS,
-    add(ctx) {
-      // A base-style swap recreates the source emptied, so force the next sync to repopulate the
-      // stations rather than early-return on unchanged readings (which would leave them blank).
+    reset() {
+      // The manager calls this on a base-style swap, which recreated the source emptied, so the next
+      // sync repopulates the stations rather than early-returning on unchanged readings.
       seeded = false;
       lastTide = undefined;
       lastCurrent = undefined;
       lastLabelMinute = -1;
       lastMode = undefined;
+    },
+    add(ctx) {
       const paint = mapThemePaint('day');
       const before = ctx.beforeIdFor('safety');
       if (!ctx.map.getSource(SOURCE_ID)) {

@@ -309,6 +309,9 @@ export class LayerManager {
     installSentinels(this.#ctx.map);
     for (const [id, module] of this.#modules) {
       const state = this.#state.get(id) ?? { visible: true, opacity: 1 };
+      // The swap recreated this overlay's sources empty, so invalidate its change-detection cache
+      // before re-adding, so the next sync repopulates rather than early-returning as unchanged.
+      module.reset?.();
       await (module.reattach ?? module.add).call(module, this.#ctx);
       module.setVisible(this.#ctx, state.visible);
       module.setOpacity?.(this.#ctx, state.opacity);

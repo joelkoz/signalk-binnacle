@@ -33,11 +33,13 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
     supportsOpacity: true,
     defaultVisible: false,
     layerIds: [LINE_LAYER, LABEL_LAYER],
-    add(ctx) {
-      // A base-style swap recreates the emptied sources, so reset the dirty markers or sync()
-      // would see the unchanged grid and leave the isobars blank until the grid next changes.
+    reset() {
+      // The manager calls this on a base-style swap, which recreated the emptied sources, so sync()
+      // redraws the isobars rather than seeing the unchanged grid and leaving them blank.
       lastGrid = undefined;
       lastTime = Number.NaN;
+    },
+    add(ctx) {
       const colors = isobarColors('day');
       if (!ctx.map.getSource(LINE_SOURCE)) {
         const source: GeoJSONSourceSpecification = {

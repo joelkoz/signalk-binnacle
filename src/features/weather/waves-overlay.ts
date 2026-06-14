@@ -42,10 +42,6 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
     layerIds: [FIELD_LAYER, ARROW_LAYER],
     add(ctx) {
       field.add(ctx);
-      // The arrow source is recreated emptied by a base-style swap too, so force the next sync to
-      // rebuild the wave-direction arrows rather than early-return on an unchanged grid reference.
-      lastGrid = undefined;
-      lastTime = Number.NaN;
       if (!ctx.map.getSource(ARROW_SOURCE)) {
         const source: GeoJSONSourceSpecification = {
           type: 'geojson',
@@ -66,6 +62,11 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
         };
         ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
       }
+    },
+    reset() {
+      field.reset?.();
+      lastGrid = undefined;
+      lastTime = Number.NaN;
     },
     sync(ctx) {
       field.sync(ctx);

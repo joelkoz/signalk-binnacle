@@ -31,6 +31,9 @@ function fakeOverlay(id: string, band: ZBand = 'traffic'): OverlayModule & { eve
     setOpacity: (_ctx, opacity) => {
       events.push(`opacity:${opacity}`);
     },
+    reset: () => {
+      events.push('reset');
+    },
   };
 }
 
@@ -118,6 +121,8 @@ describe('LayerManager', () => {
     await manager.reattachAll();
     expect(overlay.events).toContain('add');
     expect(overlay.events).toContain('opacity:0.5');
+    // reset must precede the re-add so an overlay's recreated-empty source repopulates on next sync.
+    expect(overlay.events.indexOf('reset')).toBeLessThan(overlay.events.indexOf('add'));
   });
 
   it('layers() returns overlays top of the map first', async () => {
