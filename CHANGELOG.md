@@ -46,7 +46,8 @@ All notable changes to Binnacle are documented here. The format follows
   made robust. The course readout uses a server-supplied ETA for a single-mark destination, and a
   route saved from a draft with no name falls back to a dated name. The layer manager now owns
   invalidating each overlay's change-detection cache on a base-style swap, so a cached overlay does
-  not stay blank after a style reload, rather than each overlay carrying that duty itself.
+  not stay blank after a style reload, rather than each overlay carrying that duty itself. The AIS
+  list keeps a non-finite range or CPA from scrambling its sort order.
 
 ### Fixed
 
