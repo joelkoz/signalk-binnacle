@@ -466,11 +466,18 @@ export function createNotesOverlay(
         const id = String(props.id ?? '');
         // A note with no id cannot be fetched for detail, so do not select it.
         if (!id) return;
+        // The category rides on the rendered feature, so validate it against the known set rather
+        // than trusting the string into PoiCategory: an out-of-vocabulary value would key the label
+        // and icon records to nothing instead of falling back.
+        const rawCategory = String(props.category ?? '');
+        const category: PoiCategory = (POI_CATEGORIES as readonly string[]).includes(rawCategory)
+          ? (rawCategory as PoiCategory)
+          : 'generic';
         setSelected(ctx, feature);
         onSelect?.({
           id,
           name: String(props.name ?? 'Point of interest'),
-          category: String(props.category) as PoiCategory,
+          category,
           attribution: str(props.attribution) ?? str(props.source),
           url: str(props.url),
         });

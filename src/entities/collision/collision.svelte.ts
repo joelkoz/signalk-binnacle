@@ -111,7 +111,12 @@ export function assessContacts(
     let cpaMeters: number;
     let tcpaSeconds: number;
     let source: CpaSource;
-    if (t.cpaMeters != null && t.tcpaSeconds != null) {
+    if (
+      t.cpaMeters != null &&
+      t.tcpaSeconds != null &&
+      Number.isFinite(t.cpaMeters) &&
+      Number.isFinite(t.tcpaSeconds)
+    ) {
       // A TCPA at or below zero means the closest approach is now or already past, so the
       // target is no longer closing and is not a danger even at a small CPA. This matches the
       // computed branch, which also treats tcpa <= 0 as not closing, so the two CPA sources

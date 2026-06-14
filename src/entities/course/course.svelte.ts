@@ -129,11 +129,20 @@ export class CourseGuidance {
     return this.#info.activeRoute?.pointTotal ?? undefined;
   }
 
-  // 'server' when the provider supplied a usable cross-track error, otherwise 'computed'. The
-  // cross-track error is the marker calcValue: a provider that publishes calcValues at all
-  // publishes it, so its presence is the cleanest single test for a populated calcValues block.
+  // 'server' when the provider supplied any populated calcValue, otherwise 'computed'. A single-mark
+  // "go to" can omit cross-track error (it has no leg origin) while still publishing distance,
+  // bearing, VMG, and time-to-go, so keying on cross-track error alone would discard a server ETA as
+  // if it were a local estimate.
   get source(): CourseSource {
-    return this.#calc && this.#calc.crossTrackError != null ? 'server' : 'computed';
+    const c = this.#calc;
+    if (!c) return 'computed';
+    const populated =
+      c.crossTrackError != null ||
+      c.distance != null ||
+      c.bearingTrue != null ||
+      c.velocityMadeGood != null ||
+      c.timeToGo != null;
+    return populated ? 'server' : 'computed';
   }
 
   get nextPointName(): string | undefined {
