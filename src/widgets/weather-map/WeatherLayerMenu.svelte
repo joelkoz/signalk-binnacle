@@ -25,8 +25,9 @@ const groups = $derived(
 );
 
 // Escape closes through the shared dismiss stack, so a menu opened over the weather panel peels off
-// before the panel itself, in last-opened-first order.
-$effect(() => registerDismiss(onClose));
+// before the panel itself, in last-opened-first order. onClose is wrapped so the effect does not
+// reactively read the prop (a fresh closure each render would re-register and reorder the stack).
+$effect(() => registerDismiss(() => onClose()));
 </script>
 
 <!-- A transparent backdrop catches an outside tap to dismiss and keeps the press off the map. -->

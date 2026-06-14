@@ -13,19 +13,28 @@ export const focusOnMount: Action<HTMLElement> = (node) => {
 // The listener lives in the action, not a template onkeydown, so the host element can carry a
 // non-interactive role without tripping the a11y interaction lint.
 export const rovingFocus: Action<HTMLElement, string> = (node, selector) => {
-  const items = (): HTMLElement[] => [...node.querySelectorAll<HTMLElement>(selector)];
+  let sel = selector;
+  const items = (): HTMLElement[] => [...node.querySelectorAll<HTMLElement>(sel)];
   items()[0]?.focus({ preventScroll: true });
   function onKeydown(event: KeyboardEvent): void {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     const list = items();
     if (list.length === 0) return;
     event.preventDefault();
-    const at = Math.max(0, list.indexOf(document.activeElement as HTMLElement));
-    const next = event.key === 'ArrowDown' ? at + 1 : at - 1 + list.length;
+    const down = event.key === 'ArrowDown';
+    const current = list.indexOf(document.activeElement as HTMLElement);
+    // When focus is outside the set (indexOf -1), ArrowDown lands on the first item and ArrowUp on
+    // the last, rather than skipping the first.
+    let next: number;
+    if (current < 0) next = down ? 0 : list.length - 1;
+    else next = down ? current + 1 : current - 1 + list.length;
     list[next % list.length]?.focus();
   }
   node.addEventListener('keydown', onKeydown);
   return {
+    update(next: string): void {
+      sel = next;
+    },
     destroy(): void {
       node.removeEventListener('keydown', onKeydown);
     },

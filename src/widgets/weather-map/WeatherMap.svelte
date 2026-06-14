@@ -426,6 +426,9 @@ onMount(() => {
       const view = new LayersView(manager);
       view.refresh();
       layersView = view;
+      // Do not hand a layer-apply callback up if the panel closed while loading: it would close over
+      // a map this component is about to destroy, and a later profile apply would push into it.
+      if (isDestroyed()) return;
       // The weather mini-map has no user-reorder UI, so it carries no stacking order: the empty order
       // is intentional, not an oversight. The nav chart, which does reorder, applies layers through
       // MapCommands.applyLayers instead.

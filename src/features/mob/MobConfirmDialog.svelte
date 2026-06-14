@@ -1,6 +1,6 @@
 <script lang="ts">
 import { LifeBuoy } from '@lucide/svelte';
-import { onDestroy } from 'svelte';
+import { onMount } from 'svelte';
 import type { MobMark } from '$entities/mob';
 import { formatClockTime, formatLatitude, formatLongitude } from '$shared/lib';
 import { dialog, focusOnMount, focusTrap } from '$shared/ui';
@@ -22,11 +22,14 @@ const { mark, onConfirm, onCancel, onTimeout }: Props = $props();
 // occluding a later alarm strip.
 const TIMEOUT_S = 15;
 let remaining = $state(TIMEOUT_S);
-const countdown = setInterval(() => {
-  remaining -= 1;
-  if (remaining <= 0) onTimeout();
-}, 1000);
-onDestroy(() => clearInterval(countdown));
+// Start the countdown on mount, not during setup, so the timer's life matches the committed DOM.
+onMount(() => {
+  const countdown = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) onTimeout();
+  }, 1000);
+  return () => clearInterval(countdown);
+});
 
 function confirm(): void {
   // Registration cue for a numb or gloved finger; the alarm tone follows from the trigger.

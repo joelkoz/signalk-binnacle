@@ -35,8 +35,10 @@ const {
 }: Props = $props();
 
 // Escape closes through the shared dismiss stack, so it peels the topmost surface in order rather
-// than a raw window listener firing alongside any other open menu.
-$effect(() => registerDismiss(onClose));
+// than a raw window listener firing alongside any other open menu. onClose is wrapped so the effect
+// does not reactively read the prop (the parent passes a fresh closure each render), which would
+// re-register and push this menu back to the top of the stack, breaking last-opened-first order.
+$effect(() => registerDismiss(() => onClose()));
 
 // Wide enough for the longest label ("Start a route here") at the inherited font size; the menu
 // is fixed to this width below so the clamp math always matches the rendered box.

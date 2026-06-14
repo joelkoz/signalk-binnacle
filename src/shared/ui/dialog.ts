@@ -10,26 +10,32 @@ import type { Action } from 'svelte/action';
 // close more than one. One shared window listener serves every open entry, and an Escape that
 // closes something is marked consumed via preventDefault so any foreign Escape listener can see it
 // was taken.
-const openDialogs: Array<() => void> = [];
+interface DismissEntry {
+  close: () => void;
+}
+const openDialogs: DismissEntry[] = [];
 
 function onKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape' || event.defaultPrevented) return;
   const top = openDialogs[openDialogs.length - 1];
   if (!top) return;
   event.preventDefault();
-  top();
+  top.close();
 }
 
 // Register a closer in the shared Escape stack; returns the unregister function. The dialog action
 // uses this for the slide-over panels; the app menu and the measure strip register here directly
 // so Escape over a stacked surface closes only the topmost one.
 export function registerDismiss(close: () => void): () => void {
-  openDialogs.push(close);
+  // Track by a per-registration entry, not the close function itself, so two surfaces that happen to
+  // share one close reference still unregister independently rather than splicing the wrong entry.
+  const entry: DismissEntry = { close };
+  openDialogs.push(entry);
   // Capture phase, so this handler runs before any bubble-phase Escape listener regardless of
   // registration order; foreign listeners then see the preventDefault mark and stand down.
   if (openDialogs.length === 1) window.addEventListener('keydown', onKeydown, true);
   return () => {
-    const index = openDialogs.indexOf(close);
+    const index = openDialogs.indexOf(entry);
     if (index >= 0) openDialogs.splice(index, 1);
     if (openDialogs.length === 0) window.removeEventListener('keydown', onKeydown, true);
   };
