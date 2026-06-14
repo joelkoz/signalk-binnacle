@@ -52,7 +52,14 @@ Read it before doing architectural work.
   Biome and rely on `svelte-check` for correctness. Because Biome cannot see a `{#snippet}`
   parameter used in the template body, `noUnusedFunctionParameters` is turned off for `.svelte`
   files in `biome.json`; the real backstop is `noUnusedLocals` and `noUnusedParameters` in
-  `tsconfig.app.json`, which svelte-check enforces (it does see template usage).
+  `tsconfig.app.json`, which svelte-check enforces (it does see template usage). On Biome 2.5.0 the
+  same experimental support reports false positives on valid Svelte for three new a11y rules
+  (`useValidAriaValues` on dynamic ARIA bindings, `useSemanticElements` on `role="group"` toolbars,
+  and `noLabelWithoutControl` on a label wrapping a child-component control), so those three are
+  turned off for `.svelte` in `biome.json`; Svelte's own compiler a11y warnings, surfaced by
+  svelte-check, are the Svelte-aware backstop. SVG assets are excluded from Biome (2.5.0 began
+  parsing `.svg` and chokes on the XML prolog). Config uses the `linter.rules.preset` form
+  (`recommended`), not the deprecated `recommended` boolean.
 - Type-check: `svelte-check --tsconfig ./tsconfig.app.json` (the leaf app config, not the
   solution-style root `tsconfig.json`, which is for `tsc -b` and dependency-cruiser path
   resolution only).

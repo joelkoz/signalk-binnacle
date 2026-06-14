@@ -13,7 +13,8 @@ All notable changes to Binnacle are documented here. The format follows
 - AI route drafting. Describe a passage in plain language, for example "from here to Avalon, stay 3 nm
   off the coast", and signalk-crows-nest drafts a route you review and save. The draft opens as an
   editable working route with a not-chart-verified banner, the read-as destination, the model's note,
-  a fuel estimate in your units, and any land, shallow, hazard, or fuel flags above the leg table.
+  a fuel estimate in your units, any land, shallow, hazard, or fuel flags above the leg table, and a
+  note when the model marks the draft low confidence.
   Charted point hazards are grouped per leg, so a hazard-dense river or harbor passage reads as one
   count plus a short breakdown rather than dozens of lines. Each leg is checked against the NOAA ENC
   charted depth-area contour, charted land, and charted point hazards. It cannot be minimized while a
@@ -25,8 +26,8 @@ All notable changes to Binnacle are documented here. The format follows
   warning, so a crowded screen shows at a glance which targets are moving and which way. A
   stationary target shows no vector. (#3)
 - Start a route from the chart. The right-click and long-press menu adds "Start a route here" under
-  "Go to here": it opens the routes panel and begins a new editable route, so building a route from a
-  spot on the chart is one step instead of opening the panel and starting over.
+  "Go to here": it opens the routes panel, begins a new editable route, and drops the first waypoint
+  at the spot you picked, so you start a route from the chart in one step and then tap the rest.
 
 ### Changed
 
@@ -38,6 +39,12 @@ All notable changes to Binnacle are documented here. The format follows
   number-format helpers, the symbol registry, the map layer ordering, and the panel, icon-button, and
   numeric-readout styles now route through the existing shared primitives, design tokens, and utility
   classes.
+- Hardening across the data and caching layers: the coordinate and Signal K delta guards reject
+  non-finite and malformed values, the tide client drops bad readings and a no-data error response,
+  the recorded-track in-memory fallback is bounded, the PMTiles and IndexedDB stores survive a
+  concurrent write and another tab's upgrade, and the Escape-dismiss stack and arrow-key focus are
+  made robust. The course readout uses a server-supplied ETA for a single-mark destination, and a
+  route saved from a draft with no name falls back to a dated name.
 
 ### Fixed
 
@@ -47,12 +54,16 @@ All notable changes to Binnacle are documented here. The format follows
   caching wherever the worker is active (HTTPS). The cache matchers are now self-contained.
 - The route panel's Waypoints and Time readouts line up in their columns again. Their rows lacked the
   empty unit cell the three-column stat grid needs, so every value below shifted out of its column.
+  The Time readout also splits its value and unit, so a minutes reading lines its "min" up in the
+  unit column under the distance's "nm".
 - Charted notes sit on their charted point again, and a console error on every map hover is gone. A
   provided symbol's pixel offset was read from an array feature property, which MapLibre coerces to a
   string; the offset now rides on the layer as a per-icon match.
-- Drawing a route on the chart no longer breaks on the second waypoint. Tapping the second point
-  could throw inside the draw library and leave the route stuck as a single dot; the chart editor
-  now defers its working-line cleanup so the draw completes normally. (#1)
+- Drawing a route on the chart no longer disappears on the second tap, and the waypoint count
+  reflects the points you place rather than the cursor. The chart editor mistook the draw library's
+  cursor point, which carries the same tag as the route line, for the route itself, so the second tap
+  read zero waypoints and cleared the route; it now selects the route by geometry, drops the trailing
+  cursor point from the count and a save, and defers its working-line cleanup so the draw completes. (#1)
 - "Go to here" now draws the course line from the vessel to the destination, and a destination
   marker, on the chart, not just the destination readout in the nav strip. The same line shows the
   current leg of a route under way. (#2)
@@ -62,6 +73,8 @@ All notable changes to Binnacle are documented here. The format follows
   and a genuinely close, imminent contact still sounding. (#4)
 - A Signal K data worker that fails to load (a bundling or chunk error) now surfaces a connection
   error instead of leaving the app stuck on "connecting" with no signal.
+- Weather precipitation, wave-height, and tide-station overlays redraw after the base map style
+  reloads (the offline fallback) instead of staying blank until their underlying data next changes.
 
 <a id="v062"></a>
 
