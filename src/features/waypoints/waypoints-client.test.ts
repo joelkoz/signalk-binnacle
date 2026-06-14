@@ -5,7 +5,7 @@ import { deleteWaypoint, fetchWaypoints, saveWaypoint } from './waypoints-client
 afterEach(() => vi.restoreAllMocks());
 
 function jsonResponse(body: unknown, ok = true): Response {
-  return { ok, json: async () => body } as Response;
+  return { ok, status: ok ? 200 : 500, json: async () => body } as Response;
 }
 
 const WAYPOINT_BODY = {

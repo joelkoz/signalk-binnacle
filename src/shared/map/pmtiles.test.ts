@@ -59,6 +59,28 @@ describe('NoStoreSource.getBytes', () => {
     await expect(new NoStoreSource('http://x/a.pmtiles').getBytes(0, 4)).rejects.toThrow();
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
+
+  it('strips a weak ETag, which cannot validate range requests', async () => {
+    const res = {
+      status: 206,
+      headers: new Headers({ ETag: 'W/"v1"' }),
+      arrayBuffer: async () => new ArrayBuffer(4),
+    } as unknown as Response;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(res));
+    const out = await new NoStoreSource('http://x/a.pmtiles').getBytes(0, 4);
+    expect(out.etag).toBeUndefined();
+  });
+
+  it('passes a strong ETag through for range validation', async () => {
+    const res = {
+      status: 206,
+      headers: new Headers({ ETag: '"v1"' }),
+      arrayBuffer: async () => new ArrayBuffer(4),
+    } as unknown as Response;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(res));
+    const out = await new NoStoreSource('http://x/a.pmtiles').getBytes(0, 4);
+    expect(out.etag).toBe('"v1"');
+  });
 });
 
 describe('createArchiveSource', () => {

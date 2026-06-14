@@ -23,4 +23,12 @@ describe('withTimeout', () => {
   it('defaults to an eight second timeout', () => {
     expect(DEFAULT_FETCH_TIMEOUT_MS).toBe(8000);
   });
+
+  it('the added signal aborts with a TimeoutError when the timeout fires', async () => {
+    const { signal } = withTimeout({}, 1);
+    expect(signal?.aborted).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(signal?.aborted).toBe(true);
+    expect((signal?.reason as Error).name).toBe('TimeoutError');
+  });
 });

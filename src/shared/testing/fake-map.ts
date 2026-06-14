@@ -17,6 +17,11 @@ export function createFakeMap() {
   const layers = new Set<string>();
   const images = new Set<string>();
   const updatedImages: string[] = [];
+  // A source is not loaded until its tiles arrive, as in real MapLibre; markSourceLoaded plus an
+  // emitted 'sourcedata' event let a test drive the deferred load path. Event handlers are stored,
+  // not a bare spy, so emit can fire them.
+  const loadedSources = new Set<string>();
+  const handlers = new Map<string, Set<(event: unknown) => void>>();
   return {
     sources,
     layers,
@@ -55,7 +60,8 @@ export function createFakeMap() {
       sources.set(id, source);
     },
     getSource: (id: string) => sources.get(id),
-    isSourceLoaded: (id: string) => sources.has(id),
+    isSourceLoaded: (id: string) => loadedSources.has(id),
+    markSourceLoaded: (id: string) => loadedSources.add(id),
     getLayer: (id: string) => (layers.has(id) ? { id } : undefined),
     addLayer: (layer: { id: string }) => layers.add(layer.id),
     removeLayer: (id: string) => layers.delete(id),
@@ -64,8 +70,17 @@ export function createFakeMap() {
     setLayerZoomRange: vi.fn(),
     setLayoutProperty: vi.fn(),
     setPaintProperty: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
+    on: (type: string, handler: (event: unknown) => void) => {
+      const set = handlers.get(type) ?? new Set();
+      set.add(handler);
+      handlers.set(type, set);
+    },
+    off: (type: string, handler: (event: unknown) => void) => {
+      handlers.get(type)?.delete(handler);
+    },
+    emit: (type: string, event: unknown) => {
+      for (const handler of [...(handlers.get(type) ?? [])]) handler(event);
+    },
     once: vi.fn(),
     // Read-only accessors several overlays call (anchor, notes, ais-trails, wind, base-theme), with
     // benign defaults, so an overlay tested against the bare fake exercises its logic instead of

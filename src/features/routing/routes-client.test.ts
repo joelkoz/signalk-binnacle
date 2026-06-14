@@ -5,7 +5,7 @@ import { deleteRoute, fetchRoutes, saveRoute } from './routes-client';
 afterEach(() => vi.restoreAllMocks());
 
 function jsonResponse(body: unknown, ok = true): Response {
-  return { ok, json: async () => body } as Response;
+  return { ok, status: ok ? 200 : 500, json: async () => body } as Response;
 }
 
 const ROUTE_BODY = {

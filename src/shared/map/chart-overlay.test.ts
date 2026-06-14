@@ -91,7 +91,7 @@ describe('chart overlay', () => {
     expect(unregisterPmtilesArchive).not.toHaveBeenCalled();
   });
 
-  it('caps chart layers one zoom past the source native max zoom', () => {
+  it('caps chart layers one zoom past the source native max, only once the source loads', () => {
     const overlay = createChartOverlay(
       {
         identifier: 'noaa',
@@ -104,6 +104,13 @@ describe('chart overlay', () => {
     );
     const map = createFakeMap();
     overlay.add(ctxFor(map));
+    // The source has not loaded (its native max zoom is not known yet), so nothing is capped and a
+    // sourcedata listener is waiting.
+    expect(map.setLayerZoomRange).not.toHaveBeenCalled();
+    // Tiles arrive: the source reports loaded and a sourcedata event fires for it.
+    const chartSource = [...map.sources.keys()][0];
+    map.markSourceLoaded(chartSource);
+    map.emit('sourcedata', { sourceId: chartSource, isSourceLoaded: true });
     expect(map.setLayerZoomRange).toHaveBeenCalledWith(
       expect.stringContaining('chart-noaa'),
       0,

@@ -31,7 +31,12 @@ vi.mock('terra-draw', () => {
     }
     start(): void {}
     stop(): void {}
-    setMode(): void {}
+    setMode(mode: string): void {
+      // Real Terra Draw throws on an unregistered mode name, so a typo surfaces in tests too.
+      if (mode !== 'point' && mode !== 'linestring' && mode !== 'select') {
+        throw new Error(`unknown mode: ${mode}`);
+      }
+    }
     updateModeOptions(): void {}
     getSnapshot(): StoreFeature[] {
       return [...this.features];
