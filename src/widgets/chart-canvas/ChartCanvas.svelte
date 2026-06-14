@@ -109,6 +109,8 @@ interface Props {
   onUserPan?: () => void;
   // Set a single "go to here" destination at a chart point the user long-pressed or right-clicked.
   onGoToHere?: (position: LatLon) => void;
+  // Open the routes panel and start a new route in drawing mode, from the chart context menu.
+  onStartRoute?: (position: LatLon) => void;
   // Drop a standard waypoint at a long-pressed chart position; a refused save surfaces in the
   // Waypoints panel (write access is unknowable client-side).
   onDropWaypoint?: (position: LatLon) => void;
@@ -160,6 +162,7 @@ const {
   onNoteSelect,
   onUserPan,
   onGoToHere,
+  onStartRoute,
   onDropWaypoint,
   onMeasureFrom,
   onRouteEditorError,
@@ -403,6 +406,10 @@ onDestroy(() => mapHandle?.destroy());
       height={menu.height}
       onGoToHere={() => {
         onGoToHere?.({ latitude: menu.lat, longitude: menu.lon });
+        chartMenu = undefined;
+      }}
+      onStartRoute={() => {
+        onStartRoute?.({ latitude: menu.lat, longitude: menu.lon });
         chartMenu = undefined;
       }}
       onDropWaypoint={onDropWaypoint

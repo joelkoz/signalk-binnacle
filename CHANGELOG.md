@@ -17,13 +17,16 @@ All notable changes to Binnacle are documented here. The format follows
   Charted point hazards are grouped per leg, so a hazard-dense river or harbor passage reads as one
   count plus a short breakdown rather than dozens of lines. Each leg is checked against the NOAA ENC
   charted depth-area contour, charted land, and charted point hazards. It cannot be minimized while a
-  draft is up, and it saves only behind an armed "I checked
-  every leg" confirm. The control appears only when signalk-crows-nest is installed at a version that
-  ships the route-draft endpoint; on a stock server it stays hidden, with no error.
+  draft is up, and it saves only behind an armed "I checked every leg" confirm. The control appears
+  only when signalk-crows-nest is installed at a version that ships the route-draft endpoint; on a
+  stock server it stays hidden, with no error.
 - AIS course vectors. Each moving AIS target draws a short predictor line projecting its position
   about ten minutes ahead along its course at its speed, red for a danger contact and amber for a
   warning, so a crowded screen shows at a glance which targets are moving and which way. A
   stationary target shows no vector. (#3)
+- Start a route from the chart. The right-click and long-press menu adds "Start a route here" under
+  "Go to here": it opens the routes panel and begins a new editable route, so building a route from a
+  spot on the chart is one step instead of opening the panel and starting over.
 
 ### Changed
 

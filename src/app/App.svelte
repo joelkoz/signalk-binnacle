@@ -1362,9 +1362,9 @@ async function onDraftRoute(prompt: string): Promise<void> {
   const box = boundsOfPoints(route.waypoints.map((w) => w.position));
   if (box) mapCommands?.fitBounds(padBbox(box, 0.15));
   draftView = {
-    name: route.name ?? '',
+    name: working.name,
     destination: route.destination?.name,
-    note: route.note || undefined,
+    note: route.note !== '' ? route.note : undefined,
     fuel: route.fuel ? formatDraftFuel(route.fuel, units.mode) : undefined,
     flags: route.flags ? groupDraftFlags(route.flags) : undefined,
   };
@@ -1377,6 +1377,14 @@ function onNewRoute(): void {
   // The Signal K resources API requires a UUID for standard route ids, so this must be a real UUID.
   routeStore.setWorking({ id: uuidv4(), name: '', waypoints: [] });
   mapCommands?.startRouteEdit();
+}
+
+// Start a route from the chart context menu: open the routes panel so the editor controls show, then
+// begin a fresh route in drawing mode. The navigator taps the first waypoint at the chosen spot, the
+// same as the panel's New route, just reachable straight from the chart.
+function onStartRouteHere(): void {
+  openPanel('routes');
+  onNewRoute();
 }
 
 function onEditRoute(id: string): void {
@@ -1909,6 +1917,7 @@ onDestroy(() => {
       onNoteSelect={selectNote}
       onUserPan={() => (following = false)}
       {onGoToHere}
+      onStartRoute={onStartRouteHere}
       onMeasureFrom={(position) => {
         armMeasure();
         measure.add(position);

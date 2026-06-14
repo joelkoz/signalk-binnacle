@@ -1,5 +1,5 @@
 <script lang="ts">
-import { MapPin, Navigation, Ruler } from '@lucide/svelte';
+import { MapPin, Navigation, Route, Ruler } from '@lucide/svelte';
 import { registerDismiss, rovingFocus } from '$shared/ui';
 
 interface Props {
@@ -10,6 +10,9 @@ interface Props {
   width: number;
   height: number;
   onGoToHere: () => void;
+  // Opens the routes panel and starts a new route in drawing mode, so the navigator can build a route
+  // straight from the chart instead of going to the panel first.
+  onStartRoute: () => void;
   // Optional: absent when the app does not wire dropping. Write access is unknowable client-side,
   // so a refused save surfaces as the Waypoints panel error rather than hiding the item.
   onDropWaypoint?: () => void;
@@ -19,13 +22,23 @@ interface Props {
   onClose: () => void;
 }
 
-const { x, y, width, height, onGoToHere, onDropWaypoint, onMeasureFrom, onClose }: Props = $props();
+const {
+  x,
+  y,
+  width,
+  height,
+  onGoToHere,
+  onStartRoute,
+  onDropWaypoint,
+  onMeasureFrom,
+  onClose,
+}: Props = $props();
 
 // Escape closes through the shared dismiss stack, so it peels the topmost surface in order rather
 // than a raw window listener firing alongside any other open menu.
 $effect(() => registerDismiss(onClose));
 
-// Wide enough for the longest label ("Measure from here") at the inherited font size; the menu
+// Wide enough for the longest label ("Start a route here") at the inherited font size; the menu
 // is fixed to this width below so the clamp math always matches the rendered box.
 const MENU_WIDTH = 200;
 const ITEM_HEIGHT = 44;
@@ -40,7 +53,7 @@ const left = $derived(
   ),
 );
 // Prefer above the press so a finger does not cover the menu; drop below near the top edge.
-const itemCount = $derived(1 + (onDropWaypoint ? 1 : 0) + (onMeasureFrom ? 1 : 0));
+const itemCount = $derived(2 + (onDropWaypoint ? 1 : 0) + (onMeasureFrom ? 1 : 0));
 const menuHeight = $derived(itemCount * ITEM_HEIGHT + MENU_PADDING);
 const above = $derived(y > menuHeight + EDGE * 2 || y > height / 2);
 const top = $derived(above ? y - EDGE : y + EDGE);
@@ -61,6 +74,10 @@ const top = $derived(above ? y - EDGE : y + EDGE);
   <button type="button" role="menuitem" class="item" onclick={onGoToHere}>
     <Navigation size={16} aria-hidden="true" />
     Go to here
+  </button>
+  <button type="button" role="menuitem" class="item" onclick={onStartRoute}>
+    <Route size={16} aria-hidden="true" />
+    Start a route here
   </button>
   {#if onDropWaypoint}
     <button type="button" role="menuitem" class="item" onclick={onDropWaypoint}>
