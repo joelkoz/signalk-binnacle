@@ -1295,9 +1295,8 @@ const DRAFT_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
   'bad-request': 'The draft request was rejected. Try rephrasing the passage.',
 };
 
-// Optimize reuses the draft error copy, but the over-cap and no-route case reads differently: the
-// navigator gave a real drawn route, so the failure is "the optimized result was unusable", not
-// "could not draft from your words".
+// Optimize overrides the no-route and bad-request copy: the navigator gave a real drawn route, so the
+// failure is that the optimized result was unusable, not that we could not draft from the words.
 const OPTIMIZE_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
   ...DRAFT_ERROR_MESSAGES,
   'no-route':
@@ -1421,10 +1420,10 @@ async function onOptimizeRoute(hint: string): Promise<void> {
   // fresh, else fall back to the route's first waypoint.
   const from = vessel.position && !vessel.positionStale ? vessel.position : positions[0];
   // The pad is wider than the draft's 0.15 so the model has room to move waypoints seaward to clear
-  // hazards without the server dropping a good turn as out of window. A crossing (dateline) box flows
-  // through clampToWorld and padBbox's unwrapEast unchanged.
+  // hazards without the server dropping a good turn as out of window. padBbox clamps to the world and
+  // unwraps a crossing (dateline) box itself, so a crossing box flows through unchanged.
   const box = boundsOfPoints(positions);
-  const bounds = box ? clampToWorld(padBbox(box, 0.25)) : vesselAreaBounds(positions[0]);
+  const bounds = box ? padBbox(box, 0.25) : vesselAreaBounds(positions[0]);
   optimizeOriginal = working;
   optimizeUnchanged = false;
   const result = await runDraft({
@@ -1451,6 +1450,8 @@ async function onOptimizeRoute(hint: string): Promise<void> {
   }
   const optimized = result.route.waypoints.map((w) => w.position);
   if (routesRoughlyEqual(positions, optimized, UNCHANGED_TOLERANCE_M)) {
+    // Nothing moved: show the note and drop the optimize stash. Clearing optimizeOriginal flips the
+    // panel's Cancel back to normal discard, which is correct since the drawn route is unchanged.
     optimizeUnchanged = true;
     optimizeOriginal = undefined;
     return;
@@ -1528,13 +1529,20 @@ function onCancelRouteEdit(): void {
 
 // A manual edit of a draft's geometry (a drag, a midpoint insert) accepts it as a hand-drawn route:
 // clear the draft view and the optimize stash so the route becomes a normal working route the
-// navigator can re-optimize or save without the not-chart-verified banner. The route geometry itself
-// is already updated by the editor's onChange; this only sheds the draft framing.
+// navigator can re-optimize or save without the not-chart-verified banner. It must also supersede a
+// draft or optimize still IN FLIGHT (draftView not yet set): clearDraftState bumps draftSeq and aborts,
+// so a late result cannot overwrite the user's edit. The geometry is already updated by the editor's
+// onChange; clearDraftState drops only the draft state, not the working route. No-op for a plain route.
 function onRouteEdited(): void {
-  if (draftView === undefined) return;
-  draftView = undefined;
-  optimizeOriginal = undefined;
-  optimizeUnchanged = false;
+  if (
+    draftView === undefined &&
+    !draftLoading &&
+    optimizeOriginal === undefined &&
+    !optimizeUnchanged
+  ) {
+    return;
+  }
+  clearDraftState();
 }
 
 // Seed the course cells once from a REST GET, then the stream keeps them live. The v2
