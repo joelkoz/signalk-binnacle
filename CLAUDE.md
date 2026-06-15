@@ -116,10 +116,9 @@ silent-failure-hunter) on the integrated diff and fixes every finding. No tmux p
 
 ## Modularity is a first-class rule
 
-Adding a feature (weather, tides, routing, and anchor mode already shipped this way; the
-CoPilot, the dashboard, and watch handoff will) MUST be a self-contained module dropped in
-against stable interfaces, never surgery on the core. The core never hardcodes knowledge of
-a specific feature.
+Adding a later feature (weather, tides, routing, the CoPilot, anchor mode, the dashboard,
+watch handoff) MUST be a self-contained module dropped in against stable interfaces, never
+surgery on the core. The core never hardcodes knowledge of a specific feature.
 
 - Layered structure (Feature-Sliced Design, adapted): imports flow strictly downward,
   `app -> views -> widgets -> features -> entities -> shared`. No same-layer slice-to-slice

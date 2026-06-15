@@ -14,58 +14,65 @@ function sym(overrides: Partial<SkSymbol>): SkSymbol {
 }
 
 describe('SymbolsStore resolve', () => {
-  it('resolves a qualified alias exactly', () => {
+  it('resolves any qualified alias regardless of namespace, since the image is shared', () => {
     const flag = sym({ aliases: ['custom:flag', 'fsk:dive-site'] });
     const store = new SymbolsStore('http://pi', undefined, [flag]);
     expect(store.resolve('custom:flag')).toBe(flag);
+    // A foreign vendor alias another app stored still renders the same shared symbol.
     expect(store.resolve('fsk:dive-site')).toBe(flag);
-    expect(store.resolve('fsk:other')).toBeUndefined();
   });
 
-  it('resolves an unqualified id when exactly one symbol carries it', () => {
-    const flag = sym({});
+  it('treats the binnacle namespace as the host built-in table for bare and default refs', () => {
+    const dive = sym({ uuid: 'd', aliases: ['binnacle:dive-site'], roles: ['waypoint'] });
+    const store = new SymbolsStore('http://pi', undefined, [dive]);
+    expect(store.resolve('binnacle:dive-site')).toBe(dive); // explicit
+    expect(store.resolve('dive-site')).toBe(dive); // bare id -> host built-in
+    expect(store.resolve('default:dive-site')).toBe(dive); // explicit built-in -> host table
+  });
+
+  it('does not resolve a bare id against a custom symbol (custom is reached qualified)', () => {
+    const flag = sym({ aliases: ['custom:flag'] });
     const store = new SymbolsStore('http://pi', undefined, [flag]);
-    expect(store.resolve('flag')).toBe(flag);
+    expect(store.resolve('custom:flag')).toBe(flag);
+    expect(store.resolve('flag')).toBeUndefined();
   });
 
-  it('returns undefined for an ambiguous unqualified id', () => {
-    const a = sym({ uuid: 'a', aliases: ['custom:anchor'] });
-    const b = sym({ uuid: 'b', aliases: ['fsk:anchor'] });
-    const store = new SymbolsStore('http://pi', undefined, [a, b]);
-    expect(store.resolve('anchor')).toBeUndefined();
-    expect(store.resolve('custom:anchor')).toBe(a);
-    expect(store.resolve('fsk:anchor')).toBe(b);
+  it('renders an exact foreign alias but never substitutes for an absent reference', () => {
+    const foreign = sym({ uuid: 'f', aliases: ['fsk:marina', 'garmin:Marina'] });
+    const store = new SymbolsStore('http://pi', undefined, [foreign]);
+    expect(store.resolve('fsk:marina')).toBe(foreign); // exact foreign alias renders
+    expect(store.resolve('marina')).toBeUndefined(); // bare -> binnacle:marina -> none
+    expect(store.resolve('opencpn:marina')).toBeUndefined(); // no such alias, no substitution
   });
 
-  it('one symbol carrying the same id in two namespaces is not ambiguous', () => {
-    const flag = sym({ aliases: ['custom:flag', 'fsk:flag'] });
-    const store = new SymbolsStore('http://pi', undefined, [flag]);
-    expect(store.resolve('flag')).toBe(flag);
-  });
-
-  it('default:id always falls back to the built-in (returns undefined)', () => {
-    const store = new SymbolsStore('http://pi', undefined, [sym({})]);
-    expect(store.resolve('default:flag')).toBeUndefined();
+  it('default:id resolves only within the host table, never a provider override', () => {
+    // A custom dive-flag must not satisfy default:dive-flag; only binnacle:dive-flag would.
+    const store = new SymbolsStore('http://pi', undefined, [
+      sym({ aliases: ['custom:dive-flag'] }),
+    ]);
+    expect(store.resolve('default:dive-flag')).toBeUndefined();
   });
 
   it('filters by role when the symbol declares roles', () => {
-    const noteOnly = sym({ roles: ['note'] });
+    const noteOnly = sym({ aliases: ['binnacle:flag'], roles: ['note'] });
     const store = new SymbolsStore('http://pi', undefined, [noteOnly]);
     expect(store.resolve('flag', 'note')).toBe(noteOnly);
     expect(store.resolve('flag', 'waypoint')).toBeUndefined();
   });
 
   it('a symbol with no declared roles matches any role', () => {
-    const store = new SymbolsStore('http://pi', undefined, [sym({})]);
+    const store = new SymbolsStore('http://pi', undefined, [sym({ aliases: ['binnacle:flag'] })]);
     expect(store.resolve('flag', 'waypoint')).toBeDefined();
   });
 
-  it('forRole lists only symbols declaring that role', () => {
+  it('forRole offers only binnacle/custom symbols declaring that role', () => {
     const note = sym({ uuid: 'n', aliases: ['custom:n'], roles: ['note'] });
-    const both = sym({ uuid: 'b', aliases: ['custom:b'], roles: ['note', 'waypoint'] });
+    const both = sym({ uuid: 'b', aliases: ['binnacle:b'], roles: ['note', 'waypoint'] });
     const none = sym({ uuid: 'x', aliases: ['custom:x'] });
-    const store = new SymbolsStore('http://pi', undefined, [note, both, none]);
+    const foreign = sym({ uuid: 'f', aliases: ['fsk:wp'], roles: ['waypoint'] });
+    const store = new SymbolsStore('http://pi', undefined, [note, both, none, foreign]);
     expect(store.forRole('note')).toEqual([note, both]);
+    // foreign declares 'waypoint' but is not adopted (fsk), so it is not offered.
     expect(store.forRole('waypoint')).toEqual([both]);
   });
 });

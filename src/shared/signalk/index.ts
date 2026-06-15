@@ -31,6 +31,18 @@ export {
 export { serverOrigin, streamUrl } from './origin';
 export type { SkPathKey } from './paths';
 export { SK_PATHS } from './paths';
+export type {
+  BackgroundContribution,
+  ButtonAction,
+  ButtonContribution,
+  Lifecycle,
+  PanelContribution,
+  PlotterExtension,
+  WidgetContribution,
+  WidgetSize,
+} from './plotterext-client';
+export { fetchPlotterExtensions } from './plotterext-client';
+export { listResources, putSignalKPath } from './plotterext-relay';
 export {
   asKeyedObject,
   authInit,
