@@ -5,6 +5,7 @@ export {
   geodesicCircleRing,
   geodesicDestination,
   haversineMeters,
+  routesRoughlyEqual,
 } from './distance';
 export {
   etaSeconds,

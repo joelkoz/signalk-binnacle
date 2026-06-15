@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { geodesicCircleRing, haversineMeters } from './distance';
+import { geodesicCircleRing, haversineMeters, routesRoughlyEqual } from './distance';
 
 describe('haversineMeters', () => {
   it('is zero for the same point', () => {
@@ -32,5 +32,36 @@ describe('geodesicCircleRing', () => {
     for (const [lon, lat] of ring) {
       expect(haversineMeters(78, 15, lat, lon)).toBeCloseTo(60, 3);
     }
+  });
+});
+
+describe('routesRoughlyEqual', () => {
+  const a = [
+    { latitude: 0, longitude: 0 },
+    { latitude: 0, longitude: 1 },
+  ];
+
+  it('is true for identical routes', () => {
+    expect(routesRoughlyEqual(a, a, 100)).toBe(true);
+  });
+
+  it('is false when the waypoint count differs', () => {
+    expect(routesRoughlyEqual(a, [...a, { latitude: 0, longitude: 2 }], 100)).toBe(false);
+  });
+
+  it('is true when every point moved less than the tolerance', () => {
+    const nudged = [
+      { latitude: 0.0000001, longitude: 0 },
+      { latitude: 0, longitude: 1 },
+    ];
+    expect(routesRoughlyEqual(a, nudged, 100)).toBe(true);
+  });
+
+  it('is false when a point moved more than the tolerance', () => {
+    const moved = [
+      { latitude: 0.1, longitude: 0 },
+      { latitude: 0, longitude: 1 },
+    ];
+    expect(routesRoughlyEqual(a, moved, 100)).toBe(false);
   });
 });
