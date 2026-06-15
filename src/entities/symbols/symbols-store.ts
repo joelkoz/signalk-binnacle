@@ -3,9 +3,15 @@ import { authInit, type SkSymbol } from '$shared/signalk';
 import { SymbolIconRegistry } from './icon-registry';
 import { type RasterizeSymbol, rasterizeSymbolSvg } from './symbol-raster';
 
-// Two or more symbols carry the same unqualified id, so per the provider's override semantics
-// it resolves to nothing and the consumer's built-in stays.
-const AMBIGUOUS = Symbol('ambiguous');
+// Binnacle's own vendor namespace, the user-symbol namespace, and the reserved built-in namespace.
+// Rendering and offering are split: a stored reference in ANY namespace renders as named (the
+// symbol image is shared across apps), while the host built-in table and the icon pickers stay
+// scoped. The host built-in table IS the `binnacle:` namespace in the shared library, so a bare id
+// and an explicit `default:<id>` both resolve to `binnacle:<id>`. The pickers offer only `binnacle`
+// and `custom` symbols. See the Symbols API resolution rules.
+export const BINNACLE_NS = 'binnacle';
+export const CUSTOM_NS = 'custom';
+const DEFAULT_NS = 'default';
 
 // The fetched symbol set with alias and role lookup. Constructed only when the symbols
 // resource type answered (fetchSymbols returned a list); on a stock server no store exists and
@@ -16,8 +22,10 @@ export class SymbolsStore {
   readonly rasterize: RasterizeSymbol;
   readonly #base: string;
   #token: string | undefined;
-  readonly #byQualified = new Map<string, SkSymbol>();
-  readonly #byId = new Map<string, SkSymbol | typeof AMBIGUOUS>();
+  // Every alias of every namespace, so a reference stored by any app renders as named.
+  readonly #byRef = new Map<string, SkSymbol>();
+  // Symbols carrying at least one adopted (binnacle/custom) alias, for the role-filtered pickers.
+  #adopted: readonly SkSymbol[] = [];
   readonly #svgTexts = new Map<string, Promise<string | undefined>>();
 
   constructor(
@@ -43,25 +51,31 @@ export class SymbolsStore {
   // overlays hold one stable store reference and resolve against whatever is known at render time.
   setSymbols(symbols: readonly SkSymbol[]): void {
     this.#symbols = symbols;
-    this.#byQualified.clear();
-    this.#byId.clear();
+    this.#byRef.clear();
+    const adopted: SkSymbol[] = [];
     for (const symbol of symbols) {
+      let isAdopted = false;
       for (const alias of symbol.aliases) {
-        this.#byQualified.set(alias, symbol);
-        const id = alias.slice(alias.indexOf(':') + 1);
-        const existing = this.#byId.get(id);
-        if (existing && existing !== symbol) this.#byId.set(id, AMBIGUOUS);
-        else this.#byId.set(id, symbol);
+        // Index every alias of every namespace. A reference another app stored (fsk:dive-site, a
+        // plugin's my-plugin:icon, ...) must render as named: the image is shared, and only the
+        // host built-in table and the pickers are namespace-scoped. `namespace:id` is globally
+        // unique per the spec, so first-wins is enough.
+        if (!this.#byRef.has(alias)) this.#byRef.set(alias, symbol);
+        const colon = alias.indexOf(':');
+        const namespace = colon === -1 ? '' : alias.slice(0, colon);
+        if (namespace === BINNACLE_NS || namespace === CUSTOM_NS) isAdopted = true;
       }
+      if (isAdopted) adopted.push(symbol);
     }
+    this.#adopted = adopted;
   }
 
-  // Resolve a symbol reference per the provider's documented semantics: `default:id` always
-  // falls back to the consumer's built-in, a qualified `namespace:id` matches exactly, and an
-  // unqualified id matches only when exactly one provided symbol carries it (which is what lets
-  // a provided symbol override a consumer built-in of the same id). A declared role list must
-  // include the requested role; a symbol declaring no roles claims nothing, so it is not
-  // excluded from any.
+  // Resolve a stored symbol reference. A qualified `namespace:id` (in ANY namespace) matches the
+  // symbol carrying that exact alias and renders as named, with no substitution when absent. A
+  // bare id and an explicit `default:<id>` both resolve within the host built-in table, which is
+  // the `binnacle:` namespace, so a Binnacle waypoint icon survives even when another app stored
+  // `default:dive-site`. A declared role list must include the requested role; a symbol declaring
+  // no roles claims nothing, so it is not excluded from any.
   resolve(idOrAlias: string, role?: string): SkSymbol | undefined {
     const symbol = this.#lookup(idOrAlias);
     if (!symbol) return undefined;
@@ -73,8 +87,9 @@ export class SymbolsStore {
     return this.#symbols;
   }
 
+  // Adopted symbols (binnacle/custom) declaring the given role, for the icon pickers.
   forRole(role: string): SkSymbol[] {
-    return this.#symbols.filter((symbol) => symbol.roles.includes(role));
+    return this.#adopted.filter((symbol) => symbol.roles.includes(role));
   }
 
   createIconRegistry(): SymbolIconRegistry {
@@ -113,9 +128,15 @@ export class SymbolsStore {
   }
 
   #lookup(idOrAlias: string): SkSymbol | undefined {
-    if (idOrAlias.startsWith('default:')) return undefined;
-    if (idOrAlias.includes(':')) return this.#byQualified.get(idOrAlias);
-    const hit = this.#byId.get(idOrAlias);
-    return hit === AMBIGUOUS ? undefined : hit;
+    const colon = idOrAlias.indexOf(':');
+    // Bare id: the host built-in table is the `binnacle:` namespace.
+    if (colon === -1) return this.#byRef.get(`${BINNACLE_NS}:${idOrAlias}`);
+    const namespace = idOrAlias.slice(0, colon);
+    // Explicit built-in: the host table only, never a provider override the user rejected.
+    if (namespace === DEFAULT_NS) {
+      return this.#byRef.get(`${BINNACLE_NS}:${idOrAlias.slice(colon + 1)}`);
+    }
+    // Any other qualified alias renders as named when present in the shared library.
+    return this.#byRef.get(idOrAlias);
   }
 }

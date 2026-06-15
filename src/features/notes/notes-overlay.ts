@@ -86,6 +86,15 @@ interface NotesOverlay extends OverlayModule {
   deselect(ctx: OverlayContext): void;
 }
 
+// A display filter injected from the plotter-extension host: an extension's resources.setFilter for
+// the `notes` type hides every POI it does not select. `version` bumps on any filter change so the
+// imperative overlay re-renders when a filter is set or cleared without the map moving; `passes`
+// decides one note. Absent on a stock server, where every fetched POI shows.
+export interface NotesFilter {
+  version: () => number;
+  passes: (id: string, record: unknown) => boolean;
+}
+
 export interface NotesOverlayOptions {
   // Whether the app believes it is online (the host wires this from OnlineStatus). Offline, an
   // expired cached note set still renders so the POIs do not vanish at TTL expiry with no way to
@@ -93,6 +102,19 @@ export interface NotesOverlayOptions {
   isOnline?: () => boolean;
   // The cross-reload store for fetched note sets; injectable so tests run on the memory fallback.
   persist?: ExpiringStore<NotePoint[]>;
+  // The plotter-extension display filter for the `notes` type, when a host provides one.
+  filter?: NotesFilter;
+}
+
+// A record shaped like the source notes resource, for a filter's `match` conditions. The plotter
+// search filter selects by id (where the record is unused), but a category filter keys off
+// `properties.skIcon`, the path ActiveCaptain providers use, so expose it here too.
+function filterRecord(note: NotePoint): unknown {
+  return {
+    name: note.name,
+    position: note.position,
+    properties: note.skIcon ? { skIcon: note.skIcon } : {},
+  };
 }
 
 // The registered map-image id for a note. Navaids resolve to a type- and side-specific
@@ -164,6 +186,7 @@ export function createNotesOverlay(
   options: NotesOverlayOptions = {},
 ): NotesOverlay {
   const isOnline = options.isOnline ?? (() => true);
+  const filter = options.filter;
   const persist =
     options.persist ??
     createExpiringStore<NotePoint[]>('binnacle-notes', { maxEntries: MAX_PERSIST_ENTRIES });
@@ -179,6 +202,10 @@ export function createNotesOverlay(
   // The exact note array last handed to setData, so a redundant render is skipped and, crucially, a
   // failed fetch keeps it on screen instead of blanking the markers.
   let renderedNotes: NotePoint[] | undefined;
+  // The filter version the rendered features reflect, so a filter change re-renders the same source
+  // set, and the version seen by sync, so a change re-renders even when the map has not moved.
+  let renderedFilterVersion: number | undefined;
+  let syncedFilterVersion: number | undefined = filter?.version();
   let lastZoom: number | undefined;
   let lastLng: number | undefined;
   let lastLat: number | undefined;
@@ -251,9 +278,15 @@ export function createNotesOverlay(
   // Render a note set, skipping the work when it is the same set already shown. Leaving the source
   // untouched on a no-op avoids re-clustering the markers every idle frame.
   function render(ctx: OverlayContext, notes: NotePoint[]): void {
-    if (notes === renderedNotes) return;
+    const filterVersion = filter?.version();
+    if (notes === renderedNotes && filterVersion === renderedFilterVersion) return;
     renderedNotes = notes;
-    const { data, iconOffset } = buildRender(notes, managedIcon);
+    renderedFilterVersion = filterVersion;
+    // Drop the POIs an active host filter hides. With no filter every fetched note shows.
+    const shown = filter
+      ? notes.filter((note) => filter.passes(note.id, filterRecord(note)))
+      : notes;
+    const { data, iconOffset } = buildRender(shown, managedIcon);
     setData(ctx, data);
     // The offset is a layer property, not a feature one (MapLibre stringifies an array feature
     // property), so it is restyled here. The getLayer guard mirrors setData's missing-source degrade.
@@ -520,6 +553,19 @@ export function createNotesOverlay(
       // A hidden layer pays nothing: no network fetch, no clustering, no GeoJSON rebuild. The next
       // show re-syncs from the cache (or fetches) for wherever the map ended up.
       if (!visible) return;
+      // A filter change (an extension's setFilter/clearFilter) must re-render even when the map has
+      // not moved. Re-render the already-shown set against the new filter immediately, then drop the
+      // idle anchor so the fast-path below cannot skip and a later pan re-evaluates normally.
+      const filterVersion = filter?.version();
+      if (filterVersion !== syncedFilterVersion) {
+        syncedFilterVersion = filterVersion;
+        if (renderedNotes) {
+          const notes = renderedNotes;
+          renderedNotes = undefined;
+          render(ctx, notes);
+        }
+        invalidateIdleAnchor();
+      }
       const zoom = ctx.map.getZoom();
       const center = ctx.map.getCenter();
       // Idle fast-path: nothing moved since the last sync, so skip the viewport work entirely.

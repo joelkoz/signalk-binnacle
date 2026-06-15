@@ -11,7 +11,8 @@ interface WaypointResourceBody {
   feature: {
     type: 'Feature';
     geometry: { type: 'Point'; coordinates: LonLat };
-    properties: Record<string, never>;
+    // skIcon is a Symbols API reference; absent for the default marker.
+    properties: { skIcon?: string };
   };
 }
 
@@ -22,7 +23,7 @@ export function waypointToFeature(waypoint: Waypoint): WaypointResourceBody {
     feature: {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: latLonToLonLat(waypoint.position) },
-      properties: {},
+      properties: waypoint.icon ? { skIcon: waypoint.icon } : {},
     },
   };
 }
@@ -32,15 +33,20 @@ export function featureToWaypoint(id: string, raw: unknown): Waypoint | undefine
   const w = raw as {
     name?: unknown;
     description?: unknown;
-    feature?: { geometry?: { type?: unknown; coordinates?: unknown } };
+    feature?: {
+      geometry?: { type?: unknown; coordinates?: unknown };
+      properties?: { skIcon?: unknown };
+    };
   };
   const geom = w.feature?.geometry;
   if (geom?.type !== 'Point' || !isLonLat(geom.coordinates)) return undefined;
   const description = str(w.description);
+  const icon = str(w.feature?.properties?.skIcon);
   return {
     id,
     name: str(w.name) ?? id,
     position: lonLatToLatLon(geom.coordinates),
     ...(description ? { description } : {}),
+    ...(icon ? { icon } : {}),
   };
 }

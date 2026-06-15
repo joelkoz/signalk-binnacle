@@ -7,4 +7,7 @@ export interface Waypoint {
   name: string;
   position: LatLon;
   description?: string;
+  // A symbol reference (Symbols API), e.g. 'custom:dive-flag'; stored in the resource's
+  // feature.properties.skIcon. Undefined renders the default waypoint marker.
+  icon?: string;
 }
