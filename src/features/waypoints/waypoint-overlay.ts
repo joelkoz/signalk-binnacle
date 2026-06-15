@@ -1,10 +1,11 @@
 import type {
   CircleLayerSpecification,
+  ExpressionSpecification,
   GeoJSONSource,
   GeoJSONSourceSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
-import { type SymbolsStore, symbolIconId } from '$entities/symbols';
+import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
 import type { Waypoint, WaypointsStore } from '$entities/waypoint';
 import {
   emptyFeatureCollection,
@@ -15,6 +16,7 @@ import {
   removeLayersAndSources,
   setLayersVisibility,
 } from '$shared/map';
+import type { SkSymbol } from '$shared/signalk';
 
 const SOURCE_ID = 'binnacle-waypoints';
 const MARKER_LAYER = 'binnacle-waypoint-marker';
@@ -22,83 +24,109 @@ const SYMBOL_MARKER_LAYER = 'binnacle-waypoint-symbol';
 const LABEL_LAYER = 'binnacle-waypoint-label';
 const BAND = 'routes';
 
+const CENTERED_OFFSET: [number, number] = [0, 0];
+
 export interface WaypointOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
 }
 
-function features(waypoints: readonly Waypoint[]): GeoJSON.FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: waypoints.map((waypoint) => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [waypoint.position.longitude, waypoint.position.latitude],
-      },
-      properties: { name: waypoint.name },
-    })),
-  };
+// Per-feature icon-offset as a match on the feature's iconImage. MapLibre stringifies an array
+// feature property crossing to the worker, so the per-symbol anchor offset cannot ride on the
+// feature as ['get', 'iconOffset']; the match keeps each symbol's offset as a real literal array.
+function iconOffsetExpression(
+  offsets: ReadonlyMap<string, readonly [number, number]>,
+): ExpressionSpecification | [number, number] {
+  if (offsets.size === 0) return CENTERED_OFFSET;
+  const match: unknown[] = ['match', ['get', 'iconImage']];
+  for (const [iconId, offset] of offsets) match.push(iconId, ['literal', offset]);
+  match.push(['literal', CENTERED_OFFSET]);
+  return match as ExpressionSpecification;
 }
 
-// Standalone waypoints as a small marker disc with the name set beside it, presentational only
-// (no click handling). The band matches the route overlay so the Layers panel lists it under
-// My routes and tracks. Circle and text layers, so it themes cleanly to night-red. When a
-// provided symbol overrides the 'waypoint' built-in (signalk-symbol-manager's unqualified-id
-// override), a symbol layer replaces the disc once its image registers; until then, and on any
-// load failure, the disc carries on unchanged.
+// Standalone waypoints. Each waypoint renders as a provided symbol when its icon resolves to one
+// (the Symbols API: an explicit `custom:`/`binnacle:` reference, or the `waypoint` built-in's
+// override), otherwise as a small marker disc with its name beside it. A symbol-keyed feature
+// carries `iconImage`; the disc layer and the symbol layer split the features by a filter, so the
+// two never double up. Presentational only. The band matches the route overlay so the Layers panel
+// lists it under My routes and tracks.
 export function createWaypointOverlay(
   store: WaypointsStore,
   symbols?: SymbolsStore,
 ): WaypointOverlay {
   let paint: MapThemePaint = mapThemePaint('day');
+  let themePaint = paint;
   let lastVersion = -1;
-  // Resolved lazily: the store is constructed empty before auth and filled when the symbols fetch
-  // lands, so sync re-checks until a 'waypoint' override appears (or never, on a stock server).
-  let symbol = symbols?.resolve('waypoint', 'waypoint');
-  let registry = symbol ? symbols?.createIconRegistry() : undefined;
-  // The symbol layer is in the id list unconditionally; the teardown helper skips absent layers.
-  const layers = [MARKER_LAYER, SYMBOL_MARKER_LAYER, LABEL_LAYER];
-  // Starts true to match the layer-manager default; the register-time setVisible corrects it.
   let visible = true;
-  let usingSymbol = false;
-  let lastAddBefore: string | undefined;
+  const layers = [MARKER_LAYER, SYMBOL_MARKER_LAYER, LABEL_LAYER];
+  // Provided symbols (signalk-symbol-manager), absent on a stock server. The registry holds the
+  // registered map images; pendingSymbols collects resolvable-but-not-yet-registered ones a render
+  // saw, so their loads are kicked once and the set redrawn when they land.
+  const registry = symbols?.createIconRegistry();
+  const pendingSymbols = new Map<string, SkSymbol>();
 
-  function ensureSymbolLayer(ctx: OverlayContext): void {
-    if (!symbol || ctx.map.getLayer(SYMBOL_MARKER_LAYER)) return;
-    // Added hidden so the not-yet-registered icon id is never resolved (no missing-image
-    // warning); upgradeToSymbol shows it only once the image exists.
-    const layer: SymbolLayerSpecification = {
-      id: SYMBOL_MARKER_LAYER,
-      type: 'symbol',
-      source: SOURCE_ID,
-      layout: {
-        'icon-image': symbolIconId(symbol.uuid),
-        'icon-allow-overlap': true,
-        visibility: 'none',
-      },
-    };
-    ctx.map.addLayer(layer, lastAddBefore);
-  }
-
-  // The disc and the symbol marker are alternatives: exactly one of them follows the overlay's
-  // visibility, flipped when the symbol image lands.
-  function applyMarkerVisibility(ctx: OverlayContext): void {
-    setLayersVisibility(ctx.map, [MARKER_LAYER], visible && !usingSymbol);
-    if (ctx.map.getLayer(SYMBOL_MARKER_LAYER)) {
-      setLayersVisibility(ctx.map, [SYMBOL_MARKER_LAYER], visible && usingSymbol);
-    }
-  }
-
-  async function upgradeToSymbol(ctx: OverlayContext): Promise<void> {
-    if (!registry || !symbol) return;
-    // A rejected load counts as a failed upgrade, not an unhandled rejection: both call sites
-    // fire and forget, and the built-in marker keeps rendering either way.
-    const ok = await registry.ensure(ctx.map, symbol, paint).catch(() => false);
+  // The registered icon for a waypoint whose icon resolves to a provided symbol, or undefined for
+  // the built-in disc (no symbols store, unresolvable reference, image still loading, or a failed
+  // load). A reference defaults to the 'waypoint' built-in id so a `binnacle:waypoint` override
+  // applies to every plain waypoint.
+  function managedIcon(waypoint: Waypoint): SymbolIconEntry | undefined {
+    if (!registry || !symbols) return undefined;
+    const symbol = symbols.resolve(waypoint.icon ?? 'waypoint', 'waypoint');
+    if (!symbol) return undefined;
     const entry = registry.entry(symbol.uuid);
-    if (!ok || !entry || !ctx.map.getLayer(SYMBOL_MARKER_LAYER)) return;
-    ctx.map.setLayoutProperty(SYMBOL_MARKER_LAYER, 'icon-offset', entry.offset);
-    usingSymbol = true;
-    applyMarkerVisibility(ctx);
+    if (entry) return entry;
+    if (registry.status(symbol.uuid) !== 'failed') pendingSymbols.set(symbol.uuid, symbol);
+    return undefined;
+  }
+
+  function buildFeatures(waypoints: readonly Waypoint[]): {
+    data: GeoJSON.FeatureCollection;
+    iconOffset: ExpressionSpecification | [number, number];
+  } {
+    const offsets = new Map<string, readonly [number, number]>();
+    const features = waypoints.map((waypoint): GeoJSON.Feature => {
+      const entry = managedIcon(waypoint);
+      if (entry && (entry.offset[0] !== 0 || entry.offset[1] !== 0)) {
+        offsets.set(entry.iconId, entry.offset);
+      }
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [waypoint.position.longitude, waypoint.position.latitude],
+        },
+        properties: { name: waypoint.name, ...(entry ? { iconImage: entry.iconId } : {}) },
+      };
+    });
+    return {
+      data: { type: 'FeatureCollection', features },
+      iconOffset: iconOffsetExpression(offsets),
+    };
+  }
+
+  function redraw(ctx: OverlayContext): void {
+    const { data, iconOffset } = buildFeatures(store.waypoints);
+    (ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined)?.setData(data);
+    // The offset is a layer property (see iconOffsetExpression); restyle it each redraw.
+    if (ctx.map.getLayer(SYMBOL_MARKER_LAYER)) {
+      ctx.map.setLayoutProperty(SYMBOL_MARKER_LAYER, 'icon-offset', iconOffset);
+    }
+    ensurePendingIcons(ctx);
+  }
+
+  // Kick the loads a render queued; each success redraws so the now-registered symbol replaces its
+  // disc. A failure is remembered by the registry, so the disc simply stays.
+  function ensurePendingIcons(ctx: OverlayContext): void {
+    if (!registry || pendingSymbols.size === 0) return;
+    const pending = [...pendingSymbols.values()];
+    pendingSymbols.clear();
+    for (const symbol of pending) {
+      void registry
+        .ensure(ctx.map, symbol, themePaint)
+        .then((ok) => {
+          if (ok) redraw(ctx);
+        })
+        .catch(() => undefined);
+    }
   }
 
   return {
@@ -108,13 +136,8 @@ export function createWaypointOverlay(
     supportsOpacity: true,
     layerIds: layers,
     add(ctx) {
-      // Reset the dirty-check so a reattach (after a base-style swap emptied the source)
-      // repopulates it on the next sync instead of staying blank. The symbol upgrade re-runs
-      // too: a style swap drops map images, and the registry re-registers from its cache.
       lastVersion = -1;
-      usingSymbol = false;
       const before = ctx.beforeIdFor(BAND);
-      lastAddBefore = before;
       if (!ctx.map.getSource(SOURCE_ID)) {
         const source: GeoJSONSourceSpecification = {
           type: 'geojson',
@@ -123,10 +146,12 @@ export function createWaypointOverlay(
         ctx.map.addSource(SOURCE_ID, source);
       }
       if (!ctx.map.getLayer(MARKER_LAYER)) {
+        // The disc carries waypoints WITHOUT a provided symbol; the symbol layer carries the rest.
         const layer: CircleLayerSpecification = {
           id: MARKER_LAYER,
           type: 'circle',
           source: SOURCE_ID,
+          filter: ['!', ['has', 'iconImage']],
           paint: {
             'circle-radius': 5,
             'circle-color': paint.waypoint,
@@ -136,7 +161,19 @@ export function createWaypointOverlay(
         };
         ctx.map.addLayer(layer, before);
       }
-      ensureSymbolLayer(ctx);
+      if (!ctx.map.getLayer(SYMBOL_MARKER_LAYER)) {
+        const layer: SymbolLayerSpecification = {
+          id: SYMBOL_MARKER_LAYER,
+          type: 'symbol',
+          source: SOURCE_ID,
+          filter: ['has', 'iconImage'],
+          layout: {
+            'icon-image': ['get', 'iconImage'],
+            'icon-allow-overlap': true,
+          },
+        };
+        ctx.map.addLayer(layer, before);
+      }
       if (!ctx.map.getLayer(LABEL_LAYER)) {
         const layer: SymbolLayerSpecification = {
           id: LABEL_LAYER,
@@ -159,44 +196,31 @@ export function createWaypointOverlay(
         };
         ctx.map.addLayer(layer, before);
       }
-      if (symbol) void upgradeToSymbol(ctx);
+      redraw(ctx);
     },
     sync(ctx) {
-      // A late-filling symbols store (the fetch lands after the map mounted) upgrades here: one
-      // cheap map lookup per tick until it resolves or the session ends without symbols.
-      if (!symbol && symbols) {
-        symbol = symbols.resolve('waypoint', 'waypoint');
-        if (symbol) {
-          registry = symbols.createIconRegistry();
-          ensureSymbolLayer(ctx);
-          void upgradeToSymbol(ctx);
-        }
-      }
       if (store.version === lastVersion) return;
       lastVersion = store.version;
-      (ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined)?.setData(
-        features(store.waypoints),
-      );
+      redraw(ctx);
     },
     setVisible(ctx, isVisible) {
       visible = isVisible;
-      setLayersVisibility(ctx.map, [LABEL_LAYER], visible);
-      applyMarkerVisibility(ctx);
+      setLayersVisibility(ctx.map, layers, visible);
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-opacity', opacity);
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-stroke-opacity', opacity);
-      if (ctx.map.getLayer(SYMBOL_MARKER_LAYER)) {
-        ctx.map.setPaintProperty(SYMBOL_MARKER_LAYER, 'icon-opacity', opacity);
-      }
+      ctx.map.setPaintProperty(SYMBOL_MARKER_LAYER, 'icon-opacity', opacity);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-opacity', opacity);
     },
     applyTheme(ctx, next) {
       paint = next;
+      themePaint = next;
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-color', paint.waypoint);
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-stroke-color', paint.markerGlyph);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-color', paint.label);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-halo-color', paint.background);
+      // Re-raster registered symbols in place (same image ids), so the symbol layer updates.
       registry?.retheme(ctx.map, next);
     },
     remove(ctx) {

@@ -116,10 +116,9 @@ silent-failure-hunter) on the integrated diff and fixes every finding. No tmux p
 
 ## Modularity is a first-class rule
 
-Adding a feature (weather, tides, routing, and anchor mode already shipped this way; the
-CoPilot, the dashboard, and watch handoff will) MUST be a self-contained module dropped in
-against stable interfaces, never surgery on the core. The core never hardcodes knowledge of
-a specific feature.
+Adding a later feature (weather, tides, routing, the CoPilot, anchor mode, the dashboard,
+watch handoff) MUST be a self-contained module dropped in against stable interfaces, never
+surgery on the core. The core never hardcodes knowledge of a specific feature.
 
 - Layered structure (Feature-Sliced Design, adapted): imports flow strictly downward,
   `app -> views -> widgets -> features -> entities -> shared`. No same-layer slice-to-slice
@@ -144,8 +143,7 @@ a specific feature.
   utilities, shell, a11y, vendor), and the import order IS the cascade order. New global styling
   goes into the right module, never back into one monolith; new shared UI behavior goes through
   the `$shared/ui` primitives (SlideOver, InlineConfirm, UnitField, ConfirmArm, SavedList,
-  VisibilityToggle, the dialog dismiss stack, the rovingFocus, focusTrap, and focusOnMount
-  focus actions, the pickTextFile importer, and the promptRename and promptSaveName dialogs) and the
+  VisibilityToggle, the dialog dismiss stack, the rovingFocus arrow-key action) and the
   global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.overlay-backdrop`,
   `.alert-note`, `.muted-note`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`, `.stat-grid`, `.num`)
   before any panel grows a scoped duplicate. When the same markup or CSS appears in a second place,

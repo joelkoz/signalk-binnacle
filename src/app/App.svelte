@@ -24,6 +24,7 @@ import { CourseGuidance } from '$entities/course';
 import { MeasureStore } from '$entities/measure';
 import { type MobMark, MobStore } from '$entities/mob';
 import { type ActiveNotification, NotificationsStore } from '$entities/notifications';
+import { offerableExtensions, PlotterExtHost, unitsForMode } from '$entities/plotter-ext';
 import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$entities/profile';
 import {
   type Route as RouteModel,
@@ -71,7 +72,13 @@ import {
   type NoteDetailLoader,
   NoteDetailPanel,
   type NoteSelection,
+  type NotesFilter,
 } from '$features/notes';
+import {
+  addWidgetActionAt,
+  PlotterExtHostView,
+  ToolbarButtons,
+} from '$features/plotter-extensions';
 import {
   createProfileBindings,
   downloadProfileJson,
@@ -122,7 +129,13 @@ import {
   TracksPanel,
 } from '$features/tracks';
 import { TrendSessionRecorder, TrendsPanel } from '$features/trends';
-import { deleteWaypoint, fetchWaypoints, saveWaypoint, WaypointsPanel } from '$features/waypoints';
+import {
+  AddWaypointDialog,
+  deleteWaypoint,
+  fetchWaypoints,
+  saveWaypoint,
+  WaypointsPanel,
+} from '$features/waypoints';
 import {
   createWeatherLoader,
   defaultProviderName,
@@ -162,10 +175,13 @@ import {
   acknowledgeNotification,
   createSignalKClient,
   fetchHistoryProviders,
+  fetchPlotterExtensions,
   fetchServerFeatures,
   fetchSymbols,
+  listResources,
   postMobNotification,
   postNotification,
+  putSignalKPath,
   resolveNotification,
   SELF_CONTEXT,
   type ServerFeatures,
@@ -177,7 +193,7 @@ import {
   updateNotification,
 } from '$shared/signalk';
 import { createTrackStore } from '$shared/storage';
-import { createThemeController, defaultSaveName, promptSaveName, type Theme } from '$shared/ui';
+import { createThemeController, defaultSaveName, type Theme } from '$shared/ui';
 import { ChartCanvas, type MapCommands, type UserChartRegistrar } from '$widgets/chart-canvas';
 import { WeatherMap } from '$widgets/weather-map';
 
@@ -487,6 +503,68 @@ const waypointsStore = new WaypointsStore();
 // immediately and hold one stable reference; filled when the fetch lands after access resolves.
 // On a stock server the resource type 404s and every icon stays built-in.
 const symbolsStore = new SymbolsStore(serverOrigin(), undefined);
+
+// Plotter-extension host: discovers plotterExtensions manifests and runs their widgets, panels,
+// buttons, and background runtimes over the published bus. Constructed empty; on a stock server with
+// no provider the collection 404s and nothing renders, so the chart is untouched. The adapters
+// bridge the host API to the chart commands, the multiplexed Signal K relay, the resource clients,
+// and the unit preference.
+const plotterExtHost = new PlotterExtHost({
+  map: {
+    getView: () => {
+      const view = mapView ?? savedView;
+      const bounds = mapCommands?.getBounds();
+      return view && bounds ? { center: [view.lon, view.lat], zoom: view.zoom, bounds } : undefined;
+    },
+    center: (position) => mapCommands?.flyTo(position[1], position[0]),
+    fitBounds: (bounds) => mapCommands?.fitBounds(bounds),
+  },
+  signalk: {
+    ensurePaths: (paths) => {
+      if (paths.length > 0) {
+        void client.raw.subscribe(
+          paths.map((path) => ({ path, policy: 'instant', minPeriod: 1000 })),
+        );
+      }
+    },
+    read: (path) => {
+      const cell = store.cell(path);
+      if (cell.value === undefined) return undefined;
+      return {
+        value: cell.value,
+        timestamp: cell.epoch ? new Date(cell.epoch).toISOString() : undefined,
+      };
+    },
+    put: (path, value) => putSignalKPath(serverOrigin(), chartsToken, path, value),
+  },
+  resources: {
+    list: (type, query) => listResources(serverOrigin(), chartsToken, type, query),
+  },
+  units: () => unitsForMode(units.mode),
+});
+
+// The POI display filter the chart's notes overlay consults, reading through to the host's live
+// filter set: an extension's resources.setFilter for `notes` (the POI search pushing its matches)
+// hides every marker it does not select, and clearFilter restores them. The version bumps on any
+// change so the imperative overlay re-renders without the map moving.
+const notesFilter: NotesFilter = {
+  version: () => plotterExtHost.filters.version,
+  passes: (id, record) => plotterExtHost.filters.passes('notes', id, record),
+};
+
+// Discover (or refresh) the offered extensions through the authenticated session. Undefined is the
+// stock-server degrade signal: keep whatever is loaded rather than blanking on a transient failure.
+async function refreshPlotterExtensions(): Promise<void> {
+  const list = await fetchPlotterExtensions(serverOrigin(), chartsToken);
+  if (list) plotterExtHost.load(offerableExtensions(list));
+}
+
+// A development handle for driving the extension host without a server (load a manifest, inspect
+// placements), mirroring Freeboard's dev console handle. Stripped from production builds.
+if (import.meta.env.DEV) {
+  (globalThis as unknown as Record<string, unknown>).binnaclePlotterExt = plotterExtHost;
+}
+
 let waypointError = $state<string | undefined>();
 
 async function refreshWaypoints(): Promise<void> {
@@ -502,11 +580,25 @@ async function refreshWaypoints(): Promise<void> {
   }
 }
 
-async function onDropWaypoint(position: LatLon): Promise<void> {
+// A dropped waypoint opens the Add Waypoint dialog (name plus icon), seeded at the drop position;
+// confirmAddWaypoint saves it. addWaypointAt holds the pending position while the dialog is open.
+let addWaypointAt = $state<LatLon | undefined>();
+
+function onDropWaypoint(position: LatLon): void {
   waypointError = undefined;
-  const name = promptSaveName('Waypoint');
-  if (name === undefined) return;
-  const waypoint: Waypoint = { id: uuidv4(), name, position };
+  addWaypointAt = position;
+}
+
+async function confirmAddWaypoint(result: { name: string; icon?: string }): Promise<void> {
+  const position = addWaypointAt;
+  addWaypointAt = undefined;
+  if (!position) return;
+  const waypoint: Waypoint = {
+    id: uuidv4(),
+    name: result.name,
+    position,
+    ...(result.icon ? { icon: result.icon } : {}),
+  };
   if (!(await saveWaypoint(serverOrigin(), chartsToken, waypoint))) {
     waypointError = 'Could not save the waypoint. Check the connection and write access.';
     activePanel = 'waypoints';
@@ -1834,6 +1926,8 @@ $effect(() => {
   void refreshWaypoints();
   // A provider plugin enabled while the link was down would otherwise stay undetected.
   void refreshWeatherProvider(auth.token ?? undefined);
+  // An extension provider enabled (or disabled) while the link was down would otherwise stay stale.
+  void refreshPlotterExtensions();
   // A unit preset changed on the server while the link was down would otherwise hold until the
   // token changes or the page reloads.
   void units.syncFromServer(serverOrigin());
@@ -1882,6 +1976,7 @@ async function connectStream(token: string | undefined): Promise<void> {
     refreshRoutes(),
     refreshWaypoints(),
     hydrateAndSeedCourse(),
+    refreshPlotterExtensions(),
   ]);
 }
 
@@ -2005,6 +2100,7 @@ onDestroy(() => {
     <ChartCanvas
       {units}
       waypoints={waypointsStore}
+      {notesFilter}
       symbols={symbolsStore}
       onDropWaypoint={(position) => void onDropWaypoint(position)}
       aisTrailsAvailable={() => serverFeatures?.plugins.has('tracks') ?? false}
@@ -2051,7 +2147,10 @@ onDestroy(() => {
         flagRouteError('Could not load the route editor. Check the connection and try again.')}
       {onRouteEdited}
       onAnchorMoved={(position) => void onAnchorMoved(position)}
+      resolveAddWidget={(x, y, width, height) =>
+        addWidgetActionAt(plotterExtHost, x, y, width, height)}
     />
+    <PlotterExtHostView host={plotterExtHost} origin={serverOrigin()} />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
@@ -2384,6 +2483,7 @@ onDestroy(() => {
         <CloudSun size={16} aria-hidden="true" />
         Forecast
       </button>
+      <ToolbarButtons host={plotterExtHost} />
     </div>
     <div class="center-cluster">
       <span class="readout">View</span>
@@ -2393,6 +2493,15 @@ onDestroy(() => {
     </div>
   </footer>
 </main>
+
+{#if addWaypointAt}
+  <AddWaypointDialog
+    defaultName={defaultSaveName('Waypoint')}
+    symbols={symbolsStore}
+    onSave={(result) => void confirmAddWaypoint(result)}
+    onCancel={() => (addWaypointAt = undefined)}
+  />
+{/if}
 
 <style>
 .binnacle-shell {

@@ -22,12 +22,26 @@ describe('waypointToFeature', () => {
     const body = waypointToFeature({ ...WAYPOINT, description: undefined });
     expect('description' in body).toBe(false);
   });
+
+  it('writes the icon into feature.properties.skIcon, empty properties when none', () => {
+    expect(waypointToFeature({ ...WAYPOINT, icon: 'custom:dive-flag' }).feature.properties).toEqual(
+      {
+        skIcon: 'custom:dive-flag',
+      },
+    );
+    expect(waypointToFeature(WAYPOINT).feature.properties).toEqual({});
+  });
 });
 
 describe('featureToWaypoint', () => {
   it('round-trips a waypoint through the resource body', () => {
     const back = featureToWaypoint(WAYPOINT.id, waypointToFeature(WAYPOINT));
     expect(back).toEqual(WAYPOINT);
+  });
+
+  it('round-trips the icon via feature.properties.skIcon', () => {
+    const withIcon = { ...WAYPOINT, icon: 'custom:dive-flag' };
+    expect(featureToWaypoint(withIcon.id, waypointToFeature(withIcon))).toEqual(withIcon);
   });
 
   it('falls back to the id as the name and drops an empty description', () => {

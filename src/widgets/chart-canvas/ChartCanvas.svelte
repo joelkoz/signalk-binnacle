@@ -28,7 +28,7 @@ import { COLLISION_OVERLAY_ID, createCollisionOverlay } from '$features/lookout'
 import { createMeasureOverlay } from '$features/measure';
 import { createMobOverlay, MOB_OVERLAY_ID } from '$features/mob';
 import { createMpaOverlay, MPA_SOURCES } from '$features/mpa-overlays';
-import { createNotesOverlay, type NoteSelection } from '$features/notes';
+import { createNotesOverlay, type NoteSelection, type NotesFilter } from '$features/notes';
 import { buildOceanSources, createOceanOverlay } from '$features/ocean-conditions';
 import type { RouteEditor } from '$features/route-edit';
 import { createCourseOverlay, createRouteOverlay } from '$features/route-layer';
@@ -80,6 +80,9 @@ interface Props {
   units: UnitsStore;
   // Standard server waypoints, drawn as named markers in the routes band.
   waypoints: WaypointsStore;
+  // The plotter-extension display filter for POI notes, so an extension's resources.setFilter hides
+  // the markers it does not select. Absent on a stock server, where every fetched POI shows.
+  notesFilter?: NotesFilter;
   // Provided chart symbols (signalk-symbol-manager), empty on a stock server.
   symbols?: SymbolsStore;
   // The active theme, so the on-chart route editor restyles its draw layers per theme.
@@ -116,6 +119,15 @@ interface Props {
   onDropWaypoint?: (position: LatLon) => void;
   // Arm the measure tool seeded with the long-pressed chart position as its first point.
   onMeasureFrom?: (position: LatLon) => void;
+  // Resolve a plotter-extension "Add widget" action for a context-menu press in chart pixels.
+  // Returns an action when the press lands in a widget area that can take one, else undefined so
+  // the menu omits the item. The chart stays decoupled from the plotter-ext feature; App wires it.
+  resolveAddWidget?: (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) => (() => void) | undefined;
   // The lazily-imported route editor chunk failed to load, so the app can surface it.
   onRouteEditorError?: () => void;
   // The navigator hand-edited the route geometry (a drag, a midpoint insert, a tap), as opposed to the
@@ -141,6 +153,7 @@ const {
   measure,
   units,
   waypoints,
+  notesFilter,
   symbols,
   collision,
   guidance,
@@ -168,6 +181,7 @@ const {
   onStartRoute,
   onDropWaypoint,
   onMeasureFrom,
+  resolveAddWidget,
   onRouteEditorError,
   onRouteEdited,
   aisTrailsAvailable,
@@ -260,6 +274,7 @@ onMount(() => {
       // order within a band.
       const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect, symbols, {
         isOnline: isOnline ?? (() => true),
+        filter: notesFilter,
       });
       // One list feeds both registration and the per-frame tick, so the two cannot drift. The order
       // sets z within each band (tides under the safety overlays, the own vessel on top).
@@ -413,6 +428,7 @@ onDestroy(() => mapHandle?.destroy());
 <div class="chart-canvas" bind:this={container}>
   {#if chartMenu}
     {@const menu = chartMenu}
+    {@const addWidget = resolveAddWidget?.(menu.x, menu.y, menu.width, menu.height)}
     <ChartContextMenu
       x={menu.x}
       y={menu.y}
@@ -435,6 +451,12 @@ onDestroy(() => mapHandle?.destroy());
       onMeasureFrom={onMeasureFrom
         ? () => {
             onMeasureFrom({ latitude: menu.lat, longitude: menu.lon });
+            chartMenu = undefined;
+          }
+        : undefined}
+      onAddWidget={addWidget
+        ? () => {
+            addWidget();
             chartMenu = undefined;
           }
         : undefined}
