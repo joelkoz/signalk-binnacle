@@ -337,13 +337,14 @@ $effect(() => {
         {/if}
       {/if}
       {#if draftAvailable && draft === undefined}
-        {@const tooMany = working.waypoints.length > MAX_OPTIMIZE_WAYPOINTS}
+        {@const waypointCount = working.waypoints.length}
+        {@const tooMany = waypointCount > MAX_OPTIMIZE_WAYPOINTS}
         <div class="optimize">
           <button
             type="button"
             class="btn btn--grow"
             onclick={() => onOptimize(optimizeHint.trim())}
-            disabled={draftLoading || working.waypoints.length < 2 || tooMany}
+            disabled={draftLoading || waypointCount < 2 || tooMany}
             aria-label="Optimize this route with AI"
           >
             <Sparkles size={16} aria-hidden="true" />
