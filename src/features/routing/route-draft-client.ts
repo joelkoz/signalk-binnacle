@@ -7,6 +7,10 @@ export const ROUTE_DRAFT_PATH = '/plugins/signalk-crows-nest/api/route-draft';
 export const ROUTE_DRAFT_PLUGIN_ID = 'signalk-crows-nest';
 // The signalk-crows-nest version that first ships the route-draft endpoint.
 export const ROUTE_DRAFT_PLUGIN_MIN_VERSION = '0.10.0';
+// The most waypoints the server accepts as an optimize seed (it mirrors the server's output cap).
+// Binnacle gates the Optimize control on this so a too-detailed route is refused before a round-trip
+// rather than after the navigator has waited for one.
+export const MAX_OPTIMIZE_WAYPOINTS = 25;
 
 export interface DraftRouteRequest {
   prompt: string;
@@ -60,6 +64,9 @@ export interface DraftView {
   fuel?: string;
   confidence?: 'high' | 'low';
   flags?: readonly DraftFlagItem[];
+  // 'draft' for a route drafted from a prompt, 'optimize' for an improved drawn route. Branches only
+  // the banner's first sentence so the navigator knows the AI moved their own waypoints.
+  source: 'draft' | 'optimize';
 }
 
 // The single source for the error set: the type is derived from this list and the runtime guard reads

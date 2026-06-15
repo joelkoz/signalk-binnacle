@@ -5,6 +5,7 @@ import {
   Navigation,
   Plus,
   Save,
+  Sparkles,
   Square,
   SquarePen,
   Trash2,
@@ -31,7 +32,7 @@ import {
   UnitField,
   VisibilityToggle,
 } from '$shared/ui';
-import type { DraftView } from './route-draft-client';
+import { type DraftView, MAX_OPTIMIZE_WAYPOINTS } from './route-draft-client';
 
 interface Props {
   routes: Route[];
@@ -71,6 +72,14 @@ interface Props {
   // The active AI draft as display strings (the caller formats the fuel line and orders the flags),
   // or undefined for a hand-drawn working route. Its presence is what makes the route a draft.
   draft: DraftView | undefined;
+  // Optimize the drawn route via the same plugin. Shown while editing a hand-drawn route.
+  onOptimize: (hint: string) => void;
+  // Restore the pre-optimize drawing instead of clearing, used by Cancel during an optimize draft.
+  onCancelDraft: () => void;
+  // True when the current draft came from Optimize, so Cancel restores rather than discards.
+  optimizeDraft: boolean;
+  // True when the last optimize returned an unchanged route, so the panel shows a brief note.
+  optimizeUnchanged: boolean;
 }
 
 const {
@@ -99,6 +108,10 @@ const {
   draftError,
   onDraft,
   draft,
+  onOptimize,
+  onCancelDraft,
+  optimizeDraft,
+  optimizeUnchanged,
 }: Props = $props();
 
 function promptSave(): void {
@@ -165,6 +178,10 @@ let draftPrompt = $state('');
 const trimmedPrompt = $derived(draftPrompt.trim());
 let saveArmed = $state(false);
 
+// Optimize hint: an opt-in one-liner so the action stays one-click. Collapsed by default.
+let hintOpen = $state(false);
+let optimizeHint = $state('');
+
 // Draft save name: seeded from the draft's name when the working route first becomes a draft, but not
 // overwritten while the user is typing. The wasDraft guard prevents the effect from fighting a user
 // edit on subsequent renders.
@@ -182,6 +199,8 @@ $effect(() => {
     draftPrompt = '';
     saveArmed = false;
     saveName = '';
+    hintOpen = false;
+    optimizeHint = '';
   }
 });
 </script>
@@ -263,7 +282,11 @@ $effect(() => {
             <Save size={16} aria-hidden="true" />
             Save
           </button>
-          <button type="button" class="btn" onclick={onCancelEdit}>
+          <button
+            type="button"
+            class="btn"
+            onclick={() => (optimizeDraft ? onCancelDraft() : onCancelEdit())}
+          >
             <X size={16} aria-hidden="true" />
             Cancel
           </button>
@@ -271,11 +294,16 @@ $effect(() => {
       {/snippet}
       {#if draft}
         <p class="alert-note" role="alert">
-          Not chart-verified. Check every leg against the chart and save only what you have
-          verified. This AI draft is checked against the NOAA ENC charted depth-area contour,
-          charted land, and charted point hazards (wrecks, rocks, and obstructions) along each leg.
-          It is advisory, online, and US waters only, it is not a substitute for the chart, and a
-          charted area can still hold an isolated sounding shoaler than its contour.
+          {#if draft.source === 'optimize'}
+            Not chart-verified. The AI moved your waypoints to find safer water.
+          {:else}
+            Not chart-verified.
+          {/if}
+          Check every leg against the chart and save only what you have verified. This AI draft is
+          checked leg by leg against charted and modeled marine data that varies by region and does
+          not cover depth everywhere. Read each flag below with its stated source and datum. It is
+          advisory and online, it is not a substitute for the chart, and the absence of a flag is
+          not proof of clear water.
         </p>
         {#if draft.confidence === 'low'}
           <p class="alert-note" role="alert">
@@ -306,6 +334,50 @@ $effect(() => {
               </li>
             {/each}
           </ul>
+        {/if}
+      {/if}
+      {#if draftAvailable && draft === undefined}
+        {@const tooMany = working.waypoints.length > MAX_OPTIMIZE_WAYPOINTS}
+        <div class="optimize">
+          <button
+            type="button"
+            class="btn btn--grow"
+            onclick={() => onOptimize(optimizeHint.trim())}
+            disabled={draftLoading || working.waypoints.length < 2 || tooMany}
+            aria-label="Optimize this route with AI"
+          >
+            <Sparkles size={16} aria-hidden="true" />
+            Optimize route
+          </button>
+          <button
+            type="button"
+            class="btn"
+            onclick={() => (hintOpen = !hintOpen)}
+            aria-expanded={hintOpen}
+            disabled={draftLoading}
+          >
+            Add a constraint
+          </button>
+        </div>
+        {#if hintOpen}
+          <input
+            class="input"
+            type="text"
+            bind:value={optimizeHint}
+            placeholder="stay 3 nm off"
+            aria-label="Optimize constraint"
+          >
+        {/if}
+        {#if tooMany}
+          <p class="muted-note">
+            Simplify the route to optimize it: the limit is {MAX_OPTIMIZE_WAYPOINTS} waypoints.
+          </p>
+        {/if}
+        {#if draftLoading}
+          <p class="muted-note">Optimizing...</p>
+        {/if}
+        {#if optimizeUnchanged}
+          <p class="muted-note">No safer or shorter route found. Your route is unchanged.</p>
         {/if}
       {/if}
       <dl class="stat-grid">
@@ -536,6 +608,11 @@ $effect(() => {
   flex-direction: column;
   gap: 0.45rem;
   padding: 0.5rem 0;
+}
+/* The optimize action and its constraint toggle sit on one row above the working-plan stats. */
+.optimize {
+  display: flex;
+  gap: 0.4rem;
 }
 /* The box, border, and type come from the global .input utility; only the textarea-specific resize,
    block padding (.input is a single-line control with inline padding only), and disabled dimming are

@@ -25,7 +25,12 @@ import { MeasureStore } from '$entities/measure';
 import { type MobMark, MobStore } from '$entities/mob';
 import { type ActiveNotification, NotificationsStore } from '$entities/notifications';
 import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$entities/profile';
-import { RouteStore, remainingRouteDistanceMeters, reverseRoute } from '$entities/route';
+import {
+  type Route as RouteModel,
+  RouteStore,
+  remainingRouteDistanceMeters,
+  reverseRoute,
+} from '$entities/route';
 import { SymbolsStore } from '$entities/symbols';
 import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
@@ -81,7 +86,9 @@ import {
   advancePoint,
   clearCourse,
   type DraftError,
+  type DraftedRoute,
   type DraftResult,
+  type DraftRouteRequest,
   type DraftView,
   deleteRoute,
   downloadRouteGpx,
@@ -135,10 +142,11 @@ import {
   formatLongitude,
   formatTcpaMin,
   lengthUnit,
+  nauticalMilesToMeters,
   uuidv4,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
-import { etaSeconds } from '$shared/nav';
+import { etaSeconds, routesRoughlyEqual } from '$shared/nav';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
 import {
   createMapView,
@@ -1267,6 +1275,11 @@ let draftView = $state<DraftView | undefined>();
 // a stale or cancelled response that resolves after a newer one was issued.
 let draftAbort: AbortController | undefined;
 let draftSeq = 0;
+// The hand-drawn route stashed before an optimize, restored if the navigator cancels the result, so
+// Optimize is non-destructive. Set means "the current draft came from Optimize".
+let optimizeOriginal = $state<RouteModel | undefined>();
+// Set true when an optimize returned an effectively unchanged route, so the panel shows a brief note.
+let optimizeUnchanged = $state(false);
 
 const DRAFT_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
   budget:
@@ -1282,6 +1295,20 @@ const DRAFT_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
   'bad-request': 'The draft request was rejected. Try rephrasing the passage.',
 };
 
+// Optimize reuses the draft error copy, but the over-cap and no-route case reads differently: the
+// navigator gave a real drawn route, so the failure is "the optimized result was unusable", not
+// "could not draft from your words".
+const OPTIMIZE_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
+  ...DRAFT_ERROR_MESSAGES,
+  'no-route':
+    'The optimized route came back unusable or too detailed. Simplify the route and try again.',
+  'bad-request': 'The drawn route could not be optimized. Simplify it and try again.',
+};
+
+// Two routes within this per-waypoint distance count as unchanged, so an optimize that moved nothing
+// shows a note instead of forcing a full re-verification.
+const UNCHANGED_TOLERANCE_M = nauticalMilesToMeters(0.05);
+
 function clearDraftState(): void {
   draftAbort?.abort();
   draftAbort = undefined;
@@ -1290,6 +1317,8 @@ function clearDraftState(): void {
   draftLoading = false;
   draftError = undefined;
   draftView = undefined;
+  optimizeOriginal = undefined;
+  optimizeUnchanged = false;
 }
 
 // The companion scopes nearby notes and POIs to an area of interest. The live map viewport is that
@@ -1305,6 +1334,53 @@ function vesselAreaBounds({ latitude, longitude }: LatLon): Bbox4 {
   ]);
 }
 
+// The shared request path for draft and optimize: one in-flight call, aborting any prior, with the
+// sequence guard that drops a superseded or cancelled response. Returns the result, or undefined when
+// this call was superseded (the caller does nothing in that case). The GPS-fix precondition lives in
+// onDraftRoute only, since optimize works on a drawn route with no fix.
+async function runDraft(req: DraftRouteRequest): Promise<DraftResult | undefined> {
+  draftAbort?.abort();
+  const controller = new AbortController();
+  draftAbort = controller;
+  const mine = ++draftSeq;
+  draftLoading = true;
+  let result: DraftResult;
+  try {
+    result = await draftRoute(serverOrigin(), chartsToken, req, controller.signal);
+  } catch {
+    // The client classifies every error itself, so a throw here is unexpected. Guard anyway: a future
+    // regression must never strand the spinner with no error and no way back but cancel.
+    if (mine !== draftSeq) return undefined;
+    draftLoading = false;
+    return { ok: false, error: 'model-error', message: 'unexpected' };
+  }
+  // A newer request (or a cancel) superseded this one: drop the result without touching the UI.
+  if (mine !== draftSeq) return undefined;
+  draftLoading = false;
+  return result;
+}
+
+// Open a returned route as a working draft: set it editing, frame it, and build the panel view. The
+// id is the caller's: a fresh uuid for a from-scratch draft, the drawn route's id for an optimize, so
+// saving an optimized saved route overwrites it rather than orphaning a copy.
+function applyDraft(route: DraftedRoute, source: 'draft' | 'optimize', id: string): void {
+  const working = { id, name: route.name ?? '', waypoints: route.waypoints };
+  routeStore.setWorking(working);
+  mapCommands?.startRouteEdit(working);
+  // Frame the whole passage so every leg is visible before the navigator verifies it.
+  const box = boundsOfPoints(route.waypoints.map((w) => w.position));
+  if (box) mapCommands?.fitBounds(padBbox(box, 0.15));
+  draftView = {
+    name: working.name,
+    destination: route.destination?.name,
+    note: route.note !== '' ? route.note : undefined,
+    fuel: route.fuel ? formatDraftFuel(route.fuel, units.mode) : undefined,
+    confidence: route.confidence,
+    flags: route.flags ? groupDraftFlags(route.flags) : undefined,
+    source,
+  };
+}
+
 async function onDraftRoute(prompt: string): Promise<void> {
   clearRouteError();
   draftError = undefined;
@@ -1317,58 +1393,69 @@ async function onDraftRoute(prompt: string): Promise<void> {
     draftError = 'Vessel position is stale. Wait for a fresh GPS fix before drafting.';
     return;
   }
-  draftAbort?.abort();
-  const controller = new AbortController();
-  draftAbort = controller;
-  const mine = ++draftSeq;
-  draftLoading = true;
-  let result: DraftResult;
-  try {
-    result = await draftRoute(
-      serverOrigin(),
-      chartsToken,
-      {
-        prompt,
-        from,
-        bounds: mapCommands?.getBounds() ?? vesselAreaBounds(from),
-        units: units.mode,
-      },
-      controller.signal,
-    );
-  } catch {
-    // The client classifies every error itself, so a throw here is unexpected. Guard anyway: a future
-    // regression must never strand the spinner with no error and no way back but cancel.
-    if (mine !== draftSeq) return;
-    draftLoading = false;
-    draftError = DRAFT_ERROR_MESSAGES['model-error'];
-    return;
-  }
-  // A newer draft (or a cancel) superseded this one: drop the result without touching the UI.
-  if (mine !== draftSeq) return;
-  draftLoading = false;
+  const result = await runDraft({
+    prompt,
+    from,
+    bounds: mapCommands?.getBounds() ?? vesselAreaBounds(from),
+    units: units.mode,
+  });
+  if (!result) return;
   if (!result.ok) {
-    // A cancelled draft was aborted by a newer request or a clear. The sequence
-    // guard above drops the superseded ones, so a cancel stays silent here too.
-    if (result.error !== 'cancelled') {
-      draftError = DRAFT_ERROR_MESSAGES[result.error];
-    }
+    // A cancelled draft was aborted by a newer request or a clear; the sequence guard already dropped
+    // the superseded ones, so a cancel stays silent here too.
+    if (result.error !== 'cancelled') draftError = DRAFT_ERROR_MESSAGES[result.error];
     return;
   }
-  const { route } = result;
-  const working = { id: uuidv4(), name: route.name ?? '', waypoints: route.waypoints };
-  routeStore.setWorking(working);
-  mapCommands?.startRouteEdit(working);
-  // Frame the whole drafted passage so every leg is visible before the navigator verifies it.
-  const box = boundsOfPoints(route.waypoints.map((w) => w.position));
-  if (box) mapCommands?.fitBounds(padBbox(box, 0.15));
-  draftView = {
-    name: working.name,
-    destination: route.destination?.name,
-    note: route.note !== '' ? route.note : undefined,
-    fuel: route.fuel ? formatDraftFuel(route.fuel, units.mode) : undefined,
-    confidence: route.confidence,
-    flags: route.flags ? groupDraftFlags(route.flags) : undefined,
-  };
+  applyDraft(result.route, 'draft', uuidv4());
+}
+
+// Optimize the drawn working route: send it to the same plugin and present the improved result as a
+// non-destructive draft. Stashes the original so Cancel restores it, asserts the optimized marker to
+// reject an older same-version build, and shows a note rather than the verify ritual when nothing moved.
+async function onOptimizeRoute(hint: string): Promise<void> {
+  clearRouteError();
+  const working = routeStore.working;
+  if (!working || working.waypoints.length < 2) return;
+  const positions = working.waypoints.map((w) => w.position);
+  // No GPS-fix requirement: the drawn route defines start, end, and area. Send the fix as context when
+  // fresh, else fall back to the route's first waypoint.
+  const from = vessel.position && !vessel.positionStale ? vessel.position : positions[0];
+  // The pad is wider than the draft's 0.15 so the model has room to move waypoints seaward to clear
+  // hazards without the server dropping a good turn as out of window. A crossing (dateline) box flows
+  // through clampToWorld and padBbox's unwrapEast unchanged.
+  const box = boundsOfPoints(positions);
+  const bounds = box ? clampToWorld(padBbox(box, 0.25)) : vesselAreaBounds(positions[0]);
+  optimizeOriginal = working;
+  optimizeUnchanged = false;
+  const result = await runDraft({
+    route: positions,
+    prompt: hint,
+    from,
+    bounds,
+    units: units.mode,
+  });
+  if (!result) return;
+  if (!result.ok) {
+    if (result.error !== 'cancelled') flagRouteError(OPTIMIZE_ERROR_MESSAGES[result.error]);
+    optimizeOriginal = undefined;
+    return;
+  }
+  if (!result.optimized) {
+    // A crows-nest build that does not yet consume route silently drafted from scratch; do not show
+    // that as an optimize. The version gate cannot catch this during the shared 0.10.0 dev window.
+    flagRouteError(
+      'This route-drafting plugin version cannot optimize a route. Update the plugin.',
+    );
+    optimizeOriginal = undefined;
+    return;
+  }
+  const optimized = result.route.waypoints.map((w) => w.position);
+  if (routesRoughlyEqual(positions, optimized, UNCHANGED_TOLERANCE_M)) {
+    optimizeUnchanged = true;
+    optimizeOriginal = undefined;
+    return;
+  }
+  applyDraft(result.route, 'optimize', working.id);
 }
 
 function beginNewRoute(initialPoint?: LatLon): void {
@@ -1419,6 +1506,18 @@ async function onSaveRoute(name: string): Promise<void> {
   clearDraftState();
   routeStore.toggleShown(route.id, true);
   await refreshRoutes();
+}
+
+// The editing-group Cancel during an optimize draft: put the drawn route back and stay in edit,
+// rather than discarding everything. clearDraftState clears the stash and draft view first, so the
+// restore reads the captured original, not a value it just nulled.
+function onCancelDraft(): void {
+  const original = optimizeOriginal;
+  clearDraftState();
+  if (original) {
+    routeStore.setWorking(original);
+    mapCommands?.startRouteEdit(original);
+  }
 }
 
 function onCancelRouteEdit(): void {
@@ -1993,6 +2092,10 @@ onDestroy(() => {
           {draftError}
           onDraft={onDraftRoute}
           draft={draftView}
+          onOptimize={onOptimizeRoute}
+          {onCancelDraft}
+          optimizeDraft={optimizeOriginal !== undefined}
+          {optimizeUnchanged}
           onClose={() => {
             onCancelRouteEdit();
             clearRouteError();
