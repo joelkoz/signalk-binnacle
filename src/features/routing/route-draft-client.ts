@@ -13,6 +13,9 @@ export interface DraftRouteRequest {
   from: { latitude: number; longitude: number };
   bounds: [number, number, number, number];
   units: 'metric' | 'imperial';
+  // The drawn route to optimize, ordered, coordinates only. Its presence makes the request an
+  // optimize: the server refines this polyline instead of drafting from the prompt alone.
+  route?: { latitude: number; longitude: number }[];
 }
 
 export interface DraftFuel {
@@ -74,7 +77,7 @@ const DRAFT_ERRORS = [
 export type DraftError = (typeof DRAFT_ERRORS)[number];
 
 export type DraftResult =
-  | { ok: true; route: DraftedRoute }
+  | { ok: true; route: DraftedRoute; optimized: boolean }
   | { ok: false; error: DraftError; message: string };
 
 const KNOWN_ERRORS = new Set<DraftError>(DRAFT_ERRORS);
@@ -289,5 +292,7 @@ export async function draftRoute(
     ...(flags.length > 0 ? { flags } : {}),
   };
 
-  return { ok: true, route };
+  // optimized is the server's marker that it actually consumed the route field. The optimize caller
+  // asserts it to catch an older same-version build that ignored route and drafted from scratch.
+  return { ok: true, route, optimized: b.optimized === true };
 }

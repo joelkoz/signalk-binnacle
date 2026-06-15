@@ -389,6 +389,32 @@ describe('draftRoute trust-boundary validation', () => {
   });
 });
 
+describe('draftRoute optimize fields', () => {
+  const seed = [
+    { latitude: 1, longitude: 2 },
+    { latitude: 3, longitude: 4 },
+  ];
+
+  it('forwards an optional route array on the request body', async () => {
+    const mock = stubFetch({ ok: true, body: { ...GOOD_BODY, optimized: true } });
+    await draftRoute(BASE, TOKEN, { ...REQ, route: seed });
+    const sent = JSON.parse((mock.mock.calls[0][1] as RequestInit).body as string);
+    expect(sent.route).toEqual(seed);
+  });
+
+  it('reports the optimized marker on a successful response', async () => {
+    stubFetch({ ok: true, body: { ...GOOD_BODY, optimized: true } });
+    const result = await draftRoute(BASE, TOKEN, REQ);
+    expect(result.ok && result.optimized).toBe(true);
+  });
+
+  it('leaves optimized falsy when the response omits the marker', async () => {
+    stubFetch({ ok: true, body: GOOD_BODY });
+    const result = await draftRoute(BASE, TOKEN, REQ);
+    expect(result.ok && result.optimized).toBeFalsy();
+  });
+});
+
 describe('routeDraftAvailable', () => {
   const plugins = (version: string) =>
     new Map([[ROUTE_DRAFT_PLUGIN_ID, version]]) as ReadonlyMap<string, string>;
