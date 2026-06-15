@@ -66,6 +66,10 @@ export function createRouteEditor(opts: {
   beforeId?: string;
   theme: Theme;
   onChange: (waypoints: Waypoint[]) => void;
+  // Fired when the navigator edits the geometry by hand (a drag, a midpoint insert, a tap), but not
+  // for the programmatic seeding of an existing route through start(). Lets the app drop a shown AI
+  // draft out of draft mode when the route is hand-tweaked, so it reads as a plain editable route.
+  onUserEdit?: () => void;
 }): RouteEditor {
   const color = drawColor(opts.theme);
   const draw = new TerraDraw({
@@ -116,6 +120,11 @@ export function createRouteEditor(opts: {
   // is dropped. The finish event (double-tap or Enter completes the line and removes the ghost)
   // clears the flag so the completed line's coordinates are then all kept.
   let drawing = false;
+
+  // start() seeds an existing route with addFeatures, which fires a change like any edit. This flag
+  // marks that seeding window so the change handler does not report it as a user edit, which would
+  // drop a draft the instant it is shown. It is cleared in a microtask after the synchronous seed.
+  let seeding = false;
 
   // Re-attach names: a rebuilt coordinate that equals a remembered waypoint's position keeps that
   // waypoint's name, consuming remembered entries in order so a route that visits the same point
@@ -203,6 +212,8 @@ export function createRouteEditor(opts: {
     const next = read();
     remember(next);
     opts.onChange(next);
+    // Suppress only the seeding change; every later change is the navigator editing the geometry.
+    if (!seeding) opts.onUserEdit?.();
   });
 
   // Completing a line (double-tap or Enter) removes Terra Draw's trailing ghost, so stop dropping a
@@ -241,8 +252,13 @@ export function createRouteEditor(opts: {
       draw.start();
       if (route && route.waypoints.length > 0) {
         drawing = false;
+        seeding = true;
         draw.addFeatures([routeToStoreFeature(route)]);
         draw.setMode('select');
+        // Clear after the synchronous seeding change has fired, so only later edits count as the user's.
+        queueMicrotask(() => {
+          seeding = false;
+        });
       } else {
         drawing = true;
         draw.setMode(LINESTRING_MODE);

@@ -118,6 +118,9 @@ interface Props {
   onMeasureFrom?: (position: LatLon) => void;
   // The lazily-imported route editor chunk failed to load, so the app can surface it.
   onRouteEditorError?: () => void;
+  // The navigator hand-edited the route geometry (a drag, a midpoint insert, a tap), as opposed to the
+  // app seeding a route. Lets the app drop a shown AI draft out of draft mode when the route is tweaked.
+  onRouteEdited?: () => void;
   // Whether the server runs the tracks plugin, read per tick so trails light up when known.
   aisTrailsAvailable?: () => boolean;
   // Connectivity, so the notes overlay can serve expired cached POIs while offline instead of
@@ -166,6 +169,7 @@ const {
   onDropWaypoint,
   onMeasureFrom,
   onRouteEditorError,
+  onRouteEdited,
   aisTrailsAvailable,
   isOnline,
   historyProviders,
@@ -312,6 +316,7 @@ onMount(() => {
                 const working = routeStore.working;
                 if (working) routeStore.setWorking({ ...working, waypoints });
               },
+              onUserEdit: () => onRouteEdited?.(),
             });
             return routeEditor;
           })

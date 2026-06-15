@@ -1526,6 +1526,17 @@ function onCancelRouteEdit(): void {
   clearDraftState();
 }
 
+// A manual edit of a draft's geometry (a drag, a midpoint insert) accepts it as a hand-drawn route:
+// clear the draft view and the optimize stash so the route becomes a normal working route the
+// navigator can re-optimize or save without the not-chart-verified banner. The route geometry itself
+// is already updated by the editor's onChange; this only sheds the draft framing.
+function onRouteEdited(): void {
+  if (draftView === undefined) return;
+  draftView = undefined;
+  optimizeOriginal = undefined;
+  optimizeUnchanged = false;
+}
+
 // Seed the course cells once from a REST GET, then the stream keeps them live. The v2
 // navigation.course paths are not in the v1 full model, so under subscribe=none the stream sends
 // nothing until the next change; this makes the nav strip show values immediately on activation.
@@ -2030,6 +2041,7 @@ onDestroy(() => {
       }}
       onRouteEditorError={() =>
         flagRouteError('Could not load the route editor. Check the connection and try again.')}
+      {onRouteEdited}
       onAnchorMoved={(position) => void onAnchorMoved(position)}
     />
     <div class="banner-slot">

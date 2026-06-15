@@ -334,6 +334,33 @@ describe('createRouteEditor drawing-mode reads', () => {
     ]);
   });
 
+  it('does not report seeding an existing route as a user edit, but reports a later hand edit', async () => {
+    const edits = vi.fn();
+    const editor = createRouteEditor({
+      map: {} as MapLibreMap,
+      theme: 'day',
+      onChange: () => {},
+      onUserEdit: edits,
+    });
+    editor.start({
+      id: 'r',
+      name: 'R',
+      waypoints: [
+        { position: { latitude: 0, longitude: 0 } },
+        { position: { latitude: 1, longitude: 1 } },
+      ],
+    });
+    // The seeding change fires synchronously inside start(); the flag clears in a microtask.
+    await Promise.resolve();
+    expect(edits).not.toHaveBeenCalled();
+    // A drag after seeding is the navigator's edit, so it is reported.
+    lastInstance().mutateLine([
+      [0, 0],
+      [1.5, 1.2],
+    ]);
+    expect(edits).toHaveBeenCalledTimes(1);
+  });
+
   it('seeds the first waypoint by dispatching an opening tap at the projected pixel', async () => {
     // "Start a route here" replays a real opening tap; stub PointerEvent (absent in the node test
     // env) and a minimal map exposing only the canvas and projection placeFirstPoint uses.
