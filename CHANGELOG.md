@@ -16,11 +16,19 @@ All notable changes to Binnacle are documented here. The format follows
   a fuel estimate in your units, any land, shallow, hazard, or fuel flags above the leg table, and a
   note when the model marks the draft low confidence.
   Charted point hazards are grouped per leg, so a hazard-dense river or harbor passage reads as one
-  count plus a short breakdown rather than dozens of lines. Each leg is checked against the NOAA ENC
-  charted depth-area contour, charted land, and charted point hazards. It cannot be minimized while a
-  draft is up, and it saves only behind an armed "I checked every leg" confirm. The control appears
-  only when signalk-crows-nest is installed at a version that ships the route-draft endpoint; on a
-  stock server it stays hidden, with no error.
+  count plus a short breakdown rather than dozens of lines. Each leg is checked against charted and
+  modeled marine data that varies by region, and every flag states its source and datum; the absence
+  of a flag is not proof of clear water. It cannot be minimized while a draft is up, and it saves only
+  behind an armed "I checked every leg" confirm. The control appears only when signalk-crows-nest is
+  installed at a version that ships the route-draft endpoint; on a stock server it stays hidden, with
+  no error.
+- Optimize a drawn route. While editing a route, tap Optimize and signalk-crows-nest returns an
+  improved route, with safer and more detailed turning points and a more efficient track, opened in
+  the same review-before-save draft panel with its per-leg flags. It is one tap, with an optional
+  one-line constraint such as "stay 3 nm off", and it is non-destructive: Cancel restores your
+  drawing, an unchanged result says so, and hand-editing the result accepts it as a normal route you
+  can save or optimize again. Like drafting, it appears only when signalk-crows-nest is installed at a
+  version that ships the route-draft endpoint.
 - AIS course vectors. Each moving AIS target draws a short predictor line projecting its position
   about ten minutes ahead along its course at its speed, red for a danger contact and amber for a
   warning, so a crowded screen shows at a glance which targets are moving and which way. A
