@@ -201,8 +201,7 @@ export function createRouteEditor(opts: {
       queueMicrotask(prune);
     }
     const placed = drawFeatureToWaypoints(line);
-    // Drop the trailing cursor ghost while drawing a fresh route (see `drawing` above). slice(0, -1)
-    // on an empty array is already empty, so no length guard is needed.
+    // Drop the trailing cursor ghost while drawing a fresh route (see `drawing` above).
     const waypoints = drawing ? placed.slice(0, -1) : placed;
     return reconcileNames(waypoints);
   };

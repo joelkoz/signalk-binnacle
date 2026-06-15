@@ -411,7 +411,8 @@ describe('draftRoute optimize fields', () => {
   it('leaves optimized falsy when the response omits the marker', async () => {
     stubFetch({ ok: true, body: GOOD_BODY });
     const result = await draftRoute(BASE, TOKEN, REQ);
-    expect(result.ok && result.optimized).toBeFalsy();
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.optimized).toBeFalsy();
   });
 });
 

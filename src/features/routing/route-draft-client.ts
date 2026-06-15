@@ -13,6 +13,8 @@ export const ROUTE_DRAFT_PLUGIN_MIN_VERSION = '0.10.0';
 export const MAX_OPTIMIZE_WAYPOINTS = 25;
 
 export interface DraftRouteRequest {
+  // An empty string is valid when route is present (an optimize with no hint); the server requires a
+  // non-empty prompt only for a from-scratch draft. Do not add a pre-send guard that drops an empty one.
   prompt: string;
   from: { latitude: number; longitude: number };
   bounds: [number, number, number, number];

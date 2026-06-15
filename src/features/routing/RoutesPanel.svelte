@@ -355,6 +355,7 @@ $effect(() => {
             class="btn"
             onclick={() => (hintOpen = !hintOpen)}
             aria-expanded={hintOpen}
+            aria-controls="optimize-constraint-input"
             disabled={draftLoading}
           >
             Add a constraint
@@ -362,6 +363,7 @@ $effect(() => {
         </div>
         {#if hintOpen}
           <input
+            id="optimize-constraint-input"
             class="input"
             type="text"
             bind:value={optimizeHint}
