@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { boundsOfPoints, normalizeBounds, padBbox } from './bounds';
+import { bboxContainsPoint, boundsOfPoints, normalizeBounds, padBbox } from './bounds';
+
+describe('bboxContainsPoint', () => {
+  const box: [number, number, number, number] = [-10, -5, 10, 5];
+  it('is true for a point inside, including on an edge', () => {
+    expect(bboxContainsPoint(box, { latitude: 0, longitude: 0 })).toBe(true);
+    expect(bboxContainsPoint(box, { latitude: 5, longitude: -10 })).toBe(true);
+  });
+  it('is false for a point outside in either axis', () => {
+    expect(bboxContainsPoint(box, { latitude: 0, longitude: 11 })).toBe(false);
+    expect(bboxContainsPoint(box, { latitude: -6, longitude: 0 })).toBe(false);
+  });
+});
 
 describe('normalizeBounds', () => {
   it('passes a normal box straight through', () => {

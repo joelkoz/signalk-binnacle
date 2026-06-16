@@ -33,6 +33,10 @@ export interface MapThemePaint {
   // Highlight ring around a selected marker. A distinct accent in day and dusk; at night
   // a light red that stays in the red band yet reads apart from the danger and warning hues.
   select: string;
+  // The lit leg of a route under edit: a warmer, more saturated tone than the editing line's select,
+  // so the highlighted segment stands out from the line it overlays rather than blending into it.
+  // Stays in the red band at night, apart from the danger and warning hues.
+  routeHighlight: string;
   // Navaid (lateral mark) fills. IALA red/green in day and dusk; at night both collapse to
   // distinguishable red shades, because night-red forbids green, so the lateral side is read
   // from the symbol shape (cone vs can, triangle vs square) rather than color.
@@ -79,6 +83,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     waypoint: '#1f6fb0',
     markerGlyph: '#ffffff',
     select: '#ffb300',
+    routeHighlight: '#ff7a00',
     navStarboard: '#d8392f',
     navPort: '#1f9e54',
     navLight: '#c026d3',
@@ -106,6 +111,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     waypoint: '#4f8fc0',
     markerGlyph: '#eef3f6',
     select: '#ffc24d',
+    routeHighlight: '#ff9433',
     navStarboard: '#e0573f',
     navPort: '#3fae6a',
     navLight: '#cf5bd9',
@@ -133,6 +139,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     waypoint: '#d96a50',
     markerGlyph: '#ff9a86',
     select: '#ffb39a',
+    routeHighlight: '#ff8c4d',
     navStarboard: '#ff6a5a',
     navPort: '#8e2a22',
     navLight: '#c0503c',
