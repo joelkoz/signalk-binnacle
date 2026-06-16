@@ -56,9 +56,18 @@ All notable changes to Binnacle are documented here. The format follows
   invalidating each overlay's change-detection cache on a base-style swap, so a cached overlay does
   not stay blank after a style reload, rather than each overlay carrying that duty itself. The AIS
   list keeps a non-finite range or CPA from scrambling its sort order.
+- Further internal consolidation and small efficiency wins, no behavior change: more overlays and
+  panels route through the shared feature-collection, layer-visibility, coordinate, and numeric
+  guards and through the shared confirm-actions style and a new warning-tint token, so a caution
+  control tints amber rather than red; the all-vessels context and the notification-path prefix have
+  one home; and the weather-overlay registration, the route name reconcile, the collision severity
+  map, and the AIS duration parse drop per-event allocations. The tidal current set is stored in SI
+  radians like every other angle, converted to degrees only in the readout.
 
 ### Fixed
 
+- The weather mini-map's tap readout no longer writes to a torn-down component if a provider answer
+  arrives after the panel is closed.
 - Offline and runtime caching works again in a secure context. The service worker's chart-tile,
   overlay, weather, and radar cache rules referenced module constants that did not survive into the
   generated worker, so the first matched fetch threw "CHART_TILE_PATH is not defined" and broke

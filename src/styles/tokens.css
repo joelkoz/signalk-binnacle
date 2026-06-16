@@ -91,6 +91,7 @@
   --accent-tint-strong: color-mix(in srgb, var(--accent) 18%, var(--surface-raised));
   --alarm-tint: color-mix(in srgb, var(--alarm) 12%, var(--surface-raised));
   --alarm-tint-strong: color-mix(in srgb, var(--alarm) 22%, var(--surface-raised));
+  --warning-tint: color-mix(in srgb, var(--warning) 12%, var(--surface-raised));
   /* The modal scrim: light by day so the chart stays readable behind an emergency dialog, darker
      in the dark themes where removing light helps rather than hurts. */
   --scrim: rgb(11 34 51 / 0.3);
@@ -118,6 +119,7 @@
   --accent-tint-strong: color-mix(in srgb, var(--accent) 26%, var(--surface-raised));
   --alarm-tint: color-mix(in srgb, var(--alarm) 18%, var(--surface-raised));
   --alarm-tint-strong: color-mix(in srgb, var(--alarm) 28%, var(--surface-raised));
+  --warning-tint: color-mix(in srgb, var(--warning) 18%, var(--surface-raised));
   --scrim: rgb(0 0 0 / 0.45);
 }
 
@@ -152,6 +154,7 @@
   --alarm-tint: color-mix(in srgb, var(--alarm) 16%, var(--surface-raised));
   /* Still a dim plane on near-black: the bold --alarm label stays the brightest pixel. */
   --alarm-tint-strong: color-mix(in srgb, var(--alarm) 26%, var(--surface-raised));
+  --warning-tint: color-mix(in srgb, var(--warning) 16%, var(--surface-raised));
   /* At night the scrim only removes light from the chart behind the dialog. */
   --scrim: rgb(0 0 0 / 0.6);
 }

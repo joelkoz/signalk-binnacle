@@ -11,6 +11,14 @@ export type Value = unknown;
 // reveals its MMSI URN. Single source of truth for the transport layer's routing.
 export const SELF_CONTEXT = 'vessels.self';
 
+// The wildcard context for every other vessel's deltas (AIS), the transport-layer sibling of
+// SELF_CONTEXT; subscriptions filter self out of this stream.
+export const ALL_VESSELS_CONTEXT: Context = 'vessels.*';
+
+// The path prefix every raised notification shares. The store mirrors a cell when its path starts
+// with this, and SK_PATHS.allNotifications is the wildcard subscription built from it.
+export const NOTIFICATIONS_PREFIX = 'notifications.';
+
 // Notification states that mean an alarm is actively raised. 'normal' and the advisory grades do
 // not sound; shared by every consumer that grades a notifications.* cell (anchor drag, MOB).
 export const ALARM_NOTIFICATION_STATES: ReadonlySet<string> = new Set(['alarm', 'emergency']);

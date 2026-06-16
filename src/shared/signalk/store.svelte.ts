@@ -1,5 +1,5 @@
 import type { AisTargetState, ConnectionState, SKFrame, Value } from './types';
-import { INITIAL_CONNECTION_STATE } from './types';
+import { INITIAL_CONNECTION_STATE, NOTIFICATIONS_PREFIX } from './types';
 
 // The four v2 status flags are all the alert list renders, so the notification dedup compares
 // them field by field; serializing the status object would allocate per delta for active alarms.
@@ -61,7 +61,7 @@ export class SignalKStore {
       const cell = this.cell(path);
       cell.value = value;
       cell.epoch = frame.epoch;
-      if (path.startsWith('notifications.')) this.#mirrorNotification(path, value);
+      if (path.startsWith(NOTIFICATIONS_PREFIX)) this.#mirrorNotification(path, value);
     }
     if (frame.ais) {
       for (const [context, incoming] of frame.ais) {

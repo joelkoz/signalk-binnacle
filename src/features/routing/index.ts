@@ -6,7 +6,7 @@ export {
   hydrateCourse,
   setDestination,
 } from './course-client';
-export { formatDraftFuel, groupDraftFlags, orderDraftFlags } from './draft-format';
+export { formatDraftFuel, groupDraftFlags } from './draft-format';
 export { parseGpxRoutes } from './gpx-import';
 export { default as RoutesPanel } from './RoutesPanel.svelte';
 export type {
@@ -21,6 +21,7 @@ export type {
 } from './route-draft-client';
 export {
   draftRoute,
+  MAX_OPTIMIZE_WAYPOINTS,
   ROUTE_DRAFT_PATH,
   ROUTE_DRAFT_PLUGIN_ID,
   ROUTE_DRAFT_PLUGIN_MIN_VERSION,

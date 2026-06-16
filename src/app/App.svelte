@@ -156,8 +156,9 @@ import {
   type MapView,
   PersistedValue,
 } from '$shared/settings';
-import type { ConnectionPhase, Context, HistoryProviders } from '$shared/signalk';
+import type { ConnectionPhase, HistoryProviders } from '$shared/signalk';
 import {
+  ALL_VESSELS_CONTEXT,
   AuthController,
   acknowledgeNotification,
   createSignalKClient,
@@ -181,7 +182,8 @@ import { createThemeController, defaultSaveName, promptSaveName, type Theme } fr
 import { ChartCanvas, type MapCommands, type UserChartRegistrar } from '$widgets/chart-canvas';
 import { WeatherMap } from '$widgets/weather-map';
 
-const ALL_VESSELS = 'vessels.*' as Context;
+// serverOrigin reads location, fixed for the page lifetime: capture once, not at every call site.
+const origin = serverOrigin();
 
 const store = new SignalKStore();
 // A one-second reactive clock drives every staleness check (a frozen GPS fix, a dropped feed), so
@@ -190,7 +192,7 @@ const clock = new Clock();
 const vessel = new OwnVessel(store, clock);
 const aisTargets = new AisTargets(store);
 const client = createSignalKClient();
-const auth = new AuthController(serverOrigin());
+const auth = new AuthController(origin);
 const net = new OnlineStatus();
 const thresholds = createThresholds();
 // Anchored own vessel treats moored and swinging boats as non-hazards, silencing the busy-anchorage
@@ -205,7 +207,7 @@ const collisionMute = new CollisionMute(clock);
 // Server capability discovery: gates the v2 Notifications transport below; an older server
 // falls back to the raw v1 delta publish.
 let serverFeatures = $state<ServerFeatures | undefined>();
-let historyProviders = $state<HistoryProviders | undefined>(undefined);
+let historyProviders = $state<HistoryProviders | undefined>();
 const notificationsApi = $derived(serverFeatures?.apis.has('notifications') ?? false);
 
 function publishDelta(path: string, value: unknown): void {
@@ -228,7 +230,7 @@ const collisionNotifier = new CollisionNotifier({
     }
     if (value.state === 'normal') {
       if (collisionAlertId) {
-        const cleared = await resolveNotification(serverOrigin(), chartsToken, collisionAlertId);
+        const cleared = await resolveNotification(origin, chartsToken, collisionAlertId);
         collisionAlertId = undefined;
         // A failed clear would strand a raised alarm on every other station (the server only
         // reaps normal-state entries); the v1 delta still announces the all-clear.
@@ -237,7 +239,7 @@ const collisionNotifier = new CollisionNotifier({
       return;
     }
     if (collisionAlertId) {
-      const updated = await updateNotification(serverOrigin(), chartsToken, collisionAlertId, {
+      const updated = await updateNotification(origin, chartsToken, collisionAlertId, {
         state: value.state,
         message: value.message,
       });
@@ -251,7 +253,7 @@ const collisionNotifier = new CollisionNotifier({
       // The server reaped or lost the id (a restart): raise afresh.
       collisionAlertId = undefined;
     }
-    collisionAlertId = await postNotification(serverOrigin(), chartsToken, {
+    collisionAlertId = await postNotification(origin, chartsToken, {
       state: value.state,
       message: value.message,
       path: 'navigation.collision',
@@ -271,7 +273,7 @@ function toggleCollisionMute(): void {
   if (collisionMute.active && collisionAlertId) {
     // A refused boat-wide silence surfaces in the Alarms panel; the local mute itself stands.
     alarmActionError = undefined;
-    void silenceNotification(serverOrigin(), chartsToken, collisionAlertId).then((ok) => {
+    void silenceNotification(origin, chartsToken, collisionAlertId).then((ok) => {
       if (!ok) {
         alarmActionError = 'Could not silence the alert boat-wide. Other stations may still sound.';
       }
@@ -295,7 +297,7 @@ function runNotificationAction(
 ): void {
   if (!notification.id) return;
   alarmActionError = undefined;
-  void action(serverOrigin(), chartsToken, notification.id).then((ok) => {
+  void action(origin, chartsToken, notification.id).then((ok) => {
     if (!ok) alarmActionError = failMessage;
   });
 }
@@ -378,7 +380,7 @@ const tidesStore = new TidesStore();
 const tidesLoader = createTidesLoader({
   pluginAvailable: () => serverFeatures?.plugins.has(SIGNALK_TIDES_PLUGIN_ID) ?? false,
   pluginTides: (lat, lon) =>
-    fetchSignalkTidesReading(lat, lon, { origin: serverOrigin(), token: chartsToken }),
+    fetchSignalkTidesReading(lat, lon, { origin: origin, token: chartsToken }),
 });
 
 // Weather forecast, fetched browser-side from Open-Meteo. It lives in a dedicated mini-map panel
@@ -486,11 +488,11 @@ const waypointsStore = new WaypointsStore();
 // Provided chart symbols (signalk-symbol-manager). Constructed empty so the chart can mount
 // immediately and hold one stable reference; filled when the fetch lands after access resolves.
 // On a stock server the resource type 404s and every icon stays built-in.
-const symbolsStore = new SymbolsStore(serverOrigin(), undefined);
+const symbolsStore = new SymbolsStore(origin, undefined);
 let waypointError = $state<string | undefined>();
 
 async function refreshWaypoints(): Promise<void> {
-  const fetched = await fetchWaypoints(serverOrigin(), chartsToken);
+  const fetched = await fetchWaypoints(origin, chartsToken);
   if (fetched) {
     waypointsStore.setWaypoints(fetched);
     return;
@@ -507,7 +509,7 @@ async function onDropWaypoint(position: LatLon): Promise<void> {
   const name = promptSaveName('Waypoint');
   if (name === undefined) return;
   const waypoint: Waypoint = { id: uuidv4(), name, position };
-  if (!(await saveWaypoint(serverOrigin(), chartsToken, waypoint))) {
+  if (!(await saveWaypoint(origin, chartsToken, waypoint))) {
     waypointError = 'Could not save the waypoint. Check the connection and write access.';
     activePanel = 'waypoints';
     return;
@@ -519,7 +521,7 @@ async function onRenameWaypoint(id: string, name: string): Promise<void> {
   waypointError = undefined;
   const existing = waypointsStore.waypoints.find((w) => w.id === id);
   if (!existing) return;
-  if (!(await saveWaypoint(serverOrigin(), chartsToken, { ...existing, name }))) {
+  if (!(await saveWaypoint(origin, chartsToken, { ...existing, name }))) {
     waypointError = 'Could not rename the waypoint.';
     return;
   }
@@ -528,7 +530,7 @@ async function onRenameWaypoint(id: string, name: string): Promise<void> {
 
 async function onDeleteWaypoint(id: string): Promise<void> {
   waypointError = undefined;
-  if (!(await deleteWaypoint(serverOrigin(), chartsToken, id))) {
+  if (!(await deleteWaypoint(origin, chartsToken, id))) {
     waypointError = 'Could not delete the waypoint.';
     return;
   }
@@ -608,7 +610,7 @@ let profilesSynced = false;
 $effect(() => {
   if (profilesSynced) return;
   if (auth.status !== 'authenticated' || !auth.token) return;
-  const adapter = new SignalKProfileAdapter(serverOrigin(), auth.token);
+  const adapter = new SignalKProfileAdapter(origin, auth.token);
   // Latch only on a resolved sync, so a transient failure at first auth does not permanently
   // strand profiles local-only: a later reconnect or token change re-enters and retries.
   void profileStore.syncWithServer(adapter).then((ok) => {
@@ -660,13 +662,11 @@ const userChartsStore = new PersistedValue<UserChartSource[]>('binnacle:user-cha
 // the write only earns a 401, so do not bother.
 function syncUrlChartToServer(source: UserChartSource): void {
   if (chartsToken) {
-    void putChart(serverOrigin(), chartsToken, userChartToSignalK(source, source.origin.url)).then(
-      (ok) => {
-        // A failed sync leaves the chart visible only on this station, defeating the cross-station
-        // intent; a breadcrumb makes "my other helm does not see it" diagnosable.
-        if (!ok) console.warn(`User chart "${source.id}" did not sync to the server.`);
-      },
-    );
+    void putChart(origin, chartsToken, userChartToSignalK(source, source.origin.url)).then((ok) => {
+      // A failed sync leaves the chart visible only on this station, defeating the cross-station
+      // intent; a breadcrumb makes "my other helm does not see it" diagnosable.
+      if (!ok) console.warn(`User chart "${source.id}" did not sync to the server.`);
+    });
   }
 }
 
@@ -689,7 +689,7 @@ const userCharts = new UserCharts(
   // On removal, also delete the chart's server resource (best-effort).
   (source) => {
     if (chartsToken) {
-      void deleteChart(serverOrigin(), chartsToken, source.id);
+      void deleteChart(origin, chartsToken, source.id);
     }
   },
   // On rename, drop the registered overlay so the reconcile effect re-registers it under the new
@@ -962,7 +962,7 @@ function onMobTrigger(mark: MobMark | undefined): void {
   if (notificationsApi) {
     // The v2 route attaches the server's own position and timestamp; if the POST fails, fall
     // back to the v1 delta so the boat-wide alarm is never lost to a transport error.
-    mobAlertPending = postMobNotification(serverOrigin(), chartsToken, 'Man overboard');
+    mobAlertPending = postMobNotification(origin, chartsToken, 'Man overboard');
     void mobAlertPending.then((id) => {
       if (!id) publishMobValue(mobNotification(committed.position));
     });
@@ -982,7 +982,7 @@ function onMobCancel(): void {
     // Await the raise a fast cancel may be racing, then clear by id; a failed clear falls back
     // to the v1 delta so no station is left with a raised emergency.
     void pending.then(async (id) => {
-      const cleared = id ? await resolveNotification(serverOrigin(), chartsToken, id) : false;
+      const cleared = id ? await resolveNotification(origin, chartsToken, id) : false;
       if (!cleared) publishMobValue(mobClearNotification());
     });
   } else {
@@ -996,8 +996,8 @@ function onMobSteer(): void {
   if (mark) void onGoToHere(mark);
 }
 
-// An anchor error shown in the panel until the next anchor action (the boat-error persistence
-// rationale on routeError applies here too).
+// An anchor error shown in the panel until the next anchor action clears it, rather than
+// auto-dismissing: on a boat an error must persist until the operator has acted on it.
 let anchorError = $state<string | undefined>();
 
 // The anchor action chain, selected once at resolve time from capabilities: the standard Anchor
@@ -1007,7 +1007,7 @@ let anchorError = $state<string | undefined>();
 // then fails it has a problem masking would hide. Until features resolve, every action lands on
 // the local path.
 const anchorTransport = $derived(
-  resolveAnchorTransport(serverOrigin(), chartsToken, {
+  resolveAnchorTransport(origin, chartsToken, {
     standardApiAvailable: serverFeatures?.apis.has('anchor') ?? false,
   }),
 );
@@ -1132,7 +1132,7 @@ function bumpSaved(): void {
 }
 
 async function refreshSavedTracks(): Promise<void> {
-  savedTracks = await fetchSavedTracks(serverOrigin(), chartsToken);
+  savedTracks = await fetchSavedTracks(origin, chartsToken);
   bumpSaved();
 }
 
@@ -1144,7 +1144,7 @@ async function onSaveTrack(name: string): Promise<void> {
   if (recorder.points.length < 2) return;
   trackError = undefined;
   const id = uuidv4();
-  if (!(await saveTrack(serverOrigin(), chartsToken, id, name, recorder.points))) {
+  if (!(await saveTrack(origin, chartsToken, id, name, recorder.points))) {
     trackError = 'Could not save the track. Check the connection and access.';
     return;
   }
@@ -1157,7 +1157,7 @@ async function onSaveTrack(name: string): Promise<void> {
 
 async function onDeleteSavedTrack(id: string): Promise<void> {
   trackError = undefined;
-  if (!(await deleteTrack(serverOrigin(), chartsToken, id))) {
+  if (!(await deleteTrack(origin, chartsToken, id))) {
     trackError = 'Could not delete the track. Check the connection and access.';
     return;
   }
@@ -1188,7 +1188,7 @@ function onExportSavedTrack(track: SavedTrack): void {
 }
 
 async function refreshRoutes(): Promise<void> {
-  const routes = await fetchRoutes(serverOrigin(), chartsToken);
+  const routes = await fetchRoutes(origin, chartsToken);
   // undefined means both endpoints were unreachable: keep the current list rather than blanking the
   // routes the user is looking at over a transient failure. An empty array (reachable, no routes)
   // does clear it.
@@ -1236,7 +1236,7 @@ $effect(() => {
 // local state is cleared only on success, so a failed stop does not desync from a server that is
 // still navigating (the next course delta would otherwise revive the nav strip).
 async function stopActiveCourse(): Promise<boolean> {
-  if (!(await clearCourse(serverOrigin(), chartsToken))) return false;
+  if (!(await clearCourse(origin, chartsToken))) return false;
   routeStore.setActive(undefined);
   gotoActive = false;
   courseGuidance.clear();
@@ -1345,7 +1345,7 @@ async function runDraft(req: DraftRouteRequest): Promise<DraftResult | undefined
   draftLoading = true;
   let result: DraftResult;
   try {
-    result = await draftRoute(serverOrigin(), chartsToken, req, controller.signal);
+    result = await draftRoute(origin, chartsToken, req, controller.signal);
   } catch {
     // The client classifies every error itself, so a throw here is unexpected. Guard anyway: a future
     // regression must never strand the spinner with no error and no way back but cancel.
@@ -1468,10 +1468,6 @@ function beginNewRoute(initialPoint?: LatLon): void {
   mapCommands?.startRouteEdit(undefined, initialPoint);
 }
 
-function onNewRoute(): void {
-  beginNewRoute();
-}
-
 // Start a route from the chart context menu: open the routes panel so the editor controls show, begin
 // a fresh route, and seed its first waypoint at the chosen spot, so the navigator continues by tapping
 // the rest of the passage instead of placing the start by hand.
@@ -1495,7 +1491,7 @@ async function onSaveRoute(name: string): Promise<void> {
   // A drafted route can reach here with an empty name (no model name and a cleared field), unlike the
   // hand-drawn path that prompts; fall back to a dated name so a route is never saved unnamed.
   const route = { ...working, name: name.trim() || defaultSaveName('Route') };
-  if (!(await saveRoute(serverOrigin(), chartsToken, route))) {
+  if (!(await saveRoute(origin, chartsToken, route))) {
     // A failed write (offline, no write permission, server error) must not lose the work: keep the
     // route under edit, with its name, so the navigator can retry, and tell them it did not save.
     flagRouteError('Could not save the route. It is kept under edit so you can retry.');
@@ -1527,6 +1523,18 @@ function onCancelRouteEdit(): void {
   clearDraftState();
 }
 
+// The routes panel's close and back both cancel the in-progress edit and clear any error first.
+function closeRoutesPanel(): void {
+  onCancelRouteEdit();
+  clearRouteError();
+  closePanel();
+}
+function backFromRoutesPanel(): void {
+  onCancelRouteEdit();
+  clearRouteError();
+  backToMenu();
+}
+
 // A manual edit of a draft's geometry (a drag, a midpoint insert) accepts it as a hand-drawn route:
 // clear the draft view and the optimize stash so the route becomes a normal working route the
 // navigator can re-optimize or save without the not-chart-verified banner. It must also supersede a
@@ -1552,7 +1560,7 @@ function onRouteEdited(): void {
 // flight, so a slow hydration cannot roll back a fresher waypoint skip.
 async function hydrateAndSeedCourse(): Promise<void> {
   const startedAt = Date.now();
-  const { info, calc } = await hydrateCourse(serverOrigin(), chartsToken);
+  const { info, calc } = await hydrateCourse(origin, chartsToken);
   courseGuidance.seed(info, calc, startedAt);
   // Reconcile the local activation flags with what the server is actually navigating: a page
   // reload mid-passage restores the Active badge, skip buttons, and route progress, and a course
@@ -1580,7 +1588,7 @@ async function onDeleteRoute(id: string): Promise<void> {
     flagRouteError('Could not stop the active route, so it was not deleted.');
     return;
   }
-  if (!(await deleteRoute(serverOrigin(), chartsToken, id))) {
+  if (!(await deleteRoute(origin, chartsToken, id))) {
     flagRouteError('Could not delete the route.');
     return;
   }
@@ -1590,7 +1598,7 @@ async function onDeleteRoute(id: string): Promise<void> {
 
 async function onActivateRoute(id: string): Promise<void> {
   clearRouteError();
-  if (!(await activateRoute(serverOrigin(), chartsToken, routeHref(id)))) {
+  if (!(await activateRoute(origin, chartsToken, routeHref(id)))) {
     flagRouteError('Could not activate the route. Check the connection.');
     return;
   }
@@ -1612,7 +1620,7 @@ async function onStopCourse(): Promise<void> {
 // stays authoritative, so the strip self-corrects even if the server rejects a step past a route end.
 // A transport failure is still surfaced, matching the arrival auto-advance.
 function onSkipPoint(delta: number): void {
-  void advancePoint(serverOrigin(), chartsToken, delta).then((ok) => {
+  void advancePoint(origin, chartsToken, delta).then((ok) => {
     if (!ok) flagRouteError('Could not skip the waypoint. Check the connection.');
   });
 }
@@ -1623,7 +1631,7 @@ async function onSaveTrackAsRoute(name: string): Promise<void> {
   clearRouteError();
   if (recorder.points.length < 2) return;
   const route = trackToRoute(recorder.points, name);
-  if (!(await saveRoute(serverOrigin(), chartsToken, route))) {
+  if (!(await saveRoute(origin, chartsToken, route))) {
     flagRouteError('Could not save the track as a route.');
     return;
   }
@@ -1639,12 +1647,12 @@ async function onTrackHome(): Promise<void> {
   if (recorder.points.length < 2) return;
   const route = trackToRoute(recorder.points, 'Track home');
   route.waypoints.reverse();
-  if (!(await saveRoute(serverOrigin(), chartsToken, route))) {
+  if (!(await saveRoute(origin, chartsToken, route))) {
     flagRouteError('Could not build the route home.');
     return;
   }
   await refreshRoutes();
-  if (!(await activateRoute(serverOrigin(), chartsToken, routeHref(route.id)))) {
+  if (!(await activateRoute(origin, chartsToken, routeHref(route.id)))) {
     flagRouteError('Could not start navigating home.');
     return;
   }
@@ -1660,7 +1668,7 @@ async function onReverseRoute(id: string): Promise<void> {
   const route = routeStore.routes.find((r) => r.id === id);
   if (!route) return;
   const reversed = reverseRoute(route);
-  if (!(await saveRoute(serverOrigin(), chartsToken, reversed))) {
+  if (!(await saveRoute(origin, chartsToken, reversed))) {
     flagRouteError('Could not reverse the route.');
     return;
   }
@@ -1684,7 +1692,7 @@ async function onImportRouteGpx(gpxText: string): Promise<void> {
   }
   const saved = [];
   for (const route of parsed) {
-    if (await saveRoute(serverOrigin(), chartsToken, route)) saved.push(route.id);
+    if (await saveRoute(origin, chartsToken, route)) saved.push(route.id);
   }
   if (saved.length === 0) {
     flagRouteError('Could not save the imported route.');
@@ -1702,7 +1710,7 @@ async function onImportRouteGpx(gpxText: string): Promise<void> {
 // route and mark the goto active, then seed the nav strip from a one-time hydration.
 async function onGoToHere(position: LatLon): Promise<void> {
   clearRouteError();
-  if (!(await setDestination(serverOrigin(), chartsToken, position))) {
+  if (!(await setDestination(origin, chartsToken, position))) {
     flagRouteError('Could not set the destination. Check the connection.');
     return;
   }
@@ -1734,7 +1742,7 @@ $effect(() => {
     if (routeStore.activeId !== undefined && !courseGuidance.isLastPoint) {
       // The streamed activeRoute.pointIndex stays authoritative, so a server that also auto-advances
       // and this request converge on the same active point. A failed advance is surfaced.
-      void advancePoint(serverOrigin(), chartsToken, 1).then((ok) => {
+      void advancePoint(origin, chartsToken, 1).then((ok) => {
         if (!ok) flagRouteError('Could not advance to the next waypoint.');
       });
     }
@@ -1794,7 +1802,7 @@ $effect(() => {
 // means "all clear" or "not working". list() reads aisVersion, so the derived stays reactive.
 const aisCount = $derived(aisTargets.list().length);
 
-const accessRequestsUrl = `${serverOrigin()}/admin/#/security/access/requests`;
+const accessRequestsUrl = `${origin}/admin/#/security/access/requests`;
 
 // Connect the stream the moment access resolves (an approved token, or an unsecured server),
 // not as a one-shot blocking step. A token that arrives after a tab refocus, or from another
@@ -1836,7 +1844,7 @@ $effect(() => {
   void refreshWeatherProvider(auth.token ?? undefined);
   // A unit preset changed on the server while the link was down would otherwise hold until the
   // token changes or the page reloads.
-  void units.syncFromServer(serverOrigin());
+  void units.syncFromServer(origin);
   // Unconditional: a course activated from another station while the link was down would otherwise
   // stay unknown here until its next change; the hydration also reconciles the activation flags.
   void hydrateAndSeedCourse();
@@ -1844,7 +1852,7 @@ $effect(() => {
 
 async function connectStream(token: string | undefined): Promise<void> {
   chartsToken = token;
-  noteLoader = createNoteDetailLoader(serverOrigin(), token);
+  noteLoader = createNoteDetailLoader(origin, token);
   await client.connect(streamUrl(token), (frame) => store.applyFrame(frame));
   await client.raw.subscribe([
     { path: SK_PATHS.headingTrue, policy: 'instant', minPeriod: 200 },
@@ -1864,13 +1872,18 @@ async function connectStream(token: string | undefined): Promise<void> {
     // One wildcard row covers every notifications.* path including anchor and MOB; a specific
     // row beside it would have the server deliver those deltas twice.
     { path: SK_PATHS.allNotifications, policy: 'instant', minPeriod: 1000 },
-    { path: SK_PATHS.position, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
-    { path: SK_PATHS.courseOverGroundTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
-    { path: SK_PATHS.speedOverGround, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
-    { path: SK_PATHS.headingTrue, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
-    { path: SK_PATHS.name, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
-    { path: SK_PATHS.aisShipType, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
-    { path: SK_PATHS.closestApproach, context: ALL_VESSELS, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.position, context: ALL_VESSELS_CONTEXT, policy: 'fixed', period: 5000 },
+    {
+      path: SK_PATHS.courseOverGroundTrue,
+      context: ALL_VESSELS_CONTEXT,
+      policy: 'fixed',
+      period: 5000,
+    },
+    { path: SK_PATHS.speedOverGround, context: ALL_VESSELS_CONTEXT, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.headingTrue, context: ALL_VESSELS_CONTEXT, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.name, context: ALL_VESSELS_CONTEXT, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.aisShipType, context: ALL_VESSELS_CONTEXT, policy: 'fixed', period: 5000 },
+    { path: SK_PATHS.closestApproach, context: ALL_VESSELS_CONTEXT, policy: 'fixed', period: 5000 },
   ]);
   // Three independent REST reads, in parallel: saved tracks, routes, and the course snapshot.
   // The course hydration restores an in-progress course after a reload: the v2 course paths send
@@ -1890,7 +1903,7 @@ async function connectStream(token: string | undefined): Promise<void> {
 // current value and let the next trigger retry, so one bad probe cannot lock the whole session
 // onto the free fallback. An answered {} genuinely means no provider and clears it.
 async function refreshWeatherProvider(token: string | undefined): Promise<void> {
-  const providers = await fetchWeatherProviders(serverOrigin(), token);
+  const providers = await fetchWeatherProviders(origin, token);
   if (providers !== undefined) weatherProviderName = defaultProviderName(providers);
 }
 
@@ -1901,20 +1914,20 @@ $effect(() => {
   void refreshWeatherProvider(auth.token ?? undefined);
   // Resolve the server's unit preferences with the same trigger: per-user resolution rides on the
   // session credentials that exist once access has resolved.
-  void units.syncFromServer(serverOrigin());
+  void units.syncFromServer(origin);
   // Capability discovery; a transport failure keeps the current value so one bad probe cannot
   // drop the session back to v1 transports.
-  void fetchServerFeatures(serverOrigin(), auth.token ?? undefined).then((features) => {
+  void fetchServerFeatures(origin, auth.token ?? undefined).then((features) => {
     if (features) serverFeatures = features;
   });
   // History provider discovery: the v2 features list reports the history API even with no
   // provider registered, so the providers route is the real signal.
-  void fetchHistoryProviders(serverOrigin(), auth.token ?? undefined).then((providers) => {
+  void fetchHistoryProviders(origin, auth.token ?? undefined).then((providers) => {
     if (providers) historyProviders = providers;
   });
   // Provided chart symbols; absent on a stock server, in which case the built-ins stand.
   symbolsStore.setAuth(auth.token ?? undefined);
-  void fetchSymbols(serverOrigin(), auth.token ?? undefined).then((list) => {
+  void fetchSymbols(origin, auth.token ?? undefined).then((list) => {
     if (list) symbolsStore.setSymbols(list);
   });
 });
@@ -1978,7 +1991,7 @@ onDestroy(() => {
       {#if collisionMute.active}
         <button
           type="button"
-          class="btn btn-pill btn-warning"
+          class="btn btn-warning btn-pill"
           aria-pressed="true"
           aria-label="Collision alarm muted, {muteRemainingMin} minutes left, tap to unmute"
           title="Collision alarm muted, {muteRemainingMin} min left, tap to unmute"
@@ -2094,7 +2107,7 @@ onDestroy(() => {
           working={routeStore.working}
           activeId={routeStore.activeId}
           error={routeError}
-          onNew={onNewRoute}
+          onNew={beginNewRoute}
           {onEditRoute}
           onSave={onSaveRoute}
           onCancelEdit={onCancelRouteEdit}
@@ -2116,16 +2129,8 @@ onDestroy(() => {
           {onCancelDraft}
           optimizeDraft={optimizeOriginal !== undefined}
           {optimizeUnchanged}
-          onClose={() => {
-            onCancelRouteEdit();
-            clearRouteError();
-            closePanel();
-          }}
-          onBack={() => {
-            onCancelRouteEdit();
-            clearRouteError();
-            backToMenu();
-          }}
+          onClose={closeRoutesPanel}
+          onBack={backFromRoutesPanel}
         />
       </div>
     {/if}
@@ -2177,7 +2182,7 @@ onDestroy(() => {
     {#if activePanel === 'trends'}
       <div class="panel-slot">
         <TrendsPanel
-          origin={serverOrigin()}
+          {origin}
           token={chartsToken}
           providers={historyProviders}
           recorder={trendRecorder}
@@ -2491,9 +2496,9 @@ onDestroy(() => {
   align-items: center;
   gap: var(--space-2);
   pointer-events: none;
-  /* Above the weather panel (z-panel + 1) so an active collision danger and its Mute and Acknowledge
-     stay reachable while the Forecast mini-map is open. The danger strip is a safety surface, so it
-     sits over every panel; only the menu (z-menu) is higher. */
+  /* Above the weather panel (which sits at z-panel + 1) so an active collision danger and its Mute and
+     Acknowledge stay reachable while the Forecast mini-map is open. The danger strip is a safety
+     surface, so it sits over every panel; only the menu (z-menu) is higher. */
   z-index: calc(var(--z-panel) + 2);
 }
 .bottom-stack :global(.bottom-strip) {

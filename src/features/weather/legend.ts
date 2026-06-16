@@ -10,7 +10,7 @@ import {
 } from '$shared/lib';
 import type { Theme } from '$shared/ui';
 import { cloudColor } from './cloud-colormap';
-import { type Rgba, rgbaCss } from './color-ramp';
+import { type Rgba, tupleCss } from './color-ramp';
 import { WEATHER_LAYER_IDS } from './fills';
 import { precipColor } from './precip-colormap';
 import { isobarColors } from './pressure-colors';
@@ -46,7 +46,7 @@ const CLOUD_STOPS = [0.25, 0.5, 0.75, 1]; // fraction
 // Render a colormap stop opaque so the legend ramp is visible even where the field itself is
 // translucent or fully transparent at the low end.
 function opaque([r, g, b]: Rgba): string {
-  return rgbaCss([r, g, b, 1]);
+  return tupleCss([r, g, b, 1]);
 }
 
 // A continuous-ramp legend: a left-to-right CSS gradient across the stops, plus the value at each

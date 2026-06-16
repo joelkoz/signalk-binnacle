@@ -1,4 +1,4 @@
-import type { Path } from './types';
+import { NOTIFICATIONS_PREFIX, type Path } from './types';
 
 // Signal K is SI: angles in radians, speed in m/s, depth in meters, temperature
 // in Kelvin. navigation.position is the exception: decimal degrees. Only the paths the
@@ -18,7 +18,7 @@ export const SK_PATHS = {
   anchorNotification: 'notifications.navigation.anchor',
   mobNotification: 'notifications.mob',
   // Wildcard subscription so every raised notification (any producer) reaches the store mirror.
-  allNotifications: 'notifications.*',
+  allNotifications: `${NOTIFICATIONS_PREFIX}*`,
   name: 'name',
   aisShipType: 'design.aisShipType',
   courseNextPoint: 'navigation.course.nextPoint',

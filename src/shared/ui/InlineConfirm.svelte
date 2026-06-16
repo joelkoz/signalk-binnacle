@@ -17,7 +17,7 @@ const { question, confirmLabel = 'Delete', onConfirm, onCancel }: Props = $props
      focus on mount, so a double tap on the arming control cannot land on the destructive button. -->
 <div class="confirm" role="group" aria-label={question}>
   <span class="confirm-text">{question}</span>
-  <div class="confirm-actions">
+  <div class="panel-controls">
     <button type="button" class="btn btn-danger" onclick={onConfirm}>{confirmLabel}</button>
     <button type="button" class="btn" use:focusOnMount onclick={onCancel}>Cancel</button>
   </div>
@@ -34,9 +34,5 @@ const { question, confirmLabel = 'Delete', onConfirm, onCancel }: Props = $props
 .confirm-text {
   font-size: var(--text-sm);
   font-weight: 600;
-}
-.confirm-actions {
-  display: flex;
-  gap: var(--space-2);
 }
 </style>

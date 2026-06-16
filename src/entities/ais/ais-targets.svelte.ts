@@ -1,4 +1,5 @@
 import { asNumber, isLatLon, type LatLon } from '$shared/geo';
+import { isFiniteNumber } from '$shared/lib';
 import { type SignalKStore, SK_PATHS } from '$shared/signalk';
 import { AIS_PRUNE_INTERVAL_MS, AIS_STALE_TTL_MS } from './ais-staleness';
 
@@ -10,7 +11,7 @@ const ISO_DURATION =
   /^(-)?P(?:(\d+(?:\.\d+)?)Y)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)W)?(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/;
 
 export function parseIso8601DurationSeconds(value: unknown): number | undefined {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (isFiniteNumber(value)) return value;
   if (typeof value !== 'string') return undefined;
   const m = ISO_DURATION.exec(value.trim());
   if (!m) return undefined;

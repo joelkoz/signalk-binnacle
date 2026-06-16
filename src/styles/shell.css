@@ -149,13 +149,13 @@
 }
 /* A caution variant of the strip action (the collision Mute), warning-colored so the two safety
    buttons (Mute and the accent Acknowledge) do not read as twins. The pressed state tints with the
-   alarm token. */
+   warning token so the fill matches the amber border and text. */
 .bottom-strip .ack--warning {
   color: var(--warning);
   border-color: var(--warning);
 }
 .bottom-strip .ack--warning[aria-pressed="true"] {
-  background: var(--alarm-tint);
+  background: var(--warning-tint);
 }
 /* The trailing action cluster shared by the alarm and tool strips. The shared .ack pill carries its
    own auto margin for single-action strips, so the cluster neutralizes it and owns the push; the

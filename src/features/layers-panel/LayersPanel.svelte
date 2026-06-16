@@ -231,7 +231,7 @@ function handleKeydown(id: string, event: KeyboardEvent): void {
             <li class="pinned-row">
               <span class="pin" aria-hidden="true"><Pin size={16} /></span>
               <span class="title" title={item.title}>{item.title}</span>
-              <span class="on-top caps-label">On top</span>
+              <span class="caps-label">On top</span>
             </li>
           {/each}
         </ul>

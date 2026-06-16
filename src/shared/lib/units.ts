@@ -121,9 +121,6 @@ const MM_PER_INCH = 25.4;
 const PA_PER_INHG = 3386.389;
 export const METERS_PER_MILE = 1609.344;
 const LITERS_PER_US_GALLON = 3.785_411_784;
-// Imperial readouts hand a short range to nautical miles at 1000 ft (the conventional plotter
-// switch point); metric ones at one nautical mile, where whole meters stop reading well.
-const IMPERIAL_NM_FLOOR_METERS = feetToMeters(1000);
 
 export function metersToFeet(value: number | null | undefined): number | undefined {
   return value == null ? undefined : value / METERS_PER_FOOT;
@@ -132,6 +129,10 @@ export function metersToFeet(value: number | null | undefined): number | undefin
 export function feetToMeters(value: number): number {
   return value * METERS_PER_FOOT;
 }
+
+// Imperial readouts hand a short range to nautical miles at 1000 ft (the conventional plotter
+// switch point); metric ones at one nautical mile, where whole meters stop reading well.
+const IMPERIAL_NM_FLOOR_METERS = feetToMeters(1000);
 
 // The unit label for a mode-dependent length (depth, wave and tide height, anchor distance).
 export function lengthUnit(mode: UnitsMode): 'm' | 'ft' {

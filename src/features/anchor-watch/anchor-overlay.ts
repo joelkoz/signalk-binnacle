@@ -15,6 +15,7 @@ import type { OwnVessel } from '$entities/vessel';
 import type { LatLon } from '$shared/geo';
 import {
   emptyFeatureCollection,
+  featureCollection,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
@@ -73,21 +74,18 @@ function shapeFeatures(
       properties: { dragging, rode: true },
     });
   }
-  return { type: 'FeatureCollection', features };
+  return featureCollection(features);
 }
 
 function pointFeatures(anchor: LatLon | undefined, dragging: boolean): GeoJSON.FeatureCollection {
   if (!anchor) return emptyFeatureCollection();
-  return {
-    type: 'FeatureCollection',
-    features: [
-      {
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [anchor.longitude, anchor.latitude] },
-        properties: { dragging },
-      },
-    ],
-  };
+  return featureCollection([
+    {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [anchor.longitude, anchor.latitude] },
+      properties: { dragging },
+    },
+  ]);
 }
 
 export interface AnchorOverlay extends OverlayModule {

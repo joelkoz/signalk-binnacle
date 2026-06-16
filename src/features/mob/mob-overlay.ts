@@ -10,6 +10,7 @@ import type { OwnVessel } from '$entities/vessel';
 import type { LatLon } from '$shared/geo';
 import {
   emptyFeatureCollection,
+  featureCollection,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
@@ -49,7 +50,7 @@ function features(mark: LatLon | undefined, vessel: LatLon | undefined): GeoJSON
       properties: { line: true },
     });
   }
-  return { type: 'FeatureCollection', features: out };
+  return featureCollection(out);
 }
 
 export interface MobOverlay extends OverlayModule {

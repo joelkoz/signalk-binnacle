@@ -57,4 +57,4 @@ export type {
   SubscribeEntry,
   SubscribePolicy,
 } from './types';
-export { ALARM_NOTIFICATION_STATES, SELF_CONTEXT } from './types';
+export { ALARM_NOTIFICATION_STATES, ALL_VESSELS_CONTEXT, SELF_CONTEXT } from './types';

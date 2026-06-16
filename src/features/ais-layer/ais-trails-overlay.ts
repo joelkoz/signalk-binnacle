@@ -11,7 +11,9 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
   rgbaCss,
+  setLayersVisibility,
 } from '$shared/map';
 import { type AisTrail, type Bbox, fetchAisTrails } from './ais-trails-client';
 
@@ -189,14 +191,13 @@ export function createAisTrailsOverlay(
     },
     setVisible(ctx, isVisible) {
       visible = isVisible;
-      ctx.map.setLayoutProperty(LAYER_ID, 'visibility', isVisible ? 'visible' : 'none');
+      setLayersVisibility(ctx.map, [LAYER_ID], isVisible);
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(LAYER_ID, 'line-opacity', opacity * TRAIL_OPACITY);
     },
     remove(ctx) {
-      if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
-      if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
+      removeLayersAndSources(ctx.map, [LAYER_ID], [SOURCE_ID]);
     },
   };
 }

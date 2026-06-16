@@ -50,7 +50,6 @@ interface Props {
   providerName?: string;
   position?: { latitude: number; longitude: number };
   store: WeatherStore;
-  // The imperial-versus-metric display preference; wind stays in knots regardless.
   units: UnitsStore;
 }
 
@@ -77,18 +76,17 @@ let seq = 0;
 
 const sourceLabel = $derived(providerName ?? GRID_SOURCE_LABEL);
 
-// A position key rounded to about 110 m. The boat's fix jitters every GPS delta, so keying the
-// effects on the rounded string instead of the raw object stops a refetch (and a burst of provider
-// 400s) on every tick; weather does not change within 110 m.
+// A position rounded to about 110 m, kept as a string so the $derived halts propagation when the
+// rounded value is unchanged: the fix jitters every GPS delta, and a fresh tuple each tick would
+// refetch (and burst provider 400s), but an equal string does not. parsedPos parses it back, so it
+// too only changes when the rounded position does; weather does not change within 110 m.
 const posKey = $derived(
   position ? `${position.latitude.toFixed(3)},${position.longitude.toFixed(3)}` : '',
 );
 
-const parsedPos = $derived.by<[number, number] | undefined>(() => {
-  if (!posKey) return undefined;
-  const [lat, lon] = posKey.split(',').map(Number);
-  return [lat, lon];
-});
+const parsedPos = $derived<[number, number] | undefined>(
+  posKey ? (posKey.split(',').map(Number) as [number, number]) : undefined,
+);
 
 // Provider data: fetch only when the rounded position or the provider changes, not on every scrub
 // or GPS jitter; the deriveds below re-pick the step for the selected time without a request.

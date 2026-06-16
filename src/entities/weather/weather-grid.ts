@@ -29,10 +29,12 @@ export interface WeatherGrid {
   partialWaves?: boolean;
   // Supplementary fields, present only when fetched; absent (undefined) for a wind-only grid or
   // over cells the provider omits. All SI: pressure in Pa, wave height in m, direction in radians,
-  // period in s. Marine fields are NaN over land cells.
+  // period in s. Marine fields are NaN over land cells. Precipitation is the one deliberate
+  // exception: it stays in mm/h to match the Signal K weather API (outside.precipitationVolume) and
+  // the Open-Meteo source, and the whole display path formats it as mm/h.
   windGust?: number[][]; // m/s
   pressureMsl?: number[][]; // Pa
-  precipitation?: number[][]; // mm (hourly total)
+  precipitation?: number[][]; // mm/h (hourly total), a deliberate non-SI exception (see above)
   cloudCover?: number[][]; // 0..1 fraction
   waveHeight?: number[][]; // m
   waveDirection?: number[][]; // radians, direction the waves come from

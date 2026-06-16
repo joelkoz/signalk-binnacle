@@ -6,6 +6,7 @@ import type {
 } from 'maplibre-gl';
 import { type SymbolsStore, symbolIconId } from '$entities/symbols';
 import type { Waypoint, WaypointsStore } from '$entities/waypoint';
+import { latLonToLonLat } from '$shared/geo';
 import {
   emptyFeatureCollection,
   type MapThemePaint,
@@ -33,7 +34,7 @@ function features(waypoints: readonly Waypoint[]): GeoJSON.FeatureCollection {
       type: 'Feature',
       geometry: {
         type: 'Point',
-        coordinates: [waypoint.position.longitude, waypoint.position.latitude],
+        coordinates: latLonToLonLat(waypoint.position),
       },
       properties: { name: waypoint.name },
     })),

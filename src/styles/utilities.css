@@ -152,7 +152,7 @@
 }
 .btn-warning:hover:not(:disabled) {
   border-color: var(--warning);
-  background: var(--alarm-tint);
+  background: var(--warning-tint);
 }
 /* A fully rounded variant for the chrome toggles (Update, Forecast) that read as pills. */
 .btn-pill {
@@ -424,7 +424,7 @@
   color: var(--text);
 }
 .icon-btn:active:not(:disabled) {
-  filter: brightness(0.92);
+  filter: brightness(var(--brightness-press));
 }
 .icon-btn:disabled {
   opacity: var(--disabled-opacity);
