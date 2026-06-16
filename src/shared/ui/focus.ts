@@ -7,6 +7,33 @@ export const focusOnMount: Action<HTMLElement> = (node) => {
   node.focus({ preventScroll: true });
 };
 
+// Shift+Tab shares the same key value ('Tab') as Tab, so no shiftKey check is needed to detect
+// either direction.
+export function isTabKey(event: KeyboardEvent): boolean {
+  return event.key === 'Tab';
+}
+
+// Attach a keydown handler to an element via a Svelte action, so non-interactive host elements
+// (role=group, role=toolbar, display:contents wrappers) avoid the noStaticElementInteractions lint.
+// No-ops when handler is undefined.
+export const onKeydownAction: Action<HTMLElement, ((event: KeyboardEvent) => void) | undefined> = (
+  node,
+  handler,
+) => {
+  function listener(event: KeyboardEvent): void {
+    handler?.(event);
+  }
+  node.addEventListener('keydown', listener);
+  return {
+    update(newHandler): void {
+      handler = newHandler;
+    },
+    destroy(): void {
+      node.removeEventListener('keydown', listener);
+    },
+  };
+};
+
 // Vertical arrow-key roving over the items matching `selector` inside this element, with initial
 // focus on the first match when it mounts. Shared by the anchored map menus (the chart context menu
 // and the weather layer menu); AppMenu's 2D tile grid keeps its own Left/Right/Home/End handler.
@@ -45,7 +72,7 @@ const FOCUSABLE =
 // non-modal and do not use this; pair it with the dialog action, which handles Escape and restore.
 export const focusTrap: Action<HTMLElement> = (node) => {
   function onKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Tab') return;
+    if (!isTabKey(event)) return;
     const focusables = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE));
     if (focusables.length === 0) return;
     const first = focusables[0];
