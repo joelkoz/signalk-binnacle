@@ -6,6 +6,7 @@ import {
   routeDistanceMeters,
   routeLegs,
   routeToFeature,
+  waypointPointFeatures,
 } from './route-geojson';
 import type { Route } from './route-types';
 
@@ -128,5 +129,23 @@ describe('routeDistanceMeters', () => {
     const leg1 = rhumbDistanceMeters(ROUTE.waypoints[1].position, ROUTE.waypoints[2].position);
     expect(total).toBeGreaterThan(0);
     expect(total).toBeCloseTo(leg0 + leg1, 3);
+  });
+});
+
+describe('waypointPointFeatures', () => {
+  it('emits one Point per waypoint with the index and a name-or-number label', () => {
+    const features = waypointPointFeatures(ROUTE.waypoints);
+    expect(features).toHaveLength(3);
+    expect(features[0].geometry).toEqual({ type: 'Point', coordinates: [0, 0] });
+    expect(features[0].properties).toEqual({ index: 0, name: 'A' });
+    // The unnamed third waypoint falls back to its 1-based number, at its own coordinate, so a
+    // transposed index-to-position mapping would fail here.
+    expect(features[2].geometry).toEqual({ type: 'Point', coordinates: [2, 0] });
+    expect(features[2].properties).toEqual({ index: 2, name: '3' });
+  });
+
+  it('merges extra properties ahead of the index and name', () => {
+    const features = waypointPointFeatures(ROUTE.waypoints, { id: 'r1' });
+    expect(features[1].properties).toEqual({ id: 'r1', index: 1, name: 'B' });
   });
 });

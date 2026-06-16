@@ -95,6 +95,20 @@ export interface RouteLeg {
   bearingRad: number;
 }
 
+// One Point per waypoint with its zero-based index and a name-or-number label. The saved-route
+// overlay tags each point with its route id; the working overlay needs none, so both overlays build
+// their waypoint points from one helper.
+export function waypointPointFeatures(
+  waypoints: readonly Waypoint[],
+  extra?: { id?: string },
+): GeoJSON.Feature[] {
+  return waypoints.map((w, index) => ({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: latLonToLonLat(w.position) },
+    properties: { ...extra, index, name: w.name ?? `${index + 1}` },
+  }));
+}
+
 export function routeLegs(waypoints: readonly Waypoint[]): RouteLeg[] {
   const legs: RouteLeg[] = [];
   for (let i = 1; i < waypoints.length; i += 1) {

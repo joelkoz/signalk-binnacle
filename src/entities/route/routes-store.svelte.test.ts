@@ -45,4 +45,60 @@ describe('RouteStore', () => {
     s.setWorking(undefined);
     expect(s.working).toBeUndefined();
   });
+
+  it('bumps editVersion on a working-route change without touching version', () => {
+    const s = new RouteStore();
+    const ver0 = s.version;
+    const edit0 = s.editVersion;
+    s.setWorking(route('draft'));
+    expect(s.editVersion).toBeGreaterThan(edit0);
+    expect(s.version).toBe(ver0);
+  });
+
+  it('keeps the highlight on a same-count edit and clears it on a count change', () => {
+    const s = new RouteStore();
+    s.setWorking(route('draft'));
+    s.setHighlight({ kind: 'leg', index: 0 });
+    // A drag moves a waypoint but keeps the count, so the highlight survives.
+    const dragged = route('draft');
+    dragged.waypoints[0].position.longitude += 0.001;
+    s.setWorking(dragged);
+    expect(s.highlight).toEqual({ kind: 'leg', index: 0 });
+    // Inserting a waypoint shifts indices, so the highlight clears.
+    s.setWorking({
+      id: 'draft',
+      name: 'draft',
+      waypoints: [
+        { position: { latitude: 0, longitude: 0 } },
+        { position: { latitude: 0, longitude: 1 } },
+        { position: { latitude: 0, longitude: 2 } },
+      ],
+    });
+    expect(s.highlight).toBeUndefined();
+  });
+
+  it('sets and clears the cross-highlight, and a redundant clear does not bump', () => {
+    const s = new RouteStore();
+    const v0 = s.editVersion;
+    s.setHighlight({ kind: 'waypoint', index: 2 });
+    expect(s.highlight).toEqual({ kind: 'waypoint', index: 2 });
+    expect(s.editVersion).toBeGreaterThan(v0);
+    // setHighlight has no equality guard, so re-setting the same value still bumps.
+    const v1 = s.editVersion;
+    s.setHighlight({ kind: 'waypoint', index: 2 });
+    expect(s.editVersion).toBeGreaterThan(v1);
+    s.clearHighlight();
+    expect(s.highlight).toBeUndefined();
+    const v2 = s.editVersion;
+    s.clearHighlight();
+    expect(s.editVersion).toBe(v2);
+  });
+
+  it('clears the highlight when the working route is cleared', () => {
+    const s = new RouteStore();
+    s.setWorking(route('draft'));
+    s.setHighlight({ kind: 'waypoint', index: 1 });
+    s.setWorking(undefined);
+    expect(s.highlight).toBeUndefined();
+  });
 });
