@@ -45,6 +45,17 @@ export function latLonToLonLat(position: LatLon): LonLat {
   return [position.longitude, position.latitude];
 }
 
+// Round a position to a fixed number of decimal places. Computed and AI-drafted positions arrive as
+// full-precision doubles (13 to 14 decimals), which the on-chart draw store refuses for excessive
+// precision; the caller rounds to the store's limit before seeding. Six decimals is ~0.11 m and nine
+// is ~0.1 mm, both far beyond GPS resolution, so the rounding is lossless for navigation.
+export function roundLatLon(position: LatLon, decimals: number): LatLon {
+  return {
+    latitude: Number(position.latitude.toFixed(decimals)),
+    longitude: Number(position.longitude.toFixed(decimals)),
+  };
+}
+
 export function asNumber(value: unknown): number | undefined {
   // Finite only: a NaN reaching the store would flow into display math and data-driven expressions.
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;

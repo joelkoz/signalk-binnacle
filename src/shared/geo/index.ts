@@ -16,5 +16,6 @@ export {
   isLonLat,
   latLonToLonLat,
   lonLatToLatLon,
+  roundLatLon,
 } from './geo-guards';
 export { COORD_CELL_DEG, quantizeCellDeg } from './quantize';

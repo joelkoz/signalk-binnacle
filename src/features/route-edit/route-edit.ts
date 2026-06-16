@@ -8,7 +8,7 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { Route, Waypoint } from '$entities/route';
-import { isLonLat, type LatLon, latLonToLonLat, lonLatToLatLon } from '$shared/geo';
+import { isLonLat, type LatLon, latLonToLonLat, lonLatToLatLon, roundLatLon } from '$shared/geo';
 import { mapThemePaint } from '$shared/map';
 import type { Theme } from '$shared/ui';
 
@@ -35,6 +35,14 @@ export function drawFeatureToWaypoints(feature: GeoJSON.Feature): Waypoint[] {
 // drag as a different position.
 const COORD_MATCH_EPSILON_DEG = 1e-9;
 
+// Terra Draw's default store precision: addFeatures rejects any feature whose coordinates carry more
+// than this many decimal places, dropping the whole route silently. A hand-drawn or saved route
+// already carries Terra-Draw-rounded coordinates, but an AI draft arrives as full-precision doubles,
+// so each seeded coordinate is rounded to this precision or the chart would show nothing. Nine
+// decimals shifts a point by at most ~5e-10 degrees, under COORD_MATCH_EPSILON_DEG, so name
+// reconciliation is unaffected.
+const DRAW_COORD_DECIMALS = 9;
+
 function positionsMatch(a: LatLon, b: LatLon): boolean {
   return (
     Math.abs(a.latitude - b.latitude) <= COORD_MATCH_EPSILON_DEG &&
@@ -50,7 +58,9 @@ export function routeToStoreFeature(route: Route): GeoJSONStoreFeatures<GeoJSON.
     properties: { mode: LINESTRING_MODE },
     geometry: {
       type: 'LineString',
-      coordinates: route.waypoints.map((w) => latLonToLonLat(w.position)),
+      coordinates: route.waypoints.map((w) =>
+        latLonToLonLat(roundLatLon(w.position, DRAW_COORD_DECIMALS)),
+      ),
     },
   };
 }

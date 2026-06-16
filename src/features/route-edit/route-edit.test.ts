@@ -154,6 +154,36 @@ describe('route-edit converters', () => {
     expect((f.geometry as GeoJSON.LineString).coordinates[1]).toEqual([1, 0]);
   });
 
+  it('routeToStoreFeature rounds full-precision coordinates so the draw store accepts the feature', () => {
+    // Terra Draw refuses a feature whose coordinates carry more than nine decimal places, which is
+    // how a full-precision AI draft seeded into the store renders as nothing. The mapper rounds.
+    // 1/3 and 1/7 give a position with a full double's worth of decimals without a precision-losing
+    // literal (which the linter rejects), standing in for a raw AI-drafted coordinate.
+    const f = routeToStoreFeature({
+      id: 'r',
+      name: 'R',
+      waypoints: [
+        { position: { latitude: 42 + 1 / 3, longitude: -83 - 1 / 7 } },
+        { position: { latitude: 42 + 2 / 3, longitude: -83 - 2 / 7 } },
+      ],
+    });
+    const coords = (f.geometry as GeoJSON.LineString).coordinates;
+    const decimals = (n: number): number => {
+      let scale = 1;
+      let count = 0;
+      while (Math.round(n * scale) / scale !== n) {
+        scale *= 10;
+        count += 1;
+        if (count > 30) break;
+      }
+      return count;
+    };
+    for (const [lon, lat] of coords) {
+      expect(decimals(lon)).toBeLessThanOrEqual(9);
+      expect(decimals(lat)).toBeLessThanOrEqual(9);
+    }
+  });
+
   it('drawFeatureToWaypoints reads a linestring Feature back to waypoints', () => {
     const wps = drawFeatureToWaypoints({
       type: 'Feature',
