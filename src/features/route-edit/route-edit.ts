@@ -140,13 +140,17 @@ export function createRouteEditor(opts: {
   // waypoint's name, consuming remembered entries in order so a route that visits the same point
   // twice keeps both names in sequence. A dragged point matches nothing and loses its name, which
   // is the honest outcome: the named mark no longer sits there.
+  // Reused across change events: a drag fires one change per pointermove, so allocating a fresh
+  // consumed array each call would churn proportional to the named-route length on every pixel.
+  const nameConsumed: boolean[] = [];
   const reconcileNames = (rebuilt: Waypoint[]): Waypoint[] => {
     if (!anyNamed) return rebuilt;
-    const consumed: boolean[] = remembered.map(() => false);
+    nameConsumed.length = remembered.length;
+    nameConsumed.fill(false);
     return rebuilt.map((waypoint) => {
       for (let i = 0; i < remembered.length; i += 1) {
-        if (consumed[i] || !positionsMatch(remembered[i].position, waypoint.position)) continue;
-        consumed[i] = true;
+        if (nameConsumed[i] || !positionsMatch(remembered[i].position, waypoint.position)) continue;
+        nameConsumed[i] = true;
         const name = remembered[i].name;
         return name == null ? waypoint : { ...waypoint, name };
       }

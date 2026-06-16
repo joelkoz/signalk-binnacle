@@ -215,9 +215,9 @@ export class CollisionAssessment {
       this.#lastSeverities = undefined;
       this.#ackExpired = true;
     } else {
-      this.#lastSeverities = new Map(
-        next.contacts.map((c): [string, Severity] => [c.id, c.severity]),
-      );
+      const severities = new Map<string, Severity>();
+      for (const c of next.contacts) severities.set(c.id, c.severity);
+      this.#lastSeverities = severities;
     }
     return next;
   });
