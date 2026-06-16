@@ -130,7 +130,14 @@ import {
   WEATHER_LAYER_IDS,
 } from '$features/weather';
 import { GatedAlarm } from '$shared/audio';
-import { type Bbox4, boundsOfPoints, clampToWorld, type LatLon, padBbox } from '$shared/geo';
+import {
+  type Bbox4,
+  bboxContainsPoint,
+  boundsOfPoints,
+  clampToWorld,
+  type LatLon,
+  padBbox,
+} from '$shared/geo';
 import {
   Clock,
   formatBearingOr,
@@ -1380,6 +1387,26 @@ function applyDraft(route: DraftedRoute, source: 'draft' | 'optimize', id: strin
   };
 }
 
+// Tap a leg row: toggle its cross-highlight, and ease the chart to the leg only when it is not
+// already in view, so a tap on a visible leg does not jolt the camera. The dot tap on the chart sets
+// the waypoint highlight directly in the chart widget; this is the list side.
+function onHighlightLeg(index: number): void {
+  const cur = routeStore.highlight;
+  if (cur?.kind === 'leg' && cur.index === index) {
+    routeStore.clearHighlight();
+    return;
+  }
+  routeStore.setHighlight({ kind: 'leg', index });
+  const wps = routeStore.working?.waypoints;
+  const a = wps?.[index];
+  const b = wps?.[index + 1];
+  if (!a || !b) return;
+  const view = mapCommands?.getBounds();
+  if (view && bboxContainsPoint(view, a.position) && bboxContainsPoint(view, b.position)) return;
+  const box = boundsOfPoints([a.position, b.position]);
+  if (box) mapCommands?.fitBounds(padBbox(box, 0.3));
+}
+
 async function onDraftRoute(prompt: string): Promise<void> {
   clearRouteError();
   draftError = undefined;
@@ -2106,6 +2133,8 @@ onDestroy(() => {
           shownIds={routeStore.shownIds}
           working={routeStore.working}
           activeId={routeStore.activeId}
+          highlight={routeStore.highlight}
+          {onHighlightLeg}
           error={routeError}
           onNew={beginNewRoute}
           {onEditRoute}

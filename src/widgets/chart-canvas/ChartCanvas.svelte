@@ -31,7 +31,12 @@ import { createMpaOverlay, MPA_SOURCES } from '$features/mpa-overlays';
 import { createNotesOverlay, type NoteSelection } from '$features/notes';
 import { buildOceanSources, createOceanOverlay } from '$features/ocean-conditions';
 import type { RouteEditor } from '$features/route-edit';
-import { createCourseOverlay, createRouteOverlay } from '$features/route-layer';
+import {
+  createCourseOverlay,
+  createRouteOverlay,
+  createWorkingRouteOverlay,
+  type WorkingRouteOverlay,
+} from '$features/route-layer';
 import { createSeamarkOverlay, SEAMARK_SOURCES } from '$features/seamark-overlay';
 import { createTidesOverlay } from '$features/tides';
 import {
@@ -179,6 +184,9 @@ const {
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
 let routeEditor: RouteEditor | undefined;
+// The unmanaged overlay that draws the working route's dots, labels, and cross-highlight. Like the
+// editor, ChartCanvas owns its lifecycle (add, tick, recolor, raise) rather than the layer manager.
+let workingRouteOverlay: WorkingRouteOverlay | undefined;
 // Bumped on every start and stop so a route edit cancelled before the lazily-loaded editor resolves
 // does not start on a route that is no longer current.
 let editGeneration = 0;
@@ -188,10 +196,12 @@ let chartMenu = $state<
   { x: number; y: number; lat: number; lon: number; width: number; height: number } | undefined
 >();
 
-// Restyle the on-chart route editor whenever the theme changes (the saved-route overlay recolors
-// through the layer manager; the Terra Draw editing line is restyled here).
+// Restyle the on-chart route editor and the working-route overlay whenever the theme changes (the
+// saved-route overlay recolors through the layer manager; these two unmanaged pieces are restyled
+// here). theme is a prop, so this effect tracks it in component scope.
 $effect(() => {
   routeEditor?.setTheme(theme);
+  workingRouteOverlay?.setTheme(theme);
 });
 
 registerPmtilesProtocol();
@@ -236,6 +246,16 @@ onMount(() => {
       map.on('click', (e) => {
         if (!measure.active || routeStore.working) return;
         measure.add({ latitude: e.lngLat.lat, longitude: e.lngLat.lng });
+      });
+      // While a working route is up, a tap on a waypoint dot lights it and the legs it joins; a tap
+      // on empty water clears the highlight. Terra Draw still owns the tap for selecting and dragging
+      // the vertex underneath, so this only drives the cross-highlight. A generous box makes a small
+      // dot tappable with a glove.
+      map.on('click', (e) => {
+        if (!routeStore.working) return;
+        const index = workingRouteOverlay?.hitTestWaypoint(e.point);
+        if (index !== undefined) routeStore.setHighlight({ kind: 'waypoint', index });
+        else routeStore.clearHighlight();
       });
       // The server origin is fixed for the session, so resolve it once and reuse it for the chart
       // fetch, the overlays built here, and the user-chart registrar closure below.
@@ -389,7 +409,11 @@ onMount(() => {
         startRouteEdit: (route, initialPoint) => {
           const generation = ++editGeneration;
           void loadRouteEditor().then((editor) => {
-            if (generation === editGeneration) editor?.start(route, initialPoint);
+            if (generation !== editGeneration) return;
+            editor?.start(route, initialPoint);
+            // The editor's Terra Draw line was just added at the top of the routes band; lift the
+            // working-route dots and highlight back above it.
+            workingRouteOverlay?.raise(ctx);
           });
         },
         stopRouteEdit: () => {
@@ -399,10 +423,18 @@ onMount(() => {
         applyLayers: (settings, order) => {
           manager.applySnapshot(settings, order);
           view.refresh();
+          // applySnapshot restacks the routes band, so re-lift the working overlay above the editor
+          // line while a route is being edited.
+          if (routeStore.working) workingRouteOverlay?.raise(ctx);
         },
       });
 
-      runTick(dynamicOverlays);
+      // The working-route overlay rides the same tick but is not registered with the manager (it is
+      // not a user-toggleable layer); its editVersion dirty-check gates its work. The initial theme
+      // colors it up front so it does not flash the day palette before the theme effect runs.
+      workingRouteOverlay = createWorkingRouteOverlay(routeStore, theme);
+      workingRouteOverlay.add(ctx);
+      runTick([...dynamicOverlays, workingRouteOverlay]);
     },
   });
 });

@@ -12,7 +12,13 @@ import {
   Upload,
   X,
 } from '@lucide/svelte';
-import { type Route, routeDistanceMeters, routeLegs } from '$entities/route';
+import {
+  litLegIndices,
+  type Route,
+  type RouteHighlight,
+  routeDistanceMeters,
+  routeLegs,
+} from '$entities/route';
 import {
   formatBearingOr,
   formatDuration,
@@ -41,6 +47,10 @@ interface Props {
   working: Route | undefined;
   // The active (being navigated) route id, or undefined when none is active.
   activeId: string | undefined;
+  // Which leg or waypoint of the working route is cross-highlighted, so the matching rows light up.
+  highlight: RouteHighlight | undefined;
+  // Tap a leg row to highlight it on the chart, and pan the chart to it when it is off-screen.
+  onHighlightLeg: (index: number) => void;
   // A transient error to show (a failed save, activate, stop, or delete), or undefined when clear.
   error: string | undefined;
   onNew: () => void;
@@ -87,6 +97,8 @@ const {
   shownIds,
   working,
   activeId,
+  highlight,
+  onHighlightLeg,
   error,
   onNew,
   onEditRoute,
@@ -149,6 +161,11 @@ const workingLegs = $derived.by(() => {
     return { ...leg, cumulativeMeters };
   });
 });
+// The leg rows lit by the current cross-highlight (a leg lights itself; a waypoint lights the legs it
+// joins). Keyed off the waypoint count, not the working object, so a same-length drag move does not
+// rebuild the Set; a Set so each row checks its lit state in O(1).
+const wptCount = $derived(working?.waypoints.length ?? 0);
+const litLegs = $derived(new Set(litLegIndices(highlight, wptCount)));
 // The whole-route distance is the last leg's cumulative, so the total and the table cannot drift.
 const workingDistanceMeters = $derived(workingLegs.at(-1)?.cumulativeMeters ?? 0);
 const workingDistanceNm = $derived(formatNm(workingDistanceMeters));
@@ -411,12 +428,21 @@ $effect(() => {
           {#each workingLegs as leg (leg.fromIndex)}
             {@const seconds = etaSeconds(leg.cumulativeMeters, planSpeedMps)}
             <li>
-              <span class="leg-no">{leg.fromIndex + 1}</span>
-              <span class="leg-dist num">{formatNm(leg.distanceMeters)} nm</span>
-              <span class="leg-brg num">{formatBearingOr(leg.bearingRad)}&deg;T</span>
-              <span class="leg-time num">
-                {seconds == null ? PLACEHOLDER : formatDuration(seconds)}
-              </span>
+              <button
+                type="button"
+                class="leg-row"
+                class:is-on={litLegs.has(leg.fromIndex)}
+                aria-pressed={litLegs.has(leg.fromIndex)}
+                aria-label={`Highlight leg ${leg.fromIndex + 1}`}
+                onclick={() => onHighlightLeg(leg.fromIndex)}
+              >
+                <span class="leg-no">{leg.fromIndex + 1}</span>
+                <span class="leg-dist num">{formatNm(leg.distanceMeters)} nm</span>
+                <span class="leg-brg num">{formatBearingOr(leg.bearingRad)}&deg;T</span>
+                <span class="leg-time num">
+                  {seconds == null ? PLACEHOLDER : formatDuration(seconds)}
+                </span>
+              </button>
             </li>
           {/each}
         </ol>
@@ -582,15 +608,35 @@ $effect(() => {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  max-block-size: 9rem;
+  max-block-size: 18rem;
   overflow-y: auto;
   font-size: var(--text-sm);
 }
-.legs li {
+.leg-row {
   display: grid;
   grid-template-columns: 1.5rem 1fr auto auto;
   gap: var(--space-2);
-  align-items: baseline;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: var(--control-size);
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.leg-row:hover {
+  background: var(--surface-raised);
+}
+/* The lit leg is set here, not via the global .is-on utility, because the scoped .leg-row base
+   outweighs it; the data columns keep their own colors and only the row box changes. */
+.leg-row.is-on {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  border-inline-start-width: 3px;
 }
 .leg-no {
   color: var(--text-muted);
