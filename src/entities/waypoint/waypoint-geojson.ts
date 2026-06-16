@@ -23,7 +23,7 @@ export function waypointToFeature(waypoint: Waypoint): WaypointResourceBody {
     feature: {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: latLonToLonLat(waypoint.position) },
-      properties: waypoint.icon ? { skIcon: waypoint.icon } : {},
+      properties: { skIcon: waypoint.icon ?? 'waypoint' },
     },
   };
 }

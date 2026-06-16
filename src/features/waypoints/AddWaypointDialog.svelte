@@ -37,7 +37,7 @@ let name = $state('');
 let icon = $state('');
 
 function save(): void {
-  onSave({ name: name.trim() || defaultName, icon: icon || undefined });
+  onSave({ name: name.trim() || defaultName, icon: icon || 'waypoint' });
 }
 </script>
 
