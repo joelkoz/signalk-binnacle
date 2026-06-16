@@ -36,6 +36,11 @@ All notable changes to Binnacle are documented here. The format follows
 - Start a route from the chart. The right-click and long-press menu adds "Start a route here" under
   "Go to here": it opens the routes panel, begins a new editable route, and drops the first waypoint
   at the spot you picked, so you start a route from the chart in one step and then tap the rest.
+- Route editing shows the route's waypoints as dots, the way a saved route looks, the moment you
+  draft, optimize, or edit one, rather than only after you tap the line. Tap a leg in the panel's leg
+  list and its segment and both end dots light up on the chart, with the chart easing to the leg when
+  it is off-screen; tap a dot on the chart and the legs it joins light up in the list. Drag a dot to
+  move it, tap a midpoint to insert one, or delete a waypoint, with the dots visible throughout.
 
 ### Changed
 
