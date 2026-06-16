@@ -1,10 +1,8 @@
 import type {
-  CircleLayerSpecification,
   ExpressionSpecification,
   GeoJSONSource,
   GeoJSONSourceSpecification,
   LineLayerSpecification,
-  SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { RouteStore } from '$entities/route';
 import {
@@ -19,6 +17,7 @@ import {
   setLayersVisibility,
 } from '$shared/map';
 import { routeLineFeatures, waypointFeatures } from './route-features';
+import { recolorWaypointLayers, waypointCircleLayer, waypointLabelLayer } from './waypoint-layers';
 
 const LINE_SRC = 'binnacle-route-lines';
 const LINE_CASING_LAYER = 'binnacle-route-line-casing';
@@ -103,38 +102,10 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
         ctx.map.addLayer(layer, before);
       }
       if (!ctx.map.getLayer(WPT_LAYER)) {
-        const layer: CircleLayerSpecification = {
-          id: WPT_LAYER,
-          type: 'circle',
-          source: WPT_SRC,
-          paint: {
-            'circle-radius': 4,
-            'circle-color': paint.note,
-            'circle-stroke-color': paint.markerGlyph,
-            'circle-stroke-width': 1,
-          },
-        };
-        ctx.map.addLayer(layer, before);
+        ctx.map.addLayer(waypointCircleLayer(WPT_LAYER, WPT_SRC, paint), before);
       }
       if (!ctx.map.getLayer(WPT_LABEL_LAYER)) {
-        const layer: SymbolLayerSpecification = {
-          id: WPT_LABEL_LAYER,
-          type: 'symbol',
-          source: WPT_SRC,
-          layout: {
-            'text-field': ['get', 'name'],
-            'text-font': ['Noto Sans Regular'],
-            'text-size': 11,
-            'text-offset': [0, 1.1],
-            'text-optional': true,
-          },
-          paint: {
-            'text-color': paint.label,
-            'text-halo-color': paint.background,
-            'text-halo-width': 1.5,
-          },
-        };
-        ctx.map.addLayer(layer, before);
+        ctx.map.addLayer(waypointLabelLayer(WPT_LABEL_LAYER, WPT_SRC, paint), before);
       }
     },
     sync(ctx) {
@@ -162,10 +133,7 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
     applyTheme(ctx, next) {
       paint = next;
       ctx.map.setPaintProperty(LINE_LAYER, 'line-color', lineColor(paint));
-      ctx.map.setPaintProperty(WPT_LAYER, 'circle-color', paint.note);
-      ctx.map.setPaintProperty(WPT_LAYER, 'circle-stroke-color', paint.markerGlyph);
-      ctx.map.setPaintProperty(WPT_LABEL_LAYER, 'text-color', paint.label);
-      ctx.map.setPaintProperty(WPT_LABEL_LAYER, 'text-halo-color', paint.background);
+      recolorWaypointLayers(ctx.map, WPT_LAYER, WPT_LABEL_LAYER, paint);
     },
     remove(ctx) {
       removeLayersAndSources(ctx.map, LAYERS, [LINE_SRC, WPT_SRC]);

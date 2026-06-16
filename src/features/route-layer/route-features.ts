@@ -1,4 +1,4 @@
-import type { Route } from '$entities/route';
+import { type Route, waypointPointFeatures } from '$entities/route';
 import { latLonToLonLat as toLonLat } from '$shared/geo';
 
 // One LineString per shown route, flagged active so the overlay can style the active route apart.
@@ -31,13 +31,7 @@ export function waypointFeatures(
   const features: GeoJSON.Feature[] = [];
   for (const route of routes) {
     if (!shownIds.has(route.id)) continue;
-    route.waypoints.forEach((w, index) => {
-      features.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: toLonLat(w.position) },
-        properties: { id: route.id, index, name: w.name ?? `${index + 1}` },
-      });
-    });
+    features.push(...waypointPointFeatures(route.waypoints, { id: route.id }));
   }
   return { type: 'FeatureCollection', features };
 }
