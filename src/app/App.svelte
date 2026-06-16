@@ -2448,6 +2448,7 @@ onDestroy(() => {
   border-block-end: 1px solid var(--border);
 }
 .topbar-start {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.6rem;
