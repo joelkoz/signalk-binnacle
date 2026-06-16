@@ -2,7 +2,7 @@
 import { onDestroy } from 'svelte';
 import type { TidesStore } from '$entities/tides';
 import type { UnitsStore } from '$entities/units';
-import { Clock, formatClockTime } from '$shared/lib';
+import { Clock, DEG_TO_RAD, formatClockTime } from '$shared/lib';
 import { SlideOver } from '$shared/ui';
 import {
   formatCurrentRate,
@@ -52,7 +52,7 @@ const sourceNote = $derived(tideSourceNote(store.source));
 // The rate and set as one string, so no stray whitespace creeps in between the rate and the comma.
 const currentRate = $derived(
   nextCurrent
-    ? `${formatCurrentRate(nextCurrent.velocityMps)}${nextCurrent.directionDeg !== undefined ? `, ${Math.round(nextCurrent.directionDeg)}°` : ''}`
+    ? `${formatCurrentRate(nextCurrent.velocityMps)}${nextCurrent.directionRad !== undefined ? `, ${Math.round(nextCurrent.directionRad / DEG_TO_RAD)}°` : ''}`
     : '',
 );
 

@@ -1,5 +1,5 @@
 import type { CurrentEvent, TideEvent, TideStation } from '$entities/tides';
-import { isFiniteNumber, withTimeout } from '$shared/lib';
+import { DEG_TO_RAD, isFiniteNumber, withTimeout } from '$shared/lib';
 
 // NOAA CO-OPS, the US tide and tidal-current authority. Public domain, key-free, CORS-open. The
 // metadata API lists stations; the datagetter returns predictions for one station.
@@ -99,6 +99,8 @@ export async function fetchCurrentEvents(stationId: string): Promise<CurrentEven
     const kind = c.Type === 'flood' ? 'flood' : c.Type === 'ebb' ? 'ebb' : 'slack';
     const directionDeg =
       kind === 'flood' ? c.meanFloodDir : kind === 'ebb' ? c.meanEbbDir : undefined;
-    return [{ timeMs, velocityMps: Math.abs(c.Velocity_Major) / 100, directionDeg, kind }];
+    // CO-OPS reports the set in degrees true; store it in radians (SI).
+    const directionRad = directionDeg === undefined ? undefined : directionDeg * DEG_TO_RAD;
+    return [{ timeMs, velocityMps: Math.abs(c.Velocity_Major) / 100, directionRad, kind }];
   });
 }

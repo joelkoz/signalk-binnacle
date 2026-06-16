@@ -42,9 +42,9 @@ describe('tides-display', () => {
 
   it('finds the next non-slack current event after a reference time', () => {
     const currents: CurrentEvent[] = [
-      { timeMs: 1000, velocityMps: 0.5, directionDeg: 100, kind: 'flood' },
-      { timeMs: 2000, velocityMps: 0, directionDeg: undefined, kind: 'slack' },
-      { timeMs: 3000, velocityMps: 0.4, directionDeg: 280, kind: 'ebb' },
+      { timeMs: 1000, velocityMps: 0.5, directionRad: (100 * Math.PI) / 180, kind: 'flood' },
+      { timeMs: 2000, velocityMps: 0, directionRad: undefined, kind: 'slack' },
+      { timeMs: 3000, velocityMps: 0.4, directionRad: (280 * Math.PI) / 180, kind: 'ebb' },
     ];
     expect(nextCurrentEvent(currents, 1500)?.kind).toBe('ebb');
     expect(nextCurrentEvent(currents, 4000)).toBeUndefined();

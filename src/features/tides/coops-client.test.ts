@@ -94,14 +94,14 @@ describe('coops-client', () => {
     const events = await fetchCurrentEvents('ACT8451');
     expect(events[0].timeMs).toBe(Date.UTC(2026, 5, 8, 5, 58));
     expect(events[0].velocityMps).toBeCloseTo(0.204);
-    expect(events[0].directionDeg).toBe(100);
+    expect(events[0].directionRad).toBeCloseTo((100 * Math.PI) / 180);
     expect(events[0].kind).toBe('flood');
     expect(events[1].kind).toBe('slack');
-    expect(events[1].directionDeg).toBeUndefined();
+    expect(events[1].directionRad).toBeUndefined();
     // Ebb Velocity_Major is negative on the wire; speed is stored as a magnitude.
     expect(events[2].kind).toBe('ebb');
     expect(events[2].velocityMps).toBeCloseTo(0.319);
-    expect(events[2].directionDeg).toBe(280);
+    expect(events[2].directionRad).toBeCloseTo((280 * Math.PI) / 180);
   });
 
   it('throws on a non-ok response', async () => {

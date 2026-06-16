@@ -7,7 +7,7 @@ const tideStation = { id: 'T1', name: 'Tide', latitude: 27.7, longitude: -82.7 }
 const currentStation = { id: 'C1', name: 'Current', latitude: 27.7, longitude: -82.7 };
 const tideEvents = [{ timeMs: 1000, heightMeters: 0.5, kind: 'high' as const }];
 const currentEvents = [
-  { timeMs: 1000, velocityMps: 0.5, directionDeg: 100, kind: 'flood' as const },
+  { timeMs: 1000, velocityMps: 0.5, directionRad: (100 * Math.PI) / 180, kind: 'flood' as const },
 ];
 
 const freshPersist = () => createExpiringStore<TidesPersistValue>('test', { factory: undefined });

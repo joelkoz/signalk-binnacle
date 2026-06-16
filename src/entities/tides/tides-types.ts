@@ -16,8 +16,8 @@ export interface TideEvent {
 export interface CurrentEvent {
   timeMs: number;
   velocityMps: number;
-  // The mean set of the stream in degrees true, present for flood and ebb, absent at slack.
-  directionDeg: number | undefined;
+  // The mean set of the stream in radians true (SI), present for flood and ebb, absent at slack.
+  directionRad: number | undefined;
   kind: 'flood' | 'ebb' | 'slack';
 }
 
