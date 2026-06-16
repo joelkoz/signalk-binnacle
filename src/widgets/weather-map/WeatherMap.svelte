@@ -128,6 +128,10 @@ const clock = new Clock(MINUTE_MS);
 
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
+// serverOrigin reads location, fixed for the page lifetime: capture once, not per tap and per render.
+const origin = serverOrigin();
+// Set in onDestroy so a provider readout that resolves after teardown does not write component state.
+let destroyed = false;
 // Explicit teardown for the canvas keydown listener: map.remove() drops the canvas with it, but
 // an AbortController removes any ambiguity about the listener outliving the component.
 const mapKeyListeners = new AbortController();
@@ -335,7 +339,7 @@ async function onTap(lng: number, lat: number): Promise<void> {
   if (gridSample) showReadout(gridSample, GRID_SOURCE_LABEL);
   else readoutPending = true;
   const value = await providerReadout(lat, lng);
-  if (seq !== tapSeq) return;
+  if (destroyed || seq !== tapSeq) return;
   readoutPending = false;
   if (value) showReadout(value, providerName);
   else if (!gridSample) dismissReadout();
@@ -348,7 +352,6 @@ const showField = (id: string): boolean =>
   readoutSource === GRID_SOURCE_LABEL ? layerOn(id) : true;
 
 async function providerReadout(lat: number, lon: number): Promise<WeatherReadout | undefined> {
-  const origin = serverOrigin();
   const target = store.selectedTime;
   if (Math.abs(target - Date.now()) < NEAR_NOW_MS) {
     const obs = await fetchObservations(origin, lat, lon, token);
@@ -418,10 +421,8 @@ onMount(() => {
         createWindOverlay(store),
         createPressureOverlay(store),
       ];
-      for (const overlay of overlays) {
-        await manager.register(overlay);
-        if (isDestroyed()) return;
-      }
+      await manager.registerAll(overlays);
+      if (isDestroyed()) return;
 
       const view = new LayersView(manager);
       view.refresh();
@@ -466,6 +467,7 @@ onMount(() => {
 });
 
 onDestroy(() => {
+  destroyed = true;
   clock.dispose();
   if (fetchTimer) clearTimeout(fetchTimer);
   if (readoutTimer) clearTimeout(readoutTimer);
@@ -617,14 +619,7 @@ onDestroy(() => {
         role="region"
         aria-label="Conditions and forecast"
       >
-        <WeatherConditions
-          origin={serverOrigin()}
-          {token}
-          {providerName}
-          {position}
-          {store}
-          {units}
-        />
+        <WeatherConditions {origin} {token} {providerName} {position} {store} {units} />
       </div>
     {/if}
     {#if activeCount === 0}
