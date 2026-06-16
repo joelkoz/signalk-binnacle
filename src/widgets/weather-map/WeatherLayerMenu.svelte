@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Check } from '@lucide/svelte';
 import type { LayerListItem } from '$shared/map';
-import { registerDismiss, rovingFocus } from '$shared/ui';
+import { AnchoredMenu, rovingFocus } from '$shared/ui';
 
 interface Props {
   // The mutually-exclusive area fills (the LayerManager enforces one-at-a-time) and the freely
@@ -23,50 +23,51 @@ const groups = $derived(
     { label: 'Overlays', items: overlays },
   ].filter((group) => group.items.length > 0),
 );
-
-// Escape closes through the shared dismiss stack, so a menu opened over the weather panel peels off
-// before the panel itself, in last-opened-first order. onClose is wrapped so the effect does not
-// reactively read the prop (a fresh closure each render would re-register and reorder the stack).
-$effect(() => registerDismiss(() => onClose()));
 </script>
 
-<!-- A transparent backdrop catches an outside tap to dismiss and keeps the press off the map. -->
-<button
-  type="button"
-  class="overlay-backdrop"
-  aria-label="Close weather layers"
-  onclick={onClose}
-></button>
-<!-- Non-modal on purpose: a toolbar dropdown over the map, not a modal. No focus trap, so Tab can
-     leave into the map and footer; do not "correct" this into a focusTrap. rovingFocus lands the
-     keyboard on the first row and moves it with the arrow keys. -->
-<div class="menu" role="group" aria-label="Weather layers" use:rovingFocus={'.menu-row'}>
-  {#each groups as group (group.label)}
-    <p class="caps-label">{group.label}</p>
-    {#each group.items as item (item.id)}
-      <button
-        type="button"
-        class="menu-row"
-        class:is-on={item.visible}
-        aria-pressed={item.visible}
-        onclick={() => onToggle(item.id, !item.visible)}
-      >
-        <span>{item.title}</span>
-        {#if item.visible}
-          <Check size={16} aria-hidden="true" />
-        {/if}
-      </button>
-    {/each}
-  {/each}
-  {#if provenance}
-    <p class="provenance muted-note">{provenance}</p>
-  {/if}
-</div>
+<!-- AnchoredMenu owns the backdrop dismiss, gated registerDismiss, and the grow transition.
+     surfaceClass positions the surface inside .panel-map; no position: relative or container-type
+     is added to the surface element so the @container query below resolves against .panel-map. -->
+<AnchoredMenu
+  open={true}
+  {onClose}
+  backdropLabel="Close weather layers"
+  surfaceClass="weather-menu"
+  ariaLabel="Weather layers"
+>
+  {#snippet children()}
+    <!-- Non-modal on purpose: a toolbar dropdown over the map, not a modal. No focus trap, so Tab can
+         leave into the map and footer; do not "correct" this into a focusTrap. rovingFocus lands the
+         keyboard on the first row and moves it with the arrow keys. -->
+    <div class="rows" use:rovingFocus={'.menu-row'}>
+      {#each groups as group (group.label)}
+        <p class="caps-label">{group.label}</p>
+        {#each group.items as item (item.id)}
+          <button
+            type="button"
+            class="menu-row"
+            class:is-on={item.visible}
+            aria-pressed={item.visible}
+            onclick={() => onToggle(item.id, !item.visible)}
+          >
+            <span>{item.title}</span>
+            {#if item.visible}
+              <Check size={16} aria-hidden="true" />
+            {/if}
+          </button>
+        {/each}
+      {/each}
+      {#if provenance}
+        <p class="provenance muted-note">{provenance}</p>
+      {/if}
+    </div>
+  {/snippet}
+</AnchoredMenu>
 
 <style>
 /* Anchored under the floating trigger (which sits at --space-2 and is one --control-size tall),
    scrolling inside its own box so it grows down the list rather than along the header. */
-.menu {
+:global(.weather-menu) {
   position: absolute;
   z-index: var(--z-menu);
   inset-block-start: calc(var(--space-2) + var(--control-size) + var(--space-1));
@@ -84,10 +85,15 @@ $effect(() => registerDismiss(() => onClose()));
   background: var(--surface-overlay);
   box-shadow: var(--shadow-overlay);
 }
-.menu .caps-label {
+/* The roving-focus host is transparent to layout so the rows stay direct flex children of the
+   surface and keep the surface's row gap; it adds no box, no container, and no containing block. */
+.rows {
+  display: contents;
+}
+:global(.weather-menu) .caps-label {
   margin: var(--space-1) 0 0.1rem;
 }
-.menu .caps-label:first-child {
+:global(.weather-menu) .caps-label:first-child {
   margin-block-start: 0;
 }
 .menu-row {
@@ -117,7 +123,7 @@ $effect(() => registerDismiss(() => onClose()));
   border-color: var(--accent);
   background: var(--accent-tint);
 }
-.menu .provenance {
+.provenance {
   margin: var(--space-1) 0 0;
   padding: 0 0.6rem;
 }
@@ -125,12 +131,13 @@ $effect(() => registerDismiss(() => onClose()));
    on a wide screen), dock the card to the bottom of the map as a sheet instead of covering the
    small map from the top. Keyed off the panel-map container width, set by the parent. */
 @container (max-width: 26rem) {
-  .menu {
+  :global(.weather-menu) {
     inset-block: auto var(--space-2);
     inset-inline: var(--space-2);
     inline-size: auto;
     max-inline-size: none;
     max-block-size: min(50vh, 18rem);
+    transform-origin: bottom center;
   }
 }
 </style>
