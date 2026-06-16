@@ -123,9 +123,10 @@ export function routeDraftAvailable(plugins: ReadonlyMap<string, string> | undef
 
 const MAX_WAYPOINTS = 60;
 // Larger than a standard fetch timeout because an AI draft round-trip includes model inference time plus
-// the per-leg safety check. It must stay above the plugin's own 30 s request deadline so the server
-// returns its result (a route, or an honest "check timed out" degrade) before this client gives up.
-const DRAFT_TIMEOUT_MS = 35_000;
+// the per-leg safety check, which on a dense channel-routed track can run to fifty-plus legs. It must
+// stay above the plugin's own 50 s request deadline so the server returns its result (a route, or an
+// honest "check timed out" degrade) before this client gives up.
+const DRAFT_TIMEOUT_MS = 55_000;
 
 const FLAG_KINDS = new Set<DraftFlag['kind']>(['land', 'shallow', 'hazard', 'fuel', 'other']);
 
