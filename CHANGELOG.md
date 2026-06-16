@@ -39,6 +39,11 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- The main menu now opens as a dropdown anchored under the menu button in the top corner and grows
+  from that corner, instead of appearing as a panel centered on the screen. It is a compact
+  three-column grid of labeled tiles grouped by section, dismisses on an outside tap or Escape, and on
+  a phone-width screen docks to the bottom edge as a sheet. The main menu and the weather layer menu
+  now share one anchored-dropdown primitive, so they open, position, and close the same way.
 - Adding a chart by URL now reads its header and metadata through the same cached, retrying source
   the map tiles use, so re-adding the same chart, and its first render once added, hit the
   IndexedDB block cache instead of refetching over the network.
