@@ -149,7 +149,7 @@ async function importGpx(): Promise<void> {
 const savedCards = $derived(
   routes.map((route) => ({ route, distanceNm: formatNm(routeDistanceMeters(route.waypoints)) })),
 );
-const planSpeedMps = $derived(knotsToMetersPerSecond(Math.max(0, planningSpeed.value || 0)));
+const planSpeedMps = $derived(knotsToMetersPerSecond(Math.max(0, planningSpeed.value ?? 0)));
 // Each leg's distance, bearing, and the cumulative distance to reach that leg's end waypoint, so the
 // plan reads as a leg table the way a navigator lays out a passage, updating live as waypoints are
 // dragged or inserted. The per-leg passage times are layered on at render so this geometry walk does

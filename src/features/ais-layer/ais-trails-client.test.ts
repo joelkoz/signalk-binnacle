@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Bbox4 } from '$shared/geo';
 import { stubFetch } from '$shared/testing/fetch-stub';
-import { type Bbox, fetchAisTrails } from './ais-trails-client';
+import { fetchAisTrails } from './ais-trails-client';
 
 const BASE = 'https://boat.example';
-const BBOX: Bbox = [-83.5, 42.0, -82.5, 43.0];
+const BBOX: Bbox4 = [-83.5, 42.0, -82.5, 43.0];
 
 afterEach(() => {
   vi.unstubAllGlobals();

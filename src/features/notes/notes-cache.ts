@@ -30,11 +30,6 @@ export function bboxKey(bbox: Bbox): string {
   return bbox.join(',');
 }
 
-// Whether `outer` fully contains `inner` (longitude-first). A view crossing the antimeridian has
-// west > east; it fails containment here and falls through to a fetch, which is correct if
-// conservative, and such views are rare on a chart.
-export { bboxContains };
-
 // A small, bounded, time-limited cache of fetched note sets keyed by the padded area each fetch
 // covered. A viewport that still sits inside a recent fetch reuses it, so panning back, panning a
 // little, or zooming in never re-hits the network.

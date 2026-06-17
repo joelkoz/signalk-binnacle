@@ -145,6 +145,7 @@ async function tryFetch(
       sources: strArray(props.sources),
       url: str(note.url),
     };
+    // Only schema version 1 sections are mapped; a later version falls through to the plain-text body.
     const sections = cn?.schemaVersion === 1 ? parseSections(cn.sections) : undefined;
     if (sections) detail.sections = sections;
     else detail.fallbackText = plainText(str(note.description) ?? '') || undefined;

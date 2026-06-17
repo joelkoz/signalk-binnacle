@@ -111,7 +111,9 @@ function parseSemver(s: string): number[] {
 function compareSemver(a: string, b: string): number {
   const [aMaj = 0, aMin = 0, aPat = 0] = parseSemver(a);
   const [bMaj = 0, bMin = 0, bPat = 0] = parseSemver(b);
-  return aMaj !== bMaj ? aMaj - bMaj : aMin !== bMin ? aMin - bMin : aPat - bPat;
+  if (aMaj !== bMaj) return aMaj - bMaj;
+  if (aMin !== bMin) return aMin - bMin;
+  return aPat - bPat;
 }
 
 export function routeDraftAvailable(plugins: ReadonlyMap<string, string> | undefined): boolean {
@@ -205,7 +207,7 @@ export async function draftRoute(
   const timeout = AbortSignal.timeout(DRAFT_TIMEOUT_MS);
   let combined: AbortSignal;
   if (typeof AbortSignal.any === 'function') {
-    combined = AbortSignal.any(signal ? [timeout, signal] : [timeout]);
+    combined = signal ? AbortSignal.any([timeout, signal]) : timeout;
   } else {
     // Fallback for a runtime without AbortSignal.any: forward both the timeout and the caller's
     // signal into one controller so the draft still times out rather than hanging on the caller.

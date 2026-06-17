@@ -1,3 +1,4 @@
+import type { Bbox4 } from '$shared/geo';
 import { withTimeout } from '$shared/lib';
 import { asKeyedObject, authInit } from '$shared/signalk';
 
@@ -8,10 +9,6 @@ export interface AisTrail {
   line: [number, number][];
 }
 
-// [west, south, east, north] in decimal degrees (GeoJSON / longitude-first order), the same shape
-// the other viewport-scoped clients use.
-export type Bbox = [number, number, number, number];
-
 // The track-accumulation API the tracks plugin (plugin id `tracks`) mounts on the v1 REST root.
 // The response keys each vessel context to a GeoJSON MultiLineString of its recent track.
 const TRACKS_PATH = '/signalk/v1/api/tracks';
@@ -19,7 +16,7 @@ const TRACKS_PATH = '/signalk/v1/api/tracks';
 // The plugin parses its bbox query positionally into lat-first sw/ne tuples (validateParameters in
 // @signalk/tracks), so the working order is south,west,north,east even though its README documents
 // longitude first. The wrong order matches nothing, or 404s when south lands above north.
-function bboxQuery([west, south, east, north]: Bbox): string {
+function bboxQuery([west, south, east, north]: Bbox4): string {
   return `${south},${west},${north},${east}`;
 }
 
@@ -57,7 +54,7 @@ function linesFromEntry(raw: unknown): [number, number][][] {
 export async function fetchAisTrails(
   base: string,
   token: string | undefined,
-  bbox: Bbox,
+  bbox: Bbox4,
 ): Promise<AisTrail[] | undefined> {
   try {
     const response = await fetch(

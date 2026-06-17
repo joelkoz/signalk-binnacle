@@ -35,8 +35,9 @@ export function createAisOverlay(targets: AisTargets, store: SignalKStore): Symb
   }
 
   function shouldRefresh(): boolean {
-    if (store.aisVersion === lastVersion) return false;
-    lastVersion = store.aisVersion;
+    const version = store.aisVersion;
+    if (version === lastVersion) return false;
+    lastVersion = version;
     return true;
   }
 

@@ -5,7 +5,7 @@ import type { Waypoint } from './waypoint-types';
 // The Signal K v2 waypoint resource body: name and description ride at the top level (not in
 // feature.properties), and the feature wraps a GeoJSON Point in [longitude, latitude] order,
 // per the server's WaypointSchema.
-export interface WaypointResourceBody {
+interface WaypointResourceBody {
   name: string;
   description?: string;
   feature: {

@@ -71,6 +71,32 @@ async function tryKeyedResource<T>(
   }
 }
 
+// Send a JSON body (or no body) to a URL and return the raw Response, or undefined on a network
+// failure. Never throws. Shared by putResource and the notifications client so the
+// fetch-plus-timeout-plus-auth-plus-try/catch shape lives in one place.
+export async function sendJson(
+  url: string,
+  token: string | undefined,
+  method: string,
+  body?: unknown,
+): Promise<Response | undefined> {
+  try {
+    return await fetch(
+      url,
+      withTimeout(
+        authInit(token, {
+          method,
+          ...(body !== undefined
+            ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+            : {}),
+        }),
+      ),
+    );
+  } catch {
+    return undefined;
+  }
+}
+
 // PUT a JSON body to a resource URL, returning whether the write succeeded. Never throws: a network
 // failure becomes false so the caller can surface a transient error rather than crash.
 export async function putResource(
@@ -78,21 +104,7 @@ export async function putResource(
   token: string | undefined,
   body: unknown,
 ): Promise<boolean> {
-  try {
-    const response = await fetch(
-      url,
-      withTimeout(
-        authInit(token, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        }),
-      ),
-    );
-    return response.ok;
-  } catch {
-    return false;
-  }
+  return (await sendJson(url, token, 'PUT', body))?.ok ?? false;
 }
 
 // DELETE a resource URL, returning whether it succeeded. Never throws (see putResource).

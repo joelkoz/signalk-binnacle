@@ -44,6 +44,7 @@ export function createChartOverlay(
     minzoom: (layer as { minzoom?: number }).minzoom ?? 0,
     themePaint: (layer.metadata as Record<string, MapColorKey> | undefined)?.[THEME_PAINT_KEY],
   }));
+  const layerIds = layers.map((layer) => layer.id);
   const chartSource = sourceIds[0];
   // The bare http urls of this chart's PMTiles archives, registered with the protocol on add and
   // unregistered on remove so a deleted chart does not leak its archive instance (for a blob: url,
@@ -76,7 +77,7 @@ export function createChartOverlay(
     title: chart.name,
     band,
     supportsOpacity: true,
-    layerIds: layers.map((layer) => layer.id),
+    layerIds,
     add(ctx) {
       // A PMTiles archive registers a no-store source first so MapLibre resolves the
       // pmtiles:// url to it rather than the default cache-writing fetch source.
@@ -119,21 +120,13 @@ export function createChartOverlay(
         ctx.map.off('sourcedata', onSourceData);
         onSourceData = undefined;
       }
-      removeLayersAndSources(
-        ctx.map,
-        layers.map((layer) => layer.id),
-        sourceIds,
-      );
+      removeLayersAndSources(ctx.map, layerIds, sourceIds);
       for (const url of pmtilesUrls) {
         unregisterPmtilesArchive(url);
       }
     },
     setVisible(ctx, visible) {
-      setLayersVisibility(
-        ctx.map,
-        layers.map((layer) => layer.id),
-        visible,
-      );
+      setLayersVisibility(ctx.map, layerIds, visible);
     },
     setOpacity(ctx, opacity) {
       for (const layer of layers) {

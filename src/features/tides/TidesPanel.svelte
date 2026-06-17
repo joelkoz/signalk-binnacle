@@ -211,6 +211,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
   margin: 0;
   color: var(--text-muted);
 }
+/* Overrides only weight and color; the mono font and tabular figures come from the global .num. */
 .stats .num {
   font-weight: 600;
   color: var(--text);

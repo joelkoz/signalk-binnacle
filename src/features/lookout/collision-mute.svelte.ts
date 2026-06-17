@@ -1,8 +1,8 @@
-import type { ReactiveClock } from '$shared/lib';
+import { MINUTE_MS, type ReactiveClock } from '$shared/lib';
 
 // The default mute window. Long enough to clear a busy harbor entrance, short enough that a forgotten
 // mute re-arms itself well before the next leg.
-const DEFAULT_MUTE_MS = 10 * 60_000;
+const DEFAULT_MUTE_MS = 10 * MINUTE_MS;
 
 // A session-only mute for the collision alarm. Muting silences the alarm for a bounded window, then
 // the mute lifts on its own and the alarm re-arms. It is deliberately NOT persisted: a mute set in a

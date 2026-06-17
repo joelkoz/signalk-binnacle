@@ -20,7 +20,7 @@ export interface AsyncProfileAdapter {
 // Reads and writes the whole profiles state to localStorage as one JSON document. Guarded for SSR
 // (no localStorage) and for a throwing or quota-full store, returning undefined on any read failure
 // so a corrupt or absent value falls back to empty rather than breaking startup.
-export class LocalProfileAdapter implements ProfileAdapter {
+class LocalProfileAdapter implements ProfileAdapter {
   load(): ProfilesState | undefined {
     if (typeof localStorage === 'undefined') return undefined;
     try {

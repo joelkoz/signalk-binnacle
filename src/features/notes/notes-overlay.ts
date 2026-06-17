@@ -8,7 +8,7 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
-import { lngLatBoundsToBbox4 } from '$shared/geo';
+import { bboxContains, lngLatBoundsToBbox4 } from '$shared/geo';
 import { DAY_MS } from '$shared/lib';
 import {
   DARK_SCRIM,
@@ -26,7 +26,7 @@ import { type SkSymbol, str } from '$shared/signalk';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
 import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
-import { bboxContains, bboxKey, NotesCache, padBbox } from './notes-cache';
+import { bboxKey, NotesCache, padBbox } from './notes-cache';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
 import { categoryRank, POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
 
@@ -509,10 +509,12 @@ export function createNotesOverlay(
         ctx.map.on('mouseenter', id, onEnter);
         ctx.map.on('mouseleave', id, onLeave);
       }
-      // Load the category and navaid icons after the layers exist; resilient, so a failure
-      // here leaves the markers as text labels rather than breaking overlay setup.
-      await registerPoiIcons(ctx.map, themePaint);
-      await registerNavaidIcons(ctx.map, themePaint);
+      // Load the category and navaid icons after the layers exist, concurrently; resilient, so a
+      // failure here leaves the markers as text labels rather than breaking overlay setup.
+      await Promise.all([
+        registerPoiIcons(ctx.map, themePaint),
+        registerNavaidIcons(ctx.map, themePaint),
+      ]);
     },
     sync(ctx) {
       // A hidden layer pays nothing: no network fetch, no clustering, no GeoJSON rebuild. The next

@@ -1,20 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createTrackSettings } from '$shared/settings';
 import { createTrackStore } from '$shared/storage';
+import { createFakeStorage } from '$shared/testing/fake-storage';
 import { computeStats, decideRecord, TrackRecorder } from './recorder.svelte';
 import type { TrackPoint } from './track-types';
 
-function fakeStorage() {
-  const map = new Map<string, string>();
-  return {
-    getItem: (k: string) => map.get(k) ?? null,
-    setItem: (k: string, v: string) => void map.set(k, v),
-  };
-}
-
 function recorder(): TrackRecorder {
   return new TrackRecorder(
-    createTrackSettings(fakeStorage()),
+    createTrackSettings(createFakeStorage()),
     createTrackStore<TrackPoint>(undefined),
   );
 }
@@ -144,7 +137,7 @@ describe('TrackRecorder', () => {
       append: async () => {},
       clear: async () => {},
     };
-    const r = new TrackRecorder(createTrackSettings(fakeStorage()), store);
+    const r = new TrackRecorder(createTrackSettings(createFakeStorage()), store);
     // #restore runs asynchronously in the constructor; let its microtasks settle.
     await Promise.resolve();
     await Promise.resolve();
@@ -161,7 +154,7 @@ describe('TrackRecorder', () => {
       append: async () => {},
       clear: async () => {},
     };
-    const r = new TrackRecorder(createTrackSettings(fakeStorage()), store);
+    const r = new TrackRecorder(createTrackSettings(createFakeStorage()), store);
     r.consider(36.8, -121.7, 1, 20000); // a live fix lands before the store read finishes
     resolveAll([{ lat: 36.7, lon: -121.7, t: 0, sog: 1 }]);
     await Promise.resolve();

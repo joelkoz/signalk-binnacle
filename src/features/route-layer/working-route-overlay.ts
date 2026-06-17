@@ -1,8 +1,4 @@
-import type {
-  GeoJSONSource,
-  GeoJSONSourceSpecification,
-  LineLayerSpecification,
-} from 'maplibre-gl';
+import type { GeoJSONSource, LineLayerSpecification } from 'maplibre-gl';
 import {
   highlightFeatures,
   type Route,
@@ -78,12 +74,12 @@ export function createWorkingRouteOverlay(
       lastHighlight = undefined;
       ctxRef = ctx;
       const before = ctx.beforeIdFor(BAND);
-      const emptySource: GeoJSONSourceSpecification = {
-        type: 'geojson',
-        data: emptyFeatureCollection(),
-      };
+      // Each source gets its own empty collection rather than one shared spec literal, so the three
+      // never alias a single initial data object.
       for (const src of [WPT_SRC, HL_SEG_SRC, HL_DOT_SRC]) {
-        if (!ctx.map.getSource(src)) ctx.map.addSource(src, emptySource);
+        if (!ctx.map.getSource(src)) {
+          ctx.map.addSource(src, { type: 'geojson', data: emptyFeatureCollection() });
+        }
       }
       if (!ctx.map.getLayer(WPT_LAYER)) {
         ctx.map.addLayer(waypointCircleLayer(WPT_LAYER, WPT_SRC, paint), before);

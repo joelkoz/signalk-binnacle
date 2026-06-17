@@ -4,7 +4,7 @@ import type {
   LineLayerSpecification,
 } from 'maplibre-gl';
 
-import { bboxContains, lngLatBoundsToBbox4, padBbox } from '$shared/geo';
+import { type Bbox4, bboxContains, lngLatBoundsToBbox4, padBbox } from '$shared/geo';
 import {
   emptyFeatureCollection,
   featureCollection,
@@ -15,7 +15,7 @@ import {
   rgbaCss,
   setLayersVisibility,
 } from '$shared/map';
-import { type AisTrail, type Bbox, fetchAisTrails } from './ais-trails-client';
+import { type AisTrail, fetchAisTrails } from './ais-trails-client';
 
 const SOURCE_ID = 'binnacle-ais-trails';
 const LAYER_ID = 'binnacle-ais-trails-line';
@@ -55,7 +55,7 @@ export function createAisTrailsOverlay(
   let fetching = false;
   let failedFetches = 0;
   let nextFetchAt = 0;
-  let fetchedBbox: Bbox | undefined;
+  let fetchedBbox: Bbox4 | undefined;
   let lastMoveAt = 0;
   let lastZoom: number | undefined;
   let lastLng: number | undefined;
@@ -157,7 +157,7 @@ export function createAisTrailsOverlay(
       }
       if (now - lastMoveAt < SETTLE_MS) return;
       if (fetching) return;
-      const viewport: Bbox = lngLatBoundsToBbox4(ctx.map.getBounds());
+      const viewport: Bbox4 = lngLatBoundsToBbox4(ctx.map.getBounds());
       // Inside the last padded fetch and within the cadence: the shown wakes are current enough.
       // A viewport that left that area fetches as soon as it settles.
       if (now < nextFetchAt && fetchedBbox && bboxContains(fetchedBbox, viewport)) return;

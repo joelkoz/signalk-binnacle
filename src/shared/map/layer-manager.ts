@@ -2,6 +2,10 @@ import type { MapThemePaint } from './map-theme';
 import { installSentinels, sentinelId } from './sentinels';
 import { type OverlayContext, type OverlayModule, Z_ORDER, type ZBand } from './types';
 
+// Precomputed band-to-stacking-rank lookup so an overlay's band order is an O(1) read rather than a
+// linear Z_ORDER scan on every effective-order pass.
+const Z_RANK = new Map<ZBand, number>(Z_ORDER.map((band, i) => [band, i]));
+
 export interface OverlayState {
   visible: boolean;
   opacity: number;
@@ -244,13 +248,13 @@ export class LayerManager {
   // saved explicit order, with any overlay missing from it slotted in at its band default.
   #effectiveOrder(): string[] {
     const bandRank = (id: string): number =>
-      Z_ORDER.indexOf(this.#modules.get(id)?.band ?? 'basemap');
+      Z_RANK.get(this.#modules.get(id)?.band ?? 'basemap') ?? 0;
     const nonPinned = [...this.#modules.keys()].filter((id) => !this.#pinned.has(id));
     // Order the top-level overlays only. A sub-layer is not positioned on its own: it is slotted
     // directly above its parent below, so it never drifts from the chart it annotates and never
     // becomes its own reorderable row.
-    const topLevel = nonPinned.filter((id) => !this.#isChild(id));
-    const seq = this.#explicitOrder.filter((id) => topLevel.includes(id));
+    const topLevel = new Set(nonPinned.filter((id) => !this.#isChild(id)));
+    const seq = this.#explicitOrder.filter((id) => topLevel.has(id));
     for (const id of topLevel) {
       if (seq.includes(id)) continue;
       const rank = bandRank(id);

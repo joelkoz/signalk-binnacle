@@ -1,5 +1,4 @@
-import { withTimeout } from '$shared/lib';
-import { authInit, deleteResource } from './resource';
+import { deleteResource, sendJson } from './resource';
 import type { NotificationState } from './types';
 
 // Thin client for the server's v2 Notifications API (signalk-server src/api/notifications).
@@ -32,21 +31,7 @@ async function postJson(
   token: string | undefined,
   body?: unknown,
 ): Promise<Response | undefined> {
-  try {
-    return await fetch(
-      url,
-      withTimeout(
-        authInit(token, {
-          method: 'POST',
-          ...(body !== undefined
-            ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-            : {}),
-        }),
-      ),
-    );
-  } catch {
-    return undefined;
-  }
+  return sendJson(url, token, 'POST', body);
 }
 
 async function idFrom(response: Response | undefined): Promise<string | undefined> {
@@ -82,25 +67,13 @@ export async function updateNotification(
   id: string,
   options: UpdateNotificationOptions,
 ): Promise<UpdateNotificationResult> {
-  try {
-    const response = await fetch(
-      `${base}${NOTIFICATIONS_API}/${id}`,
-      withTimeout(
-        authInit(token, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(options),
-        }),
-      ),
-    );
-    if (response.ok) return 'updated';
-    // The server answers 400 "Notification not found!" for an unknown or reaped id, so only 400
-    // warrants a re-raise; an auth refusal or absent API keeps the id and the caller's v1 delta
-    // fallback carries the change.
-    return response.status === 400 ? 'missing' : 'failed';
-  } catch {
-    return 'failed';
-  }
+  const response = await sendJson(`${base}${NOTIFICATIONS_API}/${id}`, token, 'PUT', options);
+  if (!response) return 'failed';
+  if (response.ok) return 'updated';
+  // The server answers 400 "Notification not found!" for an unknown or reaped id, so only 400
+  // warrants a re-raise; an auth refusal or absent API keeps the id and the caller's v1 delta
+  // fallback carries the change.
+  return response.status === 400 ? 'missing' : 'failed';
 }
 
 // Clear a notification: the server sets its state to normal and emits the final delta

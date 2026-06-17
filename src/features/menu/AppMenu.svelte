@@ -228,7 +228,7 @@ function onCardKeydown(event: KeyboardEvent): void {
   color: var(--accent);
 }
 .tile:active:not(:disabled) {
-  filter: brightness(0.94);
+  filter: brightness(var(--brightness-press));
 }
 /* Scoped on-state: the global .is-on cannot override .tile because Svelte's hash class raises
    .tile's specificity above the global utility, so the accent color, border, and fill are applied

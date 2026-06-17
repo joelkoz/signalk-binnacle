@@ -198,7 +198,7 @@ const caution = $derived(thresholdsCaution(t));
         />
       </div>
       {#if caution}
-        <p class="note" role="status">{caution}</p>
+        <p class="muted-note caution-note" role="status">{caution}</p>
       {/if}
       <button
         type="button"
@@ -300,9 +300,8 @@ const caution = $derived(thresholdsCaution(t));
 .group-title.warning {
   color: var(--warning);
 }
-.note {
-  margin: 0;
-  font-size: var(--text-sm);
+/* The caution line is the shared .muted-note with the warning color in place of the muted gray. */
+.caution-note {
   color: var(--warning);
 }
 .reset {

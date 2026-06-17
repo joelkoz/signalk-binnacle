@@ -176,9 +176,6 @@ function captureFromDistance(): void {
   color: var(--alarm);
   font-weight: 600;
 }
-.unit {
-  color: var(--text-muted);
-}
 .hint {
   margin: 0;
   color: var(--text-muted);

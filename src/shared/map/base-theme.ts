@@ -30,6 +30,15 @@ function baseLayers(map: MapLibreMap): BaseLayer[] {
   }
 }
 
+// The base-style layers the theme may touch: every base layer except those an overlay owns (the
+// chart, hosted rasters, and binnacle overlays theme their own). Shared by the recolor, the
+// icon-visibility pass, and the source-paint capture so the skip-managed rule lives in one place.
+function themableBaseLayers(map: MapLibreMap): BaseLayer[] {
+  return baseLayers(map).filter(
+    (layer) => !MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix)),
+  );
+}
+
 function paintProperty(type: string): string | null {
   switch (type) {
     case 'fill':
@@ -89,8 +98,7 @@ export function baseLayerPaint(
 // color, clears any fill pattern (the wetland hatch, paved-area texture) so the flat color
 // shows, and gives label text a background-colored halo for contrast on every theme.
 export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
-  for (const layer of baseLayers(map)) {
-    if (MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix))) continue;
+  for (const layer of themableBaseLayers(map)) {
     const themed = baseLayerPaint(layer, paint);
     if (!themed) continue;
     try {
@@ -113,10 +121,9 @@ export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
 // the text labels (already recolored) visible. Other themes show the icons normally.
 export function applyBaseIconVisibility(map: MapLibreMap, paint: MapThemePaint): void {
   const opacity = paint.theme === 'night-red' ? 0 : 1;
-  for (const layer of baseLayers(map)) {
-    // Overlay-owned symbol layers (own vessel, AIS, notes) theme themselves and carry user-set
-    // opacity, so they must never be hidden here or force-written back to 1.
-    if (MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix))) continue;
+  // Overlay-owned symbol layers (own vessel, AIS, notes) theme themselves and carry user-set
+  // opacity, so themableBaseLayers excludes them: they must never be hidden here or forced back to 1.
+  for (const layer of themableBaseLayers(map)) {
     if (layer.type !== 'symbol' || !layer.layout?.['icon-image']) continue;
     try {
       map.setPaintProperty(layer.id, 'icon-opacity', opacity);
@@ -142,8 +149,7 @@ export type BaseSnapshot = Array<{
 
 export function captureBaseTheme(map: MapLibreMap, paint: MapThemePaint): BaseSnapshot {
   const snapshot: BaseSnapshot = [];
-  for (const layer of baseLayers(map)) {
-    if (MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix))) continue;
+  for (const layer of themableBaseLayers(map)) {
     const themed = baseLayerPaint(layer, paint);
     if (!themed) continue;
     const isFill = layer.type === 'fill';
