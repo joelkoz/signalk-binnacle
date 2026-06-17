@@ -7,4 +7,4 @@ export {
   poiCategoryForType,
   poiIconId,
 } from './poi-categories';
-export { ICON_PIXEL_RATIO, rasterizeSvg, registerPoiIcons } from './poi-icons';
+export { ICON_PIXEL_RATIO, poiInlineIconSvg, rasterizeSvg, registerPoiIcons } from './poi-icons';
