@@ -2,29 +2,24 @@
 import { Navigation, SquarePen, Trash2 } from '@lucide/svelte';
 import type { Waypoint } from '$entities/waypoint';
 import { formatLatitude, formatLongitude } from '$shared/lib';
-import { InlineConfirm, promptRename, SavedList, SlideOver } from '$shared/ui';
+import { InlineConfirm, SavedList, SlideOver } from '$shared/ui';
 
 interface Props {
   waypoints: Waypoint[];
-  // A transient error to show (a failed save, rename, or delete), or undefined when clear.
+  // A transient error to show (a failed save, edit, or delete), or undefined when clear.
   error: string | undefined;
   // Pan the chart to the waypoint without changing anything else.
   onLocate: (waypoint: Waypoint) => void;
   // Arm the Course API destination at this waypoint; the action renders only when provided.
   onGoTo?: (waypoint: Waypoint) => void;
-  // Called with the new name the user enters; the panel prompts for it via the shared promptRename.
-  onRename: (id: string, name: string) => void;
+  // Opens the edit dialog (name + icon) for this waypoint.
+  onEdit: (waypoint: Waypoint) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
   onBack?: () => void;
 }
 
-const { waypoints, error, onLocate, onGoTo, onRename, onDelete, onClose, onBack }: Props = $props();
-
-function rename(waypoint: Waypoint): void {
-  const name = promptRename('Waypoint', waypoint.name);
-  if (name !== undefined) onRename(waypoint.id, name);
-}
+const { waypoints, error, onLocate, onGoTo, onEdit, onDelete, onClose, onBack }: Props = $props();
 
 // Deleting a waypoint is destructive, so it arms a confirm step rather than firing on a single
 // tap where a mis-tap on a rolling deck would lose a saved mark.
@@ -93,9 +88,9 @@ function confirmDelete(id: string): void {
           <button
             type="button"
             class="icon-btn"
-            aria-label="Rename waypoint"
-            title="Rename"
-            onclick={() => rename(waypoint)}
+            aria-label="Edit waypoint"
+            title="Edit"
+            onclick={() => onEdit(waypoint)}
           >
             <SquarePen size={18} aria-hidden="true" />
           </button>

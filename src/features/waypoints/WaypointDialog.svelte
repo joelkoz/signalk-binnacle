@@ -1,19 +1,23 @@
 <script lang="ts">
 import { POI_CATEGORIES } from '$entities/poi-icons';
 import type { SymbolsStore } from '$entities/symbols';
+import type { Waypoint } from '$entities/waypoint';
 import { dialog, focusOnMount } from '$shared/ui';
 import { IconPicker, type DefaultOption } from '$widgets/icon-picker';
 
 interface Props {
+  // Required for add mode (new waypoint). In edit mode `waypoint` takes precedence for the initial
+  // name, but defaultName still serves as the placeholder text.
   defaultName: string;
+  // When set the dialog is in edit mode: name and icon are pre-populated from this waypoint.
+  waypoint?: Waypoint;
   symbols?: SymbolsStore;
   onSave: (result: { name: string; icon?: string }) => void;
   onCancel: () => void;
 }
 
-const { defaultName, symbols, onSave, onCancel }: Props = $props();
+const { defaultName, waypoint, symbols, onSave, onCancel }: Props = $props();
 
-// A circle disc matching the actual default waypoint layer: circle-radius 5, waypoint fill, white stroke.
 const WAYPOINT_DEFAULT: DefaultOption = {
   iconId: 'waypoint',
   label: 'Default waypoint marker',
@@ -25,9 +29,19 @@ const WAYPOINT_DEFAULT: DefaultOption = {
 
 const POI_CATEGORY_SET = new Set<string>(POI_CATEGORIES as unknown as string[]);
 
-// Determine the reference to persist. Bare POI category names (e.g. "marina") save as
-// unqualified so a future binnacle:marina override can take effect. If a provided symbol
-// already overrides that built-in, save "default:marina" to explicitly force the built-in.
+// Convert a stored icon value back to the picker's selection value. Stored 'waypoint' and
+// undefined both mean "use the default marker", which the picker represents as an empty string.
+// A 'default:<cat>' value (explicit built-in with a custom override active) maps back to the bare
+// category id so the picker shows the right POI row.
+function pickerValueFromStoredIcon(icon: string | undefined): string {
+  if (!icon || icon === 'waypoint') return '';
+  if (icon.startsWith('default:')) return icon.slice('default:'.length);
+  return icon;
+}
+
+// Determine the reference to persist. Bare POI category names save as unqualified so a future
+// binnacle:<cat> override can take effect. If a provided symbol already overrides that built-in,
+// save 'default:<cat>' to explicitly force the built-in. Empty string means the default marker.
 function finalIconRef(selected: string): string {
   if (!selected) return 'waypoint';
   if (POI_CATEGORY_SET.has(selected)) {
@@ -37,12 +51,14 @@ function finalIconRef(selected: string): string {
   return selected;
 }
 
-let name = $state('');
-let icon = $state('');
+let name = $state(waypoint?.name ?? '');
+let icon = $state(pickerValueFromStoredIcon(waypoint?.icon));
 
 function save(): void {
   onSave({ name: name.trim() || defaultName, icon: finalIconRef(icon) });
 }
+
+const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
 </script>
 
 <div class="wp-scrim">
@@ -50,18 +66,18 @@ function save(): void {
     class="wp-dialog"
     role="dialog"
     aria-modal="true"
-    aria-label="Add waypoint"
+    aria-label={title}
     tabindex="-1"
     use:dialog={onCancel}
   >
-    <header><h2>Add waypoint</h2></header>
+    <header><h2>{title}</h2></header>
     <div class="wp-body">
       <label class="wp-field">
         <span class="caps-label">Name</span>
         <input
           type="text"
           bind:value={name}
-          placeholder={defaultName}
+          placeholder={waypoint?.name ?? defaultName}
           use:focusOnMount
           onkeydown={(e) => {
             if (e.key === 'Enter') save();
