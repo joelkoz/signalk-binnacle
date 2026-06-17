@@ -105,16 +105,6 @@ Binnacle ships its full feature set as a Signal K webapp:
 
 See the [changelog](CHANGELOG.md) for the full list.
 
-## Screenshots
-
-| The chart with live AIS and the Layers panel | Route planning with a passage plan | An anchorage point-of-interest detail |
-| --- | --- | --- |
-| [![The chart with AIS targets and seamarks, with the Layers panel open](static/screenshots/01-chart.png)](static/screenshots/01-chart.png) | [![The Routes panel with a drawn route, plan speed, and leg times](static/screenshots/02-routes.png)](static/screenshots/02-routes.png) | [![An anchorage note open in the structured detail panel](static/screenshots/03-anchorage.png)](static/screenshots/03-anchorage.png) |
-
-| Profiles | The weather mini-map |
-| --- | --- |
-| [![The Profiles panel with saved setting bundles](static/screenshots/04-profiles.png)](static/screenshots/04-profiles.png) | [![The weather mini-map with precipitation, the time slider, and the conditions panel](static/screenshots/05-weather.png)](static/screenshots/05-weather.png) |
-
 ## Architecture
 
 Binnacle is built on a current web stack and engineered to run on modest helm hardware:

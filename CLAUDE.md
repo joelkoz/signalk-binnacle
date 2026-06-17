@@ -161,6 +161,16 @@ must not be repeatable.
   `signalk-category-chart-plotters`, a `signalk` manifest with `appIcon`, `displayName`, and
   `screenshots`, the build emitted into the served directory, and `files` shipping it. No
   server plugin is required for the foundation.
+- README image paths must resolve in the Signal K admin UI README view, which resolves relative
+  image paths against the package root (the shipped npm tarball). Binnacle ships only `public/`
+  (the Vite build output), not `static/` (the Vite `publicDir` source), so a README image
+  reference must never point at `static/`: it 404s in the admin UI even though it renders on
+  GitHub, where `static/screenshots/` is git-tracked. For the webapp the App Store screenshot
+  carousel is driven entirely by `signalk.screenshots` (paths resolved against the served webapp
+  root `public/`, populated from `static/screenshots/` at build), so Binnacle does not duplicate
+  screenshots in the README the way the sibling plugins do (they ship `assets/` at the package
+  root and reference `assets/screenshots/` in both the README and `signalk.screenshots`). Keep
+  `signalk.screenshots` as is; it is correct and working.
 - Consume the v1 streaming WebSocket. Connect with `subscribe=none` and issue explicit
   subscriptions: own vessel at high rate (`policy: instant`, heading near 200 ms, others near
   1000 ms), and AIS at a controlled rate (`vessels.*`, `policy: fixed`, period near 5000 ms,
