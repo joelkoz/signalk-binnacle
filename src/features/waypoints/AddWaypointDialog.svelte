@@ -1,43 +1,29 @@
 <script lang="ts">
-import { categoryLabel, POI_CATEGORIES } from '$entities/poi-icons';
+import { POI_CATEGORIES } from '$entities/poi-icons';
 import type { SymbolsStore } from '$entities/symbols';
-import type { SkSymbol } from '$shared/signalk';
 import { dialog, focusOnMount } from '$shared/ui';
-
-// A small modal for naming a new waypoint and choosing its icon. The icon list is the built-in
-// default marker plus the provided symbols (signalk-symbol-manager) that declare the `waypoint`
-// role; on a stock server only the default is offered. Replaces the bare name prompt.
+import { IconPicker, type DefaultOption } from '$widgets/icon-picker';
 
 interface Props {
   defaultName: string;
   symbols?: SymbolsStore;
-  // icon is a Symbols API reference (e.g. 'custom:dive-flag'), or undefined for the default marker.
   onSave: (result: { name: string; icon?: string }) => void;
   onCancel: () => void;
 }
 
 const { defaultName, symbols, onSave, onCancel }: Props = $props();
 
-// Persist a stable qualified reference: prefer the user's `custom:` alias, then Binnacle's vendor
-// `binnacle:` alias, falling back to the first adopted alias.
-function iconRef(symbol: SkSymbol): string {
-  return (
-    symbol.aliases.find((a) => a.startsWith('custom:')) ??
-    symbol.aliases.find((a) => a.startsWith('binnacle:')) ??
-    symbol.aliases[0]
-  );
-}
+// A circle disc matching the actual default waypoint layer: circle-radius 5, waypoint fill, white stroke.
+const WAYPOINT_DEFAULT: DefaultOption = {
+  iconId: 'waypoint',
+  label: 'Default waypoint marker',
+  fallbackSvg:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">' +
+    '<circle cx="11" cy="11" r="8" fill="var(--accent)" stroke="white" stroke-width="1.5"/>' +
+    '</svg>',
+};
 
 const POI_CATEGORY_SET = new Set<string>(POI_CATEGORIES as unknown as string[]);
-
-const options = $derived([
-  { value: '', label: 'Default waypoint marker' },
-  ...POI_CATEGORIES.map((cat) => ({ value: cat, label: categoryLabel(cat) })),
-  ...(symbols?.forRole('waypoint') ?? []).map((s) => ({ value: iconRef(s), label: s.name })),
-]);
-
-let name = $state('');
-let icon = $state('');
 
 // Determine the reference to persist. Bare POI category names (e.g. "marina") save as
 // unqualified so a future binnacle:marina override can take effect. If a provided symbol
@@ -50,6 +36,9 @@ function finalIconRef(selected: string): string {
   }
   return selected;
 }
+
+let name = $state('');
+let icon = $state('');
 
 function save(): void {
   onSave({ name: name.trim() || defaultName, icon: finalIconRef(icon) });
@@ -79,14 +68,10 @@ function save(): void {
           }}
         >
       </label>
-      <label class="wp-field">
+      <div class="wp-field">
         <span class="caps-label">Icon</span>
-        <select bind:value={icon}>
-          {#each options as option (option.value)}
-            <option value={option.value}>{option.label}</option>
-          {/each}
-        </select>
-      </label>
+        <IconPicker bind:value={icon} {symbols} role="waypoint" defaultOption={WAYPOINT_DEFAULT} />
+      </div>
     </div>
     <footer>
       <button type="button" class="btn" onclick={onCancel}>Cancel</button>
@@ -109,7 +94,6 @@ function save(): void {
   border-radius: var(--radius-lg);
   background: var(--surface-raised);
   box-shadow: var(--shadow-lg);
-  overflow: hidden;
 }
 .wp-dialog header {
   padding: var(--space-3) var(--space-4);
@@ -123,13 +107,13 @@ function save(): void {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);
+  overflow: visible;
 }
 .wp-field {
   display: grid;
   gap: var(--space-1);
 }
-.wp-field input,
-.wp-field select {
+.wp-field input {
   inline-size: 100%;
   padding: var(--space-2);
   font-size: var(--text-md);
