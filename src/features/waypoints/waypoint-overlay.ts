@@ -116,8 +116,9 @@ export function createWaypointOverlay(
         properties: {
           name: waypoint.name,
           ...(iconImage ? { iconImage } : {}),
-          // Built-in POI icons are 30 CSS px at size 1; match the 0.65 scale provided symbols use.
-          ...(builtinId ? { iconSize: 0.65 } : {}),
+          // All icons in the symbol layer scale with zoom via the icon-size expression; property
+          // presence is the flag (the literal value is not read by the expression).
+          ...(iconImage ? { iconSize: 0.65 } : {}),
         },
       };
     });
