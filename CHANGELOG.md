@@ -8,6 +8,17 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v071"></a>
+
+## [0.7.1] - 2026-06-17
+
+### Fixed
+
+- The App Store listing no longer shows broken image placeholders in its README view. The README
+  carried a screenshots section whose image paths were not part of the published package, so they
+  could not load there. The screenshots shown in the App Store carousel were always present and are
+  unaffected.
+
 <a id="v070"></a>
 
 ## [0.7.0] - 2026-06-17
