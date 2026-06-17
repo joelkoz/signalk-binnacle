@@ -73,6 +73,13 @@ All notable changes to Binnacle are documented here. The format follows
   one home; and the weather-overlay registration, the route name reconcile, the collision severity
   map, and the AIS duration parse drop per-event allocations. The tidal current set is stored in SI
   radians like every other angle, converted to degrees only in the readout.
+- Further internal consolidation, no behavior change: the resource and notification clients share one
+  JSON-request helper; the map layer-ordering rank, the chart overlay's layer-id list, and the
+  base-map theme pass are each computed once and reused; the AIS trails client reuses the shared
+  bounding-box type; the working-route overlay builds each source its own empty collection; the notes
+  overlay registers its marker icons concurrently; and the entity stores publish the remaining
+  cross-feature types (collision source, measure leg, track stats, tides status, and anchor default
+  radius) through their public index.
 
 ### Fixed
 
