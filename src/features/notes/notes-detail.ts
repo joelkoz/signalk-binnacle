@@ -1,5 +1,8 @@
+import type { PoiType } from '$entities/poi-icons';
 import { withTimeout } from '$shared/lib';
 import { asKeyedObject, authInit, str, strArray } from '$shared/signalk';
+
+export type { PoiType };
 
 const ITEM_KINDS = [
   'text',
@@ -26,22 +29,6 @@ export interface NormalizedSection {
   title: string;
   items: NormalizedItem[];
 }
-
-export type PoiType =
-  | 'Marina'
-  | 'Anchorage'
-  | 'Hazard'
-  | 'Business'
-  | 'BoatRamp'
-  | 'Bridge'
-  | 'Dam'
-  | 'Ferry'
-  | 'Inlet'
-  | 'Lock'
-  | 'LocalKnowledge'
-  | 'Navigational'
-  | 'Airport'
-  | 'Unknown';
 
 export interface NoteDetail {
   id: string;
