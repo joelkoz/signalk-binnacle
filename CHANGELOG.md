@@ -8,6 +8,10 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v070"></a>
+
+## [0.7.0] - 2026-06-17
+
 ### Added
 
 - AI route drafting. Describe a passage in plain language, for example "from here to Avalon, stay 3 nm

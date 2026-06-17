@@ -1,6 +1,6 @@
 {
   "name": "signalk-binnacle",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "WebGL chart plotter for Signal K",
   "type": "module",
   "license": "Apache-2.0",
@@ -56,7 +56,7 @@
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
-    "@lucide/svelte": "^1.18.0",
+    "@lucide/svelte": "^1.20.0",
     "comlink": "^4.4.2",
     "maplibre-gl": "^5.24.0",
     "pmtiles": "^4.4.1",
@@ -81,17 +81,17 @@
     "hooks": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.61.0",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tsconfig/svelte": "^5.0.8",
-    "@vitest/web-worker": "^4.1.8",
+    "@vitest/web-worker": "^4.1.9",
     "dependency-cruiser": "^17.4.3",
     "svelte": "^5.56.3",
     "svelte-check": "^4.6.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vite-plugin-pwa": "^1.3.0",
-    "vitest": "^4.1.8",
+    "vitest": "^4.1.9",
     "workbox-window": "^7.4.1"
   }
 }

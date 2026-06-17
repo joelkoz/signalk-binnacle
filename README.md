@@ -15,22 +15,27 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.6.2
+## What's new in 0.7.0
 
-A weather layers menu and a deep reliability pass:
+AI route drafting and a routing workflow overhaul:
 
-- **A weather layers menu.** The weather panel's layer toggles move from the header, which ran out
-  of room, into a single menu opened from a floating button at the upper left of the mini-map. The
-  button lights and shows a count when layers are on, the menu groups the area fill and the
-  overlays, it stays open while you toggle several layers, and it docks as a bottom sheet on a
-  narrow screen. There is now room to add more options without crowding.
-- **Reliability and correctness.** A full pass across the weather overlays, the caching and history
-  layers, and the course and anchor logic: pressure isobars no longer blank after a map style swap,
-  caches stop evicting just-refreshed entries, an active course keeps its route geometry across a
-  cross-station handoff, and a set of failures that used to fail silently (a dead data link, a
-  failed track or chart save, a refused anchor drop) now tell you.
+- **AI route drafting and optimize (beta).** Describe a passage in plain language and review a drafted
+  route, or tap Optimize on a route you drew, when signalk-crows-nest provides the route-draft
+  endpoint. Each draft opens as an editable working route with a not-chart-verified banner, per-leg
+  land, shallow, hazard, and fuel flags that state their source and datum, and an armed "I checked
+  every leg" save. It is a beta assistant and cannot guarantee accuracy: review every leg against the
+  official charts and your instruments before you navigate it. The control stays hidden on a server
+  without the endpoint.
+- **Route editing on the chart.** A route shows its waypoints as dots the moment you draft, optimize,
+  or edit it. Tap a leg in the panel to light its segment and end dots on the chart, tap a dot to
+  light the legs it joins, drag a dot to move it, or tap a midpoint to insert one. The chart menu adds
+  "Start a route here" so you begin a route from the spot you picked.
+- **AIS course vectors and reliability.** Moving AIS targets draw a short course predictor, red for a
+  danger contact and amber for a warning. Plus a reliability pass: offline and runtime caching works
+  again in a secure context, antimeridian-crossing routes frame the short way, and collision alerts no
+  longer cry wolf at anchor.
 
-See the [changelog](CHANGELOG.md#v062) for the full list.
+See the [changelog](CHANGELOG.md#v070) for the full list.
 
 ## What it does
 
