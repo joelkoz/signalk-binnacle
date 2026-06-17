@@ -23,20 +23,20 @@ describe('waypointToFeature', () => {
     expect('description' in body).toBe(false);
   });
 
-  it('writes the icon into feature.properties.skIcon, empty properties when none', () => {
+  it('writes the icon into feature.properties.skIcon, defaults to "waypoint" when none', () => {
     expect(waypointToFeature({ ...WAYPOINT, icon: 'custom:dive-flag' }).feature.properties).toEqual(
       {
         skIcon: 'custom:dive-flag',
       },
     );
-    expect(waypointToFeature(WAYPOINT).feature.properties).toEqual({});
+    expect(waypointToFeature(WAYPOINT).feature.properties).toEqual({ skIcon: 'waypoint' });
   });
 });
 
 describe('featureToWaypoint', () => {
   it('round-trips a waypoint through the resource body', () => {
     const back = featureToWaypoint(WAYPOINT.id, waypointToFeature(WAYPOINT));
-    expect(back).toEqual(WAYPOINT);
+    expect(back).toEqual({ ...WAYPOINT, icon: 'waypoint' });
   });
 
   it('round-trips the icon via feature.properties.skIcon', () => {

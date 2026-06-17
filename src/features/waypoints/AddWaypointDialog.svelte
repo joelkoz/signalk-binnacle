@@ -1,4 +1,5 @@
 <script lang="ts">
+import { categoryLabel, POI_CATEGORIES } from '$entities/poi-icons';
 import type { SymbolsStore } from '$entities/symbols';
 import type { SkSymbol } from '$shared/signalk';
 import { dialog, focusOnMount } from '$shared/ui';
@@ -27,17 +28,31 @@ function iconRef(symbol: SkSymbol): string {
   );
 }
 
+const POI_CATEGORY_SET = new Set<string>(POI_CATEGORIES as unknown as string[]);
+
 const options = $derived([
-  { value: '', label: 'Default marker' },
+  { value: '', label: 'Default waypoint marker' },
+  ...POI_CATEGORIES.map((cat) => ({ value: cat, label: categoryLabel(cat) })),
   ...(symbols?.forRole('waypoint') ?? []).map((s) => ({ value: iconRef(s), label: s.name })),
 ]);
 
-// Empty means "use the default": save() falls back to defaultName, shown as the placeholder.
 let name = $state('');
 let icon = $state('');
 
+// Determine the reference to persist. Bare POI category names (e.g. "marina") save as
+// unqualified so a future binnacle:marina override can take effect. If a provided symbol
+// already overrides that built-in, save "default:marina" to explicitly force the built-in.
+function finalIconRef(selected: string): string {
+  if (!selected) return 'waypoint';
+  if (POI_CATEGORY_SET.has(selected)) {
+    const hasOverride = symbols?.resolve(selected) !== undefined;
+    return hasOverride ? `default:${selected}` : selected;
+  }
+  return selected;
+}
+
 function save(): void {
-  onSave({ name: name.trim() || defaultName, icon: icon || 'waypoint' });
+  onSave({ name: name.trim() || defaultName, icon: finalIconRef(icon) });
 }
 </script>
 

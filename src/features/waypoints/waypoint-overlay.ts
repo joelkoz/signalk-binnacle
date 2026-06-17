@@ -5,6 +5,7 @@ import type {
   GeoJSONSourceSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
+import { categoryForSkIcon, poiIconId, registerPoiIcons } from '$entities/poi-icons';
 import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
 import type { Waypoint, WaypointsStore } from '$entities/waypoint';
 import { latLonToLonLat } from '$shared/geo';
@@ -65,6 +66,22 @@ export function createWaypointOverlay(
   const registry = symbols?.createIconRegistry();
   const pendingSymbols = new Map<string, SkSymbol>();
 
+  // Resolve a waypoint icon to a built-in POI map image id. "waypoint" (the default marker)
+  // returns undefined so it keeps its circle disc. Bare ids and binnacle:/default: qualified ids
+  // are classified via the same skIcon vocabulary the notes overlay uses; qualified foreign-
+  // namespace ids are not built-ins and return undefined (let managedIcon handle them).
+  function builtinPoiIconId(icon: string | undefined): string | undefined {
+    if (!icon || icon === 'waypoint') return undefined;
+    const colon = icon.indexOf(':');
+    let bareId = icon;
+    if (colon !== -1) {
+      const ns = icon.slice(0, colon);
+      if (ns === 'binnacle' || ns === 'default') bareId = icon.slice(colon + 1);
+      else return undefined;
+    }
+    return poiIconId(categoryForSkIcon(bareId));
+  }
+
   // The registered icon for a waypoint whose icon resolves to a provided symbol, or undefined for
   // the built-in disc (no symbols store, unresolvable reference, image still loading, or a failed
   // load). A reference defaults to the 'waypoint' built-in id so a `binnacle:waypoint` override
@@ -89,13 +106,20 @@ export function createWaypointOverlay(
       if (entry && (entry.offset[0] !== 0 || entry.offset[1] !== 0)) {
         offsets.set(entry.iconId, entry.offset);
       }
+      const builtinId = entry ? undefined : builtinPoiIconId(waypoint.icon);
+      const iconImage = entry?.iconId ?? builtinId;
       return {
         type: 'Feature',
         geometry: {
           type: 'Point',
           coordinates: latLonToLonLat(waypoint.position),
         },
-        properties: { name: waypoint.name, ...(entry ? { iconImage: entry.iconId } : {}) },
+        properties: {
+          name: waypoint.name,
+          ...(iconImage ? { iconImage } : {}),
+          // Built-in POI icons are 30 CSS px at size 1; match the 0.65 scale provided symbols use.
+          ...(builtinId ? { iconSize: 0.65 } : {}),
+        },
       };
     });
     return {
@@ -170,6 +194,18 @@ export function createWaypointOverlay(
           filter: ['has', 'iconImage'],
           layout: {
             'icon-image': ['get', 'iconImage'],
+            // Built-in POI icons match the notes overlay's zoom-interpolated size.
+            // Provided symbols are pre-scaled during rasterization and stay at 1.
+            // Camera expressions (zoom) must wrap data expressions, not the other way around.
+            'icon-size': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              9,
+              ['case', ['has', 'iconSize'], 0.6, 1],
+              14,
+              ['case', ['has', 'iconSize'], 0.9, 1],
+            ],
             'icon-allow-overlap': true,
           },
         };
@@ -198,6 +234,7 @@ export function createWaypointOverlay(
         ctx.map.addLayer(layer, before);
       }
       redraw(ctx);
+      void registerPoiIcons(ctx.map, paint).then(() => redraw(ctx));
     },
     sync(ctx) {
       if (store.version === lastVersion) return;
@@ -223,6 +260,7 @@ export function createWaypointOverlay(
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-halo-color', paint.background);
       // Re-raster registered symbols in place (same image ids), so the symbol layer updates.
       registry?.retheme(ctx.map, next);
+      void registerPoiIcons(ctx.map, next).then(() => redraw(ctx));
     },
     remove(ctx) {
       removeLayersAndSources(ctx.map, layers, [SOURCE_ID]);
