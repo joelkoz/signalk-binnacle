@@ -130,10 +130,10 @@ import {
 } from '$features/tracks';
 import { TrendSessionRecorder, TrendsPanel } from '$features/trends';
 import {
-  AddWaypointDialog,
   deleteWaypoint,
   fetchWaypoints,
   saveWaypoint,
+  WaypointDialog,
   WaypointsPanel,
 } from '$features/waypoints';
 import {
@@ -588,9 +588,11 @@ async function refreshWaypoints(): Promise<void> {
   }
 }
 
-// A dropped waypoint opens the Add Waypoint dialog (name plus icon), seeded at the drop position;
+// A dropped waypoint opens the waypoint dialog (name plus icon), seeded at the drop position;
 // confirmAddWaypoint saves it. addWaypointAt holds the pending position while the dialog is open.
 let addWaypointAt = $state<LatLon | undefined>();
+// The waypoint currently open in the edit dialog, or undefined when the dialog is closed.
+let editingWaypoint = $state<Waypoint | undefined>();
 
 function onDropWaypoint(position: LatLon): void {
   waypointError = undefined;
@@ -615,12 +617,19 @@ async function confirmAddWaypoint(result: { name: string; icon?: string }): Prom
   await refreshWaypoints();
 }
 
-async function onRenameWaypoint(id: string, name: string): Promise<void> {
+function onOpenEditWaypoint(waypoint: Waypoint): void {
   waypointError = undefined;
-  const existing = waypointsStore.waypoints.find((w) => w.id === id);
+  editingWaypoint = waypoint;
+}
+
+async function onSaveWaypointEdit(result: { name: string; icon?: string }): Promise<void> {
+  const existing = editingWaypoint;
+  editingWaypoint = undefined;
   if (!existing) return;
-  if (!(await saveWaypoint(origin, chartsToken, { ...existing, name }))) {
-    waypointError = 'Could not rename the waypoint.';
+  waypointError = undefined;
+  const updated: Waypoint = { ...existing, name: result.name, icon: result.icon };
+  if (!(await saveWaypoint(origin, chartsToken, updated))) {
+    waypointError = 'Could not save the waypoint. Check the connection and write access.';
     return;
   }
   await refreshWaypoints();
@@ -2287,7 +2296,7 @@ onDestroy(() => {
           error={waypointError}
           onLocate={(waypoint) => flyToPosition(waypoint.position)}
           onGoTo={(waypoint) => void onGoToHere(waypoint.position)}
-          onRename={(id, name) => void onRenameWaypoint(id, name)}
+          onEdit={onOpenEditWaypoint}
           onDelete={(id) => void onDeleteWaypoint(id)}
           onClose={closePanel}
           onBack={backToMenu}
@@ -2528,11 +2537,20 @@ onDestroy(() => {
 </main>
 
 {#if addWaypointAt}
-  <AddWaypointDialog
+  <WaypointDialog
     defaultName={defaultSaveName('Waypoint')}
     symbols={symbolsStore}
     onSave={(result) => void confirmAddWaypoint(result)}
     onCancel={() => (addWaypointAt = undefined)}
+  />
+{/if}
+{#if editingWaypoint}
+  <WaypointDialog
+    defaultName={editingWaypoint.name}
+    waypoint={editingWaypoint}
+    symbols={symbolsStore}
+    onSave={(result) => void onSaveWaypointEdit(result)}
+    onCancel={() => (editingWaypoint = undefined)}
   />
 {/if}
 
