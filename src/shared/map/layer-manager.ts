@@ -110,7 +110,7 @@ export class LayerManager {
             : 1,
         }
       : { visible: module.defaultVisible ?? true, opacity: module.defaultOpacity ?? 1 };
-    const state = this.#state.get(module.id) ?? fallback;
+    const state = fallback;
     // Enforce exclusion on restore too: a saved or legacy state with two members of an exclusive
     // group both visible would otherwise bypass the toggle-time rule. Keep the first registered.
     if (state.visible) {
@@ -255,19 +255,35 @@ export class LayerManager {
     // becomes its own reorderable row.
     const topLevel = new Set(nonPinned.filter((id) => !this.#isChild(id)));
     const seq = this.#explicitOrder.filter((id) => topLevel.has(id));
+    // inSeq tracks membership in seq for O(1) has-check; posInSeq maps id to index for O(1) parent
+    // lookup. Both are kept in sync with every splice so the findIndex loop below stays off seq.
+    const inSeq = new Set(seq);
+    const posInSeq = new Map(seq.map((id, i) => [id, i]));
+    // Precompute band ranks for the current seq contents so the insertion loop never calls
+    // bandRank(other) per element.
+    const seqRanks: number[] = seq.map((id) => bandRank(id));
     for (const id of topLevel) {
-      if (seq.includes(id)) continue;
+      if (inSeq.has(id)) continue;
       const rank = bandRank(id);
-      let at = seq.findIndex((other) => bandRank(other) > rank);
+      let at = seqRanks.findIndex((r) => r > rank);
       if (at < 0) at = seq.length;
       seq.splice(at, 0, id);
+      seqRanks.splice(at, 0, rank);
+      inSeq.add(id);
+      // posInSeq is used only for parent lookup below, so a full rebuild is acceptable here;
+      // the number of top-level overlays is small (a dozen at most) and this path runs once per
+      // missing id, not per element per insertion.
+      for (let k = at; k < seq.length; k++) posInSeq.set(seq[k], k);
     }
     for (const id of nonPinned) {
       const parent = this.#modules.get(id)?.parent;
       if (parent === undefined) continue;
-      const at = seq.indexOf(parent);
-      if (at >= 0) seq.splice(at + 1, 0, id);
-      else seq.push(id);
+      const at = posInSeq.get(parent);
+      if (at !== undefined) {
+        seq.splice(at + 1, 0, id);
+        // Update posInSeq for the inserted child and every element that shifted right.
+        for (let k = at + 1; k < seq.length; k++) posInSeq.set(seq[k], k);
+      } else seq.push(id);
     }
     const pinned = [...this.#pinned].filter((id) => this.#modules.has(id));
     return [...seq, ...pinned];

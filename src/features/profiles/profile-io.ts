@@ -2,9 +2,6 @@ import type { Profile, ProfileSettings } from '$entities/profile';
 import { downloadText, isFiniteNumber } from '$shared/lib';
 import { THEMES } from '$shared/ui';
 
-// The canonical valid-theme list, so a corrupt import cannot smuggle an unknown theme into the store.
-const VALID_THEMES: readonly string[] = THEMES;
-
 // A validated import: the settings to recreate plus the name to recreate them under. The importer
 // calls store.save(name, settings), so an id and timestamps are deliberately not carried over.
 export interface ImportedProfile {
@@ -40,7 +37,8 @@ function isTrackSettings(value: unknown): boolean {
 // optional field, accepted only when it is a string.
 export function isProfileSettings(value: unknown): value is ProfileSettings {
   if (!isPlainObject(value)) return false;
-  if (typeof value.theme !== 'string' || !VALID_THEMES.includes(value.theme)) return false;
+  if (typeof value.theme !== 'string' || !(THEMES as readonly string[]).includes(value.theme))
+    return false;
   if (!isPlainObject(value.layers)) return false;
   if (!isPlainObject(value.layerCategories)) return false;
   if (!isPlainObject(value.weatherLayers)) return false;

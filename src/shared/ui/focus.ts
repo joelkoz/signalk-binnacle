@@ -34,11 +34,14 @@ export const onKeydownAction: Action<HTMLElement, ((event: KeyboardEvent) => voi
   };
 };
 
-// Vertical arrow-key roving over the items matching `selector` inside this element, with initial
-// focus on the first match when it mounts. Shared by the anchored map menus (the chart context menu
-// and the weather layer menu); AppMenu's 2D tile grid keeps its own Left/Right/Home/End handler.
-// The listener lives in the action, not a template onkeydown, so the host element can carry a
-// non-interactive role without tripping the a11y interaction lint.
+/**
+ * Vertical arrow-key roving over the items matching `selector` inside this element, with initial
+ * focus on the first match when it mounts. Re-queries the DOM on each arrow keypress; intended
+ * only for small, static item lists where the query is cheap. Shared by the anchored map menus
+ * (the chart context menu and the weather layer menu); AppMenu's 2D tile grid keeps its own
+ * Left/Right/Home/End handler. The listener lives in the action, not a template onkeydown, so the
+ * host element can carry a non-interactive role without tripping the a11y interaction lint.
+ */
 export const rovingFocus: Action<HTMLElement, string> = (node, selector) => {
   // The selector is captured once: both consumers pass a literal, so the action needs no update.
   const items = (): HTMLElement[] => [...node.querySelectorAll<HTMLElement>(selector)];

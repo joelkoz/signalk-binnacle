@@ -109,10 +109,5 @@ export async function putResource(
 
 // DELETE a resource URL, returning whether it succeeded. Never throws (see putResource).
 export async function deleteResource(url: string, token: string | undefined): Promise<boolean> {
-  try {
-    const response = await fetch(url, withTimeout(authInit(token, { method: 'DELETE' })));
-    return response.ok;
-  } catch {
-    return false;
-  }
+  return (await sendJson(url, token, 'DELETE'))?.ok ?? false;
 }

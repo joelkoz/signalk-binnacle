@@ -50,11 +50,14 @@ const nowFrac = $derived(tide ? nowFraction(tide.events, clock.now) : undefined)
 const nextCurrent = $derived(current ? nextCurrentEvent(current.events, clock.now) : undefined);
 const sourceNote = $derived(tideSourceNote(store.source));
 // The rate and set as one string, so no stray whitespace creeps in between the rate and the comma.
-const currentRate = $derived(
-  nextCurrent
-    ? `${formatCurrentRate(nextCurrent.velocityMps)}${nextCurrent.directionRad !== undefined ? `, ${Math.round(nextCurrent.directionRad / DEG_TO_RAD)}°` : ''}`
-    : '',
-);
+const currentRate = $derived.by(() => {
+  if (!nextCurrent) return '';
+  const dirSuffix =
+    nextCurrent.directionRad !== undefined
+      ? `, ${Math.round(nextCurrent.directionRad / DEG_TO_RAD)}°`
+      : '';
+  return `${formatCurrentRate(nextCurrent.velocityMps)}${dirSuffix}`;
+});
 
 const CURVE_W = 240;
 const CURVE_H = 60;

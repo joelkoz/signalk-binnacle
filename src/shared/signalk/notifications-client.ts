@@ -26,7 +26,7 @@ export interface UpdateNotificationOptions {
   data?: Record<string, unknown>;
 }
 
-async function postJson(
+function postJson(
   url: string,
   token: string | undefined,
   body?: unknown,

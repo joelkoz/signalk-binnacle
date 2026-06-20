@@ -104,6 +104,7 @@ export function createProfileBindings(deps: ProfileBindingDeps): ProfileBindings
 
   const bindings = Object.values(table);
   return {
+    // satisfies above proves all fields are present; the cast is safe.
     capture: () => Object.assign({}, ...bindings.map((p) => p.read())) as ProfileSettings,
     apply: (settings) => {
       for (const p of bindings) p.write(settings);

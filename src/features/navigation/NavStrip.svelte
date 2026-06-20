@@ -102,7 +102,7 @@ const eta = $derived.by(() => {
         <div class="skip-group">
           <button
             type="button"
-            class="skip"
+            class="icon-btn icon-btn--accent skip"
             aria-label="Previous waypoint"
             title="Previous waypoint"
             disabled={!canSkipBack}
@@ -112,7 +112,7 @@ const eta = $derived.by(() => {
           </button>
           <button
             type="button"
-            class="skip"
+            class="icon-btn icon-btn--accent skip"
             aria-label="Next waypoint"
             title="Next waypoint"
             disabled={!canSkipForward}
@@ -210,29 +210,18 @@ const eta = $derived.by(() => {
   gap: var(--space-1);
   margin-inline-end: var(--space-3);
 }
-/* Waypoint-skip buttons in the strip head. A full 44px touch target so they are usable underway, with
-   the compact icon centered. */
+/* Waypoint-skip buttons in the strip head: bordered variant of .icon-btn--accent, with a compact
+   padding and a tighter disabled opacity than the global --disabled-opacity. */
 .skip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
-  min-block-size: var(--control-size);
-  min-inline-size: var(--control-size);
   padding: 0.2rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
 }
 .skip:hover:not(:disabled) {
   border-color: var(--accent);
   background: var(--accent-tint);
 }
 .skip:disabled {
-  color: var(--text-muted);
   opacity: 0.4;
-  cursor: default;
 }
 </style>

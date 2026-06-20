@@ -52,13 +52,13 @@ export function layerCategory(item: LayerListItem): LayerCategory {
 export function clampReorderSlot(movable: LayerListItem[], id: string, slot: number): number {
   const from = movable.findIndex((item) => item.id === id);
   if (from < 0) return slot;
-  const category = layerCategory(movable[from]).id;
+  const category = resolveId(movable[from]);
   let first = -1;
   let last = -1;
   let i = 0;
   for (const item of movable) {
     if (item.id === id) continue;
-    if (layerCategory(item).id === category) {
+    if (resolveId(item) === category) {
       if (first < 0) first = i;
       last = i;
     }

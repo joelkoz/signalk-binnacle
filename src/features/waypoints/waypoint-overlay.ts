@@ -56,7 +56,6 @@ export function createWaypointOverlay(
   symbols?: SymbolsStore,
 ): WaypointOverlay {
   let paint: MapThemePaint = mapThemePaint('day');
-  let themePaint = paint;
   let lastVersion = -1;
   let visible = true;
   const layers = [MARKER_LAYER, SYMBOL_MARKER_LAYER, LABEL_LAYER];
@@ -147,7 +146,7 @@ export function createWaypointOverlay(
     pendingSymbols.clear();
     for (const symbol of pending) {
       void registry
-        .ensure(ctx.map, symbol, themePaint)
+        .ensure(ctx.map, symbol, paint)
         .then((ok) => {
           if (ok) redraw(ctx);
         })
@@ -254,7 +253,6 @@ export function createWaypointOverlay(
     },
     applyTheme(ctx, next) {
       paint = next;
-      themePaint = next;
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-color', paint.waypoint);
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-stroke-color', paint.markerGlyph);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-color', paint.label);

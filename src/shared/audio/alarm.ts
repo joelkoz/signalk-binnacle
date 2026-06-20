@@ -33,11 +33,8 @@ export interface AlarmControl {
 }
 
 function createContext(): AudioContext | undefined {
-  if (typeof window === 'undefined') return undefined;
-  const Ctor =
-    window.AudioContext ??
-    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  return Ctor ? new Ctor() : undefined;
+  if (typeof window === 'undefined' || !window.AudioContext) return undefined;
+  return new window.AudioContext();
 }
 
 export class Alarm implements AlarmControl {

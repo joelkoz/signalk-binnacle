@@ -54,12 +54,12 @@ export function featureToRoute(id: string, raw: unknown): Route | undefined {
     ? (r.feature?.properties?.coordinatesMeta as Array<{ name?: unknown }>)
     : [];
   const waypoints: Waypoint[] = [];
-  geom.coordinates.forEach((coord, i) => {
+  for (const [i, coord] of geom.coordinates.entries()) {
     if (isLonLat(coord)) {
       const name = str(meta[i]?.name);
       waypoints.push({ position: lonLatToLatLon(coord), ...(name ? { name } : {}) });
     }
-  });
+  }
   if (waypoints.length < 2) return undefined;
   const name = str(r.name) ?? id;
   return { id, name, waypoints };

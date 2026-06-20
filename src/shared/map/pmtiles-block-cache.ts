@@ -228,7 +228,7 @@ export function createBlockStore(options: BlockStoreOptions = {}): BlockStore {
           const blocksStore = tx.objectStore(BLOCKS);
           const keysReq = metaStore.getAllKeys();
           keysReq.onsuccess = () => {
-            for (const key of keysReq.result.map(String).filter((k) => k.startsWith(prefix))) {
+            for (const key of (keysReq.result as string[]).filter((k) => k.startsWith(prefix))) {
               blocksStore.delete(key);
               metaStore.delete(key);
             }

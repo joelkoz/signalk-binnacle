@@ -8,10 +8,10 @@ import { fetchKeyedResource, str, strArray } from './resource';
 // from a server-api package so browser and worker code never pulls in Node types.
 
 export type WidgetSize = '1x1' | '2x1' | '1x2' | '2x2';
-const WIDGET_SIZES: readonly WidgetSize[] = ['1x1', '2x1', '1x2', '2x2'];
+const WIDGET_SIZES: ReadonlySet<string> = new Set<string>(['1x1', '2x1', '1x2', '2x2']);
 
 export type Lifecycle = 'onOpen' | 'keepAlive' | 'whileEnabled';
-const LIFECYCLES: readonly Lifecycle[] = ['onOpen', 'keepAlive', 'whileEnabled'];
+const LIFECYCLES: ReadonlySet<string> = new Set<string>(['onOpen', 'keepAlive', 'whileEnabled']);
 
 export interface WidgetContribution {
   id: string;
@@ -78,7 +78,7 @@ const PLOTTEREXT_PATH = '/signalk/v2/api/resources/plotterExtensions';
 
 function lifecycleOf(value: unknown): Lifecycle | undefined {
   const s = str(value);
-  return s && (LIFECYCLES as readonly string[]).includes(s) ? (s as Lifecycle) : undefined;
+  return s && LIFECYCLES.has(s) ? (s as Lifecycle) : undefined;
 }
 
 function widgetFromEntry(raw: unknown): WidgetContribution | undefined {
@@ -89,7 +89,7 @@ function widgetFromEntry(raw: unknown): WidgetContribution | undefined {
   const url = str(e.url);
   const size = str(e.size);
   if (!id || !title || e.type !== 'iframe' || !url) return undefined;
-  if (!size || !(WIDGET_SIZES as readonly string[]).includes(size)) return undefined;
+  if (!size || !WIDGET_SIZES.has(size)) return undefined;
   return {
     id,
     title,

@@ -106,6 +106,7 @@ export function createTrackOverlay(
     const tail = points.slice(pendingStart);
     const simplifiedTail = douglasPeucker(tail, SIMPLIFY_TOLERANCE);
 
+    // Nothing interior to freeze: skip, tail stays short.
     if (tail.length <= TAIL_WINDOW || simplifiedTail.length < 3) return spliceTail(simplifiedTail);
 
     // Freeze the older half. Walk tail and the (in-order) kept points together to recover each kept

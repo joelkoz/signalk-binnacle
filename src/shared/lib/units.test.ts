@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   feetToMeters,
   formatClockTime,
-  formatCpaNm,
   formatDayClock,
   formatDuration,
   formatLandDistanceOr,
   formatLengthOr,
   formatMetersOrNm,
+  formatNm,
   formatPrecipRateOr,
   formatPressureOr,
   formatTcpaMin,
@@ -46,7 +46,7 @@ describe('units', () => {
   });
 
   it('formats CPA in nautical miles and TCPA in minutes', () => {
-    expect(formatCpaNm(926)).toBe('0.50');
+    expect(formatNm(926)).toBe('0.50');
     expect(formatTcpaMin(600)).toBe('10');
     expect(formatTcpaMin(90, 1)).toBe('1.5');
   });
@@ -255,9 +255,9 @@ describe('formatDuration', () => {
   });
 });
 
-describe('formatCpaNm and formatTcpaMin boundary values', () => {
-  it('formatCpaNm(0) returns a sane string and does not throw', () => {
-    const result = formatCpaNm(0);
+describe('formatNm and formatTcpaMin boundary values', () => {
+  it('formatNm(0) returns a sane string and does not throw', () => {
+    const result = formatNm(0);
     expect(typeof result).toBe('string');
     expect(result).toBe('0.00');
   });

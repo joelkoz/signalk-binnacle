@@ -6,9 +6,9 @@ import type { OwnVessel } from '$entities/vessel';
 import type { LatLon } from '$shared/geo';
 import {
   formatBearingOr,
-  formatCpaNm,
   formatKnotsOr,
   formatMetersOrNm,
+  formatNm,
   formatTcpaMin,
 } from '$shared/lib';
 import { SlideOver } from '$shared/ui';
@@ -80,15 +80,19 @@ const rows = $derived(
               </span>
               <span class="metrics">
                 <span class="metric">
-                  Range <b>{formatMetersOrNm(row.rangeMeters, units.mode)}</b>
+                  Range <b class="num">{formatMetersOrNm(row.rangeMeters, units.mode)}</b>
                 </span>
-                <span class="metric">Brg <b>{formatBearingOr(row.bearingRad)}</b>&deg;T</span>
-                <span class="metric">SOG <b>{formatKnotsOr(row.sogMps)}</b> kn</span>
+                <span class="metric"
+                  >Brg <b class="num">{formatBearingOr(row.bearingRad)}</b>&deg;T</span
+                >
+                <span class="metric">SOG <b class="num">{formatKnotsOr(row.sogMps)}</b> kn</span>
                 {#if row.cpaMeters !== undefined}
-                  <span class="metric">CPA <b>{formatCpaNm(row.cpaMeters)}</b> nm</span>
+                  <span class="metric">CPA <b class="num">{formatNm(row.cpaMeters)}</b> nm</span>
                 {/if}
                 {#if row.tcpaSeconds !== undefined}
-                  <span class="metric">TCPA <b>{formatTcpaMin(row.tcpaSeconds, 1)}</b> min</span>
+                  <span class="metric"
+                    >TCPA <b class="num">{formatTcpaMin(row.tcpaSeconds, 1)}</b> min</span
+                  >
                 {/if}
               </span>
             </button>
@@ -158,9 +162,7 @@ const rows = $derived(
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
-.metric b {
+.metric .num {
   color: var(--text);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
 }
 </style>

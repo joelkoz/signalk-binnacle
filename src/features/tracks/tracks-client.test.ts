@@ -52,6 +52,7 @@ describe('fetchSavedTracks', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     const tracks = await fetchSavedTracks('http://pi', 'tok');
+    if (!tracks) throw new Error('expected tracks');
     expect(tracks).toHaveLength(1);
     expect(tracks[0]).toMatchObject({ id: 't1', name: 'Day 1' });
     expect(tracks[0].points).toHaveLength(2);
@@ -85,6 +86,7 @@ describe('fetchSavedTracks', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
     const tracks = await fetchSavedTracks('http://pi');
+    if (!tracks) throw new Error('expected tracks');
     expect(tracks).toHaveLength(1);
     expect(tracks[0].points).toHaveLength(1);
     // A track saved without distance/timespan metadata carries them as undefined, not zero.
@@ -93,9 +95,9 @@ describe('fetchSavedTracks', () => {
     expect(fetchMock.mock.calls[1][0]).toContain('/signalk/v1/api/resources/tracks');
   });
 
-  it('returns an empty list on an error response', async () => {
+  it('returns undefined on an error response so the caller keeps the current list', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(500, {})));
-    expect(await fetchSavedTracks('http://pi')).toEqual([]);
+    expect(await fetchSavedTracks('http://pi')).toBeUndefined();
   });
 });
 

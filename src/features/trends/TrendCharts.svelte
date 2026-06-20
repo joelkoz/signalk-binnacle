@@ -34,13 +34,13 @@ const displays = $derived<Record<TrendKey, Display>>({
     unit: lengthUnit(mode),
     digits: 1,
   },
-  wind: { convert: (si) => metersPerSecondToKnots(si), unit: 'kn', digits: 1 },
+  wind: { convert: metersPerSecondToKnots, unit: 'kn', digits: 1 },
   pressure: {
     convert: (si) => pressureValue(si, mode),
     unit: pressureUnit(mode),
     digits: mode === 'imperial' ? 2 : 0,
   },
-  sog: { convert: (si) => metersPerSecondToKnots(si), unit: 'kn', digits: 1 },
+  sog: { convert: metersPerSecondToKnots, unit: 'kn', digits: 1 },
 });
 
 interface Section {
@@ -88,7 +88,7 @@ const hasData = (section: Section): boolean => section.values.some((value) => va
     <section aria-label="{section.label} trend">
       <div class="head">
         <span class="caps-label">{section.label}</span>
-        <span class="latest"><b>{section.latest}</b> {section.unit}</span>
+        <span class="latest"><b class="num">{section.latest}</b> {section.unit}</span>
       </div>
       {#if hasData(section)}
         <TrendChart times={section.times} values={section.values} {theme} />
@@ -122,7 +122,6 @@ section {
 }
 .latest b {
   color: var(--text);
-  font-family: var(--font-mono);
   font-size: var(--text-base);
 }
 </style>

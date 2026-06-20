@@ -27,7 +27,7 @@ const WAYPOINT_DEFAULT: DefaultOption = {
     '</svg>',
 };
 
-const POI_CATEGORY_SET = new Set<string>(POI_CATEGORIES as unknown as string[]);
+const POI_CATEGORY_SET = new Set<string>(POI_CATEGORIES);
 
 // Convert a stored icon value back to the picker's selection value. Stored 'waypoint' and
 // undefined both mean "use the default marker", which the picker represents as an empty string.
@@ -80,6 +80,7 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
       <label class="wp-field">
         <span class="caps-label">Name</span>
         <input
+          class="input"
           type="text"
           bind:value={name}
           placeholder={waypoint?.name ?? defaultName}
@@ -102,7 +103,7 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
     </div>
     <footer>
       <button type="button" class="btn" onclick={onCancel}>Cancel</button>
-      <button type="button" class="btn btn-pill is-on" onclick={save}>Save</button>
+      <button type="button" class="btn btn-primary btn-pill" onclick={save}>Save</button>
     </footer>
   </div>
 </div>
@@ -136,10 +137,7 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
   inline-size: 100%;
   padding: var(--space-2);
   font-size: var(--text-md);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
   background: var(--surface);
-  color: var(--text);
 }
 .wp-dialog footer {
   display: flex;

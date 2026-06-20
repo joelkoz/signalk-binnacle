@@ -1,3 +1,5 @@
+import { isFiniteNumber } from '$shared/lib';
+
 export interface LatLon {
   latitude: number;
   longitude: number;
@@ -58,5 +60,5 @@ export function roundLatLon(position: LatLon, decimals: number): LatLon {
 
 export function asNumber(value: unknown): number | undefined {
   // Finite only: a NaN reaching the store would flow into display math and data-driven expressions.
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  return isFiniteNumber(value) ? value : undefined;
 }

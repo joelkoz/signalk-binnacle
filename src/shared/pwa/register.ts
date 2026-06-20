@@ -25,7 +25,7 @@ export function registerPwa(onNeedRefresh?: () => void): PwaController {
   // are the offline navigation data. Browsers may decline silently; that is fine.
   void navigator.storage?.persist?.().catch(() => undefined);
   const updateSW = registerSW({
-    onNeedRefresh: () => onNeedRefresh?.(),
+    onNeedRefresh,
     onRegisterError: (error) => {
       // An untrusted server certificate makes the browser refuse to register a service worker, even
       // after the user clicks through the page warning, so offline caching stays off (the app itself

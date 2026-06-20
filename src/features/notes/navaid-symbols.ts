@@ -11,6 +11,12 @@ export interface NavaidClass {
   side: NavaidSide;
 }
 
+const RE_AID_NUM = /(\d+)[a-z]?\b/;
+const RE_LIGHTHOUSE = /lighthouse/;
+const RE_DAYBEACON = /daybeacon/;
+const RE_BUOY = /buoy/;
+const RE_LIGHT = /\blight\b|pierhead|breakwater|entrance light|channel light/;
+
 // Crow's Nest tags every light, beacon, and buoy with the same skIcon
 // (navigation-structure), so the specific kind is inferred from the note name and the
 // lateral side from the aid's number using the US IALA-B convention (even = red, starboard
@@ -19,13 +25,13 @@ export interface NavaidClass {
 export function navaidClassify(name: string): NavaidClass {
   const n = name.toLowerCase();
   // Aid numbers may carry a letter suffix ("Buoy 2A"); the digits alone decide the side.
-  const num = n.match(/(\d+)[a-z]?\b/);
+  const num = n.match(RE_AID_NUM);
   const side: NavaidSide = num ? (Number(num[1]) % 2 === 0 ? 'starboard' : 'port') : 'none';
-  if (/lighthouse/.test(n)) return { kind: 'lighthouse', side: 'none' };
-  if (/daybeacon/.test(n)) return { kind: 'daybeacon', side };
+  if (RE_LIGHTHOUSE.test(n)) return { kind: 'lighthouse', side: 'none' };
+  if (RE_DAYBEACON.test(n)) return { kind: 'daybeacon', side };
   // A "lighted buoy" is a buoy, so buoy is matched before the light keyword.
-  if (/buoy/.test(n)) return { kind: 'buoy', side };
-  if (/\blight\b|pierhead|breakwater|entrance light|channel light/.test(n)) {
+  if (RE_BUOY.test(n)) return { kind: 'buoy', side };
+  if (RE_LIGHT.test(n)) {
     return { kind: 'light', side: 'none' };
   }
   return { kind: 'generic', side: 'none' };

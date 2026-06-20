@@ -154,12 +154,12 @@ import {
 import {
   Clock,
   formatBearingOr,
-  formatCpaNm,
   formatFixed,
   formatKnotsOr,
   formatLatitude,
   formatLengthOr,
   formatLongitude,
+  formatNm,
   formatTcpaMin,
   lengthUnit,
   nauticalMilesToMeters,
@@ -511,7 +511,7 @@ const waypointsStore = new WaypointsStore();
 // Provided chart symbols (signalk-symbol-manager). Constructed empty so the chart can mount
 // immediately and hold one stable reference; filled when the fetch lands after access resolves.
 // On a stock server the resource type 404s and every icon stays built-in.
-const symbolsStore = new SymbolsStore(serverOrigin(), undefined);
+const symbolsStore = new SymbolsStore(origin, undefined);
 
 // Plotter-extension host: discovers plotterExtensions manifests and runs their widgets, panels,
 // buttons, and background runtimes over the published bus. Constructed empty; on a stock server with
@@ -544,10 +544,10 @@ const plotterExtHost = new PlotterExtHost({
         timestamp: cell.epoch ? new Date(cell.epoch).toISOString() : undefined,
       };
     },
-    put: (path, value) => putSignalKPath(serverOrigin(), chartsToken, path, value),
+    put: (path, value) => putSignalKPath(origin, chartsToken, path, value),
   },
   resources: {
-    list: (type, query) => listResources(serverOrigin(), chartsToken, type, query),
+    list: (type, query) => listResources(origin, chartsToken, type, query),
   },
   units: () => unitsForMode(units.mode),
 });
@@ -564,7 +564,7 @@ const notesFilter: NotesFilter = {
 // Discover (or refresh) the offered extensions through the authenticated session. Undefined is the
 // stock-server degrade signal: keep whatever is loaded rather than blanking on a transient failure.
 async function refreshPlotterExtensions(): Promise<void> {
-  const list = await fetchPlotterExtensions(serverOrigin(), chartsToken);
+  const list = await fetchPlotterExtensions(origin, chartsToken);
   if (list) plotterExtHost.load(offerableExtensions(list));
 }
 
@@ -572,7 +572,7 @@ async function refreshPlotterExtensions(): Promise<void> {
 // symbol-manager plugin installed or updated while the link was down would otherwise leave stale
 // icons until the page reloads, so the reconnect path refreshes these alongside the other resources.
 async function refreshSymbols(): Promise<void> {
-  const list = await fetchSymbols(serverOrigin(), auth.token ?? undefined);
+  const list = await fetchSymbols(origin, auth.token ?? undefined);
   if (list) symbolsStore.setSymbols(list);
 }
 
@@ -617,7 +617,7 @@ async function confirmAddWaypoint(result: { name: string; icon?: string }): Prom
     position,
     ...(result.icon ? { icon: result.icon } : {}),
   };
-  if (!(await saveWaypoint(serverOrigin(), chartsToken, waypoint))) {
+  if (!(await saveWaypoint(origin, chartsToken, waypoint))) {
     waypointError = 'Could not save the waypoint. Check the connection and write access.';
     activePanel = 'waypoints';
     return;
@@ -1006,7 +1006,7 @@ const collisionAlert = $derived.by(() => {
   // Lead with the worst contact's grade (contacts[0] is severity-then-time sorted), so a
   // warning-only situation is not announced as full danger.
   const lead = nearest.severity === 'warning' ? 'Collision warning' : 'Collision danger';
-  return `${lead}: ${count} ${count === 1 ? 'contact' : 'contacts'}, nearest ${who}, CPA ${formatCpaNm(nearest.cpaMeters)} nautical miles in ${formatTcpaMin(nearest.tcpaSeconds, 1)} minutes.`;
+  return `${lead}: ${count} ${count === 1 ? 'contact' : 'contacts'}, nearest ${who}, CPA ${formatNm(nearest.cpaMeters)} nautical miles in ${formatTcpaMin(nearest.tcpaSeconds, 1)} minutes.`;
 });
 // A muted collision alarm is a safety state, so announce it politely; clearing it on expiry or unmute
 // is silent. The mute auto-expires, so the badge shows the minutes left to make the bounded window
@@ -1247,8 +1247,13 @@ function bumpSaved(): void {
 }
 
 async function refreshSavedTracks(): Promise<void> {
-  savedTracks = await fetchSavedTracks(origin, chartsToken);
-  bumpSaved();
+  // undefined means unreachable: keep the current list rather than blanking it over a transient
+  // failure, matching refreshRoutes and refreshWaypoints. A reachable empty result does clear it.
+  const fetched = await fetchSavedTracks(origin, chartsToken);
+  if (fetched) {
+    savedTracks = fetched;
+    bumpSaved();
+  }
 }
 
 // A failed track save or delete shown in the panel until the next action, so a refused server
@@ -2206,7 +2211,7 @@ onDestroy(() => {
       resolveAddWidget={(x, y, width, height) =>
         addWidgetActionAt(plotterExtHost, x, y, width, height)}
     />
-    <PlotterExtHostView host={plotterExtHost} origin={serverOrigin()} />
+    <PlotterExtHostView host={plotterExtHost} {origin} />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>

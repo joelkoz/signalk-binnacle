@@ -1,6 +1,6 @@
 import { vesselLabel } from '$entities/ais';
 import type { Assessment } from '$entities/collision';
-import { formatCpaNm, formatTcpaMin } from '$shared/lib';
+import { formatNm, formatTcpaMin } from '$shared/lib';
 
 // The Signal K path Binnacle publishes its collision alert to, so other clients and
 // devices on the boat see the same alarm.
@@ -24,7 +24,7 @@ export function buildNotification(assessment: Assessment): SkNotification {
     return { state: 'normal', method: [], message: 'No collision risk' };
   }
   const name = vesselLabel(top.name, top.id);
-  const cpa = formatCpaNm(top.cpaMeters);
+  const cpa = formatNm(top.cpaMeters);
   const tcpa = formatTcpaMin(top.tcpaSeconds);
   const danger = assessment.worst === 'danger';
   return {

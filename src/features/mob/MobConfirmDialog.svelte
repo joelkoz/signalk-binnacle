@@ -41,7 +41,7 @@ function confirm(): void {
 <!-- The scrim is deliberately inert: a panicked hammer-tap outside the dialog must neither confirm
      (any stray touch would arm the alarm) nor dismiss (retracting an emergency takes the explicit
      Cancel, or Escape via the dialog action). -->
-<div class="mob-modal">
+<div class="modal-scrim">
   <!-- The host deliberately carries NO tabindex (unlike SlideOver): the dialog action's
        node.focus() then no-ops, so the confirm button's focusOnMount owns initial focus. -->
   <div
@@ -63,7 +63,8 @@ function confirm(): void {
     {#if mark?.position}
       <p class="fix" aria-hidden="true">
         Captured {formatClockTime(mark.epochMs, { seconds: true })}<br>
-        {formatLatitude(mark.position.latitude)} {formatLongitude(mark.position.longitude)}
+        <span class="num">{formatLatitude(mark.position.latitude)}</span>
+        <span class="num">{formatLongitude(mark.position.longitude)}</span>
       </p>
     {:else}
       <p class="fix no-fix">No GPS fix. The alarm will sound without a position.</p>
@@ -81,14 +82,6 @@ function confirm(): void {
 </div>
 
 <style>
-.mob-modal {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: grid;
-  place-items: center;
-  background: var(--scrim);
-}
 .mob-dialog {
   inline-size: min(22rem, calc(100dvw - 2 * var(--space-4)));
   border: 2px solid var(--alarm);
@@ -134,7 +127,6 @@ function confirm(): void {
 }
 .fix {
   padding-block-start: var(--space-2);
-  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--text-muted);
 }

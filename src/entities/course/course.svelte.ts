@@ -115,7 +115,7 @@ export class CourseGuidance {
   // the end. Conservative: false when the route extent is unknown.
   get isLastPoint(): boolean {
     const route = this.#info.activeRoute;
-    if (route?.pointIndex == null || route?.pointTotal == null) return false;
+    if (route?.pointIndex == null || route.pointTotal == null) return false;
     return route.pointIndex >= route.pointTotal - 1;
   }
 

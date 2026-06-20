@@ -10,6 +10,9 @@ const GIBS_WMTS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
 const gibsTiles = (layer: string, date: string): string =>
   `${GIBS_WMTS}/${layer}/default/${date}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png`;
 
+const GIBS_ATTRIBUTION = 'NASA EOSDIS GIBS; GHRSST L4 MUR (JPL PO.DAAC)';
+const GIBS_DEFAULT_OPACITY = 0.7;
+
 // Built as a function so the date is resolved at construction time, not at module load.
 export function buildOceanSources(): RasterOverlaySource[] {
   const date = gibsDate();
@@ -21,8 +24,8 @@ export function buildOceanSources(): RasterOverlaySource[] {
       minzoom: 0,
       maxzoom: 7,
       // A background field, so it defaults translucent and the chart reads through it.
-      defaultOpacity: 0.7,
-      attribution: 'NASA EOSDIS GIBS; GHRSST L4 MUR (JPL PO.DAAC)',
+      defaultOpacity: GIBS_DEFAULT_OPACITY,
+      attribution: GIBS_ATTRIBUTION,
     },
     {
       id: 'gibs-sea-ice',
@@ -30,8 +33,8 @@ export function buildOceanSources(): RasterOverlaySource[] {
       tiles: [gibsTiles('GHRSST_L4_MUR_Sea_Ice_Concentration', date)],
       minzoom: 0,
       maxzoom: 7,
-      defaultOpacity: 0.7,
-      attribution: 'NASA EOSDIS GIBS; GHRSST L4 MUR (JPL PO.DAAC)',
+      defaultOpacity: GIBS_DEFAULT_OPACITY,
+      attribution: GIBS_ATTRIBUTION,
     },
   ];
 }

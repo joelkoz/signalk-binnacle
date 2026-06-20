@@ -25,6 +25,7 @@ function asLine(value: unknown): [number, number][] | undefined {
   const line: [number, number][] = [];
   for (const position of value) {
     if (!Array.isArray(position)) return undefined;
+    // Array.isArray check above makes the cast safe.
     const [lon, lat] = position as unknown[];
     if (typeof lon !== 'number' || typeof lat !== 'number') return undefined;
     line.push([lon, lat]);

@@ -50,6 +50,7 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Extend .btn to fill its flex row */
 /* A primary action that stretches to fill its controls row (Routes and Profiles); not the default,
    since a three-button row (Tracks) keeps its primary natural-width. */
 .btn--grow {
@@ -301,12 +302,18 @@
   border-color: var(--accent);
   background: var(--accent-tint);
 }
+/* On the active card (its background is the accent tint), lift the muted stat labels to the body text
+   color so they stay readable, especially in night-red where muted-on-tint is the lowest-contrast
+   pairing. */
+.saved li.active .card-stats {
+  color: var(--text);
+}
 .saved li.active::before {
   content: "";
   position: absolute;
   inset-block: 0;
   inset-inline-start: 0;
-  inline-size: 3px;
+  inline-size: var(--active-bar-width);
   border-start-start-radius: var(--radius-sm);
   border-end-start-radius: var(--radius-sm);
   background: var(--accent);
@@ -367,27 +374,27 @@
   margin: 0;
 }
 .range::-webkit-slider-runnable-track {
-  block-size: 6px;
+  block-size: var(--range-track-h);
   border-radius: var(--radius-pill);
   background: var(--border);
 }
 .range::-moz-range-track {
-  block-size: 6px;
+  block-size: var(--range-track-h);
   border-radius: var(--radius-pill);
   background: var(--border);
 }
 .range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  inline-size: 22px;
-  block-size: 22px;
+  inline-size: var(--range-thumb-size);
+  block-size: var(--range-thumb-size);
   margin-block-start: -8px;
   border-radius: var(--radius-pill);
   border: none;
   background: var(--accent);
 }
 .range::-moz-range-thumb {
-  inline-size: 22px;
-  block-size: 22px;
+  inline-size: var(--range-thumb-size);
+  block-size: var(--range-thumb-size);
   border-radius: var(--radius-pill);
   border: none;
   background: var(--accent);

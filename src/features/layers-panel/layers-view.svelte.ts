@@ -5,6 +5,7 @@ export class LayersView {
   items = $state<LayerListItem[]>([]);
 
   #manager: LayerManager;
+  #byId = new Map<string, LayerListItem>();
 
   constructor(manager: LayerManager) {
     this.#manager = manager;
@@ -12,6 +13,7 @@ export class LayersView {
 
   refresh(): void {
     this.items = this.#manager.layers();
+    this.#byId = new Map(this.items.map((item) => [item.id, item]));
   }
 
   // A toggle can flip several rows at once (the weather fills are mutually exclusive), so rebuild
@@ -24,7 +26,7 @@ export class LayersView {
 
   setOpacity(id: string, opacity: number): void {
     this.#manager.setOpacity(id, opacity);
-    const item = this.items.find((i) => i.id === id);
+    const item = this.#byId.get(id);
     if (item) item.opacity = opacity;
   }
 

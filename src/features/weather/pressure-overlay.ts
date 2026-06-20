@@ -6,6 +6,7 @@ import type {
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import { emptyFeatureCollection, type OverlayContext, type OverlayModule } from '$shared/map';
+import type { Theme } from '$shared/ui';
 import { WEATHER_LAYER_IDS } from './fills';
 import { isobarColors } from './pressure-colors';
 import { isobarFeatures } from './pressure-isobars';
@@ -23,6 +24,7 @@ export interface PressureOverlay extends OverlayModule {
 // and a sparse label layer of hPa values. Off by default. Rebuilds only when the grid or the
 // selected time changes, like the wind overlay.
 export function createPressureOverlay(store: WeatherStore): PressureOverlay {
+  let theme: Theme = 'day';
   let lastGrid: unknown;
   let lastTime = Number.NaN;
 
@@ -40,7 +42,7 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
       lastTime = Number.NaN;
     },
     add(ctx) {
-      const colors = isobarColors('day');
+      const colors = isobarColors(theme);
       if (!ctx.map.getSource(LINE_SOURCE)) {
         const source: GeoJSONSourceSpecification = {
           type: 'geojson',
@@ -123,7 +125,8 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-opacity', opacity);
     },
     applyTheme(ctx, paint) {
-      const colors = isobarColors(paint.theme);
+      theme = paint.theme;
+      const colors = isobarColors(theme);
       ctx.map.setPaintProperty(LINE_LAYER, 'line-color', colors.line);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-color', colors.label);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-halo-color', colors.halo);

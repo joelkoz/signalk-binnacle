@@ -1,6 +1,7 @@
 import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import { emptyFeatureCollection } from '$shared/map';
+import type { Theme } from '$shared/ui';
 import { type CanvasFactory, createFieldOverlay, type FieldOverlay } from './field-overlay';
 import { WEATHER_LAYER_IDS } from './fills';
 import { waveArrowFeatures } from './wave-arrows';
@@ -30,6 +31,7 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
     },
     makeCanvas,
   );
+  let theme: Theme = 'day';
   let lastGrid: unknown;
   let lastTime = Number.NaN;
 
@@ -58,7 +60,7 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
           type: 'line',
           source: ARROW_SOURCE,
           layout: { 'line-cap': 'round' },
-          paint: { 'line-color': waveArrowColor('day'), 'line-width': 1.5, 'line-opacity': 1 },
+          paint: { 'line-color': waveArrowColor(theme), 'line-width': 1.5, 'line-opacity': 1 },
         };
         ctx.map.addLayer(layer, ctx.beforeIdFor('weather'));
       }
@@ -91,8 +93,9 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
       ctx.map.setPaintProperty(ARROW_LAYER, 'line-opacity', opacity);
     },
     applyTheme(ctx, paint) {
+      theme = paint.theme;
       field.applyTheme?.(ctx, paint);
-      ctx.map.setPaintProperty(ARROW_LAYER, 'line-color', waveArrowColor(paint.theme));
+      ctx.map.setPaintProperty(ARROW_LAYER, 'line-color', waveArrowColor(theme));
     },
   };
 }

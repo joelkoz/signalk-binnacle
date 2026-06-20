@@ -96,7 +96,7 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
               RING_RADIUS.warning,
               RING_RADIUS.warning,
             ],
-            'circle-color': 'rgba(0, 0, 0, 0)',
+            'circle-color': 'transparent',
             'circle-stroke-width': [
               'match',
               ['get', 'severity'],

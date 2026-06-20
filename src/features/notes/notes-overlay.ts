@@ -30,6 +30,8 @@ import { bboxKey, NotesCache, padBbox } from './notes-cache';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
 import { categoryRank, POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
 
+const POI_CATEGORY_SET = new Set<string>(POI_CATEGORIES);
+
 const SOURCE_ID = 'binnacle-notes';
 const LAYER_ID = 'binnacle-notes-symbol';
 // A cluster is a group ring, the most important member's colored icon, and a count badge.
@@ -503,7 +505,7 @@ export function createNotesOverlay(
         // than trusting the string into PoiCategory: an out-of-vocabulary value would key the label
         // and icon records to nothing instead of falling back.
         const rawCategory = String(props.category ?? '');
-        const category: PoiCategory = (POI_CATEGORIES as readonly string[]).includes(rawCategory)
+        const category: PoiCategory = POI_CATEGORY_SET.has(rawCategory)
           ? (rawCategory as PoiCategory)
           : 'generic';
         setSelected(ctx, feature);

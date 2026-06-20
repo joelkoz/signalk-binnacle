@@ -55,6 +55,9 @@
   --brightness-press: 0.94;
   /* One hover and press timing for the whole UI, so interactive feedback feels uniform. */
   --transition-fast: 0.12s ease;
+  --range-track-h: 6px;
+  --range-thumb-size: 22px;
+  --active-bar-width: 3px;
 
   --surface: #cfe0ec;
   --surface-raised: #ffffff;

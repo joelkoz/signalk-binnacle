@@ -89,10 +89,10 @@ export type DraftResult =
   | { ok: true; route: DraftedRoute; optimized: boolean }
   | { ok: false; error: DraftError; message: string };
 
-const KNOWN_ERRORS = new Set<DraftError>(DRAFT_ERRORS);
+const KNOWN_ERRORS = new Set<string>(DRAFT_ERRORS);
 
 function isKnownError(v: unknown): v is DraftError {
-  return typeof v === 'string' && KNOWN_ERRORS.has(v as DraftError);
+  return typeof v === 'string' && KNOWN_ERRORS.has(v);
 }
 
 function parseSemver(s: string): number[] {
@@ -130,10 +130,10 @@ const MAX_WAYPOINTS = 60;
 // honest "check timed out" degrade) before this client gives up.
 const DRAFT_TIMEOUT_MS = 55_000;
 
-const FLAG_KINDS = new Set<DraftFlag['kind']>(['land', 'shallow', 'hazard', 'fuel', 'other']);
+const FLAG_KINDS = new Set<string>(['land', 'shallow', 'hazard', 'fuel', 'other']);
 
 function isFlagKind(v: unknown): v is DraftFlag['kind'] {
-  return typeof v === 'string' && FLAG_KINDS.has(v as DraftFlag['kind']);
+  return typeof v === 'string' && FLAG_KINDS.has(v);
 }
 
 function validateWaypoints(raw: unknown): Waypoint[] | undefined {
@@ -204,21 +204,9 @@ export async function draftRoute(
   req: DraftRouteRequest,
   signal?: AbortSignal,
 ): Promise<DraftResult> {
-  const timeout = AbortSignal.timeout(DRAFT_TIMEOUT_MS);
-  let combined: AbortSignal;
-  if (typeof AbortSignal.any === 'function') {
-    combined = signal ? AbortSignal.any([timeout, signal]) : timeout;
-  } else {
-    // Fallback for a runtime without AbortSignal.any: forward both the timeout and the caller's
-    // signal into one controller so the draft still times out rather than hanging on the caller.
-    const controller = new AbortController();
-    const abort = (): void => controller.abort();
-    for (const s of signal ? [timeout, signal] : [timeout]) {
-      if (s.aborted) abort();
-      else s.addEventListener('abort', abort, { once: true });
-    }
-    combined = controller.signal;
-  }
+  const combined = signal
+    ? AbortSignal.any([AbortSignal.timeout(DRAFT_TIMEOUT_MS), signal])
+    : AbortSignal.timeout(DRAFT_TIMEOUT_MS);
 
   let response: Response;
   try {

@@ -39,8 +39,9 @@
   }
   /* Collapse the bottom sheet to its header so the chart underneath is usable while the panel stays
      open (for example tapping waypoints into a route); the header keeps the expand control. The
-     compound .panel-body selector outranks the single-class .panel-body--flex display on specificity,
-     so the collapse wins regardless of source order. */
+     two-class .panel-body.panel-body--collapsed selector (specificity 0,2,0) outweighs the
+     single-class .panel-body--flex rule (0,1,0), so the collapse takes effect regardless of source
+     order. */
   .panel-body.panel-body--collapsed {
     display: none;
   }
@@ -66,6 +67,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+}
+/* A pinned footer below the scrolling body: action buttons or attribution that must always be
+   visible at the bottom of the panel regardless of scroll position. */
+.panel-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-block-start: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 /* The bottom instrument strips (active route, collision danger) share one shell: a centered card on

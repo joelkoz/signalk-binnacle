@@ -41,7 +41,7 @@ export function degreesToRadians(value: number): number {
 }
 
 // A 0..360 heading in degrees: the heading if present, otherwise the course over ground, otherwise
-// north. Shared by the vessel and AIS symbol overlays, which both rotate by this.
+// north.
 export function headingDegrees(
   headingRad: number | null | undefined,
   cogRad: number | null | undefined,
@@ -240,11 +240,6 @@ export function formatMetersOrNm(
   }
   if (meters < METERS_PER_NAUTICAL_MILE) return `${Math.round(meters)} m`;
   return `${formatNm(meters)} nm`;
-}
-
-// CPA is just a distance; named for the collision metric at its call sites.
-export function formatCpaNm(meters: number, digits = 2): string {
-  return formatNm(meters, digits);
 }
 
 export function formatTcpaMin(seconds: number, digits = 0): string {

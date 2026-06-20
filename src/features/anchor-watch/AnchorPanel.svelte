@@ -81,7 +81,9 @@ function captureFromDistance(): void {
 
 <SlideOver title="Anchor watch" {onClose} {onBack}>
   <section class="anchor-watch">
-    <p class="status" class:status--alarm={anchor.dragging} role="status">{statusLine}</p>
+    <p class="muted-note status" class:status--alarm={anchor.dragging} role="status">
+      {statusLine}
+    </p>
     <dl class="stat-grid">
       <dt>Distance</dt>
       <dd><span class="num">{distanceText}</span><span class="unit">{unit}</span></dd>
@@ -150,10 +152,10 @@ function captureFromDistance(): void {
       </div>
     {/if}
     {#if !watching && !vessel.position}
-      <p class="hint">Waiting for a GPS fix to drop the anchor at.</p>
+      <p class="muted-note">Waiting for a GPS fix to drop the anchor at.</p>
     {/if}
     {#if watching}
-      <p class="hint">Drag the anchor marker on the chart to correct the drop point.</p>
+      <p class="muted-note">Drag the anchor marker on the chart to correct the drop point.</p>
     {/if}
     {#if error}
       <p class="alert-note" role="alert">{error}</p>
@@ -169,16 +171,10 @@ function captureFromDistance(): void {
   font-size: var(--text-base);
 }
 .status {
-  margin: 0;
-  color: var(--text-muted);
+  font-size: var(--text-base);
 }
 .status--alarm {
   color: var(--alarm);
   font-weight: 600;
-}
-.hint {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
 }
 </style>

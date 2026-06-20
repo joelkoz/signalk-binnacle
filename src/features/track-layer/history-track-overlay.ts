@@ -4,7 +4,7 @@ import type {
   LineLayerSpecification,
 } from 'maplibre-gl';
 import { isLatLon } from '$shared/geo';
-import { HOUR_MS } from '$shared/lib';
+import { MINUTE_MS } from '$shared/lib';
 import {
   emptyFeatureCollection,
   mapThemePaint,
@@ -26,7 +26,7 @@ const LINE_OPACITY = 0.6;
 const DASH = [2, 2];
 const WINDOW_SECONDS = 24 * 60 * 60;
 const RESOLUTION_SECONDS = 60;
-const REFRESH_MS = HOUR_MS / 4;
+const REFRESH_MS = 15 * MINUTE_MS;
 // A break longer than this between positions starts a new line segment, so a day at the dock
 // followed by a sail does not draw a straight line across the gap.
 const GAP_SECONDS = 15 * 60;

@@ -40,6 +40,8 @@ export interface SymbolOverlayConfig {
 }
 
 export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay {
+  const pixelRatio = config.pixelRatio ?? 1;
+
   function refresh(ctx: OverlayContext): void {
     const source = ctx.map.getSource(config.sourceId) as GeoJSONSource | undefined;
     source?.setData(config.features());
@@ -52,12 +54,7 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
     supportsOpacity: true,
     layerIds: [config.layerId],
     add(ctx) {
-      setMapImage(
-        ctx.map,
-        config.iconId,
-        config.iconImage(config.defaultColor),
-        config.pixelRatio ?? 1,
-      );
+      setMapImage(ctx.map, config.iconId, config.iconImage(config.defaultColor), pixelRatio);
       if (!ctx.map.getSource(config.sourceId)) {
         const source: GeoJSONSourceSpecification = { type: 'geojson', data: config.features() };
         ctx.map.addSource(config.sourceId, source);
@@ -84,7 +81,7 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
     },
     applyTheme(ctx, paint) {
       const image = config.iconImage(config.paintColor(paint));
-      setMapImage(ctx.map, config.iconId, image, config.pixelRatio ?? 1);
+      setMapImage(ctx.map, config.iconId, image, pixelRatio);
     },
     setVisible(ctx, visible) {
       setLayersVisibility(ctx.map, [config.layerId], visible);

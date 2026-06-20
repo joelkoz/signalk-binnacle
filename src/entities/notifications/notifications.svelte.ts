@@ -72,9 +72,7 @@ export class NotificationsStore {
       if (parsed) out.push(parsed);
     }
     out.sort(
-      (a, b) =>
-        SEVERITY_RANK[a.state] - SEVERITY_RANK[b.state] ||
-        (a.path < b.path ? -1 : a.path > b.path ? 1 : 0),
+      (a, b) => SEVERITY_RANK[a.state] - SEVERITY_RANK[b.state] || a.path.localeCompare(b.path),
     );
     this.#cache = out;
     this.#cacheVersion = version;

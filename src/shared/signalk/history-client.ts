@@ -73,8 +73,8 @@ export async function fetchHistoryValues(
   // panel can say "no data" rather than treating it as a transport failure.
   if (!body || !Array.isArray(body.values)) return undefined;
   const columns: HistoryColumn[] = [];
-  for (const value of body.values) {
-    const { path, method } = (value ?? {}) as { path?: unknown; method?: unknown };
+  for (const col of body.values) {
+    const { path, method } = (col ?? {}) as { path?: unknown; method?: unknown };
     if (typeof path !== 'string') return undefined;
     columns.push({ path, method: typeof method === 'string' ? method : '' });
   }

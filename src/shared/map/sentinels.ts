@@ -14,7 +14,14 @@ export function installSentinels(map: MapLibreMap): void {
   }
 }
 
+// Precomputed O(1) lookup mirroring the Z_RANK pattern in layer-manager.ts.
+const BEFORE_ID = new Map<ZBand, string | undefined>(
+  Z_ORDER.map((band, i) => {
+    const next = Z_ORDER[i + 1];
+    return [band, next ? sentinelId(next) : undefined];
+  }),
+);
+
 export function beforeIdFor(band: ZBand): string | undefined {
-  const next = Z_ORDER[Z_ORDER.indexOf(band) + 1];
-  return next ? sentinelId(next) : undefined;
+  return BEFORE_ID.get(band);
 }

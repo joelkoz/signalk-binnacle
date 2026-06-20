@@ -46,8 +46,10 @@ const COL_FILL: Record<string, 'left' | 'right'> = {
   'bottom-right': 'right',
 };
 
+const CENTER_AREAS = new Set(['top-center', 'bottom-center']);
+
 export function isCenterArea(area: string): boolean {
-  return area === 'top-center' || area === 'bottom-center';
+  return CENTER_AREAS.has(area);
 }
 
 interface Origin {
@@ -121,8 +123,9 @@ export function findOrigin(
   placements: readonly WidgetPlacement[],
   area: string,
   size: WidgetContribution['size'],
+  precomputed?: boolean[][],
 ): [number, number] | null {
-  const occupied = occupancy(placements, area);
+  const occupied = precomputed ?? occupancy(placements, area);
   const span = sizeToSpan(size);
   for (const origin of originOrder(area)) {
     if (isValidOrigin(area, span, origin, occupied)) return [origin.col, origin.row];
@@ -155,9 +158,10 @@ export function candidateWidgets(
   area: string,
 ): AddCandidate[] {
   const out: AddCandidate[] = [];
+  const occupied = occupancy(placements, area);
   for (const ext of extensions) {
     for (const widget of ext.widgets) {
-      if (findOrigin(placements, area, widget.size)) {
+      if (findOrigin(placements, area, widget.size, occupied)) {
         out.push({ extensionId: ext.id, extensionName: ext.name, widget });
       }
     }

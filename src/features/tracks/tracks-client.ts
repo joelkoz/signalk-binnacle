@@ -116,8 +116,13 @@ function toSavedTrack(id: string, raw: unknown): SavedTrack | undefined {
   };
 }
 
-export async function fetchSavedTracks(base: string, token?: string): Promise<SavedTrack[]> {
-  return (await fetchKeyedResource(base, [V2, V1], token, toSavedTrack)) ?? [];
+// Undefined means both endpoints were unreachable, so a caller can keep the current list rather than
+// blanking it over a transient failure. A reachable but empty resource resolves to an empty array.
+export async function fetchSavedTracks(
+  base: string,
+  token?: string,
+): Promise<SavedTrack[] | undefined> {
+  return fetchKeyedResource(base, [V2, V1], token, toSavedTrack);
 }
 
 // Splits the points into a MultiLineString at gaps; distance (meters) and timespan (seconds)

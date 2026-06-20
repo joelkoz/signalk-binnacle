@@ -97,8 +97,10 @@ export function baseLayerPaint(
 // Recolor the whole base style for the theme. Skips overlay-owned layers, sets the themed
 // color, clears any fill pattern (the wetland hatch, paved-area texture) so the flat color
 // shows, and gives label text a background-colored halo for contrast on every theme.
-export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
-  for (const layer of themableBaseLayers(map)) {
+// Accepts a precomputed layer list to avoid refiltering the style when the caller already
+// has one; omit it and the function computes it internally.
+export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint, layers?: BaseLayer[]): void {
+  for (const layer of layers ?? themableBaseLayers(map)) {
     const themed = baseLayerPaint(layer, paint);
     if (!themed) continue;
     try {
@@ -119,11 +121,16 @@ export function applyBaseTheme(map: MapLibreMap, paint: MapThemePaint): void {
 // blues, greens, and whites. Binnacle draws its own navigation symbols and does not rely on any base
 // sprite icon, so hide every base icon at night-red to keep the map pure red on black, while leaving
 // the text labels (already recolored) visible. Other themes show the icons normally.
-export function applyBaseIconVisibility(map: MapLibreMap, paint: MapThemePaint): void {
+// Accepts a precomputed layer list (same contract as applyBaseTheme).
+export function applyBaseIconVisibility(
+  map: MapLibreMap,
+  paint: MapThemePaint,
+  layers?: BaseLayer[],
+): void {
   const opacity = paint.theme === 'night-red' ? 0 : 1;
   // Overlay-owned symbol layers (own vessel, AIS, notes) theme themselves and carry user-set
   // opacity, so themableBaseLayers excludes them: they must never be hidden here or forced back to 1.
-  for (const layer of themableBaseLayers(map)) {
+  for (const layer of layers ?? themableBaseLayers(map)) {
     if (layer.type !== 'symbol' || !layer.layout?.['icon-image']) continue;
     try {
       map.setPaintProperty(layer.id, 'icon-opacity', opacity);
@@ -147,9 +154,14 @@ export type BaseSnapshot = Array<{
   isSymbol?: boolean;
 }>;
 
-export function captureBaseTheme(map: MapLibreMap, paint: MapThemePaint): BaseSnapshot {
+// Accepts a precomputed layer list (same contract as applyBaseTheme).
+export function captureBaseTheme(
+  map: MapLibreMap,
+  paint: MapThemePaint,
+  layers?: BaseLayer[],
+): BaseSnapshot {
   const snapshot: BaseSnapshot = [];
-  for (const layer of themableBaseLayers(map)) {
+  for (const layer of layers ?? themableBaseLayers(map)) {
     const themed = baseLayerPaint(layer, paint);
     if (!themed) continue;
     const isFill = layer.type === 'fill';

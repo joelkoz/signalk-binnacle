@@ -239,7 +239,7 @@ function freeForecast(lat: number, lon: number): PointConditions[] {
 
 // Severity order for the warnings list: the gale must never sit under a marginal advisory.
 const WARN_HURRICANE = /hurricane|typhoon/;
-const WARN_STORM = /storm/;
+const WARN_STORM = /\bstorm warning\b|\btropical storm\b/;
 const WARN_GALE = /gale/;
 const WARN_SMALL_CRAFT = /small craft/;
 function severityRank(type: string): number {
@@ -307,19 +307,22 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
       <dl class="now">
         <div>
           <dt>Wind</dt>
-          <dd><b>{knots(current.windMs)}</b> kn from {bearing(current.fromRad)}&deg;T</dd>
+          <dd>
+            <b class="num">{knots(current.windMs)}</b>
+            kn from {bearing(current.fromRad)}&deg;T
+          </dd>
         </div>
         {#if current.gustMs !== undefined}
           <div>
             <dt>Gust</dt>
-            <dd><b>{knots(current.gustMs)}</b> kn</dd>
+            <dd><b class="num">{knots(current.gustMs)}</b> kn</dd>
           </div>
         {/if}
         {#if current.pressurePa !== undefined}
           <div>
             <dt>Pressure</dt>
             <dd>
-              <b>{pressure(current.pressurePa)}</b>
+              <b class="num">{pressure(current.pressurePa)}</b>
               {pressureUnit(units.mode)}
               {#if tendencyText}
                 <span class="trend">{tendencyText}</span>
@@ -330,62 +333,53 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
         {#if current.airTempK !== undefined}
           <div>
             <dt>Air</dt>
-            <dd><b>{temp(current.airTempK)}</b>{temperatureUnit(units.mode)}</dd>
+            <dd><b class="num">{temp(current.airTempK)}</b>{temperatureUnit(units.mode)}</dd>
           </div>
         {/if}
         {#if current.waterTempK !== undefined}
           <div>
             <dt>Water</dt>
-            <dd><b>{temp(current.waterTempK)}</b>{temperatureUnit(units.mode)}</dd>
+            <dd><b class="num">{temp(current.waterTempK)}</b>{temperatureUnit(units.mode)}</dd>
           </div>
         {/if}
         {#if current.visibilityM !== undefined}
           <div>
             <dt>Visibility</dt>
-            <dd><b>{formatMetersOrNm(current.visibilityM, units.mode)}</b></dd>
+            <dd><b class="num">{formatMetersOrNm(current.visibilityM, units.mode)}</b></dd>
           </div>
         {/if}
         {#if current.cloudFraction !== undefined}
           <div>
             <dt>Cloud</dt>
-            <dd><b>{pct(current.cloudFraction)}</b>%</dd>
+            <dd><b class="num">{pct(current.cloudFraction)}</b>%</dd>
           </div>
         {/if}
-        {#if current.waveHeightM !== undefined}
+        {#snippet waveBlock(label: string, heightM: number, periodS: number | undefined, fromRad: number | undefined)}
           <div>
-            <dt>Waves</dt>
+            <dt>{label}</dt>
             <dd>
-              <b>{height(current.waveHeightM)}</b>
+              <b class="num">{height(heightM)}</b>
               {lengthUnit(units.mode)}
-              {#if current.wavePeriodS !== undefined}
-                / <b>{formatFixed(current.wavePeriodS, 1)}</b> s
+              {#if periodS !== undefined}
+                / <b class="num">{formatFixed(periodS, 1)}</b> s
               {/if}
-              {#if current.waveFromRad !== undefined}
-                from {bearing(current.waveFromRad)}&deg;T
+              {#if fromRad !== undefined}
+                from {bearing(fromRad)}&deg;T
               {/if}
             </dd>
           </div>
+        {/snippet}
+        {#if current.waveHeightM !== undefined}
+          {@render waveBlock('Waves', current.waveHeightM, current.wavePeriodS, current.waveFromRad)}
         {/if}
         {#if current.swellHeightM !== undefined}
-          <div>
-            <dt>Swell</dt>
-            <dd>
-              <b>{height(current.swellHeightM)}</b>
-              {lengthUnit(units.mode)}
-              {#if current.swellPeriodS !== undefined}
-                / <b>{formatFixed(current.swellPeriodS, 1)}</b> s
-              {/if}
-              {#if current.swellFromRad !== undefined}
-                from {bearing(current.swellFromRad)}&deg;T
-              {/if}
-            </dd>
-          </div>
+          {@render waveBlock('Swell', current.swellHeightM, current.swellPeriodS, current.swellFromRad)}
         {/if}
         {#if current.precipitationMm !== undefined && current.precipitationMm >= RAIN_VISIBLE_MM_H}
           <div>
             <dt>Rain</dt>
             <dd>
-              <b>{precip(current.precipitationMm)}</b>
+              <b class="num">{precip(current.precipitationMm)}</b>
               {precipUnitLabel(current.precipIsRate, units.mode)}
             </dd>
           </div>
@@ -406,12 +400,12 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
           <li>
             <span class="f-time">{stepLabel(step.timeMs)}</span>
             <span class="f-wind">
-              <b>{knots(step.windMs)}</b>
+              <b class="num">{knots(step.windMs)}</b>
               kn from {bearing(step.fromRad)}&deg;T
             </span>
             {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}
               <span class="f-rain">
-                <b>{precip(step.precipitationMm)}</b>
+                <b class="num">{precip(step.precipitationMm)}</b>
                 {precipUnitLabel(step.precipIsRate, units.mode)}
               </span>
             {/if}
@@ -507,11 +501,6 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
 .now dd {
   margin: 0;
   font-size: var(--text-sm);
-}
-.now b,
-.forecast b {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
 }
 /* The current-conditions values are the panel's hero numbers, so they step up over their caps labels
    and the unit text, the instrument-readout gesture. */

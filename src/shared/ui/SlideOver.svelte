@@ -134,14 +134,4 @@ const {
 .panel-header--stacked {
   align-items: flex-start;
 }
-.panel-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-block-start: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
 </style>

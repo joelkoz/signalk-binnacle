@@ -1,6 +1,6 @@
-/* The global stylesheet, assembled from ordered modules: tokens first, then the element base,
-   the shared utility vocabulary, the panel and strip shells, accessibility primitives, and
-   third-party theming. The import order IS the cascade order; do not reorder. */
+/* The global stylesheet, assembled from ordered modules: MapLibre base first, then tokens, then
+   the element base, the shared utilities, the shell, a11y, and vendor theming. The import order
+   IS the cascade order; do not reorder. */
 @import "maplibre-gl/dist/maplibre-gl.css";
 @import "./styles/tokens.css";
 @import "./styles/base.css";

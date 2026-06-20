@@ -21,7 +21,7 @@ let chart = $state.raw<uPlot | undefined>(undefined);
 
 // Colors resolve from the live CSS variables at draw time, so one redraw re-themes the canvas.
 function cssVar(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || 'currentColor';
 }
 
 function makeChart(el: HTMLDivElement, width: number): uPlot {
@@ -48,6 +48,7 @@ function makeChart(el: HTMLDivElement, width: number): uPlot {
       legend: { show: false },
       cursor: { show: false },
     },
+    // uPlot reads but never writes these arrays, so stripping readonly via the casts is safe.
     [times as number[], values as (number | null)[]] as AlignedData,
     el,
   );
@@ -70,6 +71,7 @@ $effect(() => {
 });
 
 $effect(() => {
+  // uPlot reads but never writes these arrays, so stripping readonly via the casts is safe.
   chart?.setData([times as number[], values as (number | null)[]] as AlignedData);
 });
 
@@ -84,7 +86,7 @@ $effect(() => {
 <style>
 .trend-chart {
   inline-size: 100%;
-  min-block-size: 120px;
+  min-block-size: 120px; /* must match CHART_HEIGHT in the script block */
 }
 /* The library positions its own DOM; only the text color rides the theme tokens. */
 .trend-chart :global(.u-wrap) {

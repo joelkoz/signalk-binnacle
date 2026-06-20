@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Bell, BellOff } from '@lucide/svelte';
 import type { ActiveNotification, NotificationsStore } from '$entities/notifications';
-import { formatClockTime, formatCpaNm, formatTcpaMin, nauticalMilesToMeters } from '$shared/lib';
+import { formatClockTime, formatNm, formatTcpaMin, nauticalMilesToMeters } from '$shared/lib';
 import { DEFAULT_THRESHOLDS, type PersistedValue, type Thresholds } from '$shared/settings';
 import { SlideOver, UnitField } from '$shared/ui';
 import { thresholdsCaution } from './thresholds-caution';
@@ -75,7 +75,7 @@ function setSeconds(key: 'dangerTcpaSeconds' | 'warningTcpaSeconds', minutes: nu
   thresholds.set({ ...thresholds.value, [key]: minutes * 60 });
 }
 
-const cpaNm = (meters: number): number => Number(formatCpaNm(meters));
+const cpaNm = (meters: number): number => Number(formatNm(meters));
 const tcpaMin = (seconds: number): number => Number(formatTcpaMin(seconds));
 
 const caution = $derived(thresholdsCaution(t));

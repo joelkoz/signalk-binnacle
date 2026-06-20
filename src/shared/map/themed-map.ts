@@ -136,9 +136,10 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   // sprite does not actually contain, so MapLibre logs a "styleimagemissing" warning for each on
   // load. Supply a 1x1 transparent placeholder so the console stays clean and the affected icon or
   // pattern renders nothing, which matches how the theme already flattens those landuse fills.
+  const transparentPixel = { width: 1, height: 1, data: new Uint8Array(4) };
   mapInstance.on('styleimagemissing', (event) => {
     if (mapInstance.hasImage(event.id)) return;
-    mapInstance.addImage(event.id, { width: 1, height: 1, data: new Uint8Array(4) });
+    mapInstance.addImage(event.id, transparentPixel);
   });
 
   // The container resizes when side panels open or the viewport changes without a window resize, so
@@ -170,6 +171,9 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   // MapLibre's own contextmenu event; touch browsers do not all fire it, so a still-held finger past
   // a timeout (cancelled by movement, lift, or a second touch) synthesizes the same emit.
   let cancelLongPress = () => {};
+  // Canvas pointer listeners are removed on destroy; mapInstance.remove() does not detach them, so
+  // their closures would otherwise keep the map instance alive after teardown.
+  let removeCanvasListeners = () => {};
   if (opts.onContextMenu) {
     const emit = opts.onContextMenu;
     mapInstance.on('contextmenu', (e) => {
@@ -187,7 +191,7 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
       clearTimeout(pressTimer);
       pressTimer = 0;
     };
-    canvas.addEventListener('pointerdown', (e) => {
+    const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType !== 'touch') return;
       cancelLongPress();
       startX = e.clientX;
@@ -200,14 +204,22 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
         const at = mapInstance.unproject([x, y]);
         emit({ lng: at.lng, lat: at.lat, x, y });
       }, LONG_PRESS_MS);
-    });
-    canvas.addEventListener('pointermove', (e) => {
+    };
+    const onPointerMove = (e: PointerEvent) => {
       if (pressTimer && Math.hypot(e.clientX - startX, e.clientY - startY) > LONG_PRESS_MOVE_PX) {
         cancelLongPress();
       }
-    });
+    };
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', cancelLongPress);
     canvas.addEventListener('pointercancel', cancelLongPress);
+    removeCanvasListeners = () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', cancelLongPress);
+      canvas.removeEventListener('pointercancel', cancelLongPress);
+    };
   }
 
   mapInstance.on('load', () => {
@@ -292,6 +304,7 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
     destroy: () => {
       destroyed = true;
       cancelLongPress();
+      removeCanvasListeners();
       stopTick();
       resizeObserver.disconnect();
       mapInstance.remove();

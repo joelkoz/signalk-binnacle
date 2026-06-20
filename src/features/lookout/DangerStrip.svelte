@@ -1,7 +1,7 @@
 <script lang="ts">
 import { vesselLabel } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
-import { formatCpaNm, formatTcpaMin } from '$shared/lib';
+import { formatNm, formatTcpaMin } from '$shared/lib';
 
 interface Props {
   collision: CollisionAssessment;
@@ -64,7 +64,7 @@ const acknowledged = $derived(collision.suppressed && !collision.escalating);
       {#each top as contact (contact.id)}
         <li class="row {contact.severity}">
           <span class="name">{vesselLabel(contact.name, contact.id)}</span>
-          <span class="metric">CPA <b>{formatCpaNm(contact.cpaMeters)}</b> nm</span>
+          <span class="metric">CPA <b>{formatNm(contact.cpaMeters)}</b> nm</span>
           <span class="metric">TCPA <b>{formatTcpaMin(contact.tcpaSeconds, 1)}</b> min</span>
         </li>
       {/each}
