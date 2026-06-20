@@ -147,7 +147,8 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   onKeydownAction focus actions, the isTabKey helper, the pickTextFile importer, and the promptRename
   and promptSaveName dialogs) and the
   global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.overlay-backdrop`,
-  `.alert-note`, `.muted-note`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`, `.stat-grid`, `.num`)
+  `.modal-scrim`, `.alert-note`, `.muted-note`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`,
+  `.stat-grid`, `.num`)
   before any panel grows a scoped duplicate. When the same markup or CSS appears in a second place,
   hoist it; a third copy is a review failure.
 

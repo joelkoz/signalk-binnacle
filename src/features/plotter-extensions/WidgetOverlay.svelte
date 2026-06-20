@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { PlotterExtHost, WidgetPlacement } from '$entities/plotter-ext';
-import { dialog } from '$shared/ui';
+import { dialog, focusTrap } from '$shared/ui';
 import ExtIframe from './ExtIframe.svelte';
 import { AREA_GRID, candidateWidgets, findOrigin, isCenterArea, usedColumns } from './placement';
 import { HOST_INFO, resolveExtUrl, sizeToSpan, WIDGET_AREAS } from './util';
@@ -69,7 +69,8 @@ function place(option: (typeof pickerOptions)[number]): void {
 
 <div class="pe-overlay">
   {#each WIDGET_AREAS as area (area.id)}
-    {#if placementsIn(area.id).length > 0}
+    {@const placed = placementsIn(area.id)}
+    {#if placed.length > 0}
       <div
         class="pe-area"
         data-area={area.id}
@@ -77,7 +78,7 @@ function place(option: (typeof pickerOptions)[number]): void {
         aria-label={area.label}
         style={areaStyle(area.id)}
       >
-        {#each placementsIn(area.id) as placement (placement.instanceId)}
+        {#each placed as placement (placement.instanceId)}
           {@const url = widgetUrl(placement)}
           <div class="pe-widget" style={cellStyle(placement.cell, placement.size)}>
             {#if url}
@@ -102,7 +103,7 @@ function place(option: (typeof pickerOptions)[number]): void {
 </div>
 
 {#if host.picker}
-  <div class="pe-scrim">
+  <div class="modal-scrim">
     <div
       class="pe-picker"
       role="dialog"
@@ -110,6 +111,7 @@ function place(option: (typeof pickerOptions)[number]): void {
       aria-label="Choose a widget"
       tabindex="-1"
       use:dialog={() => host.closePicker()}
+      use:focusTrap
     >
       <header><h2>Add a widget</h2></header>
       {#if pickerOptions.length === 0}
@@ -184,14 +186,6 @@ function place(option: (typeof pickerOptions)[number]): void {
   border-radius: var(--radius-md);
   background: var(--surface-raised);
   box-shadow: var(--shadow-sm);
-}
-.pe-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: grid;
-  place-items: center;
-  background: var(--scrim);
 }
 .pe-picker {
   inline-size: min(22rem, calc(100dvw - 2 * var(--space-4)));

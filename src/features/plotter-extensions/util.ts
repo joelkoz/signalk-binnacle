@@ -10,15 +10,31 @@ export const HOST_INFO = {
 };
 
 // Manifest URLs are server-relative; resolve them against the Signal K server origin. An absolute
-// URL passes through unchanged.
-export function resolveExtUrl(origin: string, url: string): string {
-  return /^https?:/.test(url) ? url : `${origin}${url}`;
+// URL is accepted only when its origin matches the server origin: a faulty or hostile manifest must
+// not load an off-origin page into the extension iframe, which runs with allow-same-origin and a
+// live host bus under the user's session. Returns undefined for any off-origin or unparseable URL;
+// callers skip rendering that contribution. A relative URL is always same-origin and is resolved.
+export function resolveExtUrl(origin: string, url: string): string | undefined {
+  if (/^https?:/i.test(url)) {
+    try {
+      return new URL(url).origin === new URL(origin).origin ? url : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return `${origin}${url}`;
 }
+
+const WIDGET_SPAN: Record<WidgetSize, [number, number]> = {
+  '1x1': [1, 1],
+  '2x1': [2, 1],
+  '1x2': [1, 2],
+  '2x2': [2, 2],
+};
 
 // A widget's grid footprint in columns and rows.
 export function sizeToSpan(size: WidgetSize): [number, number] {
-  const [cols, rows] = size.split('x').map((n) => Number.parseInt(n, 10));
-  return [cols || 1, rows || 1];
+  return WIDGET_SPAN[size] ?? [1, 1];
 }
 
 // The host's widget anchor areas. Top-left is reserved for Binnacle's own chrome, so it is not

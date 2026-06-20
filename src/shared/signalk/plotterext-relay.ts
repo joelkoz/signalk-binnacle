@@ -13,7 +13,8 @@ export async function putSignalKPath(
   path: string,
   value: unknown,
 ): Promise<unknown> {
-  const url = `${origin}/signalk/v1/api/vessels/self/${path.split('.').join('/')}`;
+  const encodedPath = path.split('.').map(encodeURIComponent).join('/');
+  const url = `${origin}/signalk/v1/api/vessels/self/${encodedPath}`;
   const response = await fetch(
     url,
     withTimeout(
@@ -24,6 +25,12 @@ export async function putSignalKPath(
       }),
     ),
   );
+  // Surface a rejected PUT (auth, validation, or server error) rather than returning an empty body
+  // that the extension cannot distinguish from success. An OK response may legitimately carry no
+  // JSON body (204), so the empty-body tolerance applies only on the success path.
+  if (!response.ok) {
+    throw new Error(`signalk.put ${path} failed: ${response.status}`);
+  }
   return response.json().catch(() => ({}));
 }
 
@@ -41,7 +48,7 @@ export async function listResources(
     params.set(key, typeof raw === 'string' ? raw : JSON.stringify(raw));
   }
   const qs = params.toString();
-  const url = `${origin}/signalk/v2/api/resources/${type}${qs ? `?${qs}` : ''}`;
+  const url = `${origin}/signalk/v2/api/resources/${encodeURIComponent(type)}${qs ? `?${qs}` : ''}`;
   const response = await fetch(url, withTimeout(authInit(token)));
   if (!response.ok) throw new Error(`resources.list ${type} failed: ${response.status}`);
   return response.json();

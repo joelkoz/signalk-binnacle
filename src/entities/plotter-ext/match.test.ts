@@ -119,3 +119,27 @@ describe('selection, mode, and composition', () => {
     expect(passesFilters('a', note('hazard', { depth: 1 }), [])).toBe(true);
   });
 });
+
+describe('match engine numeric and regex operators', () => {
+  it('lte and gte include the boundary value', () => {
+    const lte = matchFilter([{ path: 'properties.depth', op: 'lte', value: 10 }]);
+    expect(resourceSelected('a', note('x', { depth: 10 }), lte)).toBe(true);
+    expect(resourceSelected('a', note('x', { depth: 11 }), lte)).toBe(false);
+    const gte = matchFilter([{ path: 'properties.depth', op: 'gte', value: 5 }]);
+    expect(resourceSelected('a', note('x', { depth: 5 }), gte)).toBe(true);
+    expect(resourceSelected('a', note('x', { depth: 4 }), gte)).toBe(false);
+  });
+
+  it('matches a valid regex and fails closed on an invalid one', () => {
+    const ok = matchFilter([{ path: 'properties.skIcon', op: 'regex', value: '^anch' }]);
+    expect(resourceSelected('a', note('anchorage'), ok)).toBe(true);
+    expect(resourceSelected('a', note('marina'), ok)).toBe(false);
+    const bad = matchFilter([{ path: 'properties.skIcon', op: 'regex', value: '(' }]);
+    expect(resourceSelected('a', note('anchorage'), bad)).toBe(false);
+  });
+
+  it('rejects an implausibly long regex pattern rather than compiling it', () => {
+    const huge = matchFilter([{ path: 'properties.skIcon', op: 'regex', value: 'a'.repeat(201) }]);
+    expect(resourceSelected('a', note('a'.repeat(201)), huge)).toBe(false);
+  });
+});

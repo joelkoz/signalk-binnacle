@@ -49,9 +49,11 @@ function markerSvg(category: PoiCategory, paint: MapThemePaint): string {
 // the app's light/dark theme without canvas rasterization.
 export function poiInlineIconSvg(category: PoiCategory): string {
   const fill =
-    category === 'hazard' ? 'var(--alarm)' :
-    category === 'navaid' ? 'var(--warning)' :
-    'var(--accent)';
+    category === 'hazard'
+      ? 'var(--alarm)'
+      : category === 'navaid'
+        ? 'var(--warning)'
+        : 'var(--accent)';
   return [
     '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 30 30" aria-hidden="true">',
     `<circle cx="15" cy="15" r="14" fill="${fill}"/>`,

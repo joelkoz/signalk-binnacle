@@ -1,9 +1,9 @@
 <script lang="ts">
+import { type DefaultOption, IconPicker } from '$entities/icon-picker';
 import { POI_CATEGORIES } from '$entities/poi-icons';
 import type { SymbolsStore } from '$entities/symbols';
 import type { Waypoint } from '$entities/waypoint';
-import { dialog, focusOnMount } from '$shared/ui';
-import { IconPicker, type DefaultOption } from '$widgets/icon-picker';
+import { dialog, focusOnMount, focusTrap } from '$shared/ui';
 
 interface Props {
   // Required for add mode (new waypoint). In edit mode `waypoint` takes precedence for the initial
@@ -45,13 +45,17 @@ function pickerValueFromStoredIcon(icon: string | undefined): string {
 function finalIconRef(selected: string): string {
   if (!selected) return 'waypoint';
   if (POI_CATEGORY_SET.has(selected)) {
-    const hasOverride = symbols?.resolve(selected) !== undefined;
+    const hasOverride = symbols?.resolve(selected, 'waypoint') !== undefined;
     return hasOverride ? `default:${selected}` : selected;
   }
   return selected;
 }
 
+// Seeded once from the waypoint prop. The dialog is keyed on the waypoint at its mount site, so it
+// remounts (and reseeds) when a different waypoint is edited; the initial-value capture is intended.
+// svelte-ignore state_referenced_locally
 let name = $state(waypoint?.name ?? '');
+// svelte-ignore state_referenced_locally
 let icon = $state(pickerValueFromStoredIcon(waypoint?.icon));
 
 function save(): void {
@@ -61,7 +65,7 @@ function save(): void {
 const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
 </script>
 
-<div class="wp-scrim">
+<div class="modal-scrim">
   <div
     class="wp-dialog"
     role="dialog"
@@ -69,6 +73,7 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
     aria-label={title}
     tabindex="-1"
     use:dialog={onCancel}
+    use:focusTrap
   >
     <header><h2>{title}</h2></header>
     <div class="wp-body">
@@ -85,8 +90,14 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
         >
       </label>
       <div class="wp-field">
-        <span class="caps-label">Icon</span>
-        <IconPicker bind:value={icon} {symbols} role="waypoint" defaultOption={WAYPOINT_DEFAULT} />
+        <label class="caps-label" for="wp-icon-picker">Icon</label>
+        <IconPicker
+          id="wp-icon-picker"
+          bind:value={icon}
+          {symbols}
+          symbolRole="waypoint"
+          defaultOption={WAYPOINT_DEFAULT}
+        />
       </div>
     </div>
     <footer>
@@ -97,14 +108,6 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
 </div>
 
 <style>
-.wp-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: grid;
-  place-items: center;
-  background: var(--scrim);
-}
 .wp-dialog {
   inline-size: min(22rem, calc(100dvw - 2 * var(--space-4)));
   border-radius: var(--radius-lg);

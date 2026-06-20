@@ -11,11 +11,12 @@ export interface UnitPreferences {
   temperature: 'C' | 'F';
 }
 
-// Map Binnacle's coarse metric/imperial mode to the spec vocabulary. Speed and distance follow the
-// marine convention (knots and nautical miles) in both modes, which is what Binnacle itself
-// displays; the mode drives depth, length, and temperature. A future refinement can read the
-// server's per-category unit preset for finer control; extensions tolerate either since they
-// combine these with each path's own meta.units.
+// Map Binnacle's metric/imperial mode (already resolved from the server's unit preference in the
+// units store, not a local toggle) to the spec vocabulary. Speed and distance are always reported as
+// knots and nautical miles, which is what Binnacle itself displays, so a server set to a km/h or
+// kilometer preset is not reflected here; only depth, length, and temperature follow the mode.
+// Extensions combine these with each path's own meta.units. Forwarding the per-category targetUnit
+// for speed and distance is a later refinement.
 export function unitsForMode(mode: UnitsMode): UnitPreferences {
   const imperial = mode === 'imperial';
   return {

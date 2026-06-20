@@ -1,14 +1,21 @@
 <script lang="ts">
-import { categoryLabel, POI_CATEGORIES, poiInlineIconSvg, type PoiCategory } from '$entities/poi-icons';
+import {
+  categoryLabel,
+  POI_CATEGORIES,
+  type PoiCategory,
+  poiInlineIconSvg,
+} from '$entities/poi-icons';
 import type { SymbolsStore } from '$entities/symbols';
 import type { SkSymbol } from '$shared/signalk';
 
 // Optional "default" entry at the top of the list (e.g. "Default waypoint marker"). When provided,
 // value='' selects it. If no override symbol exists for defaultOption.iconId, fallbackSvg renders.
 export interface DefaultOption {
-  iconId: string;      // ID resolved via symbols.resolve(iconId, role) to detect an override
+  iconId: string; // ID resolved via symbols.resolve(iconId, role) to detect an override
   label: string;
-  fallbackSvg: string; // SVG string shown when there is no symbol override
+  // SVG string shown when there is no symbol override. It is injected via {@html}, so it MUST be a
+  // static literal authored in this codebase, never external or extension-supplied input.
+  fallbackSvg: string;
 }
 
 type IconOption =
@@ -20,12 +27,13 @@ interface Props {
   value: string;
   symbols?: SymbolsStore;
   // Symbol role used for both forRole() filtering and override resolution (e.g. 'waypoint', 'note').
-  role: string;
+  // Named symbolRole, not role, so it is not mistaken for the HTML ARIA role attribute.
+  symbolRole: string;
   defaultOption?: DefaultOption;
   id?: string;
 }
 
-let { value = $bindable(), symbols, role, defaultOption, id }: Props = $props();
+let { value = $bindable(), symbols, symbolRole, defaultOption, id }: Props = $props();
 
 function iconRef(symbol: SkSymbol): string {
   return (
@@ -45,7 +53,7 @@ const poiOptions: IconOption[] = $derived(
 );
 
 const symbolOptions: IconOption[] = $derived(
-  (symbols?.forRole(role) ?? []).map((s) => ({
+  (symbols?.forRole(symbolRole) ?? []).map((s) => ({
     value: iconRef(s),
     label: s.name,
     kind: 'symbol' as const,
@@ -64,26 +72,27 @@ const selected: IconOption = $derived(options.find((o) => o.value === value) ?? 
 // The default option and each POI category may have a binnacle: override in the symbols store;
 // the same resolution path the overlay's managedIcon uses: symbols.resolve(bareId, role).
 const defaultSymbol = $derived(
-  defaultOption ? symbols?.resolve(defaultOption.iconId, role) : undefined,
+  defaultOption ? symbols?.resolve(defaultOption.iconId, symbolRole) : undefined,
 );
 const poiOverrides = $derived(
   new Map(
-    POI_CATEGORIES
-      .map((cat) => [cat, symbols?.resolve(cat, role)] as const)
-      .filter((entry): entry is [PoiCategory, NonNullable<typeof entry[1]>] => entry[1] !== undefined)
+    POI_CATEGORIES.map((cat) => [cat, symbols?.resolve(cat, symbolRole)] as const)
+      .filter(
+        (entry): entry is [PoiCategory, NonNullable<(typeof entry)[1]>] => entry[1] !== undefined,
+      )
       .map(([cat, sym]) => [cat, sym.url] as const),
   ),
 );
 
-let open = $state(false);
+let isOpen = $state(false);
 let pickerEl: HTMLElement | undefined;
 let triggerEl: HTMLButtonElement | undefined;
 const optionEls: (HTMLElement | null)[] = [];
 
 $effect(() => {
-  if (!open) return;
+  if (!isOpen) return;
   const close = (e: MouseEvent) => {
-    if (pickerEl && !pickerEl.contains(e.target as Node)) open = false;
+    if (pickerEl && !pickerEl.contains(e.target as Node)) isOpen = false;
   };
   window.addEventListener('click', close, { capture: true });
   return () => window.removeEventListener('click', close, { capture: true });
@@ -91,12 +100,12 @@ $effect(() => {
 
 function select(v: string): void {
   value = v;
-  open = false;
+  isOpen = false;
   triggerEl?.focus();
 }
 
 function openAndFocus(): void {
-  open = true;
+  isOpen = true;
   const idx = options.findIndex((o) => o.value === value);
   const target = idx >= 0 ? idx : 0;
   setTimeout(() => optionEls[target]?.focus(), 0);
@@ -116,13 +125,13 @@ function handleOptionKey(e: KeyboardEvent, i: number): void {
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
     if (i === 0) {
-      open = false;
+      isOpen = false;
       triggerEl?.focus();
     } else {
       optionEls[i - 1]?.focus();
     }
   } else if (e.key === 'Escape') {
-    open = false;
+    isOpen = false;
     triggerEl?.focus();
   } else if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
@@ -140,9 +149,12 @@ const poiStart = $derived(defaultOption ? 1 : 0);
     class="picker-trigger"
     {id}
     bind:this={triggerEl}
-    aria-expanded={open}
+    aria-expanded={isOpen}
     aria-haspopup="listbox"
-    onclick={() => (open ? (open = false) : openAndFocus())}
+    onclick={() => {
+      if (isOpen) isOpen = false;
+      else openAndFocus();
+    }}
     onkeydown={handleTriggerKey}
   >
     <span class="picker-icon">
@@ -161,47 +173,59 @@ const poiStart = $derived(defaultOption ? 1 : 0);
       {/if}
     </span>
     <span class="picker-label">{selected.label}</span>
-    <svg class="picker-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <svg
+      class="picker-chevron"
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
       <polyline points="6 9 12 15 18 9"></polyline>
     </svg>
   </button>
 
-  {#if open}
-  <ul class="picker-list" role="listbox" aria-label="Icon">
-    {#each options as opt, i (opt.value)}
-      {#if i === poiStart}
-        <li class="picker-group-label" role="presentation">POI categories</li>
-      {:else if i === poiStart + poiOptions.length && symbolOptions.length > 0}
-        <li class="picker-group-label" role="presentation">Custom symbols</li>
-      {/if}
-      <li
-        role="option"
-        aria-selected={value === opt.value}
-        class:is-selected={value === opt.value}
-        tabindex={-1}
-        bind:this={optionEls[i]}
-        onclick={() => select(opt.value)}
-        onkeydown={(e) => handleOptionKey(e, i)}
-      >
-        <span class="picker-icon">
-          {#if opt.kind === 'poi'}
-            {#if poiOverrides.has(opt.category)}
-              <img src={poiOverrides.get(opt.category)} width="20" height="20" alt="">
+  {#if isOpen}
+    <div class="picker-list" role="listbox" aria-label="Icon">
+      {#each options as opt, i (opt.value)}
+        {#if i === poiStart}
+          <div class="caps-label picker-group-label" aria-hidden="true">POI categories</div>
+        {:else if i === poiStart + poiOptions.length && symbolOptions.length > 0}
+          <div class="caps-label picker-group-label" aria-hidden="true">Custom symbols</div>
+        {/if}
+        <div
+          role="option"
+          aria-selected={value === opt.value}
+          class:is-selected={value === opt.value}
+          tabindex={-1}
+          bind:this={optionEls[i]}
+          onclick={() => select(opt.value)}
+          onkeydown={(e) => handleOptionKey(e, i)}
+        >
+          <span class="picker-icon">
+            {#if opt.kind === 'poi'}
+              {#if poiOverrides.has(opt.category)}
+                <img src={poiOverrides.get(opt.category)} width="20" height="20" alt="">
+              {:else}
+                {@html poiInlineIconSvg(opt.category)}
+              {/if}
+            {:else if opt.kind === 'symbol'}
+              <img src={opt.url} width="20" height="20" alt="">
+            {:else if defaultSymbol}
+              <img src={defaultSymbol.url} width="20" height="20" alt="">
             {:else}
-              {@html poiInlineIconSvg(opt.category)}
+              {@html defaultOption?.fallbackSvg ?? ''}
             {/if}
-          {:else if opt.kind === 'symbol'}
-            <img src={opt.url} width="20" height="20" alt="">
-          {:else if defaultSymbol}
-            <img src={defaultSymbol.url} width="20" height="20" alt="">
-          {:else}
-            {@html defaultOption?.fallbackSvg ?? ''}
-          {/if}
-        </span>
-        <span>{opt.label}</span>
-      </li>
-    {/each}
-  </ul>
+          </span>
+          <span>{opt.label}</span>
+        </div>
+      {/each}
+    </div>
   {/if}
 </div>
 
@@ -216,6 +240,7 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   align-items: center;
   gap: var(--space-2);
   inline-size: 100%;
+  min-block-size: var(--control-size);
   padding: var(--space-2);
   font-size: var(--text-md);
   text-align: start;
@@ -261,7 +286,6 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   overflow-y: auto;
   margin: 0;
   padding: var(--space-1) 0;
-  list-style: none;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -269,32 +293,29 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   z-index: var(--z-menu);
 }
 
-.picker-list li[role='option'] {
+.picker-list div[role="option"] {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-block-size: var(--control-size);
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
   font-size: var(--text-md);
   color: var(--text);
 }
 
-.picker-list li[role='option']:hover,
-.picker-list li[role='option']:focus {
+.picker-list div[role="option"]:hover,
+.picker-list div[role="option"]:focus {
   background: var(--accent-tint);
   outline: none;
 }
 
-.picker-list li[role='option'].is-selected {
+.picker-list div[role="option"].is-selected {
   background: var(--accent-tint-strong);
 }
 
 .picker-group-label {
   padding: var(--space-1) var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
   border-block-start: 1px solid var(--border);
   margin-block-start: var(--space-1);
 }

@@ -115,3 +115,25 @@ describe('areaAt', () => {
     expect(areaAt(W / 2, H / 2, W, H)).toBeNull();
   });
 });
+
+describe('findOrigin capacity', () => {
+  it('returns null when every cell of the area is occupied', () => {
+    // top-right is a 4-by-2 grid; fill all eight cells.
+    const full = [0, 1, 2, 3].flatMap((c) => [
+      placement('top-right', [c, 0]),
+      placement('top-right', [c, 1]),
+    ]);
+    expect(findOrigin(full, 'top-right', '1x1')).toBeNull();
+  });
+
+  it('returns null for a 2x2 when no two adjacent columns are free in the same rows', () => {
+    // Occupy one cell in each column so no 2-by-2 block remains free.
+    const scattered = [
+      placement('top-right', [0, 0]),
+      placement('top-right', [1, 1]),
+      placement('top-right', [2, 0]),
+      placement('top-right', [3, 1]),
+    ];
+    expect(findOrigin(scattered, 'top-right', '2x2')).toBeNull();
+  });
+});

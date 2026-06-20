@@ -8,6 +8,22 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Plotter extensions. Binnacle now hosts third-party plotter add-ons that other Signal K plugins ship,
+  implementing the Plotter Extensions API. An extension can place action buttons in the footer toolbar
+  (capped at three, with a More menu for the rest), slide-in side panels, on-chart instrument widgets,
+  and live display filters that hide non-matching markers and show a clearable chip. Widgets are placed
+  with a long press on the chart, which opens the context menu's Add widget item, and packed into the
+  chart corners. Try it with signalk-instrument-widgets and signalk-poi-search. With no extension
+  plugin installed nothing renders and the chart is untouched.
+- Custom waypoint icons. When you drop a waypoint you can choose its icon from Binnacle's built-in
+  markers plus any symbols the signalk-symbol-manager plugin provides for the waypoint role, and each
+  waypoint renders with its chosen symbol. Icons resolve through namespaces: `binnacle:` is Binnacle's
+  built-in library (the default for a plain icon id), `custom:` is your own symbols from
+  signalk-symbol-manager, and an icon another app stored in its own namespace still renders so nothing
+  placed elsewhere disappears.
+
 <a id="v071"></a>
 
 ## [0.7.1] - 2026-06-17
@@ -25,19 +41,6 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Added
 
-- Plotter extensions. Binnacle now hosts third-party plotter add-ons that other Signal K plugins ship,
-  implementing the Plotter Extensions API. An extension can place action buttons in the footer toolbar
-  (capped at three, with a More menu for the rest), slide-in side panels, on-chart instrument widgets,
-  and live display filters that hide non-matching markers and show a clearable chip. Widgets are placed
-  with a long press on the chart, which opens the context menu's Add widget item, and packed into the
-  chart corners. Try it with signalk-instrument-widgets and signalk-poi-search. With no extension
-  plugin installed nothing renders and the chart is untouched.
-- Custom waypoint icons. When you drop a waypoint you can choose its icon from Binnacle's built-in
-  markers plus any symbols the signalk-symbol-manager plugin provides for the waypoint role, and each
-  waypoint renders with its chosen symbol. Icons resolve through namespaces: `binnacle:` is Binnacle's
-  built-in library (the default for a plain icon id), `custom:` is your own symbols from
-  signalk-symbol-manager, and an icon another app stored in its own namespace still renders so nothing
-  placed elsewhere disappears.
 - AI route drafting. Describe a passage in plain language, for example "from here to Avalon, stay 3 nm
   off the coast", and signalk-crows-nest drafts a route you review and save. The draft opens as an
   editable working route with a not-chart-verified banner, the read-as destination, the model's note,

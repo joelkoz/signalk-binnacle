@@ -1,7 +1,9 @@
+import { uuidv4 } from '$shared/lib';
 import { PersistedValue } from '$shared/settings';
 import type { PlotterExtension, WidgetContribution } from '$shared/signalk';
 import type { ExtContext, HostAdapters, WidgetPlacement } from './adapters';
 import { PlotterExtFilters } from './filters.svelte';
+import type { ResourceFilter } from './match';
 import { PlotterExtState, type StateScope } from './state-store';
 
 // The host orchestration store. It loads the offerable extensions, owns the on-chart widget layout
@@ -25,11 +27,20 @@ interface Registration {
 
 const PLACEMENTS_KEY = 'binnacle:plotterext:layout';
 
+// A bound on how many distinct Signal K paths one context may subscribe to, mirroring the per
+// extension byte quota in the state store. It keeps a misbehaving extension from growing the host's
+// upstream subscription and the per-tick relay set without limit.
+const MAX_PATHS_PER_CONTEXT = 64;
+
 function asRecord(params: unknown): Record<string, unknown> {
   return params && typeof params === 'object' ? (params as Record<string, unknown>) : {};
 }
 
-let subSeq = 0;
+function isResourceFilter(value: unknown): value is ResourceFilter {
+  if (!value || typeof value !== 'object') return false;
+  const mode = (value as { mode?: unknown }).mode;
+  return mode === 'include' || mode === 'exclude';
+}
 
 export class PlotterExtHost {
   readonly #adapters: HostAdapters;
@@ -56,6 +67,7 @@ export class PlotterExtHost {
   readonly #subById = new Map<string, { context: ExtContext; paths: string[] }>();
   readonly #lastSent = new Map<ExtContext, Map<string, string>>();
   #relay: ReturnType<typeof setInterval> | undefined;
+  #subSeq = 0;
 
   constructor(
     adapters: HostAdapters,
@@ -116,7 +128,7 @@ export class PlotterExtHost {
     const def = this.widgetDef(extensionId, widgetId);
     if (!def) return undefined;
     const placement: WidgetPlacement = {
-      instanceId: crypto.randomUUID(),
+      instanceId: uuidv4(),
       extensionId,
       widgetId,
       area,
@@ -232,10 +244,17 @@ export class PlotterExtHost {
           set = new Set();
           this.#paths.set(context, set);
         }
-        for (const path of paths) set.add(path);
-        this.#adapters.signalk.ensurePaths(paths);
-        const subscriptionId = `sk-${++subSeq}`;
-        this.#subById.set(subscriptionId, { context, paths });
+        const admitted: string[] = [];
+        for (const path of paths) {
+          if (!set.has(path) && set.size >= MAX_PATHS_PER_CONTEXT) {
+            throw new Error(`signalk.subscribe: path cap (${MAX_PATHS_PER_CONTEXT}) reached`);
+          }
+          set.add(path);
+          admitted.push(path);
+        }
+        this.#adapters.signalk.ensurePaths(admitted);
+        const subscriptionId = `sk-${++this.#subSeq}`;
+        this.#subById.set(subscriptionId, { context, paths: admitted });
         return { subscriptionId };
       },
       'signalk.unsubscribe': (params) => {
@@ -261,8 +280,10 @@ export class PlotterExtHost {
         return this.#adapters.resources.list(type ?? '', query);
       },
       'resources.setFilter': (params) => {
-        const { type, filter } = asRecord(params) as { type?: string; filter?: never };
-        if (type && filter) this.#filters.setFilter(ext, type, filter);
+        const { type, filter } = asRecord(params) as { type?: string; filter?: unknown };
+        // The filter arrives unvalidated from the extension; reject a malformed object rather than
+        // store it, since the match engine dereferences filter.match and filter.ids on every record.
+        if (type && isResourceFilter(filter)) this.#filters.setFilter(ext, type, filter);
         return {};
       },
       'resources.clearFilter': (params) => {
@@ -374,7 +395,10 @@ export class PlotterExtHost {
       for (const path of paths) {
         const reading = this.#adapters.signalk.read(path);
         if (!reading) continue;
-        const signature = `${reading.timestamp ?? ''}|${JSON.stringify(reading.value)}`;
+        // A Signal K timestamp advances with each value, so it is a sufficient change signal on its
+        // own; only fall back to serializing the value when a reading carries no timestamp. This
+        // keeps the per-tick relay from stringifying every value on every pump.
+        const signature = reading.timestamp ?? JSON.stringify(reading.value);
         if (sent.get(path) === signature) continue;
         sent.set(path, signature);
         conn.publish(`sk.${path}`, {

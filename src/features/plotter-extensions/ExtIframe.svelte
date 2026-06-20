@@ -5,9 +5,11 @@ import type { ContextKind, ExtContext, PlotterExtHost } from '$entities/plotter-
 
 // One sandboxed extension iframe wired to the host bus. It builds the per-context host API method
 // set from the host store, opens a HostConnection over the iframe window, and registers the
-// connection for event routing. The sandbox is exactly the spec baseline: scripts and same-origin
-// (so the extension can call the server with the user's session) plus forms, withholding
-// top-navigation, popups, and modals so a faulty extension cannot escape its frame.
+// connection for event routing. The sandbox grants scripts and same-origin (so the extension can
+// call the server with the user's session) plus forms, withholding top-navigation, popups, and
+// modals. Note that allow-scripts with allow-same-origin is a soft boundary: a same-origin frame
+// can script its parent, so this relies on the content being trusted server-served code. The actual
+// control is that resolveExtUrl only ever loads a same-origin URL into this frame.
 
 interface HostInfo {
   host: string;
@@ -55,7 +57,8 @@ onMount(() => {
     hostInfo,
     context: { kind, id, instanceId, targetInstance, targetWidget },
     methods: host.handlersFor(context),
-    onError: (err) => console.warn('[plotterext] host method error', err),
+    onError: (err) =>
+      console.warn(`[plotterext] host method error (ext=${extensionId} ctx=${kind}/${id})`, err),
   });
   host.register(conn, context);
   return () => {
@@ -72,6 +75,8 @@ onMount(() => {
   {title}
   class={frameClass}
   sandbox="allow-scripts allow-same-origin allow-forms"
+  referrerpolicy="no-referrer"
+  allow=""
 ></iframe>
 
 <style>

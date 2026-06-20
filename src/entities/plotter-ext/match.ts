@@ -81,6 +81,29 @@ function compareNumbers(a: unknown, b: unknown, op: 'lt' | 'lte' | 'gt' | 'gte')
   return a >= b;
 }
 
+// Compiled-regex cache keyed on the (stable) condition object, so a filter pattern compiles once
+// rather than once per record. A null entry marks a pattern that is invalid or implausibly long: the
+// length cap bounds the compile cost and reduces the catastrophic-backtracking surface a hostile or
+// careless extension could supply. A null entry matches nothing.
+const MAX_REGEX_LENGTH = 200;
+const regexCache = new WeakMap<MatchCondition, RegExp | null>();
+
+function regexFor(condition: MatchCondition): RegExp | null {
+  const cached = regexCache.get(condition);
+  if (cached !== undefined) return cached;
+  const { value } = condition;
+  let compiled: RegExp | null = null;
+  if (typeof value === 'string' && value.length <= MAX_REGEX_LENGTH) {
+    try {
+      compiled = new RegExp(value);
+    } catch {
+      compiled = null;
+    }
+  }
+  regexCache.set(condition, compiled);
+  return compiled;
+}
+
 function evalCondition(record: unknown, condition: MatchCondition): boolean {
   const field = readPath(record, condition.path);
   if (condition.op === 'exists') return field !== MISSING;
@@ -105,12 +128,8 @@ function evalCondition(record: unknown, condition: MatchCondition): boolean {
       }
       return Array.isArray(field) && field.includes(value);
     case 'regex': {
-      if (typeof field !== 'string' || typeof value !== 'string') return false;
-      try {
-        return new RegExp(value).test(field);
-      } catch {
-        return false;
-      }
+      if (typeof field !== 'string') return false;
+      return regexFor(condition)?.test(field) ?? false;
     }
     default:
       return false;

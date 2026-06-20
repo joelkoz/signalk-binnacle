@@ -23,21 +23,24 @@ const def = $derived(
 
 {#if open && def}
   {#key `${open.extensionId}/${open.panelId}`}
+    {@const src = resolveExtUrl(origin, def.url)}
     <!-- The slide-over shell carries no positioning of its own; an absolutely positioned slot pins
          it full-height to the trailing edge, mirroring the note detail. Without it the panel falls
          into normal flow and collapses into the footer. -->
     <div class="pe-panel-slot">
       <SlideOver title={def.title} dock="right" onClose={() => host.closePanel()}>
         <div class="pe-panel-body">
-          <ExtIframe
-            {host}
-            hostInfo={HOST_INFO}
-            kind="panel"
-            extensionId={open.extensionId}
-            id={open.panelId}
-            src={resolveExtUrl(origin, def.url)}
-            title={def.title}
-          />
+          {#if src}
+            <ExtIframe
+              {host}
+              hostInfo={HOST_INFO}
+              kind="panel"
+              extensionId={open.extensionId}
+              id={open.panelId}
+              {src}
+              title={def.title}
+            />
+          {/if}
         </div>
       </SlideOver>
     </div>

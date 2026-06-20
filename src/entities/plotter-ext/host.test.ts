@@ -175,6 +175,55 @@ describe('PlotterExtHost host API', () => {
     expect(host.filters.passes('notes', 'b', { properties: { skIcon: 'marina' } })).toBe(false);
   });
 
+  it('ignores a malformed setFilter payload rather than storing it', () => {
+    const { host } = makeHost();
+    host.load([manifest()]);
+    const ctx = widgetCtx('ext', 'gauge', 'i1');
+    const handlers = host.handlersFor(ctx);
+    const conn = fakeConn();
+    host.register(conn, ctx);
+    // No `mode`, so it is not a valid ResourceFilter; the host must not register it or notify.
+    call(handlers, 'resources.setFilter', { type: 'notes', filter: { match: 'oops' } });
+    expect(conn.publish).not.toHaveBeenCalled();
+    // With nothing registered, every record still displays (no filter applied).
+    expect(host.filters.passes('notes', 'a', { properties: { skIcon: 'marina' } })).toBe(true);
+  });
+
+  it('clears a context filter and notifies on resources.clearFilter', () => {
+    const { host } = makeHost();
+    host.load([manifest()]);
+    const ctx = widgetCtx('ext', 'gauge', 'i1');
+    const handlers = host.handlersFor(ctx);
+    const conn = fakeConn();
+    host.register(conn, ctx);
+    call(handlers, 'resources.setFilter', {
+      type: 'notes',
+      filter: {
+        mode: 'include',
+        match: [{ path: 'properties.skIcon', op: 'eq', value: 'anchorage' }],
+      },
+    });
+    conn.publish.mockClear();
+    call(handlers, 'resources.clearFilter', { type: 'notes' });
+    expect(conn.publish).toHaveBeenCalledWith('filters.changed', { type: 'notes', active: false });
+    expect(host.filters.passes('notes', 'b', { properties: { skIcon: 'marina' } })).toBe(true);
+  });
+
+  it('stops relaying a context Signal K values after it unregisters', () => {
+    const { host } = makeHost({ 'navigation.speedOverGround': { value: 3.1, timestamp: 't1' } });
+    const ctx = widgetCtx('ext', 'gauge', 'i1');
+    const handlers = host.handlersFor(ctx);
+    const conn = fakeConn();
+    host.register(conn, ctx);
+    call(handlers, 'signalk.subscribe', { paths: ['navigation.speedOverGround'] });
+    host.pumpSignalK();
+    expect(conn.publish).toHaveBeenCalledTimes(1);
+    conn.publish.mockClear();
+    host.unregister(conn);
+    host.pumpSignalK();
+    expect(conn.publish).not.toHaveBeenCalled();
+  });
+
   it('opens the config dialog from a widget ui.openConfigPanel call', () => {
     const { host } = makeHost();
     host.load([manifest()]);

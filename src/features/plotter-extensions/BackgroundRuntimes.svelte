@@ -20,15 +20,18 @@ const runtimes = $derived(
 
 <div class="pe-background" aria-hidden="true">
   {#each runtimes as entry (`${entry.extensionId}/${entry.bg.id}`)}
-    <ExtIframe
-      {host}
-      hostInfo={HOST_INFO}
-      kind="background"
-      extensionId={entry.extensionId}
-      id={entry.bg.id}
-      src={resolveExtUrl(origin, entry.bg.url)}
-      title={entry.bg.title ?? entry.bg.id}
-    />
+    {@const src = resolveExtUrl(origin, entry.bg.url)}
+    {#if src}
+      <ExtIframe
+        {host}
+        hostInfo={HOST_INFO}
+        kind="background"
+        extensionId={entry.extensionId}
+        id={entry.bg.id}
+        {src}
+        title={entry.bg.title ?? entry.bg.id}
+      />
+    {/if}
   {/each}
 </div>
 

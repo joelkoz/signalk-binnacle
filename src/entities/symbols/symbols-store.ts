@@ -9,8 +9,8 @@ import { type RasterizeSymbol, rasterizeSymbolSvg } from './symbol-raster';
 // scoped. The host built-in table IS the `binnacle:` namespace in the shared library, so a bare id
 // and an explicit `default:<id>` both resolve to `binnacle:<id>`. The pickers offer only `binnacle`
 // and `custom` symbols. See the Symbols API resolution rules.
-export const BINNACLE_NS = 'binnacle';
-export const CUSTOM_NS = 'custom';
+const BINNACLE_NS = 'binnacle';
+const CUSTOM_NS = 'custom';
 const DEFAULT_NS = 'default';
 
 // The fetched symbol set with alias and role lookup. Constructed only when the symbols

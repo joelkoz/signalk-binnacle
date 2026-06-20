@@ -29,6 +29,8 @@ export interface SignalKAdapter {
   ensurePaths(paths: readonly string[]): void;
   // The latest known value for a path, or undefined if none has arrived.
   read(path: string): SignalKValue | undefined;
+  // Resolves to the server's PUT response body on success (which may be empty for a 204), and
+  // rejects on a non-2xx response or a transport failure so the extension sees a real error.
   put(path: string, value: unknown): Promise<unknown>;
 }
 

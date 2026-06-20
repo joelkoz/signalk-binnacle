@@ -497,3 +497,16 @@
   background: transparent;
   cursor: default;
 }
+
+/* A centered, full-viewport modal backdrop: a tinted scrim with its contents centered. The shared
+   base for the app's true modal dialogs (the waypoint editor, the widget config, and the widget
+   picker), distinct from .overlay-backdrop, which is an absolute, transparent map-menu dismiss
+   layer. */
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+}

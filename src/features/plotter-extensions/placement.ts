@@ -19,8 +19,8 @@ import { sizeToSpan, WIDGET_AREAS } from './util';
 
 // Fixed cell footprint (the overlay renders the same --pe-cell), so a chart-pixel press maps to
 // the same anchor area the overlay draws.
-export const CELL_PX = 88;
-export const GAP_PX = 4;
+const CELL_PX = 88;
+const GAP_PX = 4;
 
 export const AREA_GRID: Record<string, { cols: number; rows: number }> = {
   'top-center': { cols: 2, rows: 2 },

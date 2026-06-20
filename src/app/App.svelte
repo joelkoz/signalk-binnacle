@@ -568,6 +568,14 @@ async function refreshPlotterExtensions(): Promise<void> {
   if (list) plotterExtHost.load(offerableExtensions(list));
 }
 
+// Provided chart symbols; absent on a stock server, in which case the built-ins stand. A
+// symbol-manager plugin installed or updated while the link was down would otherwise leave stale
+// icons until the page reloads, so the reconnect path refreshes these alongside the other resources.
+async function refreshSymbols(): Promise<void> {
+  const list = await fetchSymbols(serverOrigin(), auth.token ?? undefined);
+  if (list) symbolsStore.setSymbols(list);
+}
+
 // A development handle for driving the extension host without a server (load a manifest, inspect
 // placements), mirroring Freeboard's dev console handle. Stripped from production builds.
 if (import.meta.env.DEV) {
@@ -1971,6 +1979,9 @@ $effect(() => {
   void refreshWeatherProvider(auth.token ?? undefined);
   // An extension provider enabled (or disabled) while the link was down would otherwise stay stale.
   void refreshPlotterExtensions();
+  // A symbol-manager plugin installed or updated while the link was down would otherwise leave the
+  // waypoint and note icons stale until a reload.
+  void refreshSymbols();
   // A unit preset changed on the server while the link was down would otherwise hold until the
   // token changes or the page reloads.
   void units.syncFromServer(origin);
@@ -2055,11 +2066,8 @@ $effect(() => {
   void fetchHistoryProviders(origin, auth.token ?? undefined).then((providers) => {
     if (providers) historyProviders = providers;
   });
-  // Provided chart symbols; absent on a stock server, in which case the built-ins stand.
   symbolsStore.setAuth(auth.token ?? undefined);
-  void fetchSymbols(origin, auth.token ?? undefined).then((list) => {
-    if (list) symbolsStore.setSymbols(list);
-  });
+  void refreshSymbols();
 });
 
 onMount(() => {
@@ -2545,13 +2553,17 @@ onDestroy(() => {
   />
 {/if}
 {#if editingWaypoint}
-  <WaypointDialog
-    defaultName={editingWaypoint.name}
-    waypoint={editingWaypoint}
-    symbols={symbolsStore}
-    onSave={(result) => void onSaveWaypointEdit(result)}
-    onCancel={() => (editingWaypoint = undefined)}
-  />
+  <!-- Key on the waypoint so editing a different one remounts the dialog and re-seeds its fields,
+       rather than capturing only the first waypoint's name and icon. -->
+  {#key editingWaypoint}
+    <WaypointDialog
+      defaultName={editingWaypoint.name}
+      waypoint={editingWaypoint}
+      symbols={symbolsStore}
+      onSave={(result) => void onSaveWaypointEdit(result)}
+      onCancel={() => (editingWaypoint = undefined)}
+    />
+  {/key}
 {/if}
 
 <style>

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Trash2 } from '@lucide/svelte';
 import type { PlotterExtHost } from '$entities/plotter-ext';
-import { dialog } from '$shared/ui';
+import { dialog, focusTrap } from '$shared/ui';
 import ExtIframe from './ExtIframe.svelte';
 import { HOST_INFO, resolveExtUrl } from './util';
 
@@ -27,8 +27,9 @@ function remove(): void {
 </script>
 
 {#if cfg}
-  <div class="pe-scrim">
+  <div class="modal-scrim">
     {#key cfg.targetInstance}
+      {@const src = cfg.panelId && def ? resolveExtUrl(origin, def.url) : undefined}
       <div
         class="pe-config"
         role="dialog"
@@ -36,11 +37,12 @@ function remove(): void {
         aria-label={def?.title ?? 'Configure widget'}
         tabindex="-1"
         use:dialog={() => host.closeConfig()}
+        use:focusTrap
       >
         <header>
           <h2>{def?.title ?? 'Widget'}</h2>
         </header>
-        {#if cfg.panelId && def}
+        {#if cfg.panelId && def && src}
           <div class="pe-config-body">
             <ExtIframe
               {host}
@@ -50,7 +52,7 @@ function remove(): void {
               id={cfg.panelId}
               targetInstance={cfg.targetInstance}
               targetWidget={cfg.targetWidget}
-              src={resolveExtUrl(origin, def.url)}
+              {src}
               title={def.title}
             />
           </div>
@@ -58,7 +60,7 @@ function remove(): void {
           <p class="pe-config-note">No configuration available.</p>
         {/if}
         <footer>
-          <button type="button" class="btn icon-btn--danger" onclick={remove}>
+          <button type="button" class="btn btn-danger" onclick={remove}>
             <Trash2 size={16} aria-hidden="true" />
             Remove widget
           </button>
@@ -70,14 +72,6 @@ function remove(): void {
 {/if}
 
 <style>
-.pe-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: grid;
-  place-items: center;
-  background: var(--scrim);
-}
 .pe-config {
   display: flex;
   flex-direction: column;
