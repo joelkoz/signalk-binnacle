@@ -15,27 +15,26 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.7.0
+## What's new in 0.8.0
 
-AI route drafting and a routing workflow overhaul:
+Third-party plotter add-ons and custom waypoint icons:
 
-- **AI route drafting and optimize (beta).** Describe a passage in plain language and review a drafted
-  route, or tap Optimize on a route you drew, when signalk-crows-nest provides the route-draft
-  endpoint. Each draft opens as an editable working route with a not-chart-verified banner, per-leg
-  land, shallow, hazard, and fuel flags that state their source and datum, and an armed "I checked
-  every leg" save. It is a beta assistant and cannot guarantee accuracy: review every leg against the
-  official charts and your instruments before you navigate it. The control stays hidden on a server
-  without the endpoint.
-- **Route editing on the chart.** A route shows its waypoints as dots the moment you draft, optimize,
-  or edit it. Tap a leg in the panel to light its segment and end dots on the chart, tap a dot to
-  light the legs it joins, drag a dot to move it, or tap a midpoint to insert one. The chart menu adds
-  "Start a route here" so you begin a route from the spot you picked.
-- **AIS course vectors and reliability.** Moving AIS targets draw a short course predictor, red for a
-  danger contact and amber for a warning. Plus a reliability pass: offline and runtime caching works
-  again in a secure context, antimeridian-crossing routes frame the short way, and collision alerts no
-  longer cry wolf at anchor.
+- **Plotter extensions.** Binnacle now hosts plotter add-ons that other Signal K plugins ship: action
+  buttons in the bottom toolbar, slide-in side panels, on-chart instrument widgets you place with a
+  long press, and live display filters that hide non-matching markers behind a clearable chip. With no
+  extension plugin installed nothing new renders and the chart is untouched. Try it with
+  signalk-instrument-widgets and signalk-poi-search.
+- **Custom waypoint icons.** Choose a waypoint's icon when you drop it, from Binnacle's built-in
+  markers or any symbols the signalk-symbol-manager plugin provides for the waypoint role, and each
+  waypoint renders with its chosen symbol. Icons resolve through namespaces (`binnacle:` for the
+  built-ins, `custom:` for your own), and an icon another app stored in its own namespace stays
+  visible.
+- **Reliability and polish.** Saved tracks no longer blink out on a transient network hiccup, the
+  severe-weather banner ranks a gale warning correctly above a thunderstorm watch or storm-surge
+  advisory, and a round of performance and consistency work runs through the chart, the panels, and
+  the overlays.
 
-See the [changelog](CHANGELOG.md#v070) for the full list.
+See the [changelog](CHANGELOG.md#v080) for the full list.
 
 ## What it does
 

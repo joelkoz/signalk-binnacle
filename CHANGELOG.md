@@ -8,6 +8,10 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v080"></a>
+
+## [0.8.0] - 2026-06-20
+
 ### Added
 
 - Plotter extensions. Binnacle now hosts third-party plotter add-ons that other Signal K plugins ship,
@@ -23,6 +27,22 @@ All notable changes to Binnacle are documented here. The format follows
   built-in library (the default for a plain icon id), `custom:` is your own symbols from
   signalk-symbol-manager, and an icon another app stored in its own namespace still renders so nothing
   placed elsewhere disappears.
+
+### Fixed
+
+- Saved tracks stay on screen when a periodic refresh hits a transient network failure, instead of
+  briefly blanking the list. This matches how routes and waypoints already behave.
+- The severe-weather banner no longer ranks a thunderstorm watch, a storm-surge advisory, or a
+  tropical-storm watch above a gale warning.
+- Chart map instances are fully released on teardown, closing a pointer-listener leak that kept a
+  map alive after the chart was destroyed.
+
+### Changed
+
+- Internal consolidation and performance work across the app: shared modal, button, and numeric
+  readout styling unified into the global utilities, and several render and per-tick paths made
+  cheaper (the map layer ordering, the resources filter regex, and the overlay draws). No change to
+  behavior beyond the fixes above.
 
 <a id="v071"></a>
 
