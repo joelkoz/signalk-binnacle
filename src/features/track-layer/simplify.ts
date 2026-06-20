@@ -23,8 +23,10 @@ function simplifyRun(run: TrackPoint[], tolerance: number): TrackPoint[] {
   keep[n - 1] = true;
   const stack: Array<[number, number]> = [[0, n - 1]];
   while (stack.length > 0) {
-    // The loop condition guarantees a non-empty stack, so pop never returns undefined here.
-    const [start, end] = stack.pop()!;
+    // The loop condition guarantees a non-empty stack; the guard just narrows the type.
+    const top = stack.pop();
+    if (!top) break;
+    const [start, end] = top;
     let maxDist = 0;
     let index = -1;
     for (let i = start + 1; i < end; i += 1) {
