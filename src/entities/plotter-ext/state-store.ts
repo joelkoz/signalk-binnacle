@@ -16,9 +16,10 @@ interface ExtensionState {
 
 type StateData = Record<string, ExtensionState>;
 
-// A generous per-extension cap so one extension cannot exhaust localStorage; far above any sane
-// widget configuration. Exceeding it rejects the write rather than silently dropping data.
-const MAX_EXTENSION_BYTES = 256 * 1024;
+// A generous per-extension cap, measured as serialized-JSON character length, so one extension
+// cannot exhaust localStorage; far above any sane widget configuration. Exceeding it rejects the
+// write rather than silently dropping data.
+const MAX_EXTENSION_CHARS = 256 * 1024;
 
 const STORAGE_KEY = 'binnacle:plotterext:state';
 
@@ -75,7 +76,7 @@ export class PlotterExtState {
       instances[instanceId as string] = { ...instances[instanceId as string], ...values };
       ext.instances = instances;
     }
-    if (JSON.stringify(ext).length > MAX_EXTENSION_BYTES) {
+    if (JSON.stringify(ext).length > MAX_EXTENSION_CHARS) {
       throw new Error('extension state quota exceeded');
     }
     data[extensionId] = ext;

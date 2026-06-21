@@ -52,6 +52,18 @@ describe('LookoutAlarm', () => {
     expect(events).toEqual([]);
   });
 
+  it('stays silent for a danger while at anchor (the busy-anchorage nuisance)', () => {
+    const { control, events } = createFakeAlarmControl();
+    new LookoutAlarm(control).update('danger', false, false, false, true);
+    expect(events).toEqual([]);
+  });
+
+  it('still sounds at anchor when escalating past the inner ring', () => {
+    const { control, events } = createFakeAlarmControl();
+    new LookoutAlarm(control).update('danger', false, false, true, true);
+    expect(events).toEqual(['start']);
+  });
+
   it('forwards prime to the alarm', () => {
     const { control, events } = createFakeAlarmControl();
     new LookoutAlarm(control).prime();

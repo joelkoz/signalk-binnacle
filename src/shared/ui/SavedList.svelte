@@ -26,7 +26,9 @@ const { heading, items, empty, ariaLabel, key, isActive, card }: Props = $props(
   {:else}
     <ul aria-label={ariaLabel}>
       {#each items as item (key(item))}
-        <li class:active={isActive?.(item)}>{@render card(item)}</li>
+        <li class:active={isActive?.(item)} aria-current={isActive?.(item) ? 'true' : undefined}>
+          {@render card(item)}
+        </li>
       {/each}
     </ul>
   {/if}

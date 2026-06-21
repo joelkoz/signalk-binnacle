@@ -15,8 +15,8 @@ export function fetchRoutes(base: string, token?: string): Promise<Route[] | und
 }
 
 // The server-relative resource href for a route id, as the Course API's activeRoute wants it.
-// Owned here, beside the resource clients, so the href format has one home; routeIdFromHref in
-// course-client.ts is its inverse.
+// Owned here, beside the resource clients, so the href format has one home; activationFromCourse in
+// course-client.ts is its inverse, recovering the route id from a hydrated course href.
 export function routeHref(id: string): string {
   return `/resources/routes/${encodeURIComponent(id)}`;
 }

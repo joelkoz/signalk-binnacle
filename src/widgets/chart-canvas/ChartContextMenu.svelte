@@ -47,6 +47,8 @@ $effect(() => registerDismiss(() => onClose()));
 // Wide enough for the longest label ("Start a route here") at the inherited font size; the menu
 // is fixed to this width below so the clamp math always matches the rendered box.
 const MENU_WIDTH = 200;
+// Mirrors the .menu-item control height (--control-size, 2.75rem at the 16px base) for the
+// above-or-below clamp math; the layout arithmetic needs a pixel number, not a CSS token.
 const ITEM_HEIGHT = 44;
 const MENU_PADDING = 4;
 const EDGE = 8;

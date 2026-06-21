@@ -46,7 +46,7 @@ const chips = $derived(host.filters.chips);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding-inline-start: var(--space-3);
+  padding-inline: var(--space-3) var(--space-1);
   border-radius: var(--radius-pill);
   background: var(--surface-raised);
   border: 1px solid var(--border);
