@@ -35,7 +35,7 @@ describe('layerCategory', () => {
 
   it('resolves a non-empty title for every category in the order', () => {
     for (const id of CATEGORY_ORDER) {
-      expect(layerCategory(item({ category: id })).title).toBeTruthy();
+      expect(layerCategory(item({ category: id })).title).toMatch(/\S/);
     }
   });
 });

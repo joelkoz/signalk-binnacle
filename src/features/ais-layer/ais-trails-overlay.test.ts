@@ -46,7 +46,7 @@ function viewFakeMap(state: { zoom: number; lng: number; lat: number }) {
   };
 }
 
-function ctxFor(map: object): OverlayContext {
+function ctxFor(map: unknown): OverlayContext {
   return { map: map as never, beforeIdFor: () => undefined };
 }
 

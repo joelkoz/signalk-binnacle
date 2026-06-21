@@ -8,7 +8,7 @@ describe('sentinels', () => {
     const map = createFakeMap();
     installSentinels(map as never);
     for (const band of Z_ORDER) {
-      expect(map.getLayer(sentinelId(band))).toBeTruthy();
+      expect(map.getLayer(sentinelId(band))).toBeDefined();
     }
   });
 

@@ -5,8 +5,8 @@ describe('isobarColors', () => {
   it('returns a line, label, and halo color per theme', () => {
     const day = isobarColors('day');
     expect(day.line).toMatch(/^#|rgb/);
-    expect(day.label).toBeTruthy();
-    expect(day.halo).toBeTruthy();
+    expect(day.label).toMatch(/^#|rgb/);
+    expect(day.halo).toMatch(/^#|rgb/);
   });
 
   it('uses no blue at night-red', () => {

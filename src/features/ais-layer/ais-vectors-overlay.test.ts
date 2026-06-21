@@ -10,7 +10,7 @@ import { buildFeatures, createAisVectorsOverlay } from './ais-vectors-overlay';
 const LAYER_ID = 'binnacle-ais-vectors-line';
 const SOURCE_ID = 'binnacle-ais-vectors';
 
-function ctxFor(map: object): OverlayContext {
+function ctxFor(map: unknown): OverlayContext {
   return { map: map as never, beforeIdFor: () => undefined };
 }
 
