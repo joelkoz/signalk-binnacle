@@ -139,18 +139,41 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   dependency-cruiser is the single boundary enforcer, because Biome has no import-boundary rule
   equivalent to `eslint-plugin-boundaries`.
 - The global stylesheet is modular too (user rule, keep this style for everything going forward):
-  `src/app.css` is only an ordered `@import` manifest over `src/styles/` modules (tokens, base,
-  utilities, shell, a11y, vendor), and the import order IS the cascade order. New global styling
+  `src/app.css` is only an ordered `@import` manifest over `src/styles/` modules (tokens, base, text,
+  buttons, forms, cards, icon-controls, overlays, panels, strips, a11y, vendor), and the import order IS
+  the cascade order. The utility vocabularies are split one concern per module (text helpers, the button
+  system, form controls, the saved-card and stat grid, the icon controls plus the lit `.is-on` state, the
+  popover and modal scrims) and the shell into panels and strips; the order keeps `.is-on` after the
+  `.btn` and `.icon-pill` bases it overrides, so do not reorder the manifest blindly. New global styling
   goes into the right module, never back into one monolith; new shared UI behavior goes through
   the `$shared/ui` primitives (SlideOver, AnchoredMenu, InlineConfirm, UnitField, ConfirmArm, SavedList,
   VisibilityToggle, the dialog dismiss stack, the rovingFocus, focusTrap, focusOnMount, and
   onKeydownAction focus actions, the isTabKey helper, the pickTextFile importer, and the promptRename
   and promptSaveName dialogs) and the
-  global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.overlay-backdrop`,
-  `.modal-scrim`, `.alert-note`, `.muted-note`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`,
-  `.stat-grid`, `.num`)
+  global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.popover-card`, `.menu-item`,
+  `.overlay-backdrop`, `.modal-scrim`, `.alert-note`, `.muted-note`, `.segmented`, `.caps-label`,
+  `.panel-*`, `.saved`, `.stat-grid`, `.num`)
   before any panel grows a scoped duplicate. When the same markup or CSS appears in a second place,
   hoist it; a third copy is a review failure.
+- Reuse the shared non-UI helpers before re-implementing them: `$shared/lib` (isRecord, formatPercent,
+  formatFixed and the unit formatters, the SI converters, uuidv4), `$shared/map` (featureCollection,
+  emptyFeatureCollection, setSourceData, iconOffsetExpression with CENTERED_OFFSET, removeLayersAndSources,
+  setLayersVisibility, rgbaCss), `$shared/geo` (latLonToLonLat, the single lat/lon-to-GeoJSON-order
+  crossing), `$shared/signalk` resource.ts (jsonOr, sendJson, fetchKeyedResource), and `$entities/symbols`
+  (createOverlayIconResolver, the provided-symbol overlay glue). An overlay that hand-rolls a
+  `getSource(...) as { setData }` cast or a `{ type: 'FeatureCollection', features }` literal should use
+  setSourceData and featureCollection instead.
+- Feature orchestration that the composition root used to hold inline is extracted into per-slice
+  controllers: a `create<Feature>Controller(deps)` factory in a `*.svelte.ts` module that owns the
+  feature's runes (state, derived, effects) and returns the handlers and getters the panels and chart
+  read, services injected as arguments. A reactive dependency that changes over the session (the auth
+  token, a feature-detection flag, even a stable store whose `.svelte.ts` identity must stay reactive in
+  a `$derived`) is injected as a GETTER `() => value`, never by value: capturing a value at construction
+  freezes the initial one, which is a real stale-value bug (a stale-token regression came from exactly
+  this). `createMobController` and `createAnchorController` are the first; the route, stream,
+  notifications, waypoints, tracks, and user-charts controllers and the `views/` PlotterView extraction
+  (the build already wires a `$views` layer and a `views-go-down-only` rule, but `src/views/` is still
+  empty) are the documented next steps for shrinking `App.svelte`.
 
 This is a hard rule. Architectural feedback that came at the cost of redoing significant work
 must not be repeatable.

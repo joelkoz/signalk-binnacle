@@ -8,6 +8,21 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The point-conditions valid-time line renders with its space restored before the middot ("Observed ·
+  14:30" rather than "Observed· 14:30").
+
+### Changed
+
+- Internal: a large modularization pass broke the biggest files into cohesive modules, components, and
+  controllers without changing behavior. The App.svelte composition root, the WeatherMap and ChartCanvas
+  widgets, the routes, layers, and weather panels, the notes overlay, and the pmtiles, themed-map,
+  wind-gl, route-draft, and plotter-extension-host modules were split; the global stylesheet was split
+  one concern per module; and a whole-codebase reuse pass consolidated shared helpers (object guards,
+  GeoJSON source updates, the icon-offset expression, the JSON-or-default fetch helper, and the
+  provided-symbol overlay resolver). No user-facing behavior change.
+
 <a id="v080"></a>
 
 ## [0.8.0] - 2026-06-20
