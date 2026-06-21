@@ -24,6 +24,10 @@ export class RouteStore {
     return this.shownIds.has(id);
   }
 
+  routeById(id: string): Route | undefined {
+    return this.routes.find((route) => route.id === id);
+  }
+
   toggleShown(id: string, shown: boolean): void {
     const next = new Set(this.shownIds);
     if (shown) next.add(id);

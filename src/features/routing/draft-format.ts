@@ -5,7 +5,7 @@ import {
   type UnitsMode,
   volumeUnit,
 } from '$shared/lib';
-import type { DraftFlag, DraftFlagItem, DraftFuel } from './route-draft-client';
+import type { DraftError, DraftFlag, DraftFlagItem, DraftFuel } from './route-draft-client';
 
 // Land first (a route crossing land is the worst case), then charted shallow water, then charted
 // hazards, then fuel, then anything else. Same-kind flags keep the server's order under a stable sort.
@@ -90,4 +90,39 @@ export function formatDraftFuel(fuel: DraftFuel, mode: UnitsMode): string {
   if (isFiniteNumber(fuel.marginPct)) parts.push(`${Math.round(fuel.marginPct)}% margin`);
   const line = `Fuel: ${parts.join(', ')}.`;
   return fuel.derateNote ? `${line} ${fuel.derateNote}` : line;
+}
+
+// The user-facing copy for a failed AI route draft, keyed by error code (a cancel is handled by the
+// caller and never reaches here). This is routing-feature display copy, so it lives with the rest of
+// the draft formatting rather than in the composition root.
+const DRAFT_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
+  budget:
+    'The daily AI budget is used up. Try again later, or raise the cap in the route-drafting plugin.',
+  'no-route':
+    'The AI could not draft a usable route for that. Try rephrasing, or a shorter passage.',
+  'model-error': 'The AI returned an unusable response. Try again, or rephrase the request.',
+  timeout: 'The draft timed out. Check the connection and try again.',
+  unreachable:
+    'Could not reach the route-drafting plugin. Check it is installed and the server is reachable.',
+  unauthorized:
+    'AI route drafting needs a Signal K admin session. Sign in to the server as an administrator.',
+  'bad-request': 'The draft request was rejected. Try rephrasing the passage.',
+};
+
+// Optimize overrides the no-route and bad-request copy: the navigator gave a real drawn route, so the
+// failure is that the optimized result was unusable, not that we could not draft from the words.
+const OPTIMIZE_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
+  ...DRAFT_ERROR_MESSAGES,
+  'no-route':
+    'The optimized route came back unusable or too detailed. Simplify the route and try again.',
+  'bad-request': 'The drawn route could not be optimized. Simplify it and try again.',
+};
+
+// The message for a draft error, choosing the optimize-specific copy when the failure was an optimize
+// of a drawn route rather than a fresh draft from a prompt.
+export function draftErrorMessage(
+  error: Exclude<DraftError, 'cancelled'>,
+  optimize: boolean,
+): string {
+  return (optimize ? OPTIMIZE_ERROR_MESSAGES : DRAFT_ERROR_MESSAGES)[error];
 }

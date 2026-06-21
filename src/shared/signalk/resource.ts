@@ -27,6 +27,17 @@ export function strArray(value: unknown): string[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
+// Parse a Response body as JSON, falling back to a default when there is no JSON to parse (an empty
+// 204, a non-JSON error page). Never throws. Shared by the resource clients so the
+// parse-JSON-or-default idiom is spelled once rather than re-rolled as `.json().catch(...)` per client.
+export async function jsonOr<T>(response: Response, fallback: T): Promise<T> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 // Fetch a keyed-resource collection, trying each path in order (v2 then v1) and mapping every
 // id/record entry through mapEntry (entries it returns undefined for are skipped). Returns the
 // mapped list from the first reachable path, or undefined when every path is unreachable, so a

@@ -6,6 +6,7 @@ export { DEFAULT_FETCH_TIMEOUT_MS, withTimeout } from './fetch-timeout';
 export { uuidv4 } from './id';
 export { isFiniteNumber, lerp, nearestBy } from './math';
 export { prefersReducedMotion } from './motion';
+export { isRecord } from './object';
 export { capitalize } from './strings';
 export {
   DAY_MS,
@@ -25,6 +26,7 @@ export {
   formatMetersOrNm,
   formatNm,
   formatNmOr,
+  formatPercent,
   formatPrecipRateOr,
   formatPressureOr,
   formatTcpaMin,

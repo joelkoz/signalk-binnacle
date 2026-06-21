@@ -64,6 +64,12 @@ export function formatFixed(value: number | null | undefined, digits: number): s
   return value == null || Number.isNaN(value) ? PLACEHOLDER : value.toFixed(digits);
 }
 
+// A fraction (0..1) as a whole-number percent string, placeholder-aware: the cloud-cover readout and
+// the weather legend share one fraction-to-percent spelling instead of each multiplying by 100 inline.
+export function formatPercent(fraction: number | null | undefined, digits = 0): string {
+  return formatFixed(fraction == null ? undefined : fraction * 100, digits);
+}
+
 // Placeholder-aware speed and bearing readouts. Unlike formatKnots (which shows 0.0 for an absent
 // value), these show PLACEHOLDER ("--") so the SOG, COG, BTW, and wind-legend readouts never render
 // a misleading zero. The convert-then-formatFixed pattern is written once here, not at each site.
@@ -193,10 +199,7 @@ export function pressureValue(
 
 // Pressure to the conventional precision per unit: whole hectopascals, hundredths of inHg.
 export function formatPressureOr(pascals: number | null | undefined, mode: UnitsMode): string {
-  if (mode === 'imperial') {
-    return formatFixed(pascals == null ? undefined : pascals / PA_PER_INHG, 2);
-  }
-  return formatHectopascalsOr(pascals);
+  return formatFixed(pressureValue(pascals, mode), mode === 'imperial' ? 2 : 0);
 }
 
 export function precipRateUnit(mode: UnitsMode): 'mm/h' | 'in/h' {
@@ -216,16 +219,6 @@ export function landDistanceUnit(mode: UnitsMode): 'km' | 'mi' {
   return mode === 'imperial' ? 'mi' : 'km';
 }
 
-export function formatLandDistanceOr(
-  meters: number | null | undefined,
-  mode: UnitsMode,
-  digits = 1,
-): string {
-  if (meters == null) return PLACEHOLDER;
-  const value = mode === 'imperial' ? meters / METERS_PER_MILE : meters / 1000;
-  return value.toFixed(digits);
-}
-
 // A short-range distance with its unit built in: whole meters (or feet) below the hand-off, then
 // nautical miles. The MOB and measure readouts deal in recovery and harbor scales where "0.05 nm"
 // reads worse than "93 m", and the unit switches so the caller cannot label it statically.
@@ -235,7 +228,7 @@ export function formatMetersOrNm(
 ): string {
   if (meters == null) return PLACEHOLDER;
   if (mode === 'imperial') {
-    if (meters < IMPERIAL_NM_FLOOR_METERS) return `${Math.round(metersToFeet(meters) ?? 0)} ft`;
+    if (meters < IMPERIAL_NM_FLOOR_METERS) return `${Math.round(meters / METERS_PER_FOOT)} ft`;
     return `${formatNm(meters)} nm`;
   }
   if (meters < METERS_PER_NAUTICAL_MILE) return `${Math.round(meters)} m`;

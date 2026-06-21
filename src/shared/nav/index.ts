@@ -1,10 +1,11 @@
 export type { CpaResult, Kinematics } from './cpa';
-export { computeCpa, METERS_PER_DEG } from './cpa';
+export { computeCpa } from './cpa';
 export {
   EARTH_RADIUS_M,
   geodesicCircleRing,
   geodesicDestination,
   haversineMeters,
+  METERS_PER_DEG,
   routesRoughlyEqual,
 } from './distance';
 export {

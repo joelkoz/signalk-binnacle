@@ -137,6 +137,21 @@ const CATEGORY_LABEL: Record<PoiCategory, string> = {
 // string> the compiler checks for exhaustiveness), which then flows here automatically.
 export const POI_CATEGORIES: readonly PoiCategory[] = Object.keys(CATEGORY_LABEL) as PoiCategory[];
 
+const POI_CATEGORY_SET = new Set<string>(POI_CATEGORIES);
+
+// Whether a raw string is a known marker category, for narrowing a provider- or user-supplied value
+// before it is used as a PoiCategory. The membership set is built once here instead of at each call
+// site that previously rebuilt `new Set(POI_CATEGORIES)`.
+export function isPoiCategory(value: string): value is PoiCategory {
+  return POI_CATEGORY_SET.has(value);
+}
+
+// A raw string narrowed to a PoiCategory, falling back to the given category (generic by default)
+// when it is not a known one.
+export function asPoiCategory(raw: string, fallback: PoiCategory = 'generic'): PoiCategory {
+  return isPoiCategory(raw) ? raw : fallback;
+}
+
 export function categoryForSkIcon(skIcon: string | undefined): PoiCategory {
   if (!skIcon) return 'generic';
   // Lowercase once: the exact table and keyword needles are all lowercase, so a capitalized

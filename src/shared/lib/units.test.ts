@@ -4,7 +4,6 @@ import {
   formatClockTime,
   formatDayClock,
   formatDuration,
-  formatLandDistanceOr,
   formatLengthOr,
   formatMetersOrNm,
   formatNm,
@@ -214,23 +213,6 @@ describe('formatPrecipRateOr', () => {
   it('returns the placeholder for null or undefined', () => {
     expect(formatPrecipRateOr(null, 'metric')).toBe('--');
     expect(formatPrecipRateOr(undefined, 'imperial')).toBe('--');
-  });
-});
-
-describe('formatLandDistanceOr', () => {
-  it('converts meters to km and formats to one decimal in metric mode', () => {
-    expect(formatLandDistanceOr(5000, 'metric')).toBe('5.0');
-    expect(formatLandDistanceOr(1234, 'metric')).toBe('1.2');
-  });
-
-  it('converts meters to statute miles in imperial mode', () => {
-    // 1609.344 m = 1 mi
-    expect(formatLandDistanceOr(1609.344, 'imperial')).toBe('1.0');
-  });
-
-  it('returns the placeholder for null or undefined', () => {
-    expect(formatLandDistanceOr(null, 'metric')).toBe('--');
-    expect(formatLandDistanceOr(undefined, 'imperial')).toBe('--');
   });
 });
 

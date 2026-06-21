@@ -6,7 +6,7 @@ export {
   hydrateCourse,
   setDestination,
 } from './course-client';
-export { formatDraftFuel, groupDraftFlags } from './draft-format';
+export { draftErrorMessage, formatDraftFuel, groupDraftFlags } from './draft-format';
 export { parseGpxRoutes } from './gpx-import';
 export { default as RoutesPanel } from './RoutesPanel.svelte';
 export type {

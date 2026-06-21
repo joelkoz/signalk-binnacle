@@ -1,8 +1,10 @@
 export type { PoiCategory, PoiType } from './poi-categories';
 export {
+  asPoiCategory,
   categoryForSkIcon,
   categoryLabel,
   categoryRank,
+  isPoiCategory,
   POI_CATEGORIES,
   poiCategoryForType,
   poiIconId,

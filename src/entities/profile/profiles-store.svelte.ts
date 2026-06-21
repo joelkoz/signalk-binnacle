@@ -1,4 +1,4 @@
-import { uuidv4 } from '$shared/lib';
+import { isRecord, uuidv4 } from '$shared/lib';
 import type { Profile, ProfileSettings, ProfilesState } from './profile-types';
 
 const STORAGE_KEY = 'binnacle:profiles';
@@ -46,14 +46,8 @@ class LocalProfileAdapter implements ProfileAdapter {
 // load rather than trust it. The deep settings validation lives in the features layer (isProfileSettings)
 // and runs on import; entities cannot reach up to it, so a load-time guard stays minimal here.
 function isStoredProfile(value: unknown): value is Profile {
-  if (!value || typeof value !== 'object') return false;
-  const p = value as Record<string, unknown>;
-  return (
-    typeof p.id === 'string' &&
-    typeof p.name === 'string' &&
-    !!p.settings &&
-    typeof p.settings === 'object'
-  );
+  if (!isRecord(value)) return false;
+  return typeof value.id === 'string' && typeof value.name === 'string' && isRecord(value.settings);
 }
 
 // The reactive home for saved profiles. Each mutation updates the runes and persists the whole
@@ -92,7 +86,11 @@ export class ProfileStore {
   }
 
   get active(): Profile | undefined {
-    return this.profiles.find((p) => p.id === this.activeId);
+    return this.profileById(this.activeId);
+  }
+
+  profileById(id: string | undefined): Profile | undefined {
+    return id === undefined ? undefined : this.profiles.find((p) => p.id === id);
   }
 
   get defaultId(): string | undefined {

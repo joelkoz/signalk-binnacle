@@ -1,5 +1,5 @@
 import { DEG_TO_RAD } from '$shared/lib';
-import { normalizeLonDeltaDeg } from './distance';
+import { METERS_PER_DEG, normalizeLonDeltaDeg } from './distance';
 
 export interface Kinematics {
   latitude: number;
@@ -13,10 +13,6 @@ export interface CpaResult {
   tcpaSeconds: number;
   closing: boolean;
 }
-
-// Meters per degree at the equator: exact for latitude, and the base for longitude once
-// scaled by cos(latitude). One constant serves both axes; the cos factor is what differs.
-export const METERS_PER_DEG = 111_320;
 
 // Local east-north projection around the own vessel. Accurate within the few
 // nautical miles that matter for collision; large separations are not the use case.

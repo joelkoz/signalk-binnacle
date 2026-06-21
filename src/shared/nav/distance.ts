@@ -4,6 +4,11 @@ import { DEG_TO_RAD } from '$shared/lib';
 // Mean Earth radius in meters, shared by the great-circle and rhumb-line geodesy.
 export const EARTH_RADIUS_M = 6_371_000;
 
+// Meters per degree at the equator: exact for latitude, and the base for longitude once scaled by
+// cos(latitude). One constant serves both axes; the cos factor is what differs. Shared by the CPA
+// local projection and the track-to-route simplification tolerance.
+export const METERS_PER_DEG = 111_320;
+
 // Wrap a longitude delta into [-180, 180] so a pair straddling the antimeridian does not read as a
 // ~360-degree separation. Shared by the rhumb-line geometry and the CPA local projection. Total
 // over any input (not just one turn), so an accumulated or out-of-range delta still normalizes.

@@ -92,13 +92,13 @@ import {
   activationFromCourse,
   advancePoint,
   clearCourse,
-  type DraftError,
   type DraftedRoute,
   type DraftResult,
   type DraftRouteRequest,
   type DraftView,
   deleteRoute,
   downloadRouteGpx,
+  draftErrorMessage,
   draftRoute,
   fetchRoutes,
   formatDraftFuel,
@@ -216,6 +216,11 @@ const vessel = new OwnVessel(store, clock);
 const aisTargets = new AisTargets(store);
 const client = createSignalKClient();
 const auth = new AuthController(origin);
+// The token in the shape the REST clients expect (string | undefined, not the controller's
+// string | null), and whether access has resolved (an authenticated session or an unsecured server),
+// derived once rather than re-spelled at every call site and effect guard.
+const authToken = $derived(auth.token ?? undefined);
+const accessResolved = $derived(auth.status === 'authenticated' || auth.status === 'unsecured');
 const net = new OnlineStatus();
 const thresholds = createThresholds();
 // Anchored own vessel treats moored and swinging boats as non-hazards, silencing the busy-anchorage
@@ -378,7 +383,7 @@ const routeDistanceToGoMeters = $derived.by<number | undefined>(() => {
   if (id == null || idx == null || total == null || toNext == null || total - idx <= 1) {
     return undefined;
   }
-  const route = routeStore.routes.find((r) => r.id === id);
+  const route = routeStore.routeById(id);
   if (!route) return undefined;
   return toNext + remainingRouteDistanceMeters(route.waypoints, idx);
 });
@@ -402,8 +407,7 @@ const tidesStore = new TidesStore();
 // sees a plugin call.
 const tidesLoader = createTidesLoader({
   pluginAvailable: () => serverFeatures?.plugins.has(SIGNALK_TIDES_PLUGIN_ID) ?? false,
-  pluginTides: (lat, lon) =>
-    fetchSignalkTidesReading(lat, lon, { origin: origin, token: chartsToken }),
+  pluginTides: (lat, lon) => fetchSignalkTidesReading(lat, lon, { origin, token: chartsToken }),
 });
 
 // Weather forecast, fetched browser-side from Open-Meteo. It lives in a dedicated mini-map panel
@@ -487,6 +491,9 @@ const theme = createThemeController((next) => recolorMap?.(next));
 // Profile state restored across visits: the last map view and the layer settings.
 const mapViewStore = createMapView();
 const savedView = isMapView(mapViewStore.value) ? mapViewStore.value : undefined;
+// The live map view if one has been reported, else the persisted view: the fallback that the tides
+// load and the weather map's initial view share.
+const currentView = $derived(mapView ?? savedView);
 const layerSettings = new PersistedValue<LayerSettings>('binnacle:layers', {});
 const layerOrder = new PersistedValue<string[]>('binnacle:layer-order', []);
 // Which Layers-panel categories the navigator has left open or closed, so the panel reopens that way.
@@ -572,7 +579,7 @@ async function refreshPlotterExtensions(): Promise<void> {
 // symbol-manager plugin installed or updated while the link was down would otherwise leave stale
 // icons until the page reloads, so the reconnect path refreshes these alongside the other resources.
 async function refreshSymbols(): Promise<void> {
-  const list = await fetchSymbols(origin, auth.token ?? undefined);
+  const list = await fetchSymbols(origin, authToken);
   if (list) symbolsStore.setSymbols(list);
 }
 
@@ -734,7 +741,7 @@ $effect(() => {
 });
 
 function onApplyProfile(id: string): void {
-  const profile = profileStore.profiles.find((p) => p.id === id);
+  const profile = profileStore.profileById(id);
   if (!profile) return;
   applyProfileSettings(profile.settings);
   profileStore.setActive(id);
@@ -757,7 +764,7 @@ function onSaveNewProfile(name: string): void {
 }
 
 function onExportProfile(id: string): void {
-  const profile = profileStore.profiles.find((p) => p.id === id);
+  const profile = profileStore.profileById(id);
   if (profile) downloadProfileJson(profile);
 }
 
@@ -839,8 +846,7 @@ function onViewChange(view: MapView): void {
 
 // Load tides for the current view, so opening the Tides panel shows data without a pan first.
 function loadTides(): void {
-  const view = mapView ?? savedView;
-  if (view) void tidesLoader.load(tidesStore, view.lat, view.lon);
+  if (currentView) void tidesLoader.load(tidesStore, currentView.lat, currentView.lon);
 }
 
 // Toggling the tide layer on (or opening the panel) loads tides for the current view, covering the
@@ -1060,10 +1066,7 @@ const mobAlert = $derived.by(() => {
 });
 
 function publishMobValue(value: unknown): void {
-  void client.publish({
-    context: SELF_CONTEXT,
-    updates: [{ values: [{ path: SK_PATHS.mobNotification, value }] }],
-  });
+  publishDelta(SK_PATHS.mobNotification, value);
 }
 
 // Commit the press-time mark, tell the whole boat, and bring the mark into view. Guidance only;
@@ -1372,7 +1375,7 @@ function flyToPosition(position: LatLon): void {
 // Fly the chart to a saved route's first waypoint, so showing, editing, activating, or tapping a
 // route brings it into view rather than leaving the navigator hunting for it across the chart.
 function flyToRouteStart(id: string): void {
-  const start = routeStore.routes.find((r) => r.id === id)?.waypoints[0]?.position;
+  const start = routeStore.routeById(id)?.waypoints[0]?.position;
   if (start) mapCommands?.flyTo(start.latitude, start.longitude);
 }
 
@@ -1400,29 +1403,6 @@ let draftSeq = 0;
 let optimizeOriginal = $state<RouteModel | undefined>();
 // Set true when an optimize returned an effectively unchanged route, so the panel shows a brief note.
 let optimizeUnchanged = $state(false);
-
-const DRAFT_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
-  budget:
-    'The daily AI budget is used up. Try again later, or raise the cap in the route-drafting plugin.',
-  'no-route':
-    'The AI could not draft a usable route for that. Try rephrasing, or a shorter passage.',
-  'model-error': 'The AI returned an unusable response. Try again, or rephrase the request.',
-  timeout: 'The draft timed out. Check the connection and try again.',
-  unreachable:
-    'Could not reach the route-drafting plugin. Check it is installed and the server is reachable.',
-  unauthorized:
-    'AI route drafting needs a Signal K admin session. Sign in to the server as an administrator.',
-  'bad-request': 'The draft request was rejected. Try rephrasing the passage.',
-};
-
-// Optimize overrides the no-route and bad-request copy: the navigator gave a real drawn route, so the
-// failure is that the optimized result was unusable, not that we could not draft from the words.
-const OPTIMIZE_ERROR_MESSAGES: Record<Exclude<DraftError, 'cancelled'>, string> = {
-  ...DRAFT_ERROR_MESSAGES,
-  'no-route':
-    'The optimized route came back unusable or too detailed. Simplify the route and try again.',
-  'bad-request': 'The drawn route could not be optimized. Simplify it and try again.',
-};
 
 // Two routes within this per-waypoint distance count as unchanged, so an optimize that moved nothing
 // shows a note instead of forcing a full re-verification.
@@ -1542,7 +1522,7 @@ async function onDraftRoute(prompt: string): Promise<void> {
   if (!result.ok) {
     // A cancelled draft was aborted by a newer request or a clear; the sequence guard already dropped
     // the superseded ones, so a cancel stays silent here too.
-    if (result.error !== 'cancelled') draftError = DRAFT_ERROR_MESSAGES[result.error];
+    if (result.error !== 'cancelled') draftError = draftErrorMessage(result.error, false);
     return;
   }
   applyDraft(result.route, 'draft', uuidv4());
@@ -1575,7 +1555,7 @@ async function onOptimizeRoute(hint: string): Promise<void> {
   });
   if (!result) return;
   if (!result.ok) {
-    if (result.error !== 'cancelled') flagRouteError(OPTIMIZE_ERROR_MESSAGES[result.error]);
+    if (result.error !== 'cancelled') flagRouteError(draftErrorMessage(result.error, true));
     optimizeOriginal = undefined;
     return;
   }
@@ -1617,7 +1597,7 @@ function onStartRouteHere(position: LatLon): void {
 }
 
 function onEditRoute(id: string): void {
-  const route = routeStore.routes.find((r) => r.id === id);
+  const route = routeStore.routeById(id);
   if (!route) return;
   routeStore.setWorking(route);
   mapCommands?.startRouteEdit(route);
@@ -1805,7 +1785,7 @@ async function onTrackHome(): Promise<void> {
 // Save a reversed copy of a route (the return leg), shown on the chart, leaving the original intact.
 async function onReverseRoute(id: string): Promise<void> {
   clearRouteError();
-  const route = routeStore.routes.find((r) => r.id === id);
+  const route = routeStore.routeById(id);
   if (!route) return;
   const reversed = reverseRoute(route);
   if (!(await saveRoute(origin, chartsToken, reversed))) {
@@ -1818,7 +1798,7 @@ async function onReverseRoute(id: string): Promise<void> {
 
 // Download a saved route as a GPX file so it can be opened in another plotter, MFD, or Freeboard-SK.
 function onExportRouteGpx(id: string): void {
-  const route = routeStore.routes.find((r) => r.id === id);
+  const route = routeStore.routeById(id);
   if (route) downloadRouteGpx(route);
 }
 
@@ -1951,13 +1931,13 @@ let streamConnected = false;
 let streamError = $state(false);
 $effect(() => {
   if (streamConnected) return;
-  if (auth.status !== 'authenticated' && auth.status !== 'unsecured') return;
+  if (!accessResolved) return;
   streamConnected = true;
   // A rejected connect (the worker failed to load, a Comlink call threw) would otherwise leave
   // streamConnected latched true with no live data and no signal, indistinguishable from
   // connecting. Surface it; recovery is a reload, so we do not re-enter the effect (that would
   // spin against a dead worker).
-  connectStream(auth.token ?? undefined).catch((error) => {
+  connectStream(authToken).catch((error) => {
     console.error('Signal K stream failed to connect', error);
     streamError = true;
   });
@@ -1981,7 +1961,7 @@ $effect(() => {
   void refreshRoutes();
   void refreshWaypoints();
   // A provider plugin enabled while the link was down would otherwise stay undetected.
-  void refreshWeatherProvider(auth.token ?? undefined);
+  void refreshWeatherProvider(authToken);
   // An extension provider enabled (or disabled) while the link was down would otherwise stay stale.
   void refreshPlotterExtensions();
   // A symbol-manager plugin installed or updated while the link was down would otherwise leave the
@@ -2030,8 +2010,8 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.aisShipType, context: ALL_VESSELS_CONTEXT, policy: 'fixed', period: 5000 },
     { path: SK_PATHS.closestApproach, context: ALL_VESSELS_CONTEXT, policy: 'fixed', period: 5000 },
   ]);
-  // Three independent REST reads, in parallel: saved tracks, routes, and the course snapshot.
-  // The course hydration restores an in-progress course after a reload: the v2 course paths send
+  // The reads run in parallel. The course hydration restores an in-progress course after a reload: the
+  // v2 course paths send
   // nothing under subscribe=none until the next change, and the local activation flags are
   // session state, so without it a mid-passage reload leaves the nav strip, arrival alarm, and
   // auto-advance dead while the server is still navigating.
@@ -2056,22 +2036,22 @@ async function refreshWeatherProvider(token: string | undefined): Promise<void> 
 // Keyed on the auth token rather than run once at first connect, so a token that arrives later
 // (an approval from another tab) or changes re-detects with the right credentials.
 $effect(() => {
-  if (auth.status !== 'authenticated' && auth.status !== 'unsecured') return;
-  void refreshWeatherProvider(auth.token ?? undefined);
+  if (!accessResolved) return;
+  void refreshWeatherProvider(authToken);
   // Resolve the server's unit preferences with the same trigger: per-user resolution rides on the
   // session credentials that exist once access has resolved.
   void units.syncFromServer(origin);
   // Capability discovery; a transport failure keeps the current value so one bad probe cannot
   // drop the session back to v1 transports.
-  void fetchServerFeatures(origin, auth.token ?? undefined).then((features) => {
+  void fetchServerFeatures(origin, authToken).then((features) => {
     if (features) serverFeatures = features;
   });
   // History provider discovery: the v2 features list reports the history API even with no
   // provider registered, so the providers route is the real signal.
-  void fetchHistoryProviders(origin, auth.token ?? undefined).then((providers) => {
+  void fetchHistoryProviders(origin, authToken).then((providers) => {
     if (providers) historyProviders = providers;
   });
-  symbolsStore.setAuth(auth.token ?? undefined);
+  symbolsStore.setAuth(authToken);
   void refreshSymbols();
 });
 
@@ -2417,7 +2397,7 @@ onDestroy(() => {
         {units}
         loader={weatherLoader}
         theme={theme.theme}
-        initialView={mapView ?? savedView}
+        initialView={currentView}
         savedLayers={weatherLayerSettings.value}
         onLayersChange={(settings) => weatherLayerSettings.set(settings)}
         onLayersReady={(apply) => (applyWeatherLayers = apply)}
