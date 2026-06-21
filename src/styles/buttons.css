@@ -1,0 +1,127 @@
+/* The button vocabulary: the bordered base, its filled, danger, ghost, warning, and pill modifiers,
+   the grow and segmented helpers, and the compact pill toggle. One source so the panels and chrome
+   share the fill and hover feel instead of each re-declaring it. The lit "engaged" .is-on state lives
+   in icon-controls.css, which app.css imports AFTER this module so it wins the same-specificity tie. */
+
+/* Extend .btn to fill its flex row */
+/* A primary action that stretches to fill its controls row (Routes and Profiles); not the default,
+   since a three-button row (Tracks) keeps its primary natural-width. */
+.btn--grow {
+  flex: 1;
+}
+
+/* One segmented-toggle treatment: a joined group of .btn children where exactly one is on. The
+   ends keep the outer radius, the shared edges collapse to a single border. */
+.segmented {
+  display: flex;
+}
+.segmented .btn {
+  border-radius: 0;
+}
+.segmented .btn:first-child {
+  border-start-start-radius: var(--radius-sm);
+  border-end-start-radius: var(--radius-sm);
+}
+.segmented .btn:last-child {
+  border-start-end-radius: var(--radius-sm);
+  border-end-end-radius: var(--radius-sm);
+}
+.segmented .btn + .btn {
+  border-inline-start: 0;
+}
+/* Off segments sit quiet so the one .is-on segment carries the state at a glance. */
+.segmented .btn:not(.is-on) {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+/* One button vocabulary for the panels: the bordered base, plus a filled-primary and a danger
+   modifier, so panels share these instead of each re-declaring the accent fill and hover feel. */
+/* biome-ignore lint/style/noDescendingSpecificity: .btn is the base button vocabulary; the .segmented .btn rules above are intentionally more specific scoped overrides, so the cascade resolves by specificity, not source order. */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--control-size);
+  gap: 0.3rem;
+  padding: 0.3rem var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    filter var(--transition-fast);
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.btn:active:not(:disabled) {
+  filter: brightness(var(--brightness-press));
+}
+.btn:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  box-shadow: var(--shadow-overlay);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.btn-primary:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn-danger {
+  color: var(--alarm);
+}
+/* A danger button tints with the alarm token on hover, not the accent, so a destructive control does
+   not flash an accent (blue by day) fill under its red text. */
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--alarm);
+  background: var(--alarm-tint);
+}
+/* A ghost variant of .btn: transparent over the surface with accent text, for secondary actions
+   (reset, retry, add by URL) that should read lighter than a filled primary while keeping the
+   bordered shape and the shared hover feel. */
+.btn-ghost {
+  background: transparent;
+  color: var(--accent);
+}
+/* A caution variant of .btn: warning-colored text and border, tinting with the alarm token on hover,
+   for a caution chrome action like the muted-alarm badge. */
+.btn-warning {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.btn-warning:hover:not(:disabled) {
+  border-color: var(--warning);
+  background: var(--warning-tint);
+}
+/* A fully rounded variant for the chrome toggles (Update, Forecast) that read as pills. */
+.btn-pill {
+  border-radius: var(--radius-pill);
+}
+
+/* A compact pill toggle (the weather layer bar): control-height for touch but a tighter inline
+   box and a muted resting label, lighting up through the shared .is-on. */
+.btn-compact {
+  min-inline-size: 3rem;
+  padding: 0 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.btn-compact:hover:not(:disabled):not(.is-on) {
+  background: var(--surface-raised);
+  color: var(--text);
+}

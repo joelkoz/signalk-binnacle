@@ -1,0 +1,28 @@
+/* The map-popover and modal backdrops: the transparent dismiss catcher behind an anchored map menu,
+   and the centered scrim behind a true modal dialog. */
+
+/* The transparent full-cover catcher behind an anchored map popover (the chart context menu and the
+   weather layer menu): an outside tap lands here and dismisses, and it keeps the press off the map.
+   One source so the two map menus layer their backdrop and card identically. */
+.overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+/* A centered, full-viewport modal backdrop: a tinted scrim with its contents centered. The shared
+   base for the app's true modal dialogs (the waypoint editor, the widget config, and the widget
+   picker), distinct from .overlay-backdrop, which is an absolute, transparent map-menu dismiss
+   layer. */
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+}

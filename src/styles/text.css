@@ -1,0 +1,51 @@
+/* Shared text helpers: the panel titles, the uppercase caps sub-label, the inline alarm and muted
+   notes, and the tabular-numeral span. Components layer only their own box (margins, flex) on top. */
+
+/* The heading shared by the slide-over and overlay panels, so every panel title reads the same. */
+.panel-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text);
+}
+/* A nested detail view's title (the chart detail inside Layers) sits one size below the panel's. */
+.panel-title--sub {
+  font-size: var(--text-md);
+}
+
+/* The uppercase section sub-label shared by the panels: muted, bold, tracked caps at the small type
+   size, so "Saved routes", "Overlays", the add-chart field labels, and the section sub-headings all
+   read the same. Components layer only their own box (margins, flex) on top. */
+.caps-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+/* The bordered inline alarm note the panels show for a failed action (route save, profile import):
+   one shared rule so the alarm framing cannot drift between panels. */
+.alert-note {
+  margin: 0;
+  padding: 0.4rem var(--space-2);
+  border: 1px solid var(--alarm);
+  border-radius: var(--radius-sm);
+  color: var(--alarm);
+  font-size: var(--text-sm);
+}
+
+/* The quiet muted hint the panels show for empty states and inline guidance, one rule so the
+   muted-note shape cannot drift (the .saved .empty rule below carries its own list margins). */
+.muted-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Monospaced tabular numerals for any inline number span that must align across rows, shared
+   across the tides, nav-strip, and saved-card readouts. Font-size is left to the context. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

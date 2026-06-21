@@ -1,0 +1,167 @@
+/* The saved-item card list and the labeled stats grid: the Routes and Tracks panels render their
+   saved items and current-item readouts through one card-and-readout family, sharing the mono,
+   tabular .num so a saved card, the working plan, and the NavStrip read as one instrument set. */
+
+/* The saved-item card list shared by the Routes and Tracks panels: an elevated card per saved item
+   with a name head, an at-a-glance stats line, and a trailing actions row. One source of truth so the
+   two panels render as one card system. Panel-specific accents (the active route) stay scoped. */
+.saved {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.saved .empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.saved ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.saved li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-overlay);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.saved .name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  /* Fill the card-head row so a name (and any locate target it carries) is a full 44px tall. */
+  min-block-size: var(--control-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-align: start;
+}
+/* When the name is a button (the Routes and Waypoints locate action) it lights to the accent on
+   hover; a non-interactive span name (Tracks) is left untouched. Shared so the two locate panels do
+   not each re-declare the interactivity. */
+.saved button.name {
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+.saved button.name:hover {
+  color: var(--accent);
+}
+/* The at-a-glance stats line. Mono, tabular numerals echo the NavStrip readouts so a saved card and
+   the active-route strip read as one instrument family. */
+.card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) 0.8rem;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.card-stats dd {
+  margin: 0 0.4rem 0 0;
+}
+.card-stats .num {
+  font-weight: 600;
+  color: var(--text);
+}
+.saved .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+/* Push the destructive delete to the trailing edge so it is not flush against the safe actions and an
+   accidental tap is less likely. */
+.saved .actions .icon-btn--danger {
+  margin-inline-start: auto;
+}
+/* The active card (the route being navigated, the profile in use) is unmistakable: an accent left bar,
+   an accent border, and a faint accent-tinted fill, so it reads at a glance in any theme. Shared by the
+   Routes and Profiles panels. Scoped as .saved so it cannot reach an unrelated .badge elsewhere. */
+.saved li.active {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+/* On the active card (its background is the accent tint), lift the muted stat labels to the body text
+   color so they stay readable, especially in night-red where muted-on-tint is the lowest-contrast
+   pairing. */
+.saved li.active .card-stats {
+  color: var(--text);
+}
+.saved li.active::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: var(--active-bar-width);
+  border-start-start-radius: var(--radius-sm);
+  border-end-start-radius: var(--radius-sm);
+  background: var(--accent);
+}
+/* The filled accent "Active" pill on the active card. */
+.saved .badge {
+  flex-shrink: 0;
+  padding: 0.1rem var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent-tint-strong);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+}
+
+/* The labeled current-item stats grid: the route editor's working plan and the current-track readout.
+   Label, value, and unit in three columns, with the values end-aligned in a shared column so they line
+   up with no trailing whitespace. The dd is display: contents so its number and unit become direct grid
+   items, so a row with no unit MUST still include an empty <span class="unit"></span>; omit it and grid
+   auto-flow shifts the unit cell of every following row out of its column (the readout looks skewed). The
+   mono, tabular .num echoes the saved-card and NavStrip readouts. Shared by the Routes and Tracks panels. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  column-gap: var(--space-2);
+  row-gap: 0.3rem;
+  margin: 0;
+}
+.stat-grid dt {
+  color: var(--text-muted);
+}
+.stat-grid dd {
+  display: contents;
+}
+.stat-grid .num {
+  font-weight: 600;
+  color: var(--text);
+  text-align: end;
+}
+.stat-grid .unit {
+  min-inline-size: 1.25rem;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}

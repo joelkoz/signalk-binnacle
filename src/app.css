@@ -1,10 +1,16 @@
 /* The global stylesheet, assembled from ordered modules: MapLibre base first, then tokens, then
-   the element base, the shared utilities, the shell, a11y, and vendor theming. The import order
-   IS the cascade order; do not reorder. */
+   the element base, the shared utility vocabularies, the shell, a11y, and vendor theming. The import
+   order IS the cascade order; do not reorder. The utility modules in particular are ordered so the
+   lit .is-on state in icon-controls.css follows the .btn and .icon-pill bases it overrides. */
 @import "maplibre-gl/dist/maplibre-gl.css";
 @import "./styles/tokens.css";
 @import "./styles/base.css";
-@import "./styles/utilities.css";
+@import "./styles/text.css";
+@import "./styles/buttons.css";
+@import "./styles/forms.css";
+@import "./styles/cards.css";
+@import "./styles/icon-controls.css";
+@import "./styles/overlays.css";
 @import "./styles/shell.css";
 @import "./styles/a11y.css";
 @import "./styles/vendor.css";
