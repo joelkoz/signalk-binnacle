@@ -150,6 +150,26 @@ npm install signalk-binnacle
 
 **From source.** See [Development](#development) below.
 
+## Usage
+
+Open Binnacle from the **Webapps** list in the Signal K admin UI, or go straight to
+`http://your-sk-server:3000/signalk-binnacle/`. It opens on the chart, centered on your boat.
+
+A few interactions cover most of the helm:
+
+- **Open the context menu.** Long-press the chart on a touch screen, or right-click with a mouse, to
+  drop a waypoint, choose **Go to here** to navigate straight to that point, start a route or a
+  measurement, or place an on-chart widget.
+- **Manage layers.** Open the **Layers** panel to toggle each chart, bathymetry source, and overlay,
+  fade it with the opacity slider, and drag the rows to reorder how they stack.
+- **Switch themes.** Cycle the day, dusk, and night-red themes from the theme control. Night-red is
+  pure red on true black for a dark-adapted watch.
+- **Mark a man overboard.** Tap the always-visible **MOB** button in the top bar and confirm to mark
+  the spot, raise the boat-wide alarm, and start the recovery strip.
+
+For offline charts and tiles, see [Offline operation and SSL](#offline-operation-and-ssl-optional)
+below.
+
 ## Offline operation and SSL (optional)
 
 SSL is not required. Binnacle runs fully over plain HTTP, which is how the Signal K server serves it

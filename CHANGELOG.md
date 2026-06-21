@@ -8,13 +8,31 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Off-origin plotter-extension URLs are now rejected. An extension manifest URL without a leading
+  slash, or a protocol-relative URL, could previously resolve to a different origin and load into an
+  iframe that runs with allow-same-origin and the live host bus under your session. Every extension
+  URL is now resolved against the server origin and accepted only when the result is same-origin.
+
 ### Fixed
 
 - The point-conditions valid-time line renders with its space restored before the middot ("Observed ·
   14:30" rather than "Observed· 14:30").
+- A collision alarm now goes silent the instant the danger clears, instead of playing out the rest of
+  the beep burst it was partway through. Scheduled beeps are stopped, not just the repeating interval.
+- A failed file read while importing a route GPX or a profile JSON file now shows "Could not read that
+  file." instead of doing nothing, so a flaky USB read is not mistaken for a cancel.
+- A restored man-overboard mark is rebuilt from its known fields, so an unknown persisted field cannot
+  carry into the live mark.
 
 ### Changed
 
+- Accessibility and packaging: the active saved item (the active profile or route) is now announced to
+  assistive technology with aria-current, matching its visual accent, and the browser tab and the
+  Signal K admin webapp view now show the Binnacle favicon.
+- Internal: a reuse pass routed the remaining AIS, anchor, collision, MOB, notes, route, tides, track,
+  and weather overlays through the shared map source helpers, with no behavior change.
 - Internal: a large modularization pass broke the biggest files into cohesive modules, components, and
   controllers without changing behavior. The App.svelte composition root, the WeatherMap and ChartCanvas
   widgets, the routes, layers, and weather panels, the notes overlay, and the pmtiles, themed-map,
