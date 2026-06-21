@@ -42,11 +42,14 @@ export class Alarm implements AlarmControl {
   #timer: ReturnType<typeof setInterval> | undefined;
   #tone: AlarmTone | undefined;
   #warnedNoAudio = false;
+  // Oscillators scheduled but not yet finished, so stop() can cut a burst that is still sounding
+  // rather than letting the rest of it play out after the danger has cleared.
+  #active = new Set<OscillatorNode>();
 
   // Create and resume the audio context. Must run from a user gesture (autoplay policy).
   prime(): void {
     const ctx = this.#context();
-    if (ctx && ctx.state === 'suspended') void ctx.resume();
+    if (ctx && ctx.state === 'suspended') this.#resume(ctx);
   }
 
   start(tone: AlarmTone): void {
@@ -72,7 +75,7 @@ export class Alarm implements AlarmControl {
       }
       return;
     }
-    if (ctx.state === 'suspended') void ctx.resume();
+    if (ctx.state === 'suspended') this.#resume(ctx);
     this.#tone = tone;
     this.#burst(ctx, tone);
     this.#timer = setInterval(() => this.#burst(ctx, tone), tone.periodMs);
@@ -82,6 +85,16 @@ export class Alarm implements AlarmControl {
     if (this.#timer !== undefined) clearInterval(this.#timer);
     this.#timer = undefined;
     this.#tone = undefined;
+    // Cut any beeps still scheduled in the current burst, so the alarm silences at once when the
+    // danger clears instead of finishing the burst it was partway through.
+    for (const osc of this.#active) {
+      try {
+        osc.stop();
+      } catch {
+        // Already stopped or never started; nothing to do.
+      }
+    }
+    this.#active.clear();
   }
 
   #context(): AudioContext | undefined {
@@ -89,8 +102,14 @@ export class Alarm implements AlarmControl {
     return this.#ctx;
   }
 
+  #resume(ctx: AudioContext): void {
+    // resume() rejects if the context is closing or the gesture requirement is unmet; swallow it so
+    // a failed resume never surfaces as an unhandled rejection. The next burst retries the resume.
+    void ctx.resume().catch(() => undefined);
+  }
+
   #burst(ctx: AudioContext, tone: AlarmTone): void {
-    if (ctx.state === 'suspended') void ctx.resume();
+    if (ctx.state === 'suspended') this.#resume(ctx);
     const step = (tone.beepMs + tone.gapMs) / 1000;
     for (let i = 0; i < tone.beeps; i += 1) {
       this.#beep(ctx, tone, ctx.currentTime + i * step);
@@ -109,6 +128,8 @@ export class Alarm implements AlarmControl {
     gain.gain.setValueAtTime(tone.volume, start + duration - 0.02);
     gain.gain.linearRampToValueAtTime(0, start + duration);
     osc.connect(gain).connect(ctx.destination);
+    this.#active.add(osc);
+    osc.onended = () => this.#active.delete(osc);
     osc.start(start);
     osc.stop(start + duration);
   }

@@ -111,9 +111,18 @@ function confirmDelete(id: string): void {
   onDelete(id);
 }
 
+// A failed file read must not look like a quiet cancel: surface it so the navigator knows the import
+// did not happen, not just that nothing changed.
+let importError = $state<string | undefined>();
+
 async function importGpx(): Promise<void> {
-  const text = await pickTextFile('.gpx,application/gpx+xml');
-  if (text !== undefined) onImportGpx(text);
+  const picked = await pickTextFile('.gpx,application/gpx+xml');
+  if (!picked.ok) {
+    importError = picked.reason === 'read-error' ? 'Could not read that file.' : undefined;
+    return;
+  }
+  importError = undefined;
+  onImportGpx(picked.text);
 }
 
 // Precompute each route's formatted distance once per change rather than re-walking every route's
@@ -163,6 +172,10 @@ $effect(() => {
       Import GPX
     </button>
   </div>
+
+  {#if importError}
+    <p class="alert-note" role="status">{importError}</p>
+  {/if}
 
   <RouteDraftPanel
     {draftAvailable}

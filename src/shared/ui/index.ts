@@ -1,6 +1,7 @@
 export { default as AnchoredMenu } from './AnchoredMenu.svelte';
 export { ConfirmArm } from './confirm-arm.svelte';
 export { dialog, registerDismiss } from './dialog';
+export type { PickedTextResult } from './file-pick';
 export { pickTextFile } from './file-pick';
 export { focusOnMount, focusTrap, isTabKey, onKeydownAction, rovingFocus } from './focus';
 export { default as InlineConfirm } from './InlineConfirm.svelte';

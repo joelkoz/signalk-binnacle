@@ -98,6 +98,20 @@ describe('MobStore', () => {
     expect(mob.markEpochMs).toBe(5000);
   });
 
+  it('strips unknown persisted properties from the restored mark', () => {
+    // A persisted mark with stray keys (a legacy field, an extra coordinate) restores as a clean
+    // literal, so nothing downstream re-persists or publishes the extras.
+    const { mob } = setup({
+      'binnacle:mob': JSON.stringify({
+        position: { latitude: 1, longitude: 2, altitude: 9 },
+        epochMs: 5000,
+        legacy: true,
+      }),
+    });
+    expect(mob.position).toEqual({ latitude: 1, longitude: 2 });
+    expect(mob.markEpochMs).toBe(5000);
+  });
+
   it('ticks the elapsed time on the clock', () => {
     const { store, mob, clock } = setup();
     store.applyFrame(frame({ 'navigation.position': BOAT }));

@@ -56,9 +56,12 @@ function promptNew(): void {
 let importError = $state<string | undefined>();
 
 async function importProfiles(): Promise<void> {
-  const text = await pickTextFile('.json,application/json');
-  if (text === undefined) return;
-  const parsed = parseProfilesJson(text);
+  const picked = await pickTextFile('.json,application/json');
+  if (!picked.ok) {
+    importError = picked.reason === 'read-error' ? 'Could not read that file.' : undefined;
+    return;
+  }
+  const parsed = parseProfilesJson(picked.text);
   if (parsed.length === 0) {
     importError = 'No valid profiles in that file.';
     return;

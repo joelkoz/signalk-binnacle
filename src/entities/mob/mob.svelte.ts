@@ -19,7 +19,15 @@ function validMark(value: MobMark | null): MobMark | null {
   if (!value || typeof value !== 'object') return null;
   if (!isFiniteNumber(value.epochMs)) return null;
   if (value.position !== undefined && !isLatLon(value.position)) return null;
-  return value;
+  // Rebuilt as a clean literal: returning the raw localStorage object would re-persist any unknown
+  // extra properties forever (the same hazard anchor's validLocal guards against).
+  return {
+    position:
+      value.position === undefined
+        ? undefined
+        : { latitude: value.position.latitude, longitude: value.position.longitude },
+    epochMs: value.epochMs,
+  };
 }
 
 // Man-overboard state. A local trigger marks the vessel position and persists it; the stream's
