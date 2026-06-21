@@ -149,6 +149,7 @@ export interface AddCandidate {
   extensionId: string;
   extensionName: string;
   widget: WidgetContribution;
+  origin: [number, number];
 }
 
 // The widgets that can still be placed in an area (those with a valid origin).
@@ -161,8 +162,9 @@ export function candidateWidgets(
   const occupied = occupancy(placements, area);
   for (const ext of extensions) {
     for (const widget of ext.widgets) {
-      if (findOrigin(placements, area, widget.size, occupied)) {
-        out.push({ extensionId: ext.id, extensionName: ext.name, widget });
+      const origin = findOrigin(placements, area, widget.size, occupied);
+      if (origin) {
+        out.push({ extensionId: ext.id, extensionName: ext.name, widget, origin });
       }
     }
   }

@@ -22,22 +22,17 @@ $effect(() => {
   <aside class="bottom-strip bottom-strip--accent" aria-label="Measure">
     <div class="head">
       <span class="title">Measure</span>
-      {#if measure.points.length === 0}
+      {#if measure.isEmpty}
         <span class="note">Tap the chart to set points</span>
       {/if}
       <div class="actions">
-        <button
-          type="button"
-          class="ack"
-          disabled={measure.points.length === 0}
-          onclick={() => measure.undo()}
-        >
+        <button type="button" class="ack" disabled={measure.isEmpty} onclick={() => measure.undo()}>
           Undo
         </button>
         <button
           type="button"
           class="ack"
-          disabled={measure.points.length === 0}
+          disabled={measure.isEmpty}
           onclick={() => measure.clear()}
         >
           Clear

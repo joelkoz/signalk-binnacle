@@ -11,6 +11,8 @@ import type { Waypoint, WaypointsStore } from '$entities/waypoint';
 import { latLonToLonLat } from '$shared/geo';
 import {
   emptyFeatureCollection,
+  featureCollection,
+  iconOffsetExpression,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
@@ -26,23 +28,8 @@ const SYMBOL_MARKER_LAYER = 'binnacle-waypoint-symbol';
 const LABEL_LAYER = 'binnacle-waypoint-label';
 const BAND = 'routes';
 
-const CENTERED_OFFSET: [number, number] = [0, 0];
-
 export interface WaypointOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
-}
-
-// Per-feature icon-offset as a match on the feature's iconImage. MapLibre stringifies an array
-// feature property crossing to the worker, so the per-symbol anchor offset cannot ride on the
-// feature as ['get', 'iconOffset']; the match keeps each symbol's offset as a real literal array.
-function iconOffsetExpression(
-  offsets: ReadonlyMap<string, readonly [number, number]>,
-): ExpressionSpecification | [number, number] {
-  if (offsets.size === 0) return CENTERED_OFFSET;
-  const match: unknown[] = ['match', ['get', 'iconImage']];
-  for (const [iconId, offset] of offsets) match.push(iconId, ['literal', offset]);
-  match.push(['literal', CENTERED_OFFSET]);
-  return match as ExpressionSpecification;
 }
 
 // Standalone waypoints. Each waypoint renders as a provided symbol when its icon resolves to one
@@ -123,8 +110,8 @@ export function createWaypointOverlay(
       };
     });
     return {
-      data: { type: 'FeatureCollection', features },
-      iconOffset: iconOffsetExpression(offsets),
+      data: featureCollection(features),
+      iconOffset: iconOffsetExpression('iconImage', offsets),
     };
   }
 

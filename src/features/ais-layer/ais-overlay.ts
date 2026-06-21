@@ -1,7 +1,12 @@
 import type { AisTargets } from '$entities/ais';
 import { headingDegrees } from '$shared/lib';
-import { createSymbolOverlay, mapThemePaint, type Rgba, type SymbolOverlay } from '$shared/map';
-import type { SignalKStore } from '$shared/signalk';
+import {
+  createSymbolOverlay,
+  featureCollection,
+  mapThemePaint,
+  type Rgba,
+  type SymbolOverlay,
+} from '$shared/map';
 import { AIS_ICON_ID, aisIconImage } from './ais-icon';
 
 const SOURCE_ID = 'binnacle-ais';
@@ -13,13 +18,12 @@ const DEFAULT_COLOR: Rgba = mapThemePaint('day').aisTarget;
 // Purely presentational: stale-target expiry lives on an app-level timer (store.pruneAis with the
 // entities/ais TTL), never in this render path, which pauses in a hidden tab while the collision
 // math keeps consuming the store.
-export function createAisOverlay(targets: AisTargets, store: SignalKStore): SymbolOverlay {
+export function createAisOverlay(targets: AisTargets): SymbolOverlay {
   let lastVersion = -1;
 
-  function featureCollection(): GeoJSON.FeatureCollection {
-    return {
-      type: 'FeatureCollection',
-      features: targets.list().map((target) => ({
+  function buildFeatures(): GeoJSON.FeatureCollection {
+    return featureCollection(
+      targets.list().map((target) => ({
         type: 'Feature',
         geometry: {
           type: 'Point',
@@ -31,11 +35,11 @@ export function createAisOverlay(targets: AisTargets, store: SignalKStore): Symb
           heading: headingDegrees(target.headingRad, target.cogRad),
         },
       })),
-    };
+    );
   }
 
   function shouldRefresh(): boolean {
-    const version = store.aisVersion;
+    const version = targets.version;
     if (version === lastVersion) return false;
     lastVersion = version;
     return true;
@@ -51,7 +55,7 @@ export function createAisOverlay(targets: AisTargets, store: SignalKStore): Symb
     iconImage: aisIconImage,
     defaultColor: DEFAULT_COLOR,
     paintColor: (paint) => paint.aisTarget,
-    features: featureCollection,
+    features: buildFeatures,
     shouldRefresh,
   });
 }

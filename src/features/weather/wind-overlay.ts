@@ -7,7 +7,12 @@ import type {
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import { prefersReducedMotion } from '$shared/lib';
-import { emptyFeatureCollection, type OverlayContext, type OverlayModule } from '$shared/map';
+import {
+  emptyFeatureCollection,
+  type OverlayContext,
+  type OverlayModule,
+  removeLayersAndSources,
+} from '$shared/map';
 import type { Theme } from '$shared/ui';
 import { WEATHER_LAYER_IDS } from './fills';
 import { windArrowFeatures } from './wind-arrows';
@@ -227,9 +232,7 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
       if (!particles && ctx.map.getLayer(LAYER_ID)) syncArrows(ctx);
     },
     remove(ctx) {
-      if (ctx.map.getLayer(GL_LAYER_ID)) ctx.map.removeLayer(GL_LAYER_ID);
-      if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
-      if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
+      removeLayersAndSources(ctx.map, [GL_LAYER_ID, LAYER_ID], [SOURCE_ID]);
     },
     setVisible(ctx, value) {
       visible = value;

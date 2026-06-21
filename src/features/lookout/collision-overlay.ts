@@ -45,17 +45,25 @@ function contactsToFeatures(contacts: readonly DangerContact[]): GeoJSON.Feature
   );
 }
 
-// A graded ring around each dangerous AIS target, colored by severity from the theme.
-function strokeColor(paint: MapThemePaint): ExpressionSpecification {
-  return [
+// A severity match over the danger and warning grades, with the warning value doubling as the
+// fallback for an unknown severity. Shared by the ring radius, stroke width, and stroke color.
+const severityMatch = (
+  danger: number | string,
+  warning: number | string,
+): ExpressionSpecification =>
+  [
     'match',
     ['get', 'severity'],
     'danger',
-    paint.danger,
+    danger,
     'warning',
-    paint.warning,
-    paint.warning,
-  ];
+    warning,
+    warning,
+  ] as ExpressionSpecification;
+
+// A graded ring around each dangerous AIS target, colored by severity from the theme.
+function strokeColor(paint: MapThemePaint): ExpressionSpecification {
+  return severityMatch(paint.danger, paint.warning);
 }
 
 export function createCollisionOverlay(collision: CollisionAssessment): CollisionOverlay {
@@ -87,25 +95,12 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
           type: 'circle',
           source: SOURCE_ID,
           paint: {
-            'circle-radius': [
-              'match',
-              ['get', 'severity'],
-              'danger',
-              RING_RADIUS.danger,
-              'warning',
-              RING_RADIUS.warning,
-              RING_RADIUS.warning,
-            ],
+            'circle-radius': severityMatch(RING_RADIUS.danger, RING_RADIUS.warning),
             'circle-color': 'transparent',
-            'circle-stroke-width': [
-              'match',
-              ['get', 'severity'],
-              'danger',
+            'circle-stroke-width': severityMatch(
               RING_STROKE_WIDTH.danger,
-              'warning',
               RING_STROKE_WIDTH.warning,
-              RING_STROKE_WIDTH.warning,
-            ],
+            ),
             'circle-stroke-color': strokeColor(mapThemePaint('day')),
           },
         };

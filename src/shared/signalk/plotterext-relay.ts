@@ -1,5 +1,5 @@
 import { withTimeout } from '$shared/lib';
-import { authInit } from './resource';
+import { authInit, jsonOr } from './resource';
 
 // Server relays for the plotter-extension host API: a generic Signal K PUT (signalk.put) and a
 // resource collection query (resources.list). Both go through the user's authenticated session, so
@@ -31,7 +31,7 @@ export async function putSignalKPath(
   if (!response.ok) {
     throw new Error(`signalk.put ${path} failed: ${response.status}`);
   }
-  return response.json().catch(() => ({}));
+  return jsonOr(response, {});
 }
 
 // GET a resource collection, serializing the query object to the resources query string (array

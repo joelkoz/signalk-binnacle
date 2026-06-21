@@ -14,17 +14,11 @@ export const HOST_INFO = {
 // not load an off-origin page into the extension iframe, which runs with allow-same-origin and a
 // live host bus under the user's session. Returns undefined for any off-origin or unparseable URL;
 // callers skip rendering that contribution. A relative URL is always same-origin and is resolved.
-let _lastOriginInput: string | undefined;
-let _lastOriginParsed: string | undefined;
-
 export function resolveExtUrl(origin: string, url: string): string | undefined {
   if (/^https?:/i.test(url)) {
     try {
-      if (origin !== _lastOriginInput) {
-        _lastOriginInput = origin;
-        _lastOriginParsed = new URL(origin).origin;
-      }
-      return new URL(url).origin === _lastOriginParsed ? url : undefined;
+      const serverOrigin = new URL(origin).origin;
+      return new URL(url).origin === serverOrigin ? url : undefined;
     } catch {
       return undefined;
     }

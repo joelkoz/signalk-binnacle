@@ -7,6 +7,7 @@ import type {
   MapLayerMouseEvent,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
+import { asPoiCategory } from '$entities/poi-icons';
 import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
 import { bboxContains, lngLatBoundsToBbox4 } from '$shared/geo';
 import { DAY_MS } from '$shared/lib';
@@ -28,9 +29,7 @@ import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symb
 import { registerPoiIcons } from './note-icons';
 import { bboxKey, NotesCache, padBbox } from './notes-cache';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
-import { categoryRank, POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
-
-const POI_CATEGORY_SET = new Set<string>(POI_CATEGORIES);
+import { categoryRank, POI_CATEGORIES, poiIconId } from './poi-categories';
 
 const SOURCE_ID = 'binnacle-notes';
 const LAYER_ID = 'binnacle-notes-symbol';
@@ -178,8 +177,6 @@ function buildRender(
   return { data: featureCollection(features), iconOffset: iconOffsetExpression(offsets) };
 }
 
-const EMPTY: GeoJSON.FeatureCollection = emptyFeatureCollection();
-
 export function createNotesOverlay(
   serverBase: string,
   token: string | undefined,
@@ -272,6 +269,14 @@ export function createNotesOverlay(
     }
   }
 
+  // Re-raster the 18 POI and navaid SVGs and the provided symbols to a new theme paint. Run on a
+  // theme change while shown and deferred to the next show while hidden.
+  function refreshIcons(ctx: OverlayContext, paint: MapThemePaint): void {
+    void registerPoiIcons(ctx.map, paint);
+    void registerNavaidIcons(ctx.map, paint);
+    registry?.retheme(ctx.map, paint);
+  }
+
   function setData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
     const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
     source?.setData(data);
@@ -325,7 +330,7 @@ export function createNotesOverlay(
   function clearRendered(ctx: OverlayContext): void {
     if (renderedNotes === undefined) return;
     renderedNotes = undefined;
-    setData(ctx, EMPTY);
+    setData(ctx, emptyFeatureCollection());
   }
 
   // Highlight the selected marker by drawing a ring at its position; clearing it sets the
@@ -334,7 +339,7 @@ export function createNotesOverlay(
     const source = ctx.map.getSource(SELECT_SOURCE) as GeoJSONSource | undefined;
     if (!source) return;
     if (feature?.geometry.type !== 'Point') {
-      source.setData(EMPTY);
+      source.setData(emptyFeatureCollection());
       return;
     }
     source.setData(
@@ -354,7 +359,7 @@ export function createNotesOverlay(
       if (!ctx.map.getSource(SOURCE_ID)) {
         const source: GeoJSONSourceSpecification = {
           type: 'geojson',
-          data: EMPTY,
+          data: emptyFeatureCollection(),
           cluster: true,
           clusterMaxZoom: CLUSTER_MAX_ZOOM,
           clusterRadius: CLUSTER_RADIUS,
@@ -364,7 +369,7 @@ export function createNotesOverlay(
         ctx.map.addSource(SOURCE_ID, source);
       }
       if (!ctx.map.getSource(SELECT_SOURCE)) {
-        ctx.map.addSource(SELECT_SOURCE, { type: 'geojson', data: EMPTY });
+        ctx.map.addSource(SELECT_SOURCE, { type: 'geojson', data: emptyFeatureCollection() });
       }
 
       // Selection ring sits below the markers so the icon draws on top of it; a dark casing ring below
@@ -504,10 +509,7 @@ export function createNotesOverlay(
         // The category rides on the rendered feature, so validate it against the known set rather
         // than trusting the string into PoiCategory: an out-of-vocabulary value would key the label
         // and icon records to nothing instead of falling back.
-        const rawCategory = String(props.category ?? '');
-        const category: PoiCategory = POI_CATEGORY_SET.has(rawCategory)
-          ? (rawCategory as PoiCategory)
-          : 'generic';
+        const category = asPoiCategory(String(props.category ?? ''));
         setSelected(ctx, feature);
         onSelect?.({
           id,
@@ -626,9 +628,7 @@ export function createNotesOverlay(
       // The cheap per-layer color updates always run so the layer is correct the instant it shows.
       // The expensive icon re-raster (18 SVGs) is deferred while hidden and done on the next show.
       if (visible) {
-        void registerPoiIcons(ctx.map, paint);
-        void registerNavaidIcons(ctx.map, paint);
-        registry?.retheme(ctx.map, paint);
+        refreshIcons(ctx, paint);
       } else {
         pendingIconPaint = paint;
       }
@@ -646,9 +646,7 @@ export function createNotesOverlay(
       if (isVisible && pendingIconPaint) {
         const paint = pendingIconPaint;
         pendingIconPaint = undefined;
-        void registerPoiIcons(ctx.map, paint);
-        void registerNavaidIcons(ctx.map, paint);
-        registry?.retheme(ctx.map, paint);
+        refreshIcons(ctx, paint);
       }
     },
     setOpacity(ctx, opacity) {

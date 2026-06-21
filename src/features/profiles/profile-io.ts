@@ -1,5 +1,5 @@
 import type { Profile, ProfileSettings } from '$entities/profile';
-import { downloadText, isFiniteNumber } from '$shared/lib';
+import { downloadText, isFiniteNumber, isRecord } from '$shared/lib';
 import { THEMES } from '$shared/ui';
 
 // A validated import: the settings to recreate plus the name to recreate them under. The importer
@@ -9,12 +9,8 @@ export interface ImportedProfile {
   settings: ProfileSettings;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function isThresholds(value: unknown): boolean {
-  if (!isPlainObject(value)) return false;
+  if (!isRecord(value)) return false;
   return (
     isFiniteNumber(value.dangerCpaMeters) &&
     isFiniteNumber(value.dangerTcpaSeconds) &&
@@ -24,7 +20,7 @@ function isThresholds(value: unknown): boolean {
 }
 
 function isTrackSettings(value: unknown): boolean {
-  if (!isPlainObject(value)) return false;
+  if (!isRecord(value)) return false;
   return (
     isFiniteNumber(value.intervalSeconds) &&
     isFiniteNumber(value.minMeters) &&
@@ -36,12 +32,11 @@ function isTrackSettings(value: unknown): boolean {
 // import is rejected outright rather than producing a corrupt profile. The reserved `mode` is the one
 // optional field, accepted only when it is a string.
 export function isProfileSettings(value: unknown): value is ProfileSettings {
-  if (!isPlainObject(value)) return false;
-  if (typeof value.theme !== 'string' || !(THEMES as readonly string[]).includes(value.theme))
-    return false;
-  if (!isPlainObject(value.layers)) return false;
-  if (!isPlainObject(value.layerCategories)) return false;
-  if (!isPlainObject(value.weatherLayers)) return false;
+  if (!isRecord(value)) return false;
+  if (!(THEMES as readonly unknown[]).includes(value.theme)) return false;
+  if (!isRecord(value.layers)) return false;
+  if (!isRecord(value.layerCategories)) return false;
+  if (!isRecord(value.weatherLayers)) return false;
   if (!Array.isArray(value.layerOrder) || !value.layerOrder.every((id) => typeof id === 'string')) {
     return false;
   }
@@ -62,8 +57,8 @@ export function isProfileSettings(value: unknown): value is ProfileSettings {
 // bare ProfileSettings carries `.theme` directly. The name comes from the Profile when present so the
 // importer can keep it; a bare settings object has no name, so a fallback is supplied.
 function toImported(item: unknown): ImportedProfile | undefined {
-  if (!isPlainObject(item)) return undefined;
-  if (isPlainObject(item.settings)) {
+  if (!isRecord(item)) return undefined;
+  if (isRecord(item.settings)) {
     if (!isProfileSettings(item.settings)) return undefined;
     const name = typeof item.name === 'string' && item.name ? item.name : 'Imported profile';
     return { name, settings: item.settings };
@@ -88,7 +83,7 @@ export function parseProfilesJson(text: string): ImportedProfile[] {
   let items: unknown[];
   if (Array.isArray(parsed)) {
     items = parsed;
-  } else if (isPlainObject(parsed) && Array.isArray(parsed.profiles)) {
+  } else if (isRecord(parsed) && Array.isArray(parsed.profiles)) {
     items = parsed.profiles;
   } else {
     items = [parsed];

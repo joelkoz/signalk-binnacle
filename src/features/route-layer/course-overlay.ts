@@ -1,4 +1,4 @@
-import type { CircleLayerSpecification, GeoJSONSource, LineLayerSpecification } from 'maplibre-gl';
+import type { CircleLayerSpecification, LineLayerSpecification } from 'maplibre-gl';
 
 import type { CourseGuidance } from '$entities/course';
 import type { OwnVessel } from '$entities/vessel';
@@ -14,6 +14,7 @@ import {
   removeLayersAndSources,
   rgbaCss,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 
 const LINE_SRC = 'binnacle-course-line-src';
@@ -37,19 +38,12 @@ export function createCourseOverlay(guidance: CourseGuidance, vessel: OwnVessel)
   // Dirty-check signature: "vesselLng,vesselLat|destLng,destLat" or "" for empty.
   let lastSignature = '';
 
-  function setLineData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
-    (ctx.map.getSource(LINE_SRC) as GeoJSONSource | undefined)?.setData(data);
-  }
-
-  function setPointData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
-    (ctx.map.getSource(POINT_SRC) as GeoJSONSource | undefined)?.setData(data);
-  }
-
   function clearBoth(ctx: OverlayContext): void {
     if (lastSignature === '') return;
     lastSignature = '';
-    setLineData(ctx, emptyFeatureCollection());
-    setPointData(ctx, emptyFeatureCollection());
+    for (const src of [LINE_SRC, POINT_SRC]) {
+      setSourceData(ctx.map, src, emptyFeatureCollection());
+    }
   }
 
   return {
@@ -124,8 +118,9 @@ export function createCourseOverlay(guidance: CourseGuidance, vessel: OwnVessel)
 
       const vesselCoord = toLonLat(pos);
       const destCoord = toLonLat(dest);
-      setLineData(
-        ctx,
+      setSourceData(
+        ctx.map,
+        LINE_SRC,
         featureCollection([
           {
             type: 'Feature',
@@ -134,8 +129,9 @@ export function createCourseOverlay(guidance: CourseGuidance, vessel: OwnVessel)
           },
         ]),
       );
-      setPointData(
-        ctx,
+      setSourceData(
+        ctx.map,
+        POINT_SRC,
         featureCollection([
           { type: 'Feature', geometry: { type: 'Point', coordinates: destCoord }, properties: {} },
         ]),

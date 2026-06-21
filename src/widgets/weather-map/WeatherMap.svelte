@@ -174,9 +174,9 @@ const menuProvenance = $derived(
     ? `${GRID_SOURCE_LABEL} · fetched ${formatClockTime(store.grid.fetchedAt)}`
     : undefined,
 );
-const wavesActive = $derived(items.some((i) => i.id === WEATHER_LAYER_IDS.waves && i.visible));
-const radarActive = $derived(items.some((i) => i.id === WEATHER_LAYER_IDS.radar && i.visible));
 const layerOn = (id: string): boolean => items.some((i) => i.id === id && i.visible);
+const wavesActive = $derived(layerOn(WEATHER_LAYER_IDS.waves));
+const radarActive = $derived(layerOn(WEATHER_LAYER_IDS.radar));
 
 // Surface the loader's status so opening the panel offline or during a rate-limit is honest rather
 // than a blank or stale map with no explanation. A refetch over an existing grid stays quiet (the old

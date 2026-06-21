@@ -1,11 +1,16 @@
 import type {
   ExpressionSpecification,
-  GeoJSONSourceSpecification,
   LineLayerSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
-import { emptyFeatureCollection, type OverlayContext, type OverlayModule } from '$shared/map';
+import {
+  emptyFeatureCollection,
+  type OverlayContext,
+  type OverlayModule,
+  removeLayersAndSources,
+  setLayersVisibility,
+} from '$shared/map';
 import type { Theme } from '$shared/ui';
 import { WEATHER_LAYER_IDS } from './fills';
 import { isobarColors } from './pressure-colors';
@@ -43,19 +48,10 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
     },
     add(ctx) {
       const colors = isobarColors(theme);
-      if (!ctx.map.getSource(LINE_SOURCE)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(LINE_SOURCE, source);
-      }
-      if (!ctx.map.getSource(LABEL_SOURCE)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(LABEL_SOURCE, source);
+      for (const id of [LINE_SOURCE, LABEL_SOURCE]) {
+        if (!ctx.map.getSource(id)) {
+          ctx.map.addSource(id, { type: 'geojson', data: emptyFeatureCollection() });
+        }
       }
       if (!ctx.map.getLayer(LINE_LAYER)) {
         const layer: LineLayerSpecification = {
@@ -110,15 +106,10 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
       labelSource?.setData(labels);
     },
     remove(ctx) {
-      if (ctx.map.getLayer(LABEL_LAYER)) ctx.map.removeLayer(LABEL_LAYER);
-      if (ctx.map.getLayer(LINE_LAYER)) ctx.map.removeLayer(LINE_LAYER);
-      if (ctx.map.getSource(LABEL_SOURCE)) ctx.map.removeSource(LABEL_SOURCE);
-      if (ctx.map.getSource(LINE_SOURCE)) ctx.map.removeSource(LINE_SOURCE);
+      removeLayersAndSources(ctx.map, [LABEL_LAYER, LINE_LAYER], [LABEL_SOURCE, LINE_SOURCE]);
     },
     setVisible(ctx, visible) {
-      const v = visible ? 'visible' : 'none';
-      ctx.map.setLayoutProperty(LINE_LAYER, 'visibility', v);
-      ctx.map.setLayoutProperty(LABEL_LAYER, 'visibility', v);
+      setLayersVisibility(ctx.map, [LINE_LAYER, LABEL_LAYER], visible);
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(LINE_LAYER, 'line-opacity', opacity);

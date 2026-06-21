@@ -20,6 +20,8 @@ let error = $state<string | undefined>();
 let draft = $state<DraftChart | undefined>();
 let draftName = $state('');
 
+const staged = $derived(draft !== undefined);
+
 const draftRows = $derived.by(() => {
   if (!draft) return [];
   const spec = chartSpecRows(draft.source);
@@ -54,26 +56,29 @@ function stageUrl(): void {
   }, 'Could not read that chart.');
 }
 
+function resetDraft(): void {
+  draft = undefined;
+  draftName = '';
+}
+
 function saveDraft(): void {
-  const staged = draft;
-  if (!staged) return;
+  const stagedDraft = draft;
+  if (!stagedDraft) return;
   void withBusy(async () => {
-    userCharts.commit(staged, draftName);
-    draft = undefined;
-    draftName = '';
+    userCharts.commit(stagedDraft, draftName);
     onDone();
+    resetDraft();
   }, 'Could not add that chart.');
 }
 
 function cancelDraft(): void {
-  draft = undefined;
-  draftName = '';
+  resetDraft();
   error = undefined;
 }
 </script>
 
 <div class="add-form">
-  {#if draft}
+  {#if staged}
     <div class="review" role="group" aria-label="Review imported chart">
       <span class="field-label caps-label">Review and save</span>
       <label class="name-field">
@@ -125,12 +130,12 @@ function cancelDraft(): void {
   {/if}
 
   {#if busy}
-    <p class="status">{draft ? 'Saving chart...' : 'Reading chart...'}</p>
+    <p class="status">{staged ? 'Saving chart...' : 'Reading chart...'}</p>
   {:else if error}
     <p class="alert-note" role="alert">{error}</p>
   {/if}
 
-  {#if !draft}
+  {#if !staged}
     <button type="button" class="btn btn-ghost" onclick={onDone} disabled={busy}>Close</button>
   {/if}
 </div>

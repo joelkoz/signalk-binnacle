@@ -52,10 +52,11 @@ onMount(() => {
   const win = frame?.contentWindow;
   if (!win) return;
   const context: ExtContext = { kind, extensionId, id, instanceId, targetInstance, targetWidget };
+  const { extensionId: _ext, ...connContext } = context;
   const conn = new HostConnection({
     port: windowPort(win),
     hostInfo,
-    context: { kind, id, instanceId, targetInstance, targetWidget },
+    context: connContext,
     methods: host.handlersFor(context),
     onError: (err) =>
       console.warn(`[plotterext] host method error (ext=${extensionId} ctx=${kind}/${id})`, err),

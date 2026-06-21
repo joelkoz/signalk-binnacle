@@ -9,6 +9,7 @@ import {
   formatKnotsOr,
   formatLengthOr,
   formatMetersOrNm,
+  formatPercent,
   formatPrecipRateOr,
   formatPressureOr,
   formatTemperatureOr,
@@ -30,18 +31,16 @@ import {
   type WeatherWarning,
 } from './signalk-weather';
 import {
+  conditionsFromReadout,
   PRESSURE_TREND_WINDOW_MS,
   precipUnitLabel,
   pressureTrendPa,
   RAIN_VISIBLE_MM_H,
   readoutAt,
   readoutAtBracket,
-  type WeatherReadout,
 } from './weather-readout';
 
 const knots = (v: number | undefined): string => formatKnotsOr(v, 0);
-const pct = (v: number | undefined): string =>
-  formatFixed(v === undefined ? undefined : v * 100, 0);
 
 interface Props {
   origin: string;
@@ -145,24 +144,6 @@ const providerCurrent = $derived.by<{ cond: PointConditions; observed: boolean }
   },
 );
 
-// One readout-to-conditions mapper shared by the current block and the forecast rows, so a field
-// added to one (as gusts just were) cannot be forgotten in the other.
-function conditionsFromReadout(r: WeatherReadout, timeMs: number): PointConditions {
-  return {
-    timeMs,
-    windMs: r.speedMs,
-    fromRad: r.fromRad,
-    gustMs: r.gustMs,
-    pressurePa: r.pressurePa,
-    cloudFraction: r.cloudCoverFraction,
-    waveHeightM: r.waveHeightM,
-    wavePeriodS: r.wavePeriodS,
-    waveFromRad: r.waveFromRad,
-    precipitationMm: r.precipitationMm,
-    precipIsRate: r.precipIsRate,
-  };
-}
-
 // The free-grid sample at the vessel, blended across the time bracket like the drawn fields.
 const freeCurrent = $derived.by<PointConditions | undefined>(() => {
   if (!parsedPos || !store.grid) return undefined;
@@ -254,7 +235,6 @@ const sortedWarnings = $derived(
   warnings.slice().sort((a, b) => severityRank(a.type) - severityRank(b.type)),
 );
 
-const bearing = formatBearingOr;
 const pressure = (v: number | undefined) => formatPressureOr(v, units.mode);
 const temp = (v: number | undefined) => formatTemperatureOr(v, units.mode);
 const height = (v: number | undefined) => formatLengthOr(v, units.mode);
@@ -309,7 +289,7 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
           <dt>Wind</dt>
           <dd>
             <b class="num">{knots(current.windMs)}</b>
-            kn from {bearing(current.fromRad)}&deg;T
+            kn from {formatBearingOr(current.fromRad)}&deg;T
           </dd>
         </div>
         {#if current.gustMs !== undefined}
@@ -351,7 +331,7 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
         {#if current.cloudFraction !== undefined}
           <div>
             <dt>Cloud</dt>
-            <dd><b class="num">{pct(current.cloudFraction)}</b>%</dd>
+            <dd><b class="num">{formatPercent(current.cloudFraction)}</b>%</dd>
           </div>
         {/if}
         {#snippet waveBlock(label: string, heightM: number, periodS: number | undefined, fromRad: number | undefined)}
@@ -364,7 +344,7 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
                 / <b class="num">{formatFixed(periodS, 1)}</b> s
               {/if}
               {#if fromRad !== undefined}
-                from {bearing(fromRad)}&deg;T
+                from {formatBearingOr(fromRad)}&deg;T
               {/if}
             </dd>
           </div>
@@ -401,7 +381,7 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
             <span class="f-time">{stepLabel(step.timeMs)}</span>
             <span class="f-wind">
               <b class="num">{knots(step.windMs)}</b>
-              kn from {bearing(step.fromRad)}&deg;T
+              kn from {formatBearingOr(step.fromRad)}&deg;T
             </span>
             {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}
               <span class="f-rain">

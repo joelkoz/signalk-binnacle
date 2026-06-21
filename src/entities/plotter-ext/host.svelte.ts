@@ -36,6 +36,15 @@ function asRecord(params: unknown): Record<string, unknown> {
   return params && typeof params === 'object' ? (params as Record<string, unknown>) : {};
 }
 
+function getOrCreate<K, V>(map: Map<K, V>, key: K, make: () => V): V {
+  let value = map.get(key);
+  if (value === undefined) {
+    value = make();
+    map.set(key, value);
+  }
+  return value;
+}
+
 function isResourceFilter(value: unknown): value is ResourceFilter {
   if (!value || typeof value !== 'object') return false;
   const mode = (value as { mode?: unknown }).mode;
@@ -221,6 +230,10 @@ export class PlotterExtHost {
   // exist yet), so per-context subscriptions are keyed by the context object.
   handlersFor(context: ExtContext): Record<string, ExtMethodHandler> {
     const ext = context.extensionId;
+    const withWidget = (fn: (instanceId: string) => void): Record<string, never> => {
+      if (context.kind === 'widget' && context.instanceId) fn(context.instanceId);
+      return {};
+    };
     return {
       'state.get': (params) => {
         const { scope, keys } = asRecord(params) as { scope?: StateScope; keys?: string[] };
@@ -239,11 +252,7 @@ export class PlotterExtHost {
       },
       'signalk.subscribe': (params) => {
         const paths = (asRecord(params).paths as string[] | undefined) ?? [];
-        let set = this.#paths.get(context);
-        if (!set) {
-          set = new Set();
-          this.#paths.set(context, set);
-        }
+        const set = getOrCreate(this.#paths, context, () => new Set<string>());
         const admitted: string[] = [];
         for (const path of paths) {
           if (!set.has(path) && set.size >= MAX_PATHS_PER_CONTEXT) {
@@ -326,18 +335,10 @@ export class PlotterExtHost {
         }
         return {};
       },
-      'ui.openConfigPanel': () => {
-        if (context.kind === 'widget' && context.instanceId) {
-          this.openConfig(ext, context.instanceId, context.id);
-        }
-        return {};
-      },
-      'ui.toggleConfigPanel': () => {
-        if (context.kind === 'widget' && context.instanceId) {
-          this.toggleConfig(ext, context.instanceId, context.id);
-        }
-        return {};
-      },
+      'ui.openConfigPanel': () =>
+        withWidget((instanceId) => this.openConfig(ext, instanceId, context.id)),
+      'ui.toggleConfigPanel': () =>
+        withWidget((instanceId) => this.toggleConfig(ext, instanceId, context.id)),
     };
   }
 
@@ -387,11 +388,7 @@ export class PlotterExtHost {
     for (const { conn, context } of this.#registry) {
       const paths = this.#paths.get(context);
       if (!paths || paths.size === 0) continue;
-      let sent = this.#lastSent.get(context);
-      if (!sent) {
-        sent = new Map();
-        this.#lastSent.set(context, sent);
-      }
+      const sent = getOrCreate(this.#lastSent, context, () => new Map<string, string>());
       for (const path of paths) {
         const reading = this.#adapters.signalk.read(path);
         if (!reading) continue;

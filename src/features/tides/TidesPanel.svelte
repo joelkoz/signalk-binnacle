@@ -2,7 +2,7 @@
 import { onDestroy } from 'svelte';
 import type { TidesStore } from '$entities/tides';
 import type { UnitsStore } from '$entities/units';
-import { Clock, DEG_TO_RAD, formatClockTime } from '$shared/lib';
+import { Clock, formatBearingOr, formatClockTime } from '$shared/lib';
 import { SlideOver } from '$shared/ui';
 import {
   formatCurrentRate,
@@ -54,7 +54,7 @@ const currentRate = $derived.by(() => {
   if (!nextCurrent) return '';
   const dirSuffix =
     nextCurrent.directionRad !== undefined
-      ? `, ${Math.round(nextCurrent.directionRad / DEG_TO_RAD)}°`
+      ? `, ${formatBearingOr(nextCurrent.directionRad, 0)}°`
       : '';
   return `${formatCurrentRate(nextCurrent.velocityMps)}${dirSuffix}`;
 });

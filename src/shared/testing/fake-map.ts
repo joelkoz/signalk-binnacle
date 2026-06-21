@@ -2,18 +2,17 @@ import { vi } from 'vitest';
 
 // Test-only fake MapLibre map covering the source, layer, and image surface the
 // overlays use. Imported by *.test.ts files, never by production code.
+type FakeSource = {
+  setData?: (data: unknown) => void;
+  setCoordinates?: (coordinates: unknown) => void;
+  setTiles?: (tiles: unknown) => void;
+  data: unknown;
+  maxzoom?: number;
+  tiles?: unknown;
+};
+
 export function createFakeMap() {
-  const sources = new Map<
-    string,
-    {
-      setData?: (data: unknown) => void;
-      setCoordinates?: (coordinates: unknown) => void;
-      setTiles?: (tiles: unknown) => void;
-      data: unknown;
-      maxzoom?: number;
-      tiles?: unknown;
-    }
-  >();
+  const sources = new Map<string, FakeSource>();
   const layers = new Set<string>();
   const images = new Set<string>();
   const updatedImages: string[] = [];
@@ -40,14 +39,7 @@ export function createFakeMap() {
     ) => {
       // A real MapLibre source carries only its own type's mutator, so attach just that one: a
       // wrong-type call then throws in tests as in the browser instead of silently succeeding.
-      const source: {
-        setData?: (data: unknown) => void;
-        setCoordinates?: (coordinates: unknown) => void;
-        setTiles?: (tiles: unknown) => void;
-        data: unknown;
-        maxzoom?: number;
-        tiles?: unknown;
-      } = { data: spec.data, maxzoom: spec.maxzoom, tiles: spec.tiles };
+      const source: FakeSource = { data: spec.data, maxzoom: spec.maxzoom, tiles: spec.tiles };
       if (spec.type === 'geojson') {
         source.setData = (data: unknown) => {
           source.data = data;

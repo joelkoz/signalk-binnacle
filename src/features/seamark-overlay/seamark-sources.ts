@@ -20,8 +20,7 @@ export const SEAMARK_SOURCES: RasterOverlaySource[] = [
   },
 ];
 
-// The seamarks draw in the safety band; the band lives in the slice so the composing widget does not
-// hardcode it, matching depth-charts' createStreamingChartOverlay.
+// The safety band lives in the slice, not the composing widget, matching depth-charts.
 export function createSeamarkOverlay(source: RasterOverlaySource): OverlayModule {
   return createRasterOverlay(source, 'safety');
 }

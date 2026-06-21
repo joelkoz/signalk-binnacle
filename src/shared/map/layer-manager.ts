@@ -102,19 +102,16 @@ export class LayerManager {
     const restored = this.#saved[module.id];
     // Coerce a restored state's shape: a legacy persisted entry missing opacity would otherwise
     // flow undefined into setOpacity and render as NaN.
-    const fallback = restored
+    const state = restored
       ? {
           visible: Boolean(restored.visible),
-          opacity: Number.isFinite(restored.opacity)
-            ? Math.max(0, Math.min(1, restored.opacity))
-            : 1,
+          opacity: this.#coerceOpacity(restored.opacity),
         }
       : { visible: module.defaultVisible ?? true, opacity: module.defaultOpacity ?? 1 };
-    const state = fallback;
     // Enforce exclusion on restore too: a saved or legacy state with two members of an exclusive
     // group both visible would otherwise bypass the toggle-time rule. Keep the first registered.
     if (state.visible) {
-      const group = this.#exclusive.find((g) => g.includes(module.id));
+      const group = this.#groupOf(module.id);
       if (group?.some((other) => other !== module.id && this.#state.get(other)?.visible)) {
         state.visible = false;
       }
@@ -147,7 +144,7 @@ export class LayerManager {
     if (!module || !state) return;
     // Enabling a member of an exclusive group hides the other members of that group.
     if (visible) {
-      const group = this.#exclusive.find((g) => g.includes(id));
+      const group = this.#groupOf(id);
       for (const other of group ?? []) {
         if (other === id) continue;
         const om = this.#modules.get(other);
@@ -199,7 +196,9 @@ export class LayerManager {
     const clamped = Math.max(0, Math.min(toIndex, topDown.length));
     topDown.splice(clamped, 0, id);
     this.#explicitOrder = topDown.reverse();
-    this.#applyOrder();
+    // The effective order is already determined by the new explicit order, so build it once here
+    // and hand it to #applyOrder rather than letting #applyOrder recompute it.
+    this.#applyOrder(this.#effectiveOrder());
     this.#onOrderChange?.([...this.#explicitOrder]);
   }
 
@@ -219,7 +218,7 @@ export class LayerManager {
       }
       // Coerce as #addModule does: a corrupted or legacy snapshot opacity (NaN or out of range)
       // would otherwise flow into setOpacity and render the layer transparent or broken.
-      const opacity = Number.isFinite(next.opacity) ? Math.max(0, Math.min(1, next.opacity)) : 1;
+      const opacity = this.#coerceOpacity(next.opacity);
       if (opacity !== state.opacity) {
         state.opacity = opacity;
         module.setOpacity?.(this.#ctx, opacity);
@@ -242,6 +241,17 @@ export class LayerManager {
 
   #isChild(id: string): boolean {
     return this.#modules.get(id)?.parent !== undefined;
+  }
+
+  // Clamp a restored or snapshot opacity into [0, 1]: a legacy persisted entry missing opacity, or
+  // a corrupted out-of-range value, would otherwise flow undefined or NaN into setOpacity and
+  // render the layer as NaN, transparent, or broken.
+  #coerceOpacity(value: unknown): number {
+    return Number.isFinite(value) ? Math.max(0, Math.min(1, value as number)) : 1;
+  }
+
+  #groupOf(id: string): string[] | undefined {
+    return this.#exclusive.find((g) => g.includes(id));
   }
 
   // The effective stacking order, bottom to top: pinned overlays on top, the rest by the
@@ -291,12 +301,12 @@ export class LayerManager {
 
   // Realize the effective order on the map by chaining moveLayer from the top down, anchoring
   // the whole overlay group just beneath the top sentinel so it stays above the base style.
-  #applyOrder(): void {
+  #applyOrder(order = this.#effectiveOrder()): void {
     // Band insertion already yields the default order, so a restack only matters once a saved
     // order or a pin makes the desired order differ from the plain band sequence.
     if (!this.#explicitOrder.length && !this.#pinned.size) return;
     const desired: string[] = [];
-    for (const id of this.#effectiveOrder()) {
+    for (const id of order) {
       const module = this.#modules.get(id);
       if (!module) continue;
       for (const layerId of module.layerIds) {

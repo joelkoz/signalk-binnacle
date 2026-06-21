@@ -42,11 +42,9 @@ export async function fetchHistoryProviders(
     authInit(token),
   );
   if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
-  const ids = Object.keys(body).sort((a, b) => {
-    const aDefault = body[a]?.isDefault === true ? 0 : 1;
-    const bDefault = body[b]?.isDefault === true ? 0 : 1;
-    return aDefault - bDefault;
-  });
+  const ids = Object.keys(body).sort(
+    (a, b) => Number(body[b]?.isDefault === true) - Number(body[a]?.isDefault === true),
+  );
   return { ids };
 }
 

@@ -3,6 +3,7 @@ import { headingDegrees } from '$shared/lib';
 import {
   createSymbolOverlay,
   emptyFeatureCollection,
+  featureCollection,
   mapThemePaint,
   type Rgba,
   type SymbolOverlay,
@@ -27,19 +28,16 @@ export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
   // Heading drives icon-rotate (degrees), falling back to course over ground, then north.
   const resolveHeading = (): number => headingDegrees(vessel.headingRad, vessel.cogRad);
 
-  function featureCollection(): GeoJSON.FeatureCollection {
+  function buildFeatures(): GeoJSON.FeatureCollection {
     const position = vessel.position;
     if (!position) return emptyFeatureCollection();
-    return {
-      type: 'FeatureCollection',
-      features: [
-        {
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [position.longitude, position.latitude] },
-          properties: { heading: resolveHeading() },
-        },
-      ],
-    };
+    return featureCollection([
+      {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [position.longitude, position.latitude] },
+        properties: { heading: resolveHeading() },
+      },
+    ]);
   }
 
   function shouldRefresh(): boolean {
@@ -65,7 +63,7 @@ export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
     pixelRatio: 2,
     defaultColor: DEFAULT_COLOR,
     paintColor: (paint) => paint.ownVessel,
-    features: featureCollection,
+    features: buildFeatures,
     shouldRefresh,
   });
 }

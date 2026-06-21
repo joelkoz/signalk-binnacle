@@ -59,6 +59,12 @@ export function nextCurrentEvent(events: CurrentEvent[], nowMs: number): Current
   return events.find((event) => event.timeMs >= nowMs && event.kind !== 'slack');
 }
 
+// The next high or low at or after a reference time, for the station marker label. Events are
+// pre-sorted ascending (see upcomingEvents), so the first match is the soonest.
+export function nextTideEvent(events: TideEvent[], nowMs: number): TideEvent | undefined {
+  return events.find((event) => event.timeMs >= nowMs);
+}
+
 // Normalize the day's high and low turning points to a 0..1 box for an SVG tide curve: x over the
 // span of events, y from the lowest tide (0) to the highest (1).
 export function tideCurvePoints(events: TideEvent[]): Array<{ x: number; y: number }> {

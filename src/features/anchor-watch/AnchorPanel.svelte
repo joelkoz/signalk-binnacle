@@ -34,13 +34,10 @@ const mode = $derived(units.mode);
 const unit = $derived(lengthUnit(mode));
 // The radius field deals in the display unit; the entity stays meters, so imperial entries
 // convert at the edges and round to whole display units.
-const radiusDisplay = $derived.by(() => {
-  const meters = anchor.radiusMeters ?? anchor.preferredRadiusMeters;
-  return Math.round(mode === 'imperial' ? (metersToFeet(meters) ?? 0) : meters);
-});
-const minRadiusDisplay = $derived(
-  mode === 'imperial' ? Math.round(metersToFeet(MIN_RADIUS_M) ?? 0) : MIN_RADIUS_M,
-);
+const toDisplayUnits = (meters: number) =>
+  Math.round(mode === 'imperial' ? (metersToFeet(meters) ?? 0) : meters);
+const radiusDisplay = $derived(toDisplayUnits(anchor.radiusMeters ?? anchor.preferredRadiusMeters));
+const minRadiusDisplay = $derived(toDisplayUnits(MIN_RADIUS_M));
 const distanceText = $derived(formatLengthOr(distance, mode, 0));
 const radiusText = $derived(watching ? formatLengthOr(anchor.radiusMeters, mode, 0) : PLACEHOLDER);
 const depthText = $derived(formatLengthOr(vessel.depthMeters, mode, 1));

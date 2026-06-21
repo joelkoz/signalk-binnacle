@@ -1,6 +1,6 @@
 <script lang="ts">
 import { type DefaultOption, IconPicker } from '$entities/icon-picker';
-import { POI_CATEGORIES } from '$entities/poi-icons';
+import { isPoiCategory } from '$entities/poi-icons';
 import type { SymbolsStore } from '$entities/symbols';
 import type { Waypoint } from '$entities/waypoint';
 import { dialog, focusOnMount, focusTrap } from '$shared/ui';
@@ -27,8 +27,6 @@ const WAYPOINT_DEFAULT: DefaultOption = {
     '</svg>',
 };
 
-const POI_CATEGORY_SET = new Set<string>(POI_CATEGORIES);
-
 // Convert a stored icon value back to the picker's selection value. Stored 'waypoint' and
 // undefined both mean "use the default marker", which the picker represents as an empty string.
 // A 'default:<cat>' value (explicit built-in with a custom override active) maps back to the bare
@@ -44,7 +42,7 @@ function pickerValueFromStoredIcon(icon: string | undefined): string {
 // save 'default:<cat>' to explicitly force the built-in. Empty string means the default marker.
 function finalIconRef(selected: string): string {
   if (!selected) return 'waypoint';
-  if (POI_CATEGORY_SET.has(selected)) {
+  if (isPoiCategory(selected)) {
     const hasOverride = symbols?.resolve(selected, 'waypoint') !== undefined;
     return hasOverride ? `default:${selected}` : selected;
   }

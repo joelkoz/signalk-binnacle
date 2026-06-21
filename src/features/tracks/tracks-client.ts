@@ -1,6 +1,7 @@
 import { computeStats, type TrackPoint, toLonLat } from '$entities/track';
 import { isLonLat } from '$shared/geo';
 import { isFiniteNumber } from '$shared/lib';
+import { featureCollection } from '$shared/map';
 import { deleteResource, fetchKeyedResource, putResource } from '$shared/signalk';
 import { toGeoJsonFeature } from './track-export';
 
@@ -35,7 +36,7 @@ export function savedTracksToFeatures(
       });
     }
   }
-  return { type: 'FeatureCollection', features };
+  return featureCollection(features);
 }
 
 const V2 = '/signalk/v2/api/resources/tracks';

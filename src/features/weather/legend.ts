@@ -1,7 +1,7 @@
 import {
-  formatFixed,
   formatKnotsOr,
   formatLengthOr,
+  formatPercent,
   formatPrecipRateOr,
   knotsToMetersPerSecond,
   lengthUnit,
@@ -123,7 +123,7 @@ export function weatherLegend(
         CLOUD_STOPS,
         (c) => cloudColor(c, theme),
         // Whole percent: model cloud fraction has no tenth-percent meaning.
-        (c) => formatFixed(c * 100, 0),
+        (c) => formatPercent(c),
       );
     case WEATHER_LAYER_IDS.radar:
       // RainViewer's raster palette is a fixed light-to-intense scale. At night the tiles are

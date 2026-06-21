@@ -1,4 +1,5 @@
 import { type Header, PMTiles, TileType } from 'pmtiles';
+import { isRecord } from '$shared/lib';
 import { createArchiveSource } from './pmtiles';
 
 export interface PmtilesMeta {
@@ -25,8 +26,8 @@ function boundsFromHeader(header: Header): [number, number, number, number] | un
 }
 
 function vectorLayerIds(metadata: unknown): string[] | undefined {
-  if (typeof metadata !== 'object' || metadata === null) return undefined;
-  const raw = (metadata as { vector_layers?: unknown }).vector_layers;
+  if (!isRecord(metadata)) return undefined;
+  const raw = metadata.vector_layers;
   if (!Array.isArray(raw)) return undefined;
   const ids: string[] = [];
   for (const entry of raw) {
@@ -37,8 +38,8 @@ function vectorLayerIds(metadata: unknown): string[] | undefined {
 }
 
 function nameFrom(metadata: unknown): string | undefined {
-  if (typeof metadata !== 'object' || metadata === null) return undefined;
-  const name = (metadata as { name?: unknown }).name;
+  if (!isRecord(metadata)) return undefined;
+  const name = metadata.name;
   return typeof name === 'string' && name.length > 0 ? name : undefined;
 }
 

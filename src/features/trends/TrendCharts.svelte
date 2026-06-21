@@ -61,21 +61,13 @@ const sections = $derived(
     const display = displays[metric.key];
     const series = history?.get(metric.key) ?? sessionSeries(metric.key);
     const values = converted(series, display);
-    let latest: number | null = null;
-    for (let at = values.length - 1; at >= 0; at--) {
-      const value = values[at];
-      if (value != null) {
-        latest = value;
-        break;
-      }
-    }
     return {
       key: metric.key,
       label: metric.label,
       unit: display.unit,
       times: series.times,
       values,
-      latest: latest == null ? '--' : formatFixed(latest, display.digits),
+      latest: formatFixed(values.findLast((value) => value != null) ?? null, display.digits),
     };
   }),
 );

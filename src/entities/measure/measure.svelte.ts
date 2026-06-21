@@ -23,6 +23,10 @@ export class MeasureStore {
     return this.#points;
   }
 
+  get isEmpty(): boolean {
+    return this.#points.length === 0;
+  }
+
   legs = $derived.by<MeasureLeg[]>(() => {
     const out: MeasureLeg[] = [];
     for (let i = 1; i < this.#points.length; i += 1) {

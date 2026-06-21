@@ -7,10 +7,11 @@ import type {
 } from 'maplibre-gl';
 import type { MeasureStore } from '$entities/measure';
 import type { UnitsStore } from '$entities/units';
-import type { LatLon } from '$shared/geo';
+import { type LatLon, latLonToLonLat } from '$shared/geo';
 import { formatMetersOrNm, type UnitsMode } from '$shared/lib';
 import {
   emptyFeatureCollection,
+  featureCollection,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
@@ -27,7 +28,7 @@ const LAYERS = [LINE_LAYER, VERTEX_LAYER, LABEL_LAYER];
 function features(measure: MeasureStore, mode: UnitsMode): GeoJSON.FeatureCollection {
   const points = measure.points;
   if (points.length === 0) return emptyFeatureCollection();
-  const coordinates = points.map<[number, number]>((point) => [point.longitude, point.latitude]);
+  const coordinates = points.map<[number, number]>((point) => latLonToLonLat(point));
   const out: GeoJSON.Feature[] = coordinates.map((position, index) => ({
     type: 'Feature',
     geometry: { type: 'Point', coordinates: position },
@@ -45,7 +46,7 @@ function features(measure: MeasureStore, mode: UnitsMode): GeoJSON.FeatureCollec
       properties: { line: true },
     });
   }
-  return { type: 'FeatureCollection', features: out };
+  return featureCollection(out);
 }
 
 export interface MeasureOverlay extends OverlayModule {

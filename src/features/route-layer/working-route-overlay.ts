@@ -1,4 +1,4 @@
-import type { GeoJSONSource, LineLayerSpecification } from 'maplibre-gl';
+import type { LineLayerSpecification } from 'maplibre-gl';
 import {
   highlightFeatures,
   type Route,
@@ -12,6 +12,7 @@ import {
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
+  setSourceData,
 } from '$shared/map';
 import type { Theme } from '$shared/ui';
 import { recolorWaypointLayers, waypointCircleLayer, waypointLabelLayer } from './waypoint-layers';
@@ -61,10 +62,6 @@ export function createWorkingRouteOverlay(
   let lastWorking: Route | undefined;
   let lastHighlight: RouteHighlight | undefined;
   let ctxRef: OverlayContext | undefined;
-
-  const setData = (ctx: OverlayContext, src: string, data: GeoJSON.FeatureCollection): void => {
-    (ctx.map.getSource(src) as GeoJSONSource | undefined)?.setData(data);
-  };
 
   return {
     add(ctx) {
@@ -140,20 +137,24 @@ export function createWorkingRouteOverlay(
       if (!working) {
         if (workingChanged) {
           for (const src of [WPT_SRC, HL_SEG_SRC, HL_DOT_SRC]) {
-            setData(ctx, src, emptyFeatureCollection());
+            setSourceData(ctx.map, src, emptyFeatureCollection());
           }
         }
         return;
       }
       if (workingChanged) {
-        setData(ctx, WPT_SRC, featureCollection(waypointPointFeatures(working.waypoints)));
+        setSourceData(
+          ctx.map,
+          WPT_SRC,
+          featureCollection(waypointPointFeatures(working.waypoints)),
+        );
       }
       // The highlight geometry rides on the waypoint positions, so a drag (working change) moves it
       // too; rebuild it when either the working route or the highlight changed.
       if (workingChanged || highlightChanged) {
         const hl = highlightFeatures(working, highlight);
-        setData(ctx, HL_SEG_SRC, hl.segments);
-        setData(ctx, HL_DOT_SRC, hl.dots);
+        setSourceData(ctx.map, HL_SEG_SRC, hl.segments);
+        setSourceData(ctx.map, HL_DOT_SRC, hl.dots);
       }
     },
     setTheme(theme) {

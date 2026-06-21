@@ -14,10 +14,10 @@ function ctxFor(map: ReturnType<typeof createFakeMap>): OverlayContext {
   return { map: map as never, beforeIdFor: () => undefined };
 }
 
-// A minimal viewport-only ctx for sync tests: a 2 by 2 degree view around a mutable center, so a
-// test pans the map by mutating the state object.
-function viewCtx(state: { zoom: number; lng: number; lat: number }): OverlayContext {
-  const map = {
+// The viewport stub sync reads: a 2 by 2 degree view around a mutable center, so a test pans the
+// map by mutating the state object.
+function viewport(state: { zoom: number; lng: number; lat: number }) {
+  return {
     getZoom: () => state.zoom,
     getCenter: () => ({ lng: state.lng, lat: state.lat }),
     getBounds: () => ({
@@ -26,6 +26,13 @@ function viewCtx(state: { zoom: number; lng: number; lat: number }): OverlayCont
       getEast: () => state.lng + 1,
       getNorth: () => state.lat + 1,
     }),
+  };
+}
+
+// A minimal viewport-only ctx for sync tests.
+function viewCtx(state: { zoom: number; lng: number; lat: number }): OverlayContext {
+  const map = {
+    ...viewport(state),
     getSource: () => undefined,
     getLayer: () => undefined,
   };
@@ -41,14 +48,7 @@ async function settle(): Promise<void> {
 function viewFakeMap(state: { zoom: number; lng: number; lat: number }) {
   return {
     ...createFakeMap(),
-    getZoom: () => state.zoom,
-    getCenter: () => ({ lng: state.lng, lat: state.lat }),
-    getBounds: () => ({
-      getWest: () => state.lng - 1,
-      getSouth: () => state.lat - 1,
-      getEast: () => state.lng + 1,
-      getNorth: () => state.lat + 1,
-    }),
+    ...viewport(state),
   };
 }
 

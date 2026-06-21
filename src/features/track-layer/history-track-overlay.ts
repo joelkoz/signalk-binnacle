@@ -7,6 +7,7 @@ import { isLatLon } from '$shared/geo';
 import { MINUTE_MS } from '$shared/lib';
 import {
   emptyFeatureCollection,
+  featureCollection,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
@@ -80,14 +81,13 @@ export function createHistoryTrackOverlay(
       lastSeconds = seconds;
     }
     if (line.length > 1) lines.push(line);
-    return {
-      type: 'FeatureCollection',
-      features: lines.map((coordinates) => ({
+    return featureCollection(
+      lines.map((coordinates) => ({
         type: 'Feature',
         geometry: { type: 'LineString', coordinates },
         properties: {},
       })),
-    };
+    );
   }
 
   async function refresh(ctx: OverlayContext): Promise<void> {

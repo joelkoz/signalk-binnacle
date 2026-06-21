@@ -13,7 +13,12 @@ import {
   type OverlayContext,
   type OverlayModule,
 } from '$shared/map';
-import { formatCurrentRate, formatTideHeight, nextCurrentEvent } from './tides-display';
+import {
+  formatCurrentRate,
+  formatTideHeight,
+  nextCurrentEvent,
+  nextTideEvent,
+} from './tides-display';
 
 const SOURCE_ID = 'binnacle-tides';
 const CIRCLE_LAYER = 'binnacle-tides-circle';
@@ -27,7 +32,7 @@ interface TidesOverlay extends OverlayModule {
 
 // The marker label: the station name, then the next high or low with its height and time.
 function tideLabel(reading: TideReading, nowMs: number, mode: UnitsMode): string {
-  const next = reading.events.find((e) => e.timeMs >= nowMs);
+  const next = nextTideEvent(reading.events, nowMs);
   if (!next) return reading.station.name;
   const tag = next.kind === 'high' ? 'High' : 'Low';
   return `${reading.station.name}\n${tag} ${formatTideHeight(next.heightMeters, mode)} ${formatClockTime(next.timeMs)}`;

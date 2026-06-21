@@ -1,4 +1,4 @@
-import { type Rgba, rasterIcon } from '$shared/map';
+import { type Rgba, rasterIcon, rgbaCss } from '$shared/map';
 
 export const VESSEL_ICON_ID = 'binnacle-vessel';
 
@@ -7,10 +7,6 @@ export const VESSEL_ICON_ID = 'binnacle-vessel';
 // to fill the canvas.
 const PX = 80;
 const DESIGN = 64;
-
-function rgba(color: Rgba, alpha: number = color.a): string {
-  return `rgba(${color.r}, ${color.g}, ${color.b}, ${(alpha / 255).toFixed(3)})`;
-}
 
 function darken(color: Rgba, factor: number): Rgba {
   return {
@@ -37,7 +33,7 @@ export function vesselIconImage(color: Rgba): ImageData {
 }
 
 function drawHull(ctx: CanvasRenderingContext2D, color: Rgba): ImageData {
-  const outline = rgba(darken(color, 0.5));
+  const outline = rgbaCss(darken(color, 0.5));
   ctx.clearRect(0, 0, PX, PX);
   ctx.scale(PX / DESIGN, PX / DESIGN);
   // A sleek, elongated hull: a sharp bow at the top carries the heading, tapering to a
@@ -50,7 +46,7 @@ function drawHull(ctx: CanvasRenderingContext2D, color: Rgba): ImageData {
   ctx.quadraticCurveTo(22, 53, 21, 44); // port quarter
   ctx.quadraticCurveTo(20, 24, 32, 4); // port side back to the bow
   ctx.closePath();
-  ctx.fillStyle = rgba(color);
+  ctx.fillStyle = rgbaCss(color);
   ctx.fill();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';

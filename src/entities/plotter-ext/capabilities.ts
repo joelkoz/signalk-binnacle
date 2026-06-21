@@ -10,20 +10,7 @@ export const API_VERSION = '1';
 // Capability identifiers Binnacle advertises in the handshake. A capability is advertised only
 // when its feature is wired, so this list grows phase by phase; an extension whose `requires`
 // names a capability not in this set is not offered.
-export type HostCapability =
-  | 'widgets'
-  | 'panels.iframe'
-  | 'background.iframe'
-  | 'buttons'
-  | 'signalk.stream'
-  | 'signalk.put'
-  | 'units'
-  | 'map'
-  | 'resources'
-  | 'resources.filter'
-  | 'ui';
-
-export const HOST_CAPABILITIES: readonly HostCapability[] = [
+export const HOST_CAPABILITIES = [
   'widgets',
   'panels.iframe',
   'background.iframe',
@@ -35,11 +22,13 @@ export const HOST_CAPABILITIES: readonly HostCapability[] = [
   'resources',
   'resources.filter',
   'ui',
-];
+] as const;
+
+export type HostCapability = (typeof HOST_CAPABILITIES)[number];
 
 function majorOf(apiVersion: string): number | undefined {
   const n = Number.parseInt(apiVersion, 10);
-  return Number.isFinite(n) ? n : undefined;
+  return Number.isNaN(n) ? undefined : n;
 }
 
 // Whether the host should offer a manifest at all: its API major version must not exceed the

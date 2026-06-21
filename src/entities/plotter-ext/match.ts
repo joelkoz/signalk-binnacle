@@ -73,12 +73,16 @@ function refEquals(a: unknown, b: unknown, exact: boolean | undefined): boolean 
   return ra.id === rb.id;
 }
 
+const cmp = {
+  lt: (a: number, b: number) => a < b,
+  lte: (a: number, b: number) => a <= b,
+  gt: (a: number, b: number) => a > b,
+  gte: (a: number, b: number) => a >= b,
+} as const;
+
 function compareNumbers(a: unknown, b: unknown, op: 'lt' | 'lte' | 'gt' | 'gte'): boolean {
   if (typeof a !== 'number' || typeof b !== 'number') return false;
-  if (op === 'lt') return a < b;
-  if (op === 'lte') return a <= b;
-  if (op === 'gt') return a > b;
-  return a >= b;
+  return cmp[op](a, b);
 }
 
 // Compiled-regex cache keyed on the (stable) condition object, so a filter pattern compiles once

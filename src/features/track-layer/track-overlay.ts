@@ -128,7 +128,7 @@ export function createTrackOverlay(
     }
 
     const frozen = simplifiedTail.slice(0, cut + 1);
-    committed = committed.length > 0 ? committed.slice(0, -1).concat(frozen) : frozen;
+    committed = spliceTail(frozen);
     pendingStart += boundaryOffset;
     // The boundary stays as the next tail's first point; recompute the now-shorter tail for render.
     return spliceTail(douglasPeucker(points.slice(pendingStart), SIMPLIFY_TOLERANCE));

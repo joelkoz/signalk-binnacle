@@ -313,7 +313,7 @@ onMount(() => {
           () => store.selfContext,
         ),
         createAisVectorsOverlay(aisTargets, () => collision.assessment),
-        createAisOverlay(aisTargets, store),
+        createAisOverlay(aisTargets),
         createCollisionOverlay(collision),
         createMobOverlay(mob, vessel),
         createHistoryTrackOverlay(origin, chartsToken, historyProviders ?? (() => undefined)),

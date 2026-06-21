@@ -1,4 +1,5 @@
 import { PersistedValue } from '$shared/settings';
+import { jsonOr } from './resource';
 
 export type AuthStatus = 'unknown' | 'unsecured' | 'authenticated' | 'requesting' | 'denied';
 
@@ -254,10 +255,6 @@ export class AuthController {
   }
 
   async #json(res: Response): Promise<Record<string, unknown>> {
-    try {
-      return (await res.json()) as Record<string, unknown>;
-    } catch {
-      return {};
-    }
+    return jsonOr(res, {});
   }
 }

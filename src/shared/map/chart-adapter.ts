@@ -122,7 +122,6 @@ const DRAW_LAYERS: readonly DrawStyle[] = [
 const DAY_PAINT = mapThemePaint('day');
 
 function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecification[] {
-  const paint = DAY_PAINT;
   // Signal K's charts API often returns an empty layers list for a PMTiles archive;
   // the real source-layer names live in the archive's own metadata. The vector base
   // map uses the standard Protomaps schema, so when no layers are declared, draw the
@@ -135,7 +134,7 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
     const sourceLayer = style.sourceLayer;
     if (!present.has(sourceLayer)) continue;
     const id = `${sourceId}-${sourceLayer}`;
-    const color = paint[style.paint];
+    const color = DAY_PAINT[style.paint];
     const metadata = { [THEME_PAINT_KEY]: style.paint };
     const minzoom = style.minZoom !== undefined ? { minzoom: style.minZoom } : {};
     if (style.kind === 'fill') {

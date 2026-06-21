@@ -1,5 +1,6 @@
 import { bilinearAt, type TimeBracket, timeBracket, type WeatherGrid } from '$entities/weather';
 import { HOUR_MS, lerp, precipRateUnit, type UnitsMode } from '$shared/lib';
+import type { PointConditions } from './signalk-weather';
 
 // The smallest precipitation worth showing in a readout: a trace below this rounds to nothing.
 // 0.1 reads as mm/h for the free grid's rate and as mm for a provider's accumulation volume; the
@@ -27,6 +28,24 @@ export interface WeatherReadout {
   // provider), carried in the data so every display labels it the same way.
   precipIsRate?: boolean;
   cloudCoverFraction?: number; // 0..1, present only when the grid carries cloud cover
+}
+
+// One readout-to-conditions mapper shared by the current block and the forecast rows, so a field
+// added to one (as gusts just were) cannot be forgotten in the other.
+export function conditionsFromReadout(r: WeatherReadout, timeMs: number): PointConditions {
+  return {
+    timeMs,
+    windMs: r.speedMs,
+    fromRad: r.fromRad,
+    gustMs: r.gustMs,
+    pressurePa: r.pressurePa,
+    cloudFraction: r.cloudCoverFraction,
+    waveHeightM: r.waveHeightM,
+    wavePeriodS: r.wavePeriodS,
+    waveFromRad: r.waveFromRad,
+    precipitationMm: r.precipitationMm,
+    precipIsRate: r.precipIsRate,
+  };
 }
 
 // Wind speed, from-direction, and (when present) the other fields at a lon/lat for one forecast

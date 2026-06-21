@@ -66,11 +66,7 @@ export function featureToRoute(id: string, raw: unknown): Route | undefined {
 }
 
 export function routeDistanceMeters(waypoints: readonly Waypoint[]): number {
-  let total = 0;
-  for (let i = 1; i < waypoints.length; i += 1) {
-    total += rhumbDistanceMeters(waypoints[i - 1].position, waypoints[i].position);
-  }
-  return total;
+  return remainingRouteDistanceMeters(waypoints, 0);
 }
 
 // The rhumb distance of the legs still ahead, starting at fromIndex (the active destination

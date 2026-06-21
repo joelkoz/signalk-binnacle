@@ -3,7 +3,6 @@ import type {
   ExpressionSpecification,
   FillLayerSpecification,
   GeoJSONSource,
-  GeoJSONSourceSpecification,
   LineLayerSpecification,
   MapLayerMouseEvent,
   MapLayerTouchEvent,
@@ -129,19 +128,10 @@ export function createAnchorOverlay(
     add(ctx) {
       const { map } = ctx;
       const before = ctx.beforeIdFor(BAND);
-      if (!map.getSource(SHAPE_SRC)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        map.addSource(SHAPE_SRC, source);
-      }
-      if (!map.getSource(POINT_SRC)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        map.addSource(POINT_SRC, source);
+      for (const id of [SHAPE_SRC, POINT_SRC]) {
+        if (!map.getSource(id)) {
+          map.addSource(id, { type: 'geojson', data: emptyFeatureCollection() });
+        }
       }
       if (!map.getLayer(FILL_LAYER)) {
         const layer: FillLayerSpecification = {

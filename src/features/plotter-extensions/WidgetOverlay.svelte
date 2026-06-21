@@ -2,7 +2,7 @@
 import type { PlotterExtHost, WidgetPlacement } from '$entities/plotter-ext';
 import { dialog, focusTrap } from '$shared/ui';
 import ExtIframe from './ExtIframe.svelte';
-import { AREA_GRID, candidateWidgets, findOrigin, isCenterArea, usedColumns } from './placement';
+import { AREA_GRID, candidateWidgets, isCenterArea, usedColumns } from './placement';
 import { HOST_INFO, resolveExtUrl, sizeToSpan, WIDGET_AREAS } from './util';
 
 // Renders placed widgets in their anchor areas and the add-widget picker. There is no host chrome
@@ -56,10 +56,8 @@ function areaStyle(area: string): string {
 function place(option: (typeof pickerOptions)[number]): void {
   const area = host.picker?.area;
   if (!area) return;
-  const origin2 = findOrigin(host.placements, area, option.widget.size);
   host.closePicker();
-  if (!origin2) return;
-  const placement = host.placeWidget(option.extensionId, option.widget.id, area, origin2);
+  const placement = host.placeWidget(option.extensionId, option.widget.id, area, option.origin);
   // Open the config only when the widget has one; a no-config widget needs no dialog on add.
   if (placement && option.widget.configPanel) {
     host.openConfig(option.extensionId, placement.instanceId, option.widget.id);

@@ -1,4 +1,4 @@
-import { isFiniteNumber, uuidv4 } from '$shared/lib';
+import { isFiniteNumber, isRecord, uuidv4 } from '$shared/lib';
 import { readPmtilesMeta, type SignalKChart } from '$shared/map';
 
 // A chart the user imported by URL, persisted as a descriptor pointing at a remote archive. Both
@@ -21,17 +21,17 @@ export interface UserChartSource {
 // non-url origins here also silently drops the browser-local file charts of older builds, whose
 // blobs no longer have a store.
 export function isUserChartSource(value: unknown): value is UserChartSource {
-  if (!value || typeof value !== 'object') return false;
-  const v = value as Record<string, unknown>;
-  if (typeof v.id !== 'string' || typeof v.name !== 'string') return false;
-  if (v.kind !== 'vector' && v.kind !== 'raster') return false;
-  const origin = v.origin;
-  if (!origin || typeof origin !== 'object') return false;
-  const o = origin as Record<string, unknown>;
-  if (o.type !== 'url' || typeof o.url !== 'string') return false;
+  if (!isRecord(value)) return false;
+  if (typeof value.id !== 'string' || typeof value.name !== 'string') return false;
+  if (value.kind !== 'vector' && value.kind !== 'raster') return false;
+  const origin = value.origin;
+  if (!isRecord(origin)) return false;
+  if (origin.type !== 'url' || typeof origin.url !== 'string') return false;
   if (
-    v.bounds !== undefined &&
-    (!Array.isArray(v.bounds) || v.bounds.length !== 4 || !v.bounds.every(isFiniteNumber))
+    value.bounds !== undefined &&
+    (!Array.isArray(value.bounds) ||
+      value.bounds.length !== 4 ||
+      !value.bounds.every(isFiniteNumber))
   ) {
     return false;
   }
@@ -48,17 +48,18 @@ export interface DraftChart {
 // a remote .pmtiles URL.
 export function userChartToSignalK(source: UserChartSource, url: string): SignalKChart {
   const vector = source.kind !== 'raster';
-  return {
+  const chart: SignalKChart = {
     identifier: source.id,
     name: source.name,
     type: vector ? 'tileJSON' : 'tilelayer',
     format: vector ? 'mvt' : 'png',
     url,
-    ...(source.bounds ? { bounds: source.bounds } : {}),
-    ...(source.minzoom !== undefined ? { minzoom: source.minzoom } : {}),
-    ...(source.maxzoom !== undefined ? { maxzoom: source.maxzoom } : {}),
-    ...(source.layers ? { layers: source.layers } : {}),
   };
+  if (source.bounds) chart.bounds = source.bounds;
+  if (source.minzoom !== undefined) chart.minzoom = source.minzoom;
+  if (source.maxzoom !== undefined) chart.maxzoom = source.maxzoom;
+  if (source.layers) chart.layers = source.layers;
+  return chart;
 }
 
 // The chart's zoom span as a "min to max" string for the spec readouts, with sensible fallbacks when

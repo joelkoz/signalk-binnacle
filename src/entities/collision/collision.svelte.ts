@@ -248,7 +248,7 @@ export class CollisionAssessment {
   // True when the worst contact is inside the hard inner ring: close enough and imminent enough that
   // the alarm must sound even if muted or acknowledged. Consumers use it to override suppression.
   get escalating(): boolean {
-    const top = this.#assessment.contacts[0];
+    const top = this.#topContact;
     return (
       !!top &&
       top.severity === 'danger' &&
@@ -262,8 +262,12 @@ export class CollisionAssessment {
     this.#ackSignature = this.#signature();
   }
 
+  get #topContact(): DangerContact | undefined {
+    return this.#assessment.contacts[0];
+  }
+
   #signature(): string | null {
-    const top = this.assessment.contacts[0];
+    const top = this.#topContact;
     return top ? `${top.id}:${top.severity}` : null;
   }
 }

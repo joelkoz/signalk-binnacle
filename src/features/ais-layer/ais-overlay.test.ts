@@ -23,7 +23,7 @@ function ctxFor(map: ReturnType<typeof createFakeMap>): OverlayContext {
 describe('ais overlay', () => {
   it('adds an image, a source, and a symbol layer in the traffic band', () => {
     const store = new SignalKStore();
-    const overlay = createAisOverlay(new AisTargets(store), store);
+    const overlay = createAisOverlay(new AisTargets(store));
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     expect(overlay.band).toBe('traffic');
@@ -34,7 +34,7 @@ describe('ais overlay', () => {
 
   it('syncs one feature per positioned target', () => {
     const store = new SignalKStore();
-    const overlay = createAisOverlay(new AisTargets(store), store);
+    const overlay = createAisOverlay(new AisTargets(store));
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     store.applyFrame({
@@ -57,7 +57,7 @@ describe('ais overlay', () => {
 
   it('renders stale targets untouched: expiry belongs to the app timer', () => {
     const store = new SignalKStore();
-    const overlay = createAisOverlay(new AisTargets(store), store);
+    const overlay = createAisOverlay(new AisTargets(store));
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     store.applyFrame({
@@ -81,7 +81,7 @@ describe('ais overlay', () => {
 
   it('skips setData when the ais version is unchanged', () => {
     const store = new SignalKStore();
-    const overlay = createAisOverlay(new AisTargets(store), store);
+    const overlay = createAisOverlay(new AisTargets(store));
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     store.applyFrame({
@@ -104,7 +104,7 @@ describe('ais overlay', () => {
 
   it('applyTheme recolors the icon image', () => {
     const store = new SignalKStore();
-    const overlay = createAisOverlay(new AisTargets(store), store);
+    const overlay = createAisOverlay(new AisTargets(store));
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     overlay.applyTheme?.(ctxFor(map), mapThemePaint('night-red'));

@@ -1,4 +1,5 @@
 import { latLonToLonLat } from '$shared/geo';
+import { featureCollection } from '$shared/map';
 import type { Route, RouteHighlight } from './route-types';
 
 // The cross-highlight derivation: given the highlighted leg or waypoint, which dots and which legs
@@ -44,8 +45,5 @@ export function highlightFeatures(
     },
     properties: { index: i },
   }));
-  return {
-    dots: { type: 'FeatureCollection', features: dots },
-    segments: { type: 'FeatureCollection', features: segments },
-  };
+  return { dots: featureCollection(dots), segments: featureCollection(segments) };
 }

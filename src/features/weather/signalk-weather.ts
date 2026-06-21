@@ -124,6 +124,10 @@ function pointUrl(origin: string, path: string, lat: number, lon: number, count?
   return `${origin}${WEATHER_BASE}/${path}?${params.toString()}`;
 }
 
+function entryMs(entry: SignalKWeatherData): number {
+  return Date.parse(entry.date);
+}
+
 // Latest observation at a point. undefined on failure or when no provider answers. The API does
 // not guarantee ordering, so the latest is picked by date rather than trusting index 0: an
 // hours-stale buffered entry must never be presented as current.
@@ -139,8 +143,6 @@ export async function fetchObservations(
   // Nearest to the far future is the latest; entries without a parseable date lose to any dated one.
   return nearestBy(many, entryMs, Number.MAX_SAFE_INTEGER) ?? many[0];
 }
-
-const entryMs = (entry: SignalKWeatherData): number => Date.parse(entry.date);
 
 // A point forecast series (ascending in time), capped at `count` steps. undefined on failure.
 export async function fetchPointForecasts(

@@ -143,6 +143,22 @@ function handleOptionKey(e: KeyboardEvent, i: number): void {
 const poiStart = $derived(defaultOption ? 1 : 0);
 </script>
 
+{#snippet iconGlyph(opt: IconOption)}
+  {#if opt.kind === 'poi'}
+    {#if poiOverrides.has(opt.category)}
+      <img src={poiOverrides.get(opt.category)} width="20" height="20" alt="">
+    {:else}
+      {@html poiInlineIconSvg(opt.category)}
+    {/if}
+  {:else if opt.kind === 'symbol'}
+    <img src={opt.url} width="20" height="20" alt="">
+  {:else if defaultSymbol}
+    <img src={defaultSymbol.url} width="20" height="20" alt="">
+  {:else}
+    {@html defaultOption?.fallbackSvg ?? ''}
+  {/if}
+{/snippet}
+
 <div class="icon-picker" bind:this={pickerEl}>
   <button
     type="button"
@@ -157,21 +173,7 @@ const poiStart = $derived(defaultOption ? 1 : 0);
     }}
     onkeydown={handleTriggerKey}
   >
-    <span class="picker-icon">
-      {#if selected.kind === 'poi'}
-        {#if poiOverrides.has(selected.category)}
-          <img src={poiOverrides.get(selected.category)} width="20" height="20" alt="">
-        {:else}
-          {@html poiInlineIconSvg(selected.category)}
-        {/if}
-      {:else if selected.kind === 'symbol'}
-        <img src={selected.url} width="20" height="20" alt="">
-      {:else if defaultSymbol}
-        <img src={defaultSymbol.url} width="20" height="20" alt="">
-      {:else}
-        {@html defaultOption?.fallbackSvg ?? ''}
-      {/if}
-    </span>
+    <span class="picker-icon"> {@render iconGlyph(selected)} </span>
     <span class="picker-label">{selected.label}</span>
     <svg
       class="picker-chevron"
@@ -207,21 +209,7 @@ const poiStart = $derived(defaultOption ? 1 : 0);
           onclick={() => select(opt.value)}
           onkeydown={(e) => handleOptionKey(e, i)}
         >
-          <span class="picker-icon">
-            {#if opt.kind === 'poi'}
-              {#if poiOverrides.has(opt.category)}
-                <img src={poiOverrides.get(opt.category)} width="20" height="20" alt="">
-              {:else}
-                {@html poiInlineIconSvg(opt.category)}
-              {/if}
-            {:else if opt.kind === 'symbol'}
-              <img src={opt.url} width="20" height="20" alt="">
-            {:else if defaultSymbol}
-              <img src={defaultSymbol.url} width="20" height="20" alt="">
-            {:else}
-              {@html defaultOption?.fallbackSvg ?? ''}
-            {/if}
-          </span>
+          <span class="picker-icon"> {@render iconGlyph(opt)} </span>
           <span>{opt.label}</span>
         </div>
       {/each}

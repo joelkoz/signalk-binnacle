@@ -1,4 +1,4 @@
-import { deleteResource, sendJson } from './resource';
+import { deleteResource, jsonOr, sendJson } from './resource';
 import type { NotificationState } from './types';
 
 // Thin client for the server's v2 Notifications API (signalk-server src/api/notifications).
@@ -36,12 +36,8 @@ function postJson(
 
 async function idFrom(response: Response | undefined): Promise<string | undefined> {
   if (!response?.ok) return undefined;
-  try {
-    const body = (await response.json()) as { id?: unknown };
-    return typeof body?.id === 'string' ? body.id : undefined;
-  } catch {
-    return undefined;
-  }
+  const body = await jsonOr<{ id?: unknown }>(response, {});
+  return typeof body.id === 'string' ? body.id : undefined;
 }
 
 // Raise a new notification; the response carries the assigned id the caller needs for every

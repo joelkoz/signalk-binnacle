@@ -1,3 +1,4 @@
+import { isRecord } from '$shared/lib';
 import type { NotificationState, SignalKStore } from '$shared/signalk';
 
 // Sort rank for the raised grades; lower is more severe. Doubles as the membership test:
@@ -21,16 +22,15 @@ export interface ActiveNotification {
 }
 
 function parseNotification(path: string, value: unknown): ActiveNotification | undefined {
-  if (!value || typeof value !== 'object') return undefined;
-  const raw = value as Record<string, unknown>;
+  if (!isRecord(value)) return undefined;
+  const raw = value;
   const state = raw.state;
   // Object.hasOwn, not `in`: a junk state like 'constructor' must not match the prototype.
   if (typeof state !== 'string' || !Object.hasOwn(SEVERITY_RANK, state)) return undefined;
   const method = Array.isArray(raw.method)
     ? raw.method.filter((m): m is string => typeof m === 'string')
     : [];
-  const status =
-    raw.status && typeof raw.status === 'object' ? (raw.status as Record<string, unknown>) : {};
+  const status = isRecord(raw.status) ? raw.status : {};
   const bool = (v: unknown) => (typeof v === 'boolean' ? v : undefined);
   return {
     path,

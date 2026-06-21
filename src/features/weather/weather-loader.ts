@@ -34,6 +34,8 @@ export interface WeatherLoader {
 const GRID_TTL_MS = HOUR_MS;
 // Radar is a nowcast: RainViewer publishes a new frame about every 10 minutes, so keep it short.
 const RADAR_TTL_MS = 5 * MINUTE_MS;
+// The single key for the viewport-independent radar frame in its one-slot cache.
+const RADAR_KEY = 'radar';
 // The viewport bucket size for the weather grid cache: coarser than the point-conditions cell
 // (shared geo COORD_CELL_DEG, 0.1) on purpose, because a forecast grid covers a wider area than a
 // single point reading, so a 0.25 degree bucket reuses one grid across nearby pans.
@@ -76,7 +78,9 @@ const realDeps: LoaderDeps = {
 export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): WeatherLoader {
   const deps = { ...realDeps, ...overrides };
   const gridCache = new MemoryCache<WeatherGrid>(MAX_GRID_ENTRIES, GRID_TTL_MS);
-  let radarCache: { data: RadarData; expires: number } | undefined;
+  // Radar has a single, viewport-independent frame, so a one-slot MemoryCache keyed by a constant
+  // gives it the same TTL bookkeeping the grid cache uses without bespoke expires tracking.
+  const radarCache = new MemoryCache<RadarData>(1, RADAR_TTL_MS);
   // After a grid fetch fails (Open-Meteo rate-limiting returns 429 or 502 with no body), hold off on
   // the next network attempt so panning and resizing do not retry-storm and deepen the rate limit.
   // The cooldowns are per endpoint: a marine 429 must not block the healthy atmospheric fetch, or a
@@ -144,14 +148,14 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
       };
 
       let radarPromise: Promise<RadarData | undefined>;
+      const cachedRadar = want.radar ? radarCache.get(RADAR_KEY, t) : undefined;
       if (!want.radar) radarPromise = Promise.resolve(undefined);
-      else if (radarCache && radarCache.expires > t)
-        radarPromise = Promise.resolve(radarCache.data);
+      else if (cachedRadar) radarPromise = Promise.resolve(cachedRadar);
       // Stamp the TTL only on a real fetch: re-stamping on cache hits would slide the expiry
       // forever under steady loads and the nowcast would never refresh.
       else
         radarPromise = deps.radar().then((fresh) => {
-          if (fresh) radarCache = { data: fresh, expires: t + RADAR_TTL_MS };
+          if (fresh) radarCache.put(RADAR_KEY, fresh, t);
           return fresh;
         });
 
@@ -170,11 +174,11 @@ export function createWeatherLoader(overrides: Partial<LoaderDeps> = {}): Weathe
         // endpoint stays unblocked. The caches are still written when superseded: they are keyed
         // by viewport, so the data stays valid for a return to this view.
         if (!partial && fromNetwork) {
-          // The cache computes its own expiry as `t + GRID_TTL_MS`; persist stores the same absolute
-          // value so the two tiers expire together.
-          gridCache.put(key, grid, t);
+          // One absolute expiry shared by both tiers so they expire together.
+          const expires = t + GRID_TTL_MS;
+          gridCache.putAt(key, grid, expires, t);
           // Persist for reloads and offline; the put never throws (it degrades to memory).
-          await deps.persist.put(key, grid, t + GRID_TTL_MS);
+          await deps.persist.put(key, grid, expires);
           void deps.persist.prune(t);
         }
       } else {
