@@ -9,21 +9,21 @@ export const HOST_INFO = {
   capabilities: [...HOST_CAPABILITIES],
 };
 
-// Manifest URLs are server-relative; resolve them against the Signal K server origin. An absolute
-// URL is accepted only when its origin matches the server origin: a faulty or hostile manifest must
-// not load an off-origin page into the extension iframe, which runs with allow-same-origin and a
-// live host bus under the user's session. Returns undefined for any off-origin or unparseable URL;
-// callers skip rendering that contribution. A relative URL is always same-origin and is resolved.
+// Manifest URLs are server-relative; resolve them against the Signal K server origin. Every URL,
+// relative or absolute, is resolved through the URL parser against the server origin and accepted
+// only when the result is same-origin: a faulty or hostile manifest must not load an off-origin
+// page into the extension iframe, which runs with allow-same-origin and a live host bus under the
+// user's session. Returns undefined for any off-origin or unparseable URL; callers skip rendering
+// that contribution. Concatenating a raw string onto the origin would not catch a value like
+// `evil.com/x` (no leading slash) or `//evil.com` resolving off-origin, so the parser does the work.
 export function resolveExtUrl(origin: string, url: string): string | undefined {
-  if (/^https?:/i.test(url)) {
-    try {
-      const serverOrigin = new URL(origin).origin;
-      return new URL(url).origin === serverOrigin ? url : undefined;
-    } catch {
-      return undefined;
-    }
+  try {
+    const serverOrigin = new URL(origin).origin;
+    const resolved = new URL(url, serverOrigin);
+    return resolved.origin === serverOrigin ? resolved.href : undefined;
+  } catch {
+    return undefined;
   }
-  return `${origin}${url}`;
 }
 
 const WIDGET_SPAN: Record<WidgetSize, [number, number]> = {
