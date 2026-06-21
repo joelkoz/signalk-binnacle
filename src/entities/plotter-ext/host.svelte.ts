@@ -4,45 +4,25 @@ import type { PlotterExtension, WidgetContribution } from '$shared/signalk';
 import type { ExtContext, HostAdapters, WidgetPlacement } from './adapters';
 import { PlotterExtFilters } from './filters.svelte';
 import type { ResourceFilter } from './match';
+import { ExtRelay, type HostBusConnection } from './relay';
 import { PlotterExtState, type StateScope } from './state-store';
 
 // The host orchestration store. It loads the offerable extensions, owns the on-chart widget layout
-// and the open-panel UI state, builds the per-context host API method handlers, routes host events
-// to the right contexts, and relays Signal K values. It is host-agnostic: everything it cannot
-// reach from the entities layer arrives as injected adapters, so it is unit testable with fakes and
-// the Svelte components only have to wire iframes and the bus to it.
+// and the open-panel UI state, builds the per-context host API method handlers, and delegates event
+// routing and the Signal K relay to a non-reactive ExtRelay. It is host-agnostic: everything it
+// cannot reach from the entities layer arrives as injected adapters, so it is unit testable with
+// fakes and the Svelte components only have to wire iframes and the bus to it.
 
-// Structural view of one bus connection, so the host can route events without depending on the bus
-// package (the components pass the real HostConnection, which satisfies this).
-export interface HostBusConnection {
-  publish(eventName: string, params?: unknown): boolean;
-}
+// Re-export the bus connection contract from its new home so external import paths (and the slice's
+// index barrel) keep resolving it through host.svelte.
+export type { HostBusConnection } from './relay';
 
 export type ExtMethodHandler = (params: unknown) => unknown | Promise<unknown>;
 
-interface Registration {
-  conn: HostBusConnection;
-  context: ExtContext;
-}
-
 const PLACEMENTS_KEY = 'binnacle:plotterext:layout';
-
-// A bound on how many distinct Signal K paths one context may subscribe to, mirroring the per
-// extension byte quota in the state store. It keeps a misbehaving extension from growing the host's
-// upstream subscription and the per-tick relay set without limit.
-const MAX_PATHS_PER_CONTEXT = 64;
 
 function asRecord(params: unknown): Record<string, unknown> {
   return params && typeof params === 'object' ? (params as Record<string, unknown>) : {};
-}
-
-function getOrCreate<K, V>(map: Map<K, V>, key: K, make: () => V): V {
-  let value = map.get(key);
-  if (value === undefined) {
-    value = make();
-    map.set(key, value);
-  }
-  return value;
 }
 
 function isResourceFilter(value: unknown): value is ResourceFilter {
@@ -71,12 +51,7 @@ export class PlotterExtHost {
   } | null>(null);
 
   #known = new Set<string>();
-  readonly #registry: Registration[] = [];
-  readonly #paths = new Map<ExtContext, Set<string>>();
-  readonly #subById = new Map<string, { context: ExtContext; paths: string[] }>();
-  readonly #lastSent = new Map<ExtContext, Map<string, string>>();
-  #relay: ReturnType<typeof setInterval> | undefined;
-  #subSeq = 0;
+  readonly #relay: ExtRelay;
 
   constructor(
     adapters: HostAdapters,
@@ -87,11 +62,12 @@ export class PlotterExtHost {
     } = {},
   ) {
     this.#adapters = adapters;
+    this.#relay = new ExtRelay(adapters.signalk);
     this.#state = opts.state ?? new PlotterExtState();
     this.#filters =
       opts.filters ??
       new PlotterExtFilters((extensionId, type, active) =>
-        this.#publishFilters(extensionId, type, active),
+        this.#relay.publishFilters(extensionId, type, active),
       );
     this.#placementStore =
       opts.placements ?? new PersistedValue<WidgetPlacement[]>(PLACEMENTS_KEY, []);
@@ -247,33 +223,16 @@ export class PlotterExtHost {
         };
         const resolved = this.#scopeFor(context, scope);
         const keys = this.#state.set(ext, resolved.scope, resolved.instanceId, values ?? {});
-        this.#publishState(ext, resolved.scope, resolved.instanceId, keys);
+        this.#relay.publishState(ext, resolved.scope, resolved.instanceId, keys);
         return {};
       },
       'signalk.subscribe': (params) => {
         const paths = (asRecord(params).paths as string[] | undefined) ?? [];
-        const set = getOrCreate(this.#paths, context, () => new Set<string>());
-        const admitted: string[] = [];
-        for (const path of paths) {
-          if (!set.has(path) && set.size >= MAX_PATHS_PER_CONTEXT) {
-            throw new Error(`signalk.subscribe: path cap (${MAX_PATHS_PER_CONTEXT}) reached`);
-          }
-          set.add(path);
-          admitted.push(path);
-        }
-        this.#adapters.signalk.ensurePaths(admitted);
-        const subscriptionId = `sk-${++this.#subSeq}`;
-        this.#subById.set(subscriptionId, { context, paths: admitted });
-        return { subscriptionId };
+        return this.#relay.addSubscription(context, paths);
       },
       'signalk.unsubscribe': (params) => {
         const id = asRecord(params).subscriptionId as string | undefined;
-        const entry = id ? this.#subById.get(id) : undefined;
-        if (entry && id) {
-          const set = this.#paths.get(entry.context);
-          if (set) for (const path of entry.paths) set.delete(path);
-          this.#subById.delete(id);
-        }
+        this.#relay.removeSubscription(id);
         return {};
       },
       'signalk.put': (params) => {
@@ -342,79 +301,30 @@ export class PlotterExtHost {
     };
   }
 
+  // Connection lifecycle and the Signal K relay live on the non-reactive ExtRelay; these are thin
+  // pass-throughs so the component wiring (ExtIframe, PlotterExtHostView) and the host's own
+  // dispatchButton stay unchanged.
   register(conn: HostBusConnection, context: ExtContext): void {
-    this.#registry.push({ conn, context });
+    this.#relay.register(conn, context);
   }
 
   unregister(conn: HostBusConnection): void {
-    const index = this.#registry.findIndex((r) => r.conn === conn);
-    if (index < 0) return;
-    const [removed] = this.#registry.splice(index, 1);
-    this.#paths.delete(removed.context);
-    this.#lastSent.delete(removed.context);
-    for (const [id, entry] of this.#subById) {
-      if (entry.context === removed.context) this.#subById.delete(id);
-    }
+    this.#relay.unregister(conn);
   }
 
-  #publishState(
-    extensionId: string,
-    scope: StateScope,
-    instanceId: string | null,
-    keys: string[],
-  ): void {
-    for (const { conn, context } of this.#registry) {
-      if (context.extensionId === extensionId) {
-        conn.publish('state.changed', { scope, instanceId, keys });
-      }
-    }
-  }
-
-  #publishFilters(extensionId: string, type: string, active: boolean): void {
-    for (const { conn, context } of this.#registry) {
-      if (context.extensionId === extensionId) conn.publish('filters.changed', { type, active });
-    }
-  }
-
-  // Deliver a sendMessage topic to every live context; the bus filters by each context's event
-  // subscriptions, so an unheard topic simply does nothing.
   publishTopic(topic: string, params?: unknown): void {
-    for (const { conn } of this.#registry) conn.publish(topic, params);
+    this.#relay.publishTopic(topic, params);
   }
 
-  // Push changed Signal K values to subscribed contexts. Idempotent per (context, path): a value is
-  // re-published only when its timestamp or value changed since the last push.
   pumpSignalK(): void {
-    for (const { conn, context } of this.#registry) {
-      const paths = this.#paths.get(context);
-      if (!paths || paths.size === 0) continue;
-      const sent = getOrCreate(this.#lastSent, context, () => new Map<string, string>());
-      for (const path of paths) {
-        const reading = this.#adapters.signalk.read(path);
-        if (!reading) continue;
-        // A Signal K timestamp advances with each value, so it is a sufficient change signal on its
-        // own; only fall back to serializing the value when a reading carries no timestamp. This
-        // keeps the per-tick relay from stringifying every value on every pump.
-        const signature = reading.timestamp ?? JSON.stringify(reading.value);
-        if (sent.get(path) === signature) continue;
-        sent.set(path, signature);
-        conn.publish(`sk.${path}`, {
-          path,
-          value: reading.value,
-          timestamp: reading.timestamp,
-          $source: reading.$source,
-        });
-      }
-    }
+    this.#relay.pumpSignalK();
   }
 
   startRelay(intervalMs = 500): void {
-    if (this.#relay) return;
-    this.#relay = setInterval(() => this.pumpSignalK(), intervalMs);
+    this.#relay.startRelay(intervalMs);
   }
 
   stopRelay(): void {
-    if (this.#relay) clearInterval(this.#relay);
-    this.#relay = undefined;
+    this.#relay.stopRelay();
   }
 }

@@ -8,7 +8,9 @@ import {
   restoreBaseTheme,
 } from './base-theme';
 import { LayerManager, type LayerManagerOptions } from './layer-manager';
+import { installContextMenu } from './long-press';
 import { mapThemePaint } from './map-theme';
+import { createOverlayTick, type Syncable } from './overlay-tick';
 import { beforeIdFor, installSentinels } from './sentinels';
 import type { OverlayContext } from './types';
 
@@ -18,11 +20,6 @@ export interface MapViewLike {
   lat: number;
   lon: number;
   zoom: number;
-}
-
-// Anything the overlay sync can drive: the overlay modules all expose sync(ctx).
-interface Syncable {
-  sync(ctx: OverlayContext): void;
 }
 
 // Handed to the widget once the style has loaded, the sentinels are installed, and the LayerManager
@@ -71,14 +68,6 @@ export interface ThemedMapHandle {
 
 const DEFAULT_CENTER: [number, number] = [0, 30];
 const DEFAULT_ZOOM = 2;
-// How often store-driven overlays (AIS prune, tides, radar advance, collision) are synced when the
-// map is not repainting on its own. Map moves still sync on every 'render', so this only covers the
-// overlays that change without a camera move; 250 ms is well under the radar frame dwell.
-const STORE_SYNC_MS = 250;
-// A touch long-press that holds still this long, and within this pixel slop, stands in for the
-// contextmenu event that touch browsers do not reliably fire.
-const LONG_PRESS_MS = 500;
-const LONG_PRESS_MOVE_PX = 10;
 
 // The shared MapLibre bootstrap for both map widgets (the navigation chart and the weather mini-map):
 // map creation, a ResizeObserver, the per-frame view-emit coalescer, sentinels, the LayerManager, the
@@ -109,7 +98,8 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   const mapInstance = map;
   let destroyed = false;
   // Teardown for the sync wiring runTick installs (the 'render' listener, the interval, and the
-  // visibilitychange listener). Empty until runTick is called; invoked once on destroy.
+  // visibilitychange listener). A no-op until the overlay tick is built on 'load', then it delegates
+  // to the controller's live teardown; invoked once on destroy.
   let stopTick = () => {};
 
   // If the base style JSON itself never arrives (plain http at sea: no service worker, no
@@ -167,59 +157,15 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
     mapInstance.on('click', (e) => opts.onClick?.({ lng: e.lngLat.lng, lat: e.lngLat.lat }));
   }
 
-  // A right-click or long-press at a point, surfaced for the "go to here" menu. The desktop path is
-  // MapLibre's own contextmenu event; touch browsers do not all fire it, so a still-held finger past
-  // a timeout (cancelled by movement, lift, or a second touch) synthesizes the same emit.
+  // A right-click or long-press at a point, surfaced for the "go to here" menu. The contextMenu
+  // controller owns the contextmenu event, the touch long-press synthesis, and the canvas-listener
+  // teardown; both closures stay no-ops when no onContextMenu is supplied.
   let cancelLongPress = () => {};
-  // Canvas pointer listeners are removed on destroy; mapInstance.remove() does not detach them, so
-  // their closures would otherwise keep the map instance alive after teardown.
   let removeCanvasListeners = () => {};
   if (opts.onContextMenu) {
-    const emit = opts.onContextMenu;
-    mapInstance.on('contextmenu', (e) => {
-      // Android Chrome fires the native contextmenu for a long press too; cancel the synthesized
-      // timer so a single press cannot emit twice.
-      cancelLongPress();
-      emit({ lng: e.lngLat.lng, lat: e.lngLat.lat, x: e.point.x, y: e.point.y });
-    });
-    const canvas = mapInstance.getCanvas();
-    let pressTimer = 0;
-    let startX = 0;
-    let startY = 0;
-    cancelLongPress = () => {
-      if (!pressTimer) return;
-      clearTimeout(pressTimer);
-      pressTimer = 0;
-    };
-    const onPointerDown = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') return;
-      cancelLongPress();
-      startX = e.clientX;
-      startY = e.clientY;
-      pressTimer = window.setTimeout(() => {
-        pressTimer = 0;
-        const rect = canvas.getBoundingClientRect();
-        const x = startX - rect.left;
-        const y = startY - rect.top;
-        const at = mapInstance.unproject([x, y]);
-        emit({ lng: at.lng, lat: at.lat, x, y });
-      }, LONG_PRESS_MS);
-    };
-    const onPointerMove = (e: PointerEvent) => {
-      if (pressTimer && Math.hypot(e.clientX - startX, e.clientY - startY) > LONG_PRESS_MOVE_PX) {
-        cancelLongPress();
-      }
-    };
-    canvas.addEventListener('pointerdown', onPointerDown);
-    canvas.addEventListener('pointermove', onPointerMove);
-    canvas.addEventListener('pointerup', cancelLongPress);
-    canvas.addEventListener('pointercancel', cancelLongPress);
-    removeCanvasListeners = () => {
-      canvas.removeEventListener('pointerdown', onPointerDown);
-      canvas.removeEventListener('pointermove', onPointerMove);
-      canvas.removeEventListener('pointerup', cancelLongPress);
-      canvas.removeEventListener('pointercancel', cancelLongPress);
-    };
+    const contextMenu = installContextMenu(mapInstance, opts.onContextMenu);
+    cancelLongPress = contextMenu.cancel;
+    removeCanvasListeners = contextMenu.remove;
   }
 
   mapInstance.on('load', () => {
@@ -239,54 +185,10 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
       manager.applyTheme(paint);
     };
 
-    const runTick = (overlays: ReadonlyArray<Syncable>) => {
-      // A second call must not orphan the first 'render' listener, interval, and visibilitychange
-      // listener, so tear down any prior wiring first.
-      stopTick();
-      // Calling this once replaces the old unconditional rAF loop, which synced ~60x/sec for the life
-      // of the map even at anchor. Now sync runs only when the map actually repaints (pan, zoom) and
-      // on a low-frequency interval for the store-driven overlays, and both pause while hidden.
-      const syncAll = () => {
-        if (destroyed) return;
-        for (const overlay of overlays) overlay.sync(ctx);
-      };
-
-      // MapLibre fires 'render' only when it repaints, so this covers every pan and zoom without a
-      // self-scheduling frame loop.
-      mapInstance.on('render', syncAll);
-
-      let interval = 0;
-      const startInterval = () => {
-        if (interval) return;
-        interval = window.setInterval(syncAll, STORE_SYNC_MS);
-      };
-      const stopInterval = () => {
-        if (!interval) return;
-        clearInterval(interval);
-        interval = 0;
-      };
-
-      // Pause both the interval and (implicitly, since the map stops repainting) the render sync while
-      // the tab is hidden; resume and sync once on return so a hidden-tab change shows immediately.
-      const onVisibility = () => {
-        if (document.hidden) {
-          stopInterval();
-        } else {
-          startInterval();
-          syncAll();
-        }
-      };
-      document.addEventListener('visibilitychange', onVisibility);
-      if (!document.hidden) startInterval();
-      syncAll();
-
-      stopTick = () => {
-        mapInstance.off('render', syncAll);
-        stopInterval();
-        document.removeEventListener('visibilitychange', onVisibility);
-        stopTick = () => {};
-      };
-    };
+    const tick = createOverlayTick(mapInstance, ctx, () => destroyed);
+    // Route destroy's teardown through the controller's stopTick, which tears down the latest runTick
+    // wiring (or no-ops if runTick was never called).
+    stopTick = tick.stopTick;
 
     Promise.resolve(
       opts.onLoad({
@@ -295,7 +197,7 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
         manager,
         recolor,
         isDestroyed: () => destroyed,
-        runTick,
+        runTick: tick.runTick,
       }),
     ).catch((e) => console.error('map onLoad failed', e));
   });

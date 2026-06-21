@@ -1,65 +1,40 @@
-import type {
-  CircleLayerSpecification,
-  ExpressionSpecification,
-  GeoJSONSource,
-  GeoJSONSourceSpecification,
-  MapGeoJSONFeature,
-  MapLayerMouseEvent,
-  SymbolLayerSpecification,
-} from 'maplibre-gl';
+import type { GeoJSONSource, MapGeoJSONFeature, MapLayerMouseEvent } from 'maplibre-gl';
 import { asPoiCategory } from '$entities/poi-icons';
 import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
 import { bboxContains, lngLatBoundsToBbox4 } from '$shared/geo';
 import { DAY_MS } from '$shared/lib';
 import {
-  DARK_SCRIM,
   emptyFeatureCollection,
   featureCollection,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
-  removeLayersAndSources,
-  rgbaCss,
   setLayersVisibility,
 } from '$shared/map';
 import { type SkSymbol, str } from '$shared/signalk';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
-import { navaidClassify, navaidIconId, registerNavaidIcons } from './navaid-symbols';
+import { registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
 import { bboxKey, NotesCache, padBbox } from './notes-cache';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
-import { categoryRank, POI_CATEGORIES, poiIconId } from './poi-categories';
-
-const SOURCE_ID = 'binnacle-notes';
-const LAYER_ID = 'binnacle-notes-symbol';
-// A cluster is a group ring, the most important member's colored icon, and a count badge.
-const CLUSTER_RING_LAYER = 'binnacle-notes-cluster-ring';
-const CLUSTER_ICON_LAYER = 'binnacle-notes-cluster-icon';
-const CLUSTER_COUNT_LAYER = 'binnacle-notes-cluster-count';
-const SELECT_SOURCE = 'binnacle-notes-selected';
-const SELECT_LAYER = 'binnacle-notes-selected';
-const SELECT_CASING_LAYER = 'binnacle-notes-selected-casing';
-// A fixed dark casing under the amber selection ring, so it holds on light day water; invisible on the
-// dark themes where the ring carries on its own. The shared DARK_SCRIM, as the route line uses.
-const SELECT_CASING_COLOR = rgbaCss(DARK_SCRIM);
-// The note layers, bottom to top, in one place for layerIds, setVisible, and remove.
-const LAYERS = [
+import { buildRender, filterRecord } from './notes-features';
+import {
+  addNoteLayers,
+  CLUSTER_COUNT_LAYER,
+  CLUSTER_HIT_LAYERS,
+  CLUSTER_ICON_LAYER,
+  CLUSTER_RING_LAYER,
+  LAYER_ID,
+  LAYERS,
+  MIN_ZOOM,
+  removeNoteLayers,
   SELECT_CASING_LAYER,
   SELECT_LAYER,
-  CLUSTER_RING_LAYER,
-  CLUSTER_ICON_LAYER,
-  CLUSTER_COUNT_LAYER,
-  LAYER_ID,
-];
-// The cluster layers that respond to a click (expand) and a hover (pointer cursor).
-const CLUSTER_HIT_LAYERS = [CLUSTER_ICON_LAYER, CLUSTER_RING_LAYER];
-// Below this zoom the viewport spans too much to usefully fetch or show every POI.
-const MIN_ZOOM = 9;
-// Past this zoom each point unclusters and shows its own icon. Clusters live at z9 to z11 so the
-// wide view does not mash, and individual POIs appear from z12.
-const CLUSTER_MAX_ZOOM = 11;
-const CLUSTER_RADIUS = 44;
+  SELECT_SOURCE,
+  SOURCE_ID,
+} from './notes-layers';
+
 // After a failed fetch, back off this long before retrying so a stationary map recovers from a
 // transient hiccup without hammering a flaky provider (the tides loader uses the same pattern).
 const RETRY_COOLDOWN_MS = 30_000;
@@ -68,19 +43,6 @@ const RETRY_COOLDOWN_MS = 30_000;
 // in-memory TTL drives the real refresh once a set has been seen this session.
 const PERSIST_TTL_MS = 7 * DAY_MS;
 const MAX_PERSIST_ENTRIES = 24;
-
-// The cluster icon: the colored disc of the cluster's highest-ranked member, matched on the
-// aggregated maxRank, so a cluster holding a hazard shows the red hazard disc, a navaid the amber
-// disc, otherwise the POI disc. Distinct ranks make the match labels unique; generic is the default.
-const CLUSTER_ICON_IMAGE = [
-  'match',
-  ['get', 'maxRank'],
-  ...POI_CATEGORIES.filter((category) => category !== 'generic').flatMap((category) => [
-    categoryRank(category),
-    poiIconId(category),
-  ]),
-  poiIconId('generic'),
-] as unknown as ExpressionSpecification;
 
 interface NotesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -105,76 +67,6 @@ export interface NotesOverlayOptions {
   persist?: ExpiringStore<NotePoint[]>;
   // The plotter-extension display filter for the `notes` type, when a host provides one.
   filter?: NotesFilter;
-}
-
-// A record shaped like the source notes resource, for a filter's `match` conditions. The plotter
-// search filter selects by id (where the record is unused), but a category filter keys off
-// `properties.skIcon`, the path ActiveCaptain providers use, so expose it here too.
-function filterRecord(note: NotePoint): unknown {
-  return {
-    name: note.name,
-    position: note.position,
-    properties: note.skIcon ? { skIcon: note.skIcon } : {},
-  };
-}
-
-// The registered map-image id for a note. Navaids resolve to a type- and side-specific
-// symbol inferred from the name; every other category uses its disc.
-function iconFor(note: NotePoint): string {
-  if (note.category === 'navaid') return navaidIconId(navaidClassify(note.name));
-  return poiIconId(note.category);
-}
-
-const CENTERED_OFFSET: [number, number] = [0, 0];
-
-// Build the icon-offset as a match on the icon id. MapLibre coerces an array-valued GeoJSON property
-// to a JSON string crossing to the worker, so a per-feature offset cannot ride on the feature as
-// ['get', 'iconOffset']; the match keeps each provided symbol's anchor offset as a real LITERAL array
-// in the style, and every centered category disc falls through to [0, 0].
-function iconOffsetExpression(
-  offsets: ReadonlyMap<string, readonly [number, number]>,
-): ExpressionSpecification | [number, number] {
-  if (offsets.size === 0) return CENTERED_OFFSET;
-  const match: unknown[] = ['match', ['get', 'icon']];
-  for (const [iconId, offset] of offsets) {
-    match.push(iconId, ['literal', offset]);
-  }
-  match.push(['literal', CENTERED_OFFSET]);
-  return match as ExpressionSpecification;
-}
-
-// One pass over the notes builds both the source data and the icon-offset match: each note resolves
-// to a provided symbol or its built-in category disc, and a provided symbol with a non-zero anchor
-// offset contributes one match arm keyed on its icon id.
-function buildRender(
-  notes: readonly NotePoint[],
-  managedIcon: (note: NotePoint) => SymbolIconEntry | undefined,
-): { data: GeoJSON.FeatureCollection; iconOffset: ExpressionSpecification | [number, number] } {
-  const offsets = new Map<string, readonly [number, number]>();
-  const features = notes.map((note): GeoJSON.Feature => {
-    const managed = managedIcon(note);
-    if (managed && (managed.offset[0] !== 0 || managed.offset[1] !== 0)) {
-      offsets.set(managed.iconId, managed.offset);
-    }
-    return {
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [note.position.longitude, note.position.latitude],
-      },
-      properties: {
-        id: note.id,
-        name: note.name,
-        category: note.category,
-        rank: categoryRank(note.category),
-        icon: managed?.iconId ?? iconFor(note),
-        url: note.url ?? '',
-        source: note.source ?? '',
-        attribution: note.attribution ?? '',
-      },
-    };
-  });
-  return { data: featureCollection(features), iconOffset: iconOffsetExpression(offsets) };
 }
 
 export function createNotesOverlay(
@@ -355,149 +247,7 @@ export function createNotesOverlay(
     layerIds: LAYERS,
     async add(ctx) {
       const before = ctx.beforeIdFor('routes');
-
-      if (!ctx.map.getSource(SOURCE_ID)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-          cluster: true,
-          clusterMaxZoom: CLUSTER_MAX_ZOOM,
-          clusterRadius: CLUSTER_RADIUS,
-          // Carry the highest member rank up to the cluster so it can show that member's icon.
-          clusterProperties: { maxRank: ['max', ['get', 'rank']] },
-        };
-        ctx.map.addSource(SOURCE_ID, source);
-      }
-      if (!ctx.map.getSource(SELECT_SOURCE)) {
-        ctx.map.addSource(SELECT_SOURCE, { type: 'geojson', data: emptyFeatureCollection() });
-      }
-
-      // Selection ring sits below the markers so the icon draws on top of it; a dark casing ring below
-      // it (a wider stroke at the same radius) gives the amber ring contrast on light day water.
-      if (!ctx.map.getLayer(SELECT_CASING_LAYER)) {
-        const selectCasing: CircleLayerSpecification = {
-          id: SELECT_CASING_LAYER,
-          type: 'circle',
-          source: SELECT_SOURCE,
-          minzoom: MIN_ZOOM,
-          paint: {
-            'circle-radius': 15,
-            'circle-color': 'rgba(0,0,0,0)',
-            'circle-stroke-color': SELECT_CASING_COLOR,
-            'circle-stroke-width': 5,
-          },
-        };
-        ctx.map.addLayer(selectCasing, before);
-      }
-      if (!ctx.map.getLayer(SELECT_LAYER)) {
-        const selectLayer: CircleLayerSpecification = {
-          id: SELECT_LAYER,
-          type: 'circle',
-          source: SELECT_SOURCE,
-          minzoom: MIN_ZOOM,
-          paint: {
-            'circle-radius': 15,
-            'circle-color': 'rgba(0,0,0,0)',
-            'circle-stroke-color': themePaint.select,
-            'circle-stroke-width': 3,
-          },
-        };
-        ctx.map.addLayer(selectLayer, before);
-      }
-
-      // The group ring behind the cluster icon, so a cluster never reads as a single POI; its
-      // radius steps up with the contained count.
-      if (!ctx.map.getLayer(CLUSTER_RING_LAYER)) {
-        const clusterRing: CircleLayerSpecification = {
-          id: CLUSTER_RING_LAYER,
-          type: 'circle',
-          source: SOURCE_ID,
-          filter: ['has', 'point_count'],
-          minzoom: MIN_ZOOM,
-          paint: {
-            'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 50, 28],
-            'circle-color': 'rgba(0,0,0,0)',
-            'circle-stroke-color': themePaint.markerGlyph,
-            'circle-stroke-width': 2.5,
-            'circle-stroke-opacity': 0.9,
-          },
-        };
-        ctx.map.addLayer(clusterRing, before);
-      }
-
-      if (!ctx.map.getLayer(CLUSTER_ICON_LAYER)) {
-        const clusterIcon: SymbolLayerSpecification = {
-          id: CLUSTER_ICON_LAYER,
-          type: 'symbol',
-          source: SOURCE_ID,
-          filter: ['has', 'point_count'],
-          minzoom: MIN_ZOOM,
-          layout: {
-            'icon-image': CLUSTER_ICON_IMAGE,
-            'icon-size': 0.85,
-            'icon-allow-overlap': true,
-          },
-        };
-        ctx.map.addLayer(clusterIcon, before);
-      }
-
-      // The count badge at the upper-right corner, haloed so it reads over the icon and the ring.
-      if (!ctx.map.getLayer(CLUSTER_COUNT_LAYER)) {
-        const clusterCount: SymbolLayerSpecification = {
-          id: CLUSTER_COUNT_LAYER,
-          type: 'symbol',
-          source: SOURCE_ID,
-          filter: ['has', 'point_count'],
-          minzoom: MIN_ZOOM,
-          layout: {
-            'text-field': ['get', 'point_count_abbreviated'],
-            'text-font': ['Noto Sans Regular'],
-            'text-size': 11,
-            'text-offset': [1.2, -1.2],
-            'text-allow-overlap': true,
-          },
-          paint: {
-            'text-color': themePaint.markerGlyph,
-            'text-halo-color': themePaint.note,
-            'text-halo-width': 2.4,
-          },
-        };
-        ctx.map.addLayer(clusterCount, before);
-      }
-
-      // Unclustered points: the per-category icon, with its name once zoomed in.
-      if (!ctx.map.getLayer(LAYER_ID)) {
-        const layer: SymbolLayerSpecification = {
-          id: LAYER_ID,
-          type: 'symbol',
-          source: SOURCE_ID,
-          filter: ['!', ['has', 'point_count']],
-          layout: {
-            'icon-image': ['get', 'icon'],
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 0.9],
-            // Default offset; render() sets a per-icon match via setLayoutProperty (a provided
-            // symbol's offset pins its declared anchor pixel to the point). The offset cannot ride on
-            // the feature as a ['get'], because MapLibre coerces an array-valued property to a string.
-            'icon-offset': [0, 0],
-            'icon-allow-overlap': true,
-            'text-field': ['get', 'name'],
-            'text-font': ['Noto Sans Regular'],
-            'text-size': 11,
-            'text-offset': [0, 1.1],
-            'text-anchor': 'top',
-            'text-optional': true,
-            'text-max-width': 9,
-            'text-padding': 6,
-          },
-          paint: {
-            'text-color': themePaint.note,
-            'text-halo-color': themePaint.background,
-            'text-halo-width': 1.2,
-          },
-          minzoom: MIN_ZOOM,
-        };
-        ctx.map.addLayer(layer, before);
-      }
+      addNoteLayers(ctx.map, themePaint, before);
 
       onClick = (event) => {
         const feature = event.features?.[0];
@@ -667,7 +417,7 @@ export function createNotesOverlay(
         if (onEnter) ctx.map.off('mouseenter', id, onEnter);
         if (onLeave) ctx.map.off('mouseleave', id, onLeave);
       }
-      removeLayersAndSources(ctx.map, LAYERS, [SOURCE_ID, SELECT_SOURCE]);
+      removeNoteLayers(ctx.map);
     },
   };
 }

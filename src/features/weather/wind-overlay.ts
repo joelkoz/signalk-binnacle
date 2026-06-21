@@ -19,7 +19,8 @@ import { windArrowFeatures } from './wind-arrows';
 import { windColorTexture } from './wind-color-texture';
 import { windColorExpression } from './wind-colormap';
 import { windFieldTexture } from './wind-field-texture';
-import { supportsWindGl, WindParticles } from './wind-gl/wind-particles';
+import { supportsWindGl } from './wind-gl/wind-gl-support';
+import { WindParticles } from './wind-gl/wind-particles';
 
 type GL = WebGLRenderingContext | WebGL2RenderingContext;
 

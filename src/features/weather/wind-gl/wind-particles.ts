@@ -1,8 +1,7 @@
 import { RAMP_MAX_SPEED, RAMP_WIDTH } from '../wind-color-texture';
 import type { WindField } from '../wind-field-texture';
+import { createBuffer, createProgram, createTexture, type GL } from './gl-resources';
 import { DRAW_FRAG, DRAW_VERT, QUAD_VERT, SCREEN_FRAG, UPDATE_FRAG } from './shaders';
-
-type GL = WebGLRenderingContext | WebGL2RenderingContext;
 
 export interface WindParticlesOptions {
   // Square root of the particle count; particleCount = resolution^2. ~90 gives ~8100 on a Pi GPU.
@@ -14,91 +13,6 @@ export interface WindParticlesOptions {
   dropRate?: number;
   dropRateBump?: number;
   fadeOpacity?: number;
-}
-
-function createShader(gl: GL, type: number, source: string): WebGLShader {
-  const shader = gl.createShader(type);
-  if (!shader) throw new Error('createShader failed');
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw new Error(gl.getShaderInfoLog(shader) ?? 'shader compile failed');
-  }
-  return shader;
-}
-
-function createProgram(gl: GL, vert: string, frag: string): WebGLProgram {
-  const program = gl.createProgram();
-  if (!program) throw new Error('createProgram failed');
-  const vertShader = createShader(gl, gl.VERTEX_SHADER, vert);
-  const fragShader = createShader(gl, gl.FRAGMENT_SHADER, frag);
-  gl.attachShader(program, vertShader);
-  gl.attachShader(program, fragShader);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    throw new Error(gl.getProgramInfoLog(program) ?? 'program link failed');
-  }
-  // The linked program is self-contained: release the shader objects so each #build (initial plus
-  // every context-restore reinit) does not leak six of them.
-  gl.detachShader(program, vertShader);
-  gl.detachShader(program, fragShader);
-  gl.deleteShader(vertShader);
-  gl.deleteShader(fragShader);
-  return program;
-}
-
-function createTexture(
-  gl: GL,
-  filter: number,
-  data: Uint8Array | null,
-  w: number,
-  h: number,
-): WebGLTexture {
-  const texture = gl.createTexture();
-  if (!texture) throw new Error('createTexture failed');
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-  gl.bindTexture(gl.TEXTURE_2D, null);
-  return texture;
-}
-
-function createBuffer(gl: GL, data: Float32Array): WebGLBuffer {
-  const buffer = gl.createBuffer();
-  if (!buffer) throw new Error('createBuffer failed');
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-  return buffer;
-}
-
-// A lightweight probe: can this environment compile the wind programs on a throwaway context? Used
-// by the overlay to choose particles vs the arrow fallback before touching the map. The result is
-// fixed for the page (the GPU and driver do not change), so it is memoized: the probe allocates a
-// canvas, a GL context, and two compiled programs, and that should happen at most once per load.
-let windGlSupport: boolean | undefined;
-export function supportsWindGl(): boolean {
-  if (windGlSupport !== undefined) return windGlSupport;
-  let gl: GL | null = null;
-  try {
-    const canvas = document.createElement('canvas');
-    gl = (canvas.getContext('webgl') ?? canvas.getContext('experimental-webgl')) as GL | null;
-    if (!gl) {
-      windGlSupport = false;
-      return windGlSupport;
-    }
-    createProgram(gl, QUAD_VERT, UPDATE_FRAG);
-    createProgram(gl, DRAW_VERT, DRAW_FRAG);
-    windGlSupport = true;
-  } catch {
-    windGlSupport = false;
-  } finally {
-    // Browsers cap live WebGL contexts per page; release the probe's instead of waiting for GC.
-    gl?.getExtension('WEBGL_lose_context')?.loseContext();
-  }
-  return windGlSupport;
 }
 
 type Uniform = WebGLUniformLocation | null;
