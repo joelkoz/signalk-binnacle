@@ -5,9 +5,7 @@ import {
   ChartLine,
   CloudSun,
   Layers,
-  LocateFixed,
   MapPin,
-  Navigation,
   Radar,
   Route,
   Ruler,
@@ -74,11 +72,7 @@ import {
   type NoteSelection,
   type NotesFilter,
 } from '$features/notes';
-import {
-  addWidgetActionAt,
-  PlotterExtHostView,
-  ToolbarButtons,
-} from '$features/plotter-extensions';
+import { addWidgetActionAt, PlotterExtHostView } from '$features/plotter-extensions';
 import {
   createProfileBindings,
   downloadProfileJson,
@@ -151,20 +145,7 @@ import {
   type LatLon,
   padBbox,
 } from '$shared/geo';
-import {
-  Clock,
-  formatBearingOr,
-  formatFixed,
-  formatKnotsOr,
-  formatLatitude,
-  formatLengthOr,
-  formatLongitude,
-  formatNm,
-  formatTcpaMin,
-  lengthUnit,
-  nauticalMilesToMeters,
-  uuidv4,
-} from '$shared/lib';
+import { Clock, formatNm, formatTcpaMin, nauticalMilesToMeters, uuidv4 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
 import { etaSeconds, routesRoughlyEqual } from '$shared/nav';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
@@ -204,6 +185,8 @@ import { createTrackStore } from '$shared/storage';
 import { createThemeController, defaultSaveName, type Theme } from '$shared/ui';
 import { ChartCanvas, type MapCommands, type UserChartRegistrar } from '$widgets/chart-canvas';
 import { WeatherMap } from '$widgets/weather-map';
+import LiveRegions from './LiveRegions.svelte';
+import StatusStrip from './StatusStrip.svelte';
 
 // serverOrigin reads location, fixed for the page lifetime: capture once, not at every call site.
 const origin = serverOrigin();
@@ -2094,16 +2077,7 @@ onDestroy(() => {
 </script>
 
 <main class="binnacle-shell">
-  <div class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true">
-    {collisionAlert}
-  </div>
-  <div class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true">
-    {anchorAlert}
-  </div>
-  <div class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true">
-    {mobAlert}
-  </div>
-  <div class="visually-hidden" aria-live="polite" aria-atomic="true">{muteAlert}</div>
+  <LiveRegions collision={collisionAlert} anchor={anchorAlert} mob={mobAlert} mute={muteAlert} />
   <header class="topbar">
     <span class="topbar-start">
       <AppMenu items={menuItems} open={menuOpen} onOpenChange={(next) => (menuOpen = next)} />
@@ -2413,120 +2387,28 @@ onDestroy(() => {
       />
     {/if}
   </section>
-  <footer class="status-strip">
-    <div class="strip-start">
-      <span
-        class="conn"
-        class:conn--down={connectionDown}
-        role="status"
-        aria-live="polite"
-        title={connectionLabel}
-      >
-        <span class="conn-dot" aria-hidden="true"></span>
-        <span class="visually-hidden">{connectionLabel}</span>
-      </span>
-      {#if streamError}
-        <span class="readout fix-lost" role="alert" aria-live="assertive">
-          Data link failed, reload
-        </span>
-      {/if}
-      {#if !net.online}
-        <span class="readout offline" role="status" aria-live="polite">Offline</span>
-      {/if}
-      {#if fixStale}
-        <span class="readout fix-lost" role="status" aria-live="polite">No GPS fix</span>
-      {/if}
-      {#if store.connection.phase === 'open'}
-        <span class="readout lookout" title="AIS targets the lookout is tracking">
-          AIS <b>{aisCount}</b>
-        </span>
-      {/if}
-      {#if anchor.watching}
-        <span
-          class="readout anchor-chip"
-          class:anchor-chip--alarm={anchor.dragging || anchor.fixLost}
-          role="status"
-          title={anchor.fixLost
-            ? 'Anchor watch: no GPS fix, drag detection degraded'
-            : 'Anchor watch: distance from the anchor over the watch radius'}
-        >
-          {#if anchor.fixLost}
-            Anchor <b>no GPS</b>
-          {:else}
-            Anchor <b>{formatLengthOr(anchor.distanceMeters, units.mode, 0)}</b>/<b
-              >{formatLengthOr(anchor.radiusMeters, units.mode, 0)}</b
-            >
-            {lengthUnit(units.mode)}
-          {/if}
-        </span>
-      {/if}
-      <span class="readout"
-        >SOG <b>{formatKnotsOr(fixStale ? undefined : vessel.sogMps)}</b> kn</span
-      >
-      <span class="readout"
-        >COG <b>{formatBearingOr(fixStale ? undefined : vessel.cogRad)}</b>&deg;T</span
-      >
-    </div>
-    <div class="strip-center">
-      <button
-        type="button"
-        class="btn btn-pill"
-        aria-label="Center on boat"
-        title="Center on boat"
-        onclick={() => mapCommands?.centerOnVessel()}
-      >
-        <LocateFixed size={16} aria-hidden="true" />
-        Center
-      </button>
-      <button
-        type="button"
-        class="btn btn-pill"
-        class:is-on={following}
-        aria-pressed={following}
-        aria-label="Follow boat"
-        title={following ? 'Stop following' : 'Follow boat'}
-        onclick={() => (following = !following)}
-      >
-        <Navigation size={16} aria-hidden="true" />
-        Follow
-      </button>
-      <!-- No aria-label: the accessible name must be the visible "Charts" so voice control
-           matches what a user says; the title carries the longer description. -->
-      <button
-        type="button"
-        class="btn btn-pill"
-        class:is-on={activePanel === 'layers'}
-        aria-expanded={layersView ? activePanel === 'layers' : undefined}
-        aria-haspopup="dialog"
-        aria-controls={activePanel === 'layers' ? 'layers-panel' : undefined}
-        title={layersView ? 'Layers and charts' : 'Layers and charts (chart is loading)'}
-        disabled={!layersView}
-        onclick={() => (activePanel === 'layers' ? closePanel() : openPanel('layers'))}
-      >
-        <Layers size={16} aria-hidden="true" />
-        Charts
-      </button>
-      <button
-        type="button"
-        class="btn btn-pill"
-        class:is-on={weatherPanelOpen}
-        aria-expanded={weatherPanelOpen}
-        aria-haspopup="dialog"
-        aria-controls={weatherPanelOpen ? 'weather-panel' : undefined}
-        onclick={() => (weatherPanelOpen = !weatherPanelOpen)}
-      >
-        <CloudSun size={16} aria-hidden="true" />
-        Forecast
-      </button>
-      <ToolbarButtons host={plotterExtHost} />
-    </div>
-    <div class="center-cluster">
-      <span class="readout">View</span>
-      <span class="readout"><b>{formatLatitude(mapView?.lat)}</b></span>
-      <span class="readout"><b>{formatLongitude(mapView?.lon)}</b></span>
-      <span class="readout">z<b>{formatFixed(mapView?.zoom, 1)}</b></span>
-    </div>
-  </footer>
+  <StatusStrip
+    {connectionLabel}
+    {connectionDown}
+    {streamError}
+    online={net.online}
+    {fixStale}
+    connectionPhase={store.connection.phase}
+    {aisCount}
+    {anchor}
+    {units}
+    {vessel}
+    {following}
+    {activePanel}
+    {layersView}
+    {weatherPanelOpen}
+    {mapView}
+    {plotterExtHost}
+    onCenter={() => mapCommands?.centerOnVessel()}
+    onToggleFollow={() => (following = !following)}
+    onToggleLayers={() => (activePanel === 'layers' ? closePanel() : openPanel('layers'))}
+    onToggleWeather={() => (weatherPanelOpen = !weatherPanelOpen)}
+  />
 </main>
 
 {#if addWaypointAt}
@@ -2686,120 +2568,5 @@ onDestroy(() => {
     inset-inline: 0;
     inline-size: auto;
   }
-}
-/* A three-column grid: the leading readouts, the Forecast button centered in the flexible middle,
-   and the trailing position cluster. Forecast is real grid content, not an absolute overlay, so it
-   can never paint over or steal taps from the readouts at any width. */
-.status-strip {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  /* Tall enough for the Forecast button (a full control-size touch target), so it is not clipped at
-     the bottom by the overflow-hidden viewport. */
-  min-block-size: calc(var(--control-size) + var(--space-2));
-  border-block-start: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: var(--text-md);
-}
-.strip-start {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-inline-size: 0;
-}
-/* Center, Follow, Charts, and Forecast read as one row of matching labeled pills in the flexible
-   middle. They wrap rather than overflow when a narrow phone leaves too little width. */
-.strip-center {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-2);
-}
-/* The center lat, lon, and zoom readout reads as one group at the trailing edge, and is the first
-   thing dropped on a phone, where the chart and the panels still report position. */
-.center-cluster {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-inline-size: 0;
-}
-/* On a phone or small tablet the labeled pills and the live readouts do not fit one row, so the
-   strip stacks into one centered column: the readouts above, and the labeled pills on a wrapping
-   row below within thumb reach. The duplicate position cluster drops (the chart and panels still
-   report it); the connection dot is small enough to stay. This block sits after the base rules
-   above, so it wins the cascade when the query matches. */
-@media (max-width: 900px) {
-  .status-strip {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    gap: var(--space-2);
-  }
-  .strip-start {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  .center-cluster {
-    display: none;
-  }
-}
-.offline {
-  color: var(--alarm);
-}
-/* The connection state is a compact dot (its label stays for assistive tech and the hover title):
-   the healthy token while the stream is up, the caution color while it is reconnecting or closed,
-   so a mid-passage drop still reads at a glance without the word taking strip space. */
-.conn {
-  display: inline-flex;
-  align-items: center;
-}
-.conn-dot {
-  inline-size: 0.625rem;
-  block-size: 0.625rem;
-  border-radius: 50%;
-  background: var(--ok);
-}
-.conn--down .conn-dot {
-  background: var(--warning);
-}
-/* A lost own fix is a caution, not an alarm: the boat is still where it was, the position is just no
-   longer updating. Warning-colored and calm, beside the dashed SOG and COG. */
-.fix-lost {
-  color: var(--warning);
-  font-weight: 600;
-}
-/* The lookout chip is muted chrome: it confirms the AIS watch is live without competing with the
-   hero SOG and COG. On a phone it drops with the rest of the secondary readouts. */
-.lookout {
-  color: var(--text-muted);
-}
-/* The anchor chip confirms the watch is live (distance over radius) as quiet chrome, and turns to
-   the alarm color while the boat is dragging so the state reads even with the strip dismissed. */
-.anchor-chip {
-  color: var(--text-muted);
-}
-.anchor-chip--alarm {
-  color: var(--alarm);
-  font-weight: 600;
-}
-.anchor-chip--alarm b {
-  color: var(--alarm);
-}
-/* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
-.readout {
-  white-space: nowrap;
-}
-.readout b {
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-/* Every footer readout number, leading (AIS, SOG, COG) and trailing (the position cluster), takes
-   the same instrument-readout size, so the strip reads as one instrument row rather than two
-   mismatched type sizes. */
-.strip-start .readout b,
-.center-cluster .readout b {
-  font-size: var(--text-readout);
 }
 </style>
