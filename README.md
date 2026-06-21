@@ -108,8 +108,11 @@ See the [changelog](CHANGELOG.md) for the full list.
 
 Binnacle is built on a current web stack and engineered to run on modest helm hardware:
 
-- **Front end.** Svelte 5 with runes, Vite, and TypeScript, linted and formatted with Biome, with
-  module boundaries enforced by the build (Feature-Sliced Design plus a dependency-cruiser gate).
+- **Front end.** Svelte 5 with runes, Vite, and TypeScript, linted and formatted with Biome. The code
+  is organized as cohesive, single-responsibility slices under a strict Feature-Sliced Design, with the
+  import boundaries enforced by the build through a dependency-cruiser gate, a modular stylesheet
+  assembled one concern per file, and shared UI primitives and helpers, so a new feature drops in
+  against stable interfaces rather than by surgery on the core.
 - **GPU rendering.** MapLibre GL JS draws the vector base map and chart layers on the GPU. The own
   vessel and every AIS target render as GPU symbol layers, and wind draws as a WebGL particle field
   advected through the forecast on the graphics card.
