@@ -26,3 +26,36 @@
   place-items: center;
   background: var(--scrim);
 }
+
+/* The anchored floating-card frame shared by the map popovers and menus (the weather layer menu, the
+   chart context menu, the plotter-extension overflow menu, and the map note): one border, radius,
+   surface, and shadow so the floating-card look cannot drift across the six places that drew it by
+   hand. Consumers keep only their own position, padding, sizing, and z-index. */
+.popover-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+}
+
+/* The full-width interactive menu row shared by the chart context menu and the plotter-extension
+   overflow menu: a control-height flex row that fills with the accent tint on hover. */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  inline-size: 100%;
+  min-block-size: var(--control-size);
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.menu-item:hover {
+  background: var(--accent-tint);
+  color: var(--accent);
+}

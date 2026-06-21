@@ -32,7 +32,7 @@ const groups = $derived(
   open={true}
   {onClose}
   backdropLabel="Close weather layers"
-  surfaceClass="weather-menu"
+  surfaceClass="popover-card weather-menu"
   ariaLabel="Weather layers"
 >
   {#snippet children()}
@@ -80,10 +80,6 @@ const groups = $derived(
   flex-direction: column;
   gap: 0.15rem;
   padding: var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-overlay);
-  box-shadow: var(--shadow-overlay);
 }
 /* The roving-focus host is transparent to layout so the rows stay direct flex children of the
    surface and keep the surface's row gap; it adds no box, no container, and no containing block. */

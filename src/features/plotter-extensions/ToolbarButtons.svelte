@@ -90,7 +90,7 @@ $effect(() => {
             onclick={() => closeMore()}
           ></button>
           <div
-            class="pe-more-menu"
+            class="popover-card pe-more-menu"
             role="menu"
             id="pe-more-menu"
             aria-label="More extension actions"
@@ -101,7 +101,7 @@ $effect(() => {
               <button
                 type="button"
                 role="menuitem"
-                class="pe-more-item"
+                class="menu-item pe-more-item"
                 title={entry.button.title}
                 onclick={() => pick(entry)}
               >
@@ -138,30 +138,9 @@ $effect(() => {
   max-block-size: min(50dvh, 20rem);
   overflow-y: auto;
   padding: 0.2rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-overlay);
-  box-shadow: var(--shadow-overlay);
 }
 .pe-more-item {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  inline-size: 100%;
-  min-block-size: var(--control-size);
-  padding: 0 0.7rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-weight: 600;
   text-align: start;
-  cursor: pointer;
-}
-.pe-more-item:hover {
-  background: var(--accent-tint);
-  color: var(--accent);
 }
 .pe-more-label {
   overflow-wrap: anywhere;

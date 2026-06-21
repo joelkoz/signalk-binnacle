@@ -559,7 +559,7 @@ onDestroy(() => {
          reliably (a region inserted together with its content is skipped by some screen readers). -->
     <div class="map-notes">
       <div
-        class="map-note map-note--readout"
+        class="popover-card map-note map-note--readout"
         class:show={!!readout || readoutPending}
         role="status"
         onpointerenter={holdReadout}
@@ -608,7 +608,11 @@ onDestroy(() => {
           <span class="readout-line">Fetching conditions</span>
         {/if}
       </div>
-      <div class="map-note map-note--status" class:show={!!statusNote || !!zoomNote} role="status">
+      <div
+        class="popover-card map-note map-note--status"
+        class:show={!!statusNote || !!zoomNote}
+        role="status"
+      >
         {statusNote || zoomNote}
       </div>
     </div>
@@ -824,10 +828,6 @@ onDestroy(() => {
   /* Leave the leading column clear for the floating trigger so a wide readout never slides under it. */
   max-inline-size: calc(100% - var(--control-size) - var(--space-3));
   padding: 0.3rem 0.6rem;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-overlay);
   font-size: var(--text-sm);
   opacity: 0;
 }

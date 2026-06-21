@@ -70,7 +70,7 @@ const top = $derived(above ? y - EDGE : y + EDGE);
 <!-- A transparent backdrop catches the outside tap to dismiss and keeps the press off the map. -->
 <button type="button" class="overlay-backdrop" aria-label="Dismiss menu" onclick={onClose}></button>
 <div
-  class="menu"
+  class="popover-card menu"
   role="menu"
   aria-label="Chart actions"
   tabindex="-1"
@@ -79,28 +79,28 @@ const top = $derived(above ? y - EDGE : y + EDGE);
     ? '-100%'
     : '0'});"
 >
-  <button type="button" role="menuitem" class="item" onclick={onGoToHere}>
+  <button type="button" role="menuitem" class="menu-item item" onclick={onGoToHere}>
     <Navigation size={16} aria-hidden="true" />
     Go to here
   </button>
-  <button type="button" role="menuitem" class="item" onclick={onStartRoute}>
+  <button type="button" role="menuitem" class="menu-item item" onclick={onStartRoute}>
     <Route size={16} aria-hidden="true" />
     Start a route here
   </button>
   {#if onDropWaypoint}
-    <button type="button" role="menuitem" class="item" onclick={onDropWaypoint}>
+    <button type="button" role="menuitem" class="menu-item item" onclick={onDropWaypoint}>
       <MapPin size={16} aria-hidden="true" />
       Drop waypoint
     </button>
   {/if}
   {#if onMeasureFrom}
-    <button type="button" role="menuitem" class="item" onclick={onMeasureFrom}>
+    <button type="button" role="menuitem" class="menu-item item" onclick={onMeasureFrom}>
       <Ruler size={16} aria-hidden="true" />
       Measure from here
     </button>
   {/if}
   {#if onAddWidget}
-    <button type="button" role="menuitem" class="item" onclick={onAddWidget}>
+    <button type="button" role="menuitem" class="menu-item item" onclick={onAddWidget}>
       <LayoutGrid size={16} aria-hidden="true" />
       Add widget
     </button>
@@ -112,29 +112,8 @@ const top = $derived(above ? y - EDGE : y + EDGE);
   position: absolute;
   z-index: var(--z-menu);
   padding: 0.2rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-overlay);
-  box-shadow: var(--shadow-overlay);
 }
 .item {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  inline-size: 100%;
-  min-block-size: var(--control-size);
-  padding: 0 0.7rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-weight: 600;
   white-space: nowrap;
-  cursor: pointer;
-}
-.item:hover {
-  background: var(--accent-tint);
-  color: var(--accent);
 }
 </style>
