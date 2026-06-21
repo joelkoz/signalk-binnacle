@@ -11,6 +11,7 @@ import {
   type OverlayContext,
   type OverlayModule,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 import { str } from '$shared/signalk';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
@@ -148,11 +149,6 @@ export function createNotesOverlay(
     iconResolver.retheme(ctx.map, paint);
   }
 
-  function setData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
-    const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-    source?.setData(data);
-  }
-
   // Render a note set, skipping the work when it is the same set already shown. Leaving the source
   // untouched on a no-op avoids re-clustering the markers every idle frame.
   function render(ctx: OverlayContext, notes: NotePoint[]): void {
@@ -165,7 +161,7 @@ export function createNotesOverlay(
       ? notes.filter((note) => filter.passes(note.id, filterRecord(note)))
       : notes;
     const { data, iconOffset } = buildRender(shown, iconResolver.iconEntry);
-    setData(ctx, data);
+    setSourceData(ctx.map, SOURCE_ID, data);
     // The offset is a layer property, not a feature one (MapLibre stringifies an array feature
     // property), so it is restyled here. The getLayer guard mirrors setData's missing-source degrade.
     if (ctx.map.getLayer(LAYER_ID)) ctx.map.setLayoutProperty(LAYER_ID, 'icon-offset', iconOffset);
@@ -201,7 +197,7 @@ export function createNotesOverlay(
   function clearRendered(ctx: OverlayContext): void {
     if (renderedNotes === undefined) return;
     renderedNotes = undefined;
-    setData(ctx, emptyFeatureCollection());
+    setSourceData(ctx.map, SOURCE_ID, emptyFeatureCollection());
   }
 
   // Highlight the selected marker by drawing a ring at its position; clearing it sets the

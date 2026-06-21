@@ -1,6 +1,5 @@
 import type {
   ExpressionSpecification,
-  GeoJSONSource,
   GeoJSONSourceSpecification,
   LineLayerSpecification,
 } from 'maplibre-gl';
@@ -13,6 +12,7 @@ import {
   type OverlayModule,
   removeLayersAndSources,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
 import { douglasPeucker } from './simplify';
@@ -135,8 +135,7 @@ export function createTrackOverlay(
   }
 
   function setActiveData(ctx: OverlayContext): void {
-    const source = ctx.map.getSource(ACTIVE_SOURCE) as GeoJSONSource | undefined;
-    source?.setData(trackSegments(simplifyActive()));
+    setSourceData(ctx.map, ACTIVE_SOURCE, trackSegments(simplifyActive()));
   }
 
   return {
@@ -193,7 +192,7 @@ export function createTrackOverlay(
       const savedVersion = saved.version();
       if (savedVersion !== lastSavedVersion) {
         lastSavedVersion = savedVersion;
-        (ctx.map.getSource(SAVED_SOURCE) as GeoJSONSource | undefined)?.setData(saved.features());
+        setSourceData(ctx.map, SAVED_SOURCE, saved.features());
       }
     },
     applyTheme(ctx, next) {

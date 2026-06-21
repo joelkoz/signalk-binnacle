@@ -2,7 +2,6 @@ import type {
   CircleLayerSpecification,
   ExpressionSpecification,
   FillLayerSpecification,
-  GeoJSONSource,
   LineLayerSpecification,
   MapLayerMouseEvent,
   MapLayerTouchEvent,
@@ -21,6 +20,7 @@ import {
   type OverlayModule,
   removeLayersAndSources,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 import { geodesicCircleRing } from '$shared/nav';
 
@@ -249,12 +249,8 @@ export function createAnchorOverlay(
       lastVessel = vesselPos;
       lastRadius = radius;
       lastDragging = dragging;
-      (ctx.map.getSource(SHAPE_SRC) as GeoJSONSource | undefined)?.setData(
-        shapeFeatures(anchorPos, radius, vesselPos, dragging),
-      );
-      (ctx.map.getSource(POINT_SRC) as GeoJSONSource | undefined)?.setData(
-        pointFeatures(anchorPos, dragging),
-      );
+      setSourceData(ctx.map, SHAPE_SRC, shapeFeatures(anchorPos, radius, vesselPos, dragging));
+      setSourceData(ctx.map, POINT_SRC, pointFeatures(anchorPos, dragging));
     },
     setVisible(ctx, visible) {
       setLayersVisibility(ctx.map, LAYERS, visible);

@@ -1,5 +1,6 @@
 import type { TimeBracket, WeatherGrid } from '$entities/weather';
 import { lerp, PA_PER_HPA } from '$shared/lib';
+import { featureCollection } from '$shared/map';
 
 export const DEFAULT_INTERVAL_HPA = 4;
 const LABEL_STRIDE = 6; // place a label every Nth segment of each level so labels stay sparse
@@ -144,7 +145,7 @@ function pointFeature(at: Pt, pressureHpa: number): GeoJSON.Feature {
 
 function collections(lines: GeoJSON.Feature[], labels: GeoJSON.Feature[]): Isobars {
   return {
-    lines: { type: 'FeatureCollection', features: lines },
-    labels: { type: 'FeatureCollection', features: labels },
+    lines: featureCollection(lines),
+    labels: featureCollection(labels),
   };
 }

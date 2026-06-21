@@ -1,6 +1,5 @@
 import type {
   ExpressionSpecification,
-  GeoJSONSource,
   GeoJSONSourceSpecification,
   LineLayerSpecification,
 } from 'maplibre-gl';
@@ -17,6 +16,7 @@ import {
   removeLayersAndSources,
   rgbaCss,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 import { geodesicDestination } from '$shared/nav';
 
@@ -128,8 +128,11 @@ export function createAisVectorsOverlay(
       lastContacts = contacts;
       severityById.clear();
       for (const contact of contacts) severityById.set(contact.id, contact.severity);
-      const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      source?.setData(featureCollection(buildFeatures(targets.list(), severityById)));
+      setSourceData(
+        ctx.map,
+        SOURCE_ID,
+        featureCollection(buildFeatures(targets.list(), severityById)),
+      );
     },
     applyTheme(ctx, next) {
       paint = next;

@@ -1,6 +1,5 @@
 import type {
   CircleLayerSpecification,
-  GeoJSONSource,
   GeoJSONSourceSpecification,
   LineLayerSpecification,
   SymbolLayerSpecification,
@@ -16,6 +15,7 @@ import {
   type OverlayModule,
   removeLayersAndSources,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 
 const SRC = 'binnacle-mob';
@@ -137,7 +137,7 @@ export function createMobOverlay(mob: MobStore, vessel: OwnVessel): MobOverlay {
       needsRedraw = false;
       lastMark = mark;
       lastVessel = boat;
-      (ctx.map.getSource(SRC) as GeoJSONSource | undefined)?.setData(features(mark, boat));
+      setSourceData(ctx.map, SRC, features(mark, boat));
     },
     setVisible(ctx, visible) {
       setLayersVisibility(ctx.map, LAYERS, visible);

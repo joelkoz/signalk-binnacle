@@ -1,8 +1,4 @@
-import type {
-  GeoJSONSource,
-  GeoJSONSourceSpecification,
-  LineLayerSpecification,
-} from 'maplibre-gl';
+import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
 
 import { type Bbox4, bboxContains, lngLatBoundsToBbox4, padBbox } from '$shared/geo';
 import {
@@ -14,6 +10,7 @@ import {
   removeLayersAndSources,
   rgbaCss,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 import { type AisTrail, fetchAisTrails } from './ais-trails-client';
 
@@ -65,8 +62,7 @@ export function createAisTrailsOverlay(
   let renderedSignature = '';
 
   function setData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
-    const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-    source?.setData(data);
+    setSourceData(ctx.map, SOURCE_ID, data);
   }
 
   function render(ctx: OverlayContext, trails: AisTrail[]): void {

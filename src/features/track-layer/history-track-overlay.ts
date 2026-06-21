@@ -1,8 +1,4 @@
-import type {
-  GeoJSONSource,
-  GeoJSONSourceSpecification,
-  LineLayerSpecification,
-} from 'maplibre-gl';
+import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
 import { isLatLon } from '$shared/geo';
 import { MINUTE_MS } from '$shared/lib';
 import {
@@ -11,6 +7,7 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  setSourceData,
 } from '$shared/map';
 import {
   fetchHistoryValuesAcrossProviders,
@@ -57,7 +54,7 @@ export function createHistoryTrackOverlay(
   let nextFetchAt = 0;
 
   function setData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
-    (ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined)?.setData(data);
+    setSourceData(ctx.map, SOURCE_ID, data);
   }
 
   function toFeature(

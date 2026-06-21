@@ -1,7 +1,6 @@
 import type {
   CircleLayerSpecification,
   ExpressionSpecification,
-  GeoJSONSource,
   GeoJSONSourceSpecification,
 } from 'maplibre-gl';
 import type { CollisionAssessment, DangerContact } from '$entities/collision';
@@ -13,6 +12,7 @@ import {
   type OverlayModule,
   removeLayersAndSources,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 
 const SOURCE_ID = 'binnacle-collision';
@@ -109,8 +109,7 @@ export function createCollisionOverlay(collision: CollisionAssessment): Collisio
       const contacts = collision.assessment.contacts;
       if (contacts === lastContacts) return;
       lastContacts = contacts;
-      const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      source?.setData(contactsToFeatures(contacts));
+      setSourceData(ctx.map, SOURCE_ID, contactsToFeatures(contacts));
     },
     applyTheme(ctx, paint) {
       ctx.map.setPaintProperty(LAYER_ID, 'circle-stroke-color', strokeColor(paint));

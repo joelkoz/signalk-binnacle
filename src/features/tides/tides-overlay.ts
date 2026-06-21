@@ -1,6 +1,5 @@
 import type {
   CircleLayerSpecification,
-  GeoJSONSource,
   GeoJSONSourceSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
@@ -9,9 +8,13 @@ import type { UnitsStore } from '$entities/units';
 import { formatClockTime, MINUTE_MS, type UnitsMode } from '$shared/lib';
 import {
   emptyFeatureCollection,
+  featureCollection,
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
+  setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 import {
   formatCurrentRate,
@@ -69,7 +72,7 @@ function features(
       properties: { label: currentLabel(current, nowMs) },
     });
   }
-  return { type: 'FeatureCollection', features: list };
+  return featureCollection(list);
 }
 
 // A small overlay marking the nearest tide and tidal-current stations, each labeled with its next
@@ -165,12 +168,10 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
       lastCurrent = current;
       lastLabelMinute = minute;
       lastMode = mode;
-      const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      source?.setData(features(tide, current, nowMs, mode));
+      setSourceData(ctx.map, SOURCE_ID, features(tide, current, nowMs, mode));
     },
     setVisible(ctx, visible) {
-      const value = visible ? 'visible' : 'none';
-      for (const id of LAYERS) ctx.map.setLayoutProperty(id, 'visibility', value);
+      setLayersVisibility(ctx.map, LAYERS, visible);
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(CIRCLE_LAYER, 'circle-opacity', opacity);
@@ -184,10 +185,7 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-halo-color', paint.background);
     },
     remove(ctx) {
-      for (const id of LAYERS) {
-        if (ctx.map.getLayer(id)) ctx.map.removeLayer(id);
-      }
-      if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
+      removeLayersAndSources(ctx.map, LAYERS, [SOURCE_ID]);
     },
   };
 }

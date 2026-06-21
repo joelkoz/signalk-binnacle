@@ -1,6 +1,5 @@
 import type {
   ExpressionSpecification,
-  GeoJSONSource,
   GeoJSONSourceSpecification,
   LineLayerSpecification,
 } from 'maplibre-gl';
@@ -15,6 +14,7 @@ import {
   removeLayersAndSources,
   rgbaCss,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 import { routeLineFeatures, waypointFeatures } from './route-features';
 import { recolorWaypointLayers, waypointCircleLayer, waypointLabelLayer } from './waypoint-layers';
@@ -111,12 +111,12 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
     sync(ctx) {
       if (store.version === lastVersion) return;
       lastVersion = store.version;
-      (ctx.map.getSource(LINE_SRC) as GeoJSONSource | undefined)?.setData(
+      setSourceData(
+        ctx.map,
+        LINE_SRC,
         routeLineFeatures(store.routes, store.shownIds, store.activeId),
       );
-      (ctx.map.getSource(WPT_SRC) as GeoJSONSource | undefined)?.setData(
-        waypointFeatures(store.routes, store.shownIds),
-      );
+      setSourceData(ctx.map, WPT_SRC, waypointFeatures(store.routes, store.shownIds));
     },
     setVisible(ctx, visible) {
       setLayersVisibility(ctx.map, LAYERS, visible);

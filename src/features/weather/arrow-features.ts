@@ -1,4 +1,5 @@
 import type { WeatherGrid } from '$entities/weather';
+import { featureCollection } from '$shared/map';
 
 export interface Arrow {
   u: number; // unit vector east component
@@ -40,5 +41,5 @@ export function cellArrowFeatures(
       });
     }
   }
-  return { type: 'FeatureCollection', features };
+  return featureCollection(features);
 }
