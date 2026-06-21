@@ -20,7 +20,7 @@ import { AnchorWatch } from '$entities/anchor';
 import { CollisionAssessment } from '$entities/collision';
 import { CourseGuidance } from '$entities/course';
 import { MeasureStore } from '$entities/measure';
-import { type MobMark, MobStore } from '$entities/mob';
+import { MobStore } from '$entities/mob';
 import { type ActiveNotification, NotificationsStore } from '$entities/notifications';
 import { offerableExtensions, PlotterExtHost, unitsForMode } from '$entities/plotter-ext';
 import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$entities/profile';
@@ -43,7 +43,7 @@ import {
   ANCHOR_TONE,
   AnchorPanel,
   AnchorStrip,
-  resolveAnchorTransport,
+  createAnchorController,
 } from '$features/anchor-watch';
 import { AuthBanner } from '$features/auth-banner';
 import { deleteChart, putChart } from '$features/charts';
@@ -57,13 +57,7 @@ import {
 } from '$features/lookout';
 import { MeasureStrip } from '$features/measure';
 import { AppMenu, type MenuItem } from '$features/menu';
-import {
-  MOB_TONE,
-  MobButton,
-  MobStrip,
-  mobClearNotification,
-  mobNotification,
-} from '$features/mob';
+import { createMobController, MOB_TONE, MobButton, MobStrip } from '$features/mob';
 import { ARRIVAL_TONE, NavStrip, type RouteProgress } from '$features/navigation';
 import {
   createNoteDetailLoader,
@@ -168,7 +162,6 @@ import {
   fetchServerFeatures,
   fetchSymbols,
   listResources,
-  postMobNotification,
   postNotification,
   putSignalKPath,
   resolveNotification,
@@ -1008,171 +1001,36 @@ $effect(() => {
   collisionNotifier.update(collision.assessment);
 });
 
-// One anchor-watch pass per position fix (the method dedupes by fix epoch, so the extra re-runs a
-// radius edit or a notification triggers are harmless): client-mode drag detection, plus the
-// local bookkeeping a server watch needs.
-$effect(() => {
-  anchor.updateFix();
+// The man-overboard orchestration: the alarm effect, the MOB live-region string, and the trigger,
+// cancel, and steer handlers (the v2 postMobNotification route with its v1 delta fallback and the
+// in-flight-id cancel race) all live in the controller; the host wires its handlers to the MOB
+// button and strip and reads mobController.mobAlert into LiveRegions. The reactive inputs (token,
+// notificationsApi) are getters so the controller reads them live, not frozen at construction.
+const mobController = createMobController({
+  origin,
+  getToken: () => chartsToken,
+  mob,
+  mobAlarm,
+  notificationsApi: () => notificationsApi,
+  publishDelta,
+  flyTo: (lat, lon) => mapCommands?.flyTo(lat, lon),
+  goTo: onGoToHere,
 });
 
-// Sound the anchor-drag alarm. The acknowledge semantics live in the watch: client mode clears the
-// latch outright, server mode silences the current grade until it changes or clears.
-$effect(() => {
-  anchorAlarm.update(anchor.dragging && !anchor.acknowledged);
+// The anchor-watch orchestration: the position-fix and drag-alarm effects, the anchor live-region
+// string, the resolved transport, and the drop, raise, set-radius, and move handlers all live in the
+// controller; the host wires its handlers to the anchor panel and chart and reads
+// anchorController.anchorError and .anchorAlert. The reactive inputs (token, serverHasAnchorApi) are
+// getters so the transport reselects as access and features resolve.
+const anchorController = createAnchorController({
+  origin,
+  getToken: () => chartsToken,
+  anchor,
+  vessel,
+  anchorAlarm,
+  serverHasAnchorApi: () => serverFeatures?.apis.has('anchor') ?? false,
+  flyTo: (lat, lon) => mapCommands?.flyTo(lat, lon),
 });
-
-// The anchor channel of the assertive live region, separate from the collision channel so a drag
-// alarm is announced even while a collision alert holds the other region.
-const anchorAlert = $derived.by(() => {
-  if (anchor.degraded) {
-    return 'Anchor watch degraded: no GPS fix, so drag detection has stopped.';
-  }
-  if (!anchor.dragging || anchor.acknowledged) return '';
-  const distance = anchor.distanceMeters;
-  const radius = anchor.radiusMeters;
-  const where = distance == null ? '' : ` ${Math.round(distance)} meters from the anchor`;
-  const limit = radius == null ? '' : `, watch radius ${Math.round(radius)} meters`;
-  return `Anchor alarm: the boat is dragging${where}${limit}.`;
-});
-
-// Sound the man-overboard alarm while a mark is active and unacknowledged.
-$effect(() => {
-  mobAlarm.update(mob.active && !mob.acknowledged);
-});
-
-// The MOB channel of the assertive live region, the most urgent announcement in the app.
-const mobAlert = $derived.by(() => {
-  if (!mob.active || mob.acknowledged) return '';
-  const distance = mob.distanceMeters;
-  const range = distance == null ? '' : `, range ${Math.round(distance)} meters`;
-  return `Man overboard${range}. Steer back to the mark.`;
-});
-
-function publishMobValue(value: unknown): void {
-  publishDelta(SK_PATHS.mobNotification, value);
-}
-
-// Commit the press-time mark, tell the whole boat, and bring the mark into view. Guidance only;
-// the course (and any coupled autopilot) is touched solely by the strip's deliberate Steer to MOB.
-// Without a fix the alarm still raises, position-less, so the crew mobilizes either way.
-// The in-flight raise, held so a cancel racing it can resolve whatever id it eventually returns
-// instead of stranding a boat-wide emergency nothing ever clears.
-let mobAlertPending: Promise<string | undefined> | undefined;
-function onMobTrigger(mark: MobMark | undefined): void {
-  const committed = mob.trigger(mark);
-  if (notificationsApi) {
-    // The v2 route attaches the server's own position and timestamp; if the POST fails, fall
-    // back to the v1 delta so the boat-wide alarm is never lost to a transport error.
-    mobAlertPending = postMobNotification(origin, chartsToken, 'Man overboard');
-    void mobAlertPending.then((id) => {
-      if (!id) publishMobValue(mobNotification(committed.position));
-    });
-  } else {
-    publishMobValue(mobNotification(committed.position));
-  }
-  if (committed.position) {
-    mapCommands?.flyTo(committed.position.latitude, committed.position.longitude);
-  }
-}
-
-function onMobCancel(): void {
-  mob.cancel();
-  const pending = mobAlertPending;
-  mobAlertPending = undefined;
-  if (pending) {
-    // Await the raise a fast cancel may be racing, then clear by id; a failed clear falls back
-    // to the v1 delta so no station is left with a raised emergency.
-    void pending.then(async (id) => {
-      const cleared = id ? await resolveNotification(origin, chartsToken, id) : false;
-      if (!cleared) publishMobValue(mobClearNotification());
-    });
-  } else {
-    publishMobValue(mobClearNotification());
-  }
-}
-
-// The deliberate second tap: hand the mark to the course system via the existing goto plumbing.
-function onMobSteer(): void {
-  const mark = mob.position;
-  if (mark) void onGoToHere(mark);
-}
-
-// An anchor error shown in the panel until the next anchor action clears it, rather than
-// auto-dismissing: on a boat an error must persist until the operator has acted on it.
-let anchorError = $state<string | undefined>();
-
-// The anchor action chain, selected once at resolve time from capabilities: the standard Anchor
-// API when the server exposes it (a proposal today, tracked by the weekly watch), otherwise the
-// anchoralarm plugin probe. A failed call on the selected transport degrades to the client-local
-// watch, never sideways to the other transport: a server that advertises the standard API and
-// then fails it has a problem masking would hide. Until features resolve, every action lands on
-// the local path.
-const anchorTransport = $derived(
-  resolveAnchorTransport(origin, chartsToken, {
-    standardApiAvailable: serverFeatures?.apis.has('anchor') ?? false,
-  }),
-);
-
-async function onDropAnchor(): Promise<void> {
-  anchorError = undefined;
-  const position = vessel.position;
-  if (!position) return;
-  const radius = anchor.preferredRadiusMeters;
-  // The server drop doubles as detection: when the standard API or the anchoralarm plugin answers,
-  // the server owns the watch (and keeps alarming with the browser closed) and the stream reflects
-  // it back. Any failure degrades to the client-side watch; the panel's mode line says which.
-  if (await anchorTransport.drop(radius)) return;
-  // A server whose standard Anchor API was feature-detected and then refused the drop has a problem
-  // the silent local fallback would hide; surface it, then still start the local watch so the boat
-  // is covered. The plugin-probe path cannot tell absent from refused, so it degrades quietly.
-  if (anchorTransport.kind === 'standard') {
-    anchorError = 'Could not drop the anchor on the server. Check the connection.';
-  }
-  anchor.dropLocal(position, radius);
-}
-
-// Route an anchor action by mode. In server mode the plugin call must succeed; a failure is
-// surfaced, never papered over with a local-only change that would desync from a server that is
-// still watching. Otherwise the local fallback runs.
-async function anchorAction(
-  serverCall: () => Promise<boolean>,
-  action: string,
-  local: () => void,
-): Promise<void> {
-  anchorError = undefined;
-  if (anchor.mode !== 'server') {
-    local();
-    return;
-  }
-  if (!(await serverCall())) {
-    anchorError = `Could not ${action} on the server. Check the connection.`;
-  }
-}
-
-function onRaiseAnchor(): Promise<void> {
-  return anchorAction(
-    () => anchorTransport.raise(),
-    'raise the anchor',
-    () => anchor.raiseLocal(),
-  );
-}
-
-function onSetAnchorRadius(meters: number): Promise<void> {
-  anchor.rememberRadius(meters);
-  return anchorAction(
-    () => anchorTransport.setRadius(meters),
-    'set the radius',
-    () => anchor.setRadiusLocal(meters),
-  );
-}
-
-function onAnchorMoved(position: LatLon): Promise<void> {
-  return anchorAction(
-    () => anchorTransport.setPosition(position),
-    'move the anchor',
-    () => anchor.movePositionLocal(position),
-  );
-}
 
 // Record the track from the vessel position (about 1 Hz); the recorder thins by the
 // configured interval and min-distance. SOG is stored raw in m/s (SI).
@@ -2077,13 +1935,18 @@ onDestroy(() => {
 </script>
 
 <main class="binnacle-shell">
-  <LiveRegions collision={collisionAlert} anchor={anchorAlert} mob={mobAlert} mute={muteAlert} />
+  <LiveRegions
+    collision={collisionAlert}
+    anchor={anchorController.anchorAlert}
+    mob={mobController.mobAlert}
+    mute={muteAlert}
+  />
   <header class="topbar">
     <span class="topbar-start">
       <AppMenu items={menuItems} open={menuOpen} onOpenChange={(next) => (menuOpen = next)} />
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>
-    <MobButton {mob} onTrigger={onMobTrigger} onLocate={flyToPosition} />
+    <MobButton {mob} onTrigger={mobController.onTrigger} onLocate={flyToPosition} />
     <span class="topbar-actions">
       {#if collisionMute.active}
         <button
@@ -2161,7 +2024,7 @@ onDestroy(() => {
       onRouteEditorError={() =>
         flagRouteError('Could not load the route editor. Check the connection and try again.')}
       {onRouteEdited}
-      onAnchorMoved={(position) => void onAnchorMoved(position)}
+      onAnchorMoved={(position) => void anchorController.onAnchorMoved(position)}
       resolveAddWidget={(x, y, width, height) =>
         addWidgetActionAt(plotterExtHost, x, y, width, height)}
     />
@@ -2180,9 +2043,9 @@ onDestroy(() => {
         onSkip={routeStore.activeId !== undefined ? onSkipPoint : undefined}
       />
       <MeasureStrip {measure} {units} />
-      <AnchorStrip {anchor} {units} onRaise={() => void onRaiseAnchor()} />
+      <AnchorStrip {anchor} {units} onRaise={() => void anchorController.onRaise()} />
       <DangerStrip {collision} muted={collisionMute.active} onToggleMute={toggleCollisionMute} />
-      <MobStrip {mob} {units} onSteer={onMobSteer} onCancel={onMobCancel} />
+      <MobStrip {mob} {units} onSteer={mobController.onSteer} onCancel={mobController.onCancel} />
     </div>
     {#if selectedNote && noteLoader}
       <div class="note-panel-slot">
@@ -2315,10 +2178,10 @@ onDestroy(() => {
           {units}
           {anchor}
           {vessel}
-          error={anchorError}
-          onDrop={() => void onDropAnchor()}
-          onRaise={() => void onRaiseAnchor()}
-          onSetRadius={(meters) => void onSetAnchorRadius(meters)}
+          error={anchorController.anchorError}
+          onDrop={() => void anchorController.onDrop()}
+          onRaise={() => void anchorController.onRaise()}
+          onSetRadius={(meters) => void anchorController.onSetRadius(meters)}
           onClose={closePanel}
           onBack={backToMenu}
         />
