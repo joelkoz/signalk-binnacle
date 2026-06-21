@@ -12,7 +12,14 @@ import {
 import { type Route, type RouteHighlight, routeDistanceMeters } from '$entities/route';
 import { formatNm } from '$shared/lib';
 import type { PersistedValue } from '$shared/settings';
-import { InlineConfirm, pickTextFile, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
+import {
+  InlineConfirm,
+  pickTextFile,
+  readErrorMessage,
+  SavedList,
+  SlideOver,
+  VisibilityToggle,
+} from '$shared/ui';
 import RouteDraftPanel from './RouteDraftPanel.svelte';
 import RouteEditPlan from './RouteEditPlan.svelte';
 import type { DraftView } from './route-draft-client';
@@ -118,7 +125,7 @@ let importError = $state<string | undefined>();
 async function importGpx(): Promise<void> {
   const picked = await pickTextFile('.gpx,application/gpx+xml');
   if (!picked.ok) {
-    importError = picked.reason === 'read-error' ? 'Could not read that file.' : undefined;
+    importError = readErrorMessage(picked);
     return;
   }
   importError = undefined;

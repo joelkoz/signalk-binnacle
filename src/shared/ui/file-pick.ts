@@ -20,21 +20,27 @@ export function pickTextFile(accept: string): Promise<PickedTextResult> {
     input.addEventListener('cancel', () => resolve(CANCEL), { once: true });
     input.addEventListener(
       'change',
-      () => {
+      async () => {
         const file = input.files?.[0];
         if (!file) {
           resolve(CANCEL);
           return;
         }
-        resolve(
-          file
-            .text()
-            .then((text) => ({ ok: true, text }) as const)
-            .catch(() => ({ ok: false, reason: 'read-error' }) as const),
-        );
+        try {
+          resolve({ ok: true, text: await file.text() });
+        } catch {
+          resolve({ ok: false, reason: 'read-error' });
+        }
       },
       { once: true },
     );
     input.click();
   });
+}
+
+// The navigator-facing message for a pick result, or undefined when there is nothing to say (a clean
+// read, or a deliberate cancel). Colocated here so the copy and the cancel-is-silent policy live once
+// rather than being re-spelled in every import panel.
+export function readErrorMessage(result: PickedTextResult): string | undefined {
+  return !result.ok && result.reason === 'read-error' ? 'Could not read that file.' : undefined;
 }

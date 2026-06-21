@@ -6,6 +6,7 @@ import {
   pickTextFile,
   promptRename,
   promptSaveName,
+  readErrorMessage,
   SavedList,
   SlideOver,
 } from '$shared/ui';
@@ -58,7 +59,7 @@ let importError = $state<string | undefined>();
 async function importProfiles(): Promise<void> {
   const picked = await pickTextFile('.json,application/json');
   if (!picked.ok) {
-    importError = picked.reason === 'read-error' ? 'Could not read that file.' : undefined;
+    importError = readErrorMessage(picked);
     return;
   }
   const parsed = parseProfilesJson(picked.text);
