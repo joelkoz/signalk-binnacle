@@ -1,6 +1,12 @@
 import { bilinearAt, type TimeBracket, timeBracket, type WeatherGrid } from '$entities/weather';
-import { HOUR_MS, lerp, precipRateUnit, type UnitsMode } from '$shared/lib';
+import { formatKnotsOr, HOUR_MS, lerp, precipRateUnit, type UnitsMode } from '$shared/lib';
 import type { PointConditions } from './signalk-weather';
+
+// Wind speed in whole knots (no decimals), the shared readout format for the conditions block and
+// the forecast rows.
+export function formatWholeKnots(speedMs: number | undefined): string {
+  return formatKnotsOr(speedMs, 0);
+}
 
 // The smallest precipitation worth showing in a readout: a trace below this rounds to nothing.
 // 0.1 reads as mm/h for the free grid's rate and as mm for a provider's accumulation volume; the

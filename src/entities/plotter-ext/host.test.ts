@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { PersistedValue } from '$shared/settings';
 import type { PlotterExtension } from '$shared/signalk';
 import type { ExtContext, HostAdapters, SignalKValue } from './adapters';
-import { type ExtMethodHandler, type HostBusConnection, PlotterExtHost } from './host.svelte';
+import { type ExtMethodHandler, PlotterExtHost } from './host.svelte';
+import type { HostBusConnection } from './relay';
 
 function manifest(overrides: Partial<PlotterExtension> = {}): PlotterExtension {
   return {

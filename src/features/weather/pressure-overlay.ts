@@ -10,6 +10,7 @@ import {
   type OverlayModule,
   removeLayersAndSources,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 import type { Theme } from '$shared/ui';
 import { WEATHER_LAYER_IDS } from './fills';
@@ -90,20 +91,14 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
       if (grid === lastGrid && store.selectedTime === lastTime) return;
       lastGrid = grid;
       lastTime = store.selectedTime;
-      const lineSource = ctx.map.getSource(LINE_SOURCE) as
-        | { setData(d: unknown): void }
-        | undefined;
-      const labelSource = ctx.map.getSource(LABEL_SOURCE) as
-        | { setData(d: unknown): void }
-        | undefined;
       if (!grid) {
-        lineSource?.setData(emptyFeatureCollection());
-        labelSource?.setData(emptyFeatureCollection());
+        setSourceData(ctx.map, LINE_SOURCE, emptyFeatureCollection());
+        setSourceData(ctx.map, LABEL_SOURCE, emptyFeatureCollection());
         return;
       }
       const { lines, labels } = isobarFeatures(grid, store.bracket);
-      lineSource?.setData(lines);
-      labelSource?.setData(labels);
+      setSourceData(ctx.map, LINE_SOURCE, lines);
+      setSourceData(ctx.map, LABEL_SOURCE, labels);
     },
     remove(ctx) {
       removeLayersAndSources(ctx.map, [LABEL_LAYER, LINE_LAYER], [LABEL_SOURCE, LINE_SOURCE]);

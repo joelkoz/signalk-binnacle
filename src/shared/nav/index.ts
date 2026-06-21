@@ -9,7 +9,6 @@ export {
   routesRoughlyEqual,
 } from './distance';
 export {
-  crossTrackErrorMeters,
   etaSeconds,
   rhumbBearingRad,
   rhumbCrossTrackErrorMeters,

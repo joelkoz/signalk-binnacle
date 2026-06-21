@@ -10,12 +10,6 @@ import {
   validateWaypoints,
 } from './route-draft-parse';
 
-export {
-  ROUTE_DRAFT_PLUGIN_ID,
-  ROUTE_DRAFT_PLUGIN_MIN_VERSION,
-  routeDraftAvailable,
-} from './route-draft-parse';
-
 export const ROUTE_DRAFT_PATH = '/plugins/signalk-crows-nest/api/route-draft';
 // The most waypoints the server accepts as an optimize seed (it mirrors the server's output cap).
 // Binnacle gates the Optimize control on this so a too-detailed route is refused before a round-trip

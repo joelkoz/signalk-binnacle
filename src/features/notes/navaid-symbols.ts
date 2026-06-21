@@ -1,7 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
-import { poiIconId } from '$entities/poi-icons';
+import { ICON_PIXEL_RATIO, poiIconId, rasterizeSvg } from '$entities/poi-icons';
 import { type MapThemePaint, setMapImage } from '$shared/map';
-import { ICON_PIXEL_RATIO, rasterizeSvg } from './note-icons';
 
 export type NavaidKind = 'lighthouse' | 'light' | 'buoy' | 'daybeacon' | 'generic';
 export type NavaidSide = 'port' | 'starboard' | 'none';

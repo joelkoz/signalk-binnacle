@@ -1029,7 +1029,6 @@ const anchorController = createAnchorController({
   vessel,
   anchorAlarm,
   serverHasAnchorApi: () => serverFeatures?.apis.has('anchor') ?? false,
-  flyTo: (lat, lon) => mapCommands?.flyTo(lat, lon),
 });
 
 // Record the track from the vessel position (about 1 Hz); the recorder thins by the
@@ -2252,7 +2251,6 @@ onDestroy(() => {
   </section>
   <StatusStrip
     {connectionLabel}
-    {connectionDown}
     {streamError}
     online={net.online}
     {fixStale}

@@ -321,6 +321,4 @@ $effect(() => {
   flex-direction: column;
   gap: 0.45rem;
 }
-/* The inline alarm note and the armed delete confirm come from the global .alert-note rule and the
-   shared InlineConfirm component. */
 </style>

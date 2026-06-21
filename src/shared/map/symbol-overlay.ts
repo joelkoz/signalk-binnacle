@@ -1,12 +1,8 @@
-import type {
-  GeoJSONSource,
-  GeoJSONSourceSpecification,
-  SymbolLayerSpecification,
-} from 'maplibre-gl';
+import type { GeoJSONSourceSpecification, SymbolLayerSpecification } from 'maplibre-gl';
 import type { Rgba } from './icon-raster';
 import { setMapImage } from './map-image';
 import type { MapThemePaint } from './map-theme';
-import { removeLayersAndSources, setLayersVisibility } from './overlay-helpers';
+import { removeLayersAndSources, setLayersVisibility, setSourceData } from './overlay-helpers';
 import type { OverlayContext, OverlayModule, ZBand } from './types';
 
 export interface SymbolOverlay extends OverlayModule {
@@ -43,8 +39,7 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
   const pixelRatio = config.pixelRatio ?? 1;
 
   function refresh(ctx: OverlayContext): void {
-    const source = ctx.map.getSource(config.sourceId) as GeoJSONSource | undefined;
-    source?.setData(config.features());
+    setSourceData(ctx.map, config.sourceId, config.features());
   }
 
   return {

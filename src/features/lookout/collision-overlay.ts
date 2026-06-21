@@ -47,10 +47,7 @@ function contactsToFeatures(contacts: readonly DangerContact[]): GeoJSON.Feature
 
 // A severity match over the danger and warning grades, with the warning value doubling as the
 // fallback for an unknown severity. Shared by the ring radius, stroke width, and stroke color.
-const severityMatch = (
-  danger: number | string,
-  warning: number | string,
-): ExpressionSpecification =>
+const severityMatch = (danger: number | string, warning: number | string) =>
   [
     'match',
     ['get', 'severity'],

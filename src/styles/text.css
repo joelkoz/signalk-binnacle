@@ -36,7 +36,7 @@
 }
 
 /* The quiet muted hint the panels show for empty states and inline guidance, one rule so the
-   muted-note shape cannot drift (the .saved .empty rule below carries its own list margins). */
+   muted-note shape cannot drift (the .saved .empty rule in cards.css carries its own list margins). */
 .muted-note {
   margin: 0;
   color: var(--text-muted);

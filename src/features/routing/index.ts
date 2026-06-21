@@ -19,13 +19,11 @@ export type {
   DraftRouteRequest,
   DraftView,
 } from './route-draft-client';
+export { draftRoute, MAX_OPTIMIZE_WAYPOINTS, ROUTE_DRAFT_PATH } from './route-draft-client';
 export {
-  draftRoute,
-  MAX_OPTIMIZE_WAYPOINTS,
-  ROUTE_DRAFT_PATH,
   ROUTE_DRAFT_PLUGIN_ID,
   ROUTE_DRAFT_PLUGIN_MIN_VERSION,
   routeDraftAvailable,
-} from './route-draft-client';
+} from './route-draft-parse';
 export { downloadRouteGpx } from './route-gpx';
 export { deleteRoute, fetchRoutes, routeHref, saveRoute } from './routes-client';

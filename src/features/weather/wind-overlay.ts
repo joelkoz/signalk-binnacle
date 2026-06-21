@@ -12,6 +12,7 @@ import {
   type OverlayContext,
   type OverlayModule,
   removeLayersAndSources,
+  setSourceData,
 } from '$shared/map';
 import type { Theme } from '$shared/ui';
 import { WEATHER_LAYER_IDS } from './fills';
@@ -19,10 +20,9 @@ import { windArrowFeatures } from './wind-arrows';
 import { windColorTexture } from './wind-color-texture';
 import { windColorExpression } from './wind-colormap';
 import { windFieldTexture } from './wind-field-texture';
+import type { GL } from './wind-gl/gl-resources';
 import { supportsWindGl } from './wind-gl/wind-gl-support';
 import { WindParticles } from './wind-gl/wind-particles';
-
-type GL = WebGLRenderingContext | WebGL2RenderingContext;
 
 const SOURCE_ID = 'binnacle-weather-wind';
 const LAYER_ID = 'binnacle-weather-wind-line';
@@ -104,8 +104,11 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
 
   function syncArrows(ctx: OverlayContext): void {
     const grid = store.grid;
-    const source = ctx.map.getSource(SOURCE_ID) as { setData(d: unknown): void } | undefined;
-    source?.setData(grid ? windArrowFeatures(grid, store.bracket) : emptyFeatureCollection());
+    setSourceData(
+      ctx.map,
+      SOURCE_ID,
+      grid ? windArrowFeatures(grid, store.bracket) : emptyFeatureCollection(),
+    );
   }
 
   function pushWind(): void {

@@ -6,6 +6,7 @@ import {
   applyBaseTheme,
   captureBaseTheme,
   restoreBaseTheme,
+  themableBaseLayers,
 } from './base-theme';
 import { LayerManager, type LayerManagerOptions } from './layer-manager';
 import { installContextMenu } from './long-press';
@@ -179,9 +180,12 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
     const baseColors = captureBaseTheme(mapInstance, mapThemePaint('day'));
     const recolor = (theme: Theme) => {
       const paint = mapThemePaint(theme);
+      // Both base passes filter the style to the same themable layers; compute that list once and
+      // pass it to both rather than refiltering twice per recolor.
+      const layers = themableBaseLayers(mapInstance);
       if (theme === 'day') restoreBaseTheme(mapInstance, baseColors);
-      else applyBaseTheme(mapInstance, paint);
-      applyBaseIconVisibility(mapInstance, paint);
+      else applyBaseTheme(mapInstance, paint, layers);
+      applyBaseIconVisibility(mapInstance, paint, layers);
       manager.applyTheme(paint);
     };
 

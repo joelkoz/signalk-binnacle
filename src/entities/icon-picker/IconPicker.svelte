@@ -98,10 +98,14 @@ $effect(() => {
   return () => window.removeEventListener('click', close, { capture: true });
 });
 
-function select(v: string): void {
-  value = v;
+function closeAndReturnFocus(): void {
   isOpen = false;
   triggerEl?.focus();
+}
+
+function select(v: string): void {
+  value = v;
+  closeAndReturnFocus();
 }
 
 function openAndFocus(): void {
@@ -125,14 +129,12 @@ function handleOptionKey(e: KeyboardEvent, i: number): void {
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
     if (i === 0) {
-      isOpen = false;
-      triggerEl?.focus();
+      closeAndReturnFocus();
     } else {
       optionEls[i - 1]?.focus();
     }
   } else if (e.key === 'Escape') {
-    isOpen = false;
-    triggerEl?.focus();
+    closeAndReturnFocus();
   } else if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
     select(options[i].value);
@@ -152,10 +154,12 @@ const poiStart = $derived(defaultOption ? 1 : 0);
     {/if}
   {:else if opt.kind === 'symbol'}
     <img src={opt.url} width="20" height="20" alt="">
-  {:else if defaultSymbol}
-    <img src={defaultSymbol.url} width="20" height="20" alt="">
-  {:else}
-    {@html defaultOption?.fallbackSvg ?? ''}
+  {:else if opt.kind === 'default'}
+    {#if defaultSymbol}
+      <img src={defaultSymbol.url} width="20" height="20" alt="">
+    {:else}
+      {@html defaultOption?.fallbackSvg ?? ''}
+    {/if}
   {/if}
 {/snippet}
 

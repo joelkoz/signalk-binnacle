@@ -13,7 +13,7 @@ import { RASTER_ID_PREFIX } from './raster-overlay';
 // recolor leaves them alone. RASTER_ID_PREFIX is shared with the raster-overlay factory.
 const MANAGED_PREFIXES = [CHART_SOURCE_PREFIX, 'binnacle-', RASTER_ID_PREFIX];
 
-interface BaseLayer {
+export interface BaseLayer {
   id: string;
   type: string;
   'source-layer'?: string;
@@ -33,7 +33,7 @@ function baseLayers(map: MapLibreMap): BaseLayer[] {
 // The base-style layers the theme may touch: every base layer except those an overlay owns (the
 // chart, hosted rasters, and binnacle overlays theme their own). Shared by the recolor, the
 // icon-visibility pass, and the source-paint capture so the skip-managed rule lives in one place.
-function themableBaseLayers(map: MapLibreMap): BaseLayer[] {
+export function themableBaseLayers(map: MapLibreMap): BaseLayer[] {
   return baseLayers(map).filter(
     (layer) => !MANAGED_PREFIXES.some((prefix) => layer.id.startsWith(prefix)),
   );

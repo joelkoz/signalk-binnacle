@@ -1,6 +1,11 @@
 import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
-import { emptyFeatureCollection, removeLayersAndSources, setLayersVisibility } from '$shared/map';
+import {
+  emptyFeatureCollection,
+  removeLayersAndSources,
+  setLayersVisibility,
+  setSourceData,
+} from '$shared/map';
 import type { Theme } from '$shared/ui';
 import { type CanvasFactory, createFieldOverlay, type FieldOverlay } from './field-overlay';
 import { WEATHER_LAYER_IDS } from './fills';
@@ -76,8 +81,11 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
       if (grid === lastGrid && store.selectedTime === lastTime) return;
       lastGrid = grid;
       lastTime = store.selectedTime;
-      const source = ctx.map.getSource(ARROW_SOURCE) as { setData(d: unknown): void } | undefined;
-      source?.setData(grid ? waveArrowFeatures(grid, store.bracket) : emptyFeatureCollection());
+      setSourceData(
+        ctx.map,
+        ARROW_SOURCE,
+        grid ? waveArrowFeatures(grid, store.bracket) : emptyFeatureCollection(),
+      );
     },
     remove(ctx) {
       removeLayersAndSources(ctx.map, [ARROW_LAYER], [ARROW_SOURCE]);

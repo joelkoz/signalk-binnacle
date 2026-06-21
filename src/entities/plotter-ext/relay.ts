@@ -77,12 +77,12 @@ export class ExtRelay {
   }
 
   removeSubscription(subscriptionId: string | undefined): void {
-    const entry = subscriptionId ? this.#subById.get(subscriptionId) : undefined;
-    if (entry && subscriptionId) {
-      const set = this.#paths.get(entry.context);
-      if (set) for (const path of entry.paths) set.delete(path);
-      this.#subById.delete(subscriptionId);
-    }
+    if (!subscriptionId) return;
+    const entry = this.#subById.get(subscriptionId);
+    if (!entry) return;
+    const set = this.#paths.get(entry.context);
+    if (set) for (const path of entry.paths) set.delete(path);
+    this.#subById.delete(subscriptionId);
   }
 
   publishState(

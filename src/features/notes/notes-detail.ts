@@ -2,8 +2,6 @@ import type { PoiType } from '$entities/poi-icons';
 import { withTimeout } from '$shared/lib';
 import { asKeyedObject, authInit, str, strArray } from '$shared/signalk';
 
-export type { PoiType };
-
 const ITEM_KINDS = [
   'text',
   'measure',

@@ -1,7 +1,6 @@
 import type {
   CircleLayerSpecification,
   ExpressionSpecification,
-  GeoJSONSource,
   GeoJSONSourceSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
@@ -19,6 +18,7 @@ import {
   type OverlayModule,
   removeLayersAndSources,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 
 const SOURCE_ID = 'binnacle-waypoints';
@@ -105,7 +105,7 @@ export function createWaypointOverlay(
 
   function redraw(ctx: OverlayContext): void {
     const { data, iconOffset } = buildFeatures(store.waypoints);
-    (ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined)?.setData(data);
+    setSourceData(ctx.map, SOURCE_ID, data);
     // The offset is a layer property (see iconOffsetExpression); restyle it each redraw.
     if (ctx.map.getLayer(SYMBOL_MARKER_LAYER)) {
       ctx.map.setLayoutProperty(SYMBOL_MARKER_LAYER, 'icon-offset', iconOffset);

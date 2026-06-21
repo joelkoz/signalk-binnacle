@@ -1,7 +1,8 @@
 import type { ExpressionSpecification } from 'maplibre-gl';
 import { categoryRank, poiIconId } from '$entities/poi-icons';
 import type { SymbolIconEntry } from '$entities/symbols';
-import { featureCollection } from '$shared/map';
+import { latLonToLonLat } from '$shared/geo';
+import { featureCollection, iconOffsetExpression } from '$shared/map';
 import { navaidClassify, navaidIconId } from './navaid-symbols';
 import type { NotePoint } from './notes-client';
 
@@ -23,24 +24,6 @@ function iconFor(note: NotePoint): string {
   return poiIconId(note.category);
 }
 
-const CENTERED_OFFSET: [number, number] = [0, 0];
-
-// Build the icon-offset as a match on the icon id. MapLibre coerces an array-valued GeoJSON property
-// to a JSON string crossing to the worker, so a per-feature offset cannot ride on the feature as
-// ['get', 'iconOffset']; the match keeps each provided symbol's anchor offset as a real LITERAL array
-// in the style, and every centered category disc falls through to [0, 0].
-function iconOffsetExpression(
-  offsets: ReadonlyMap<string, readonly [number, number]>,
-): ExpressionSpecification | [number, number] {
-  if (offsets.size === 0) return CENTERED_OFFSET;
-  const match: unknown[] = ['match', ['get', 'icon']];
-  for (const [iconId, offset] of offsets) {
-    match.push(iconId, ['literal', offset]);
-  }
-  match.push(['literal', CENTERED_OFFSET]);
-  return match as ExpressionSpecification;
-}
-
 // One pass over the notes builds both the source data and the icon-offset match: each note resolves
 // to a provided symbol or its built-in category disc, and a provided symbol with a non-zero anchor
 // offset contributes one match arm keyed on its icon id.
@@ -58,7 +41,7 @@ export function buildRender(
       type: 'Feature',
       geometry: {
         type: 'Point',
-        coordinates: [note.position.longitude, note.position.latitude],
+        coordinates: latLonToLonLat(note.position),
       },
       properties: {
         id: note.id,
@@ -72,5 +55,5 @@ export function buildRender(
       },
     };
   });
-  return { data: featureCollection(features), iconOffset: iconOffsetExpression(offsets) };
+  return { data: featureCollection(features), iconOffset: iconOffsetExpression('icon', offsets) };
 }

@@ -1,6 +1,10 @@
-import { categoryForSkIcon, type PoiCategory, poiCategoryForType } from '$entities/poi-icons';
+import {
+  categoryForSkIcon,
+  type PoiCategory,
+  type PoiType,
+  poiCategoryForType,
+} from '$entities/poi-icons';
 import { fetchKeyedResource, str } from '$shared/signalk';
-import type { PoiType } from './notes-detail';
 
 // A point-of-interest note from the Signal K resources API. Providers like
 // signalk-crows-nest serve marinas, anchorages, and hazards as `notes`, scoped to a

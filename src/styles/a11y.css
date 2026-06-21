@@ -1,5 +1,5 @@
-/* Accessibility primitives: the keyboard focus ring (night-red dims it) and the
-   visually-hidden live-region helper. */
+/* Accessibility primitives: the keyboard focus ring (night-red dims it), the reduced-motion reset,
+   and the visually-hidden live-region helper. */
 
 /* One keyboard-focus indicator for every interactive control, visible on every theme. */
 :where(a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {

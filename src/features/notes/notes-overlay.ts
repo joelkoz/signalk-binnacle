@@ -1,5 +1,5 @@
 import type { GeoJSONSource, MapGeoJSONFeature, MapLayerMouseEvent } from 'maplibre-gl';
-import { asPoiCategory } from '$entities/poi-icons';
+import { asPoiCategory, registerPoiIcons } from '$entities/poi-icons';
 import { createOverlayIconResolver, type SymbolsStore } from '$entities/symbols';
 import { bboxContains, lngLatBoundsToBbox4 } from '$shared/geo';
 import { DAY_MS } from '$shared/lib';
@@ -15,7 +15,6 @@ import {
 import { str } from '$shared/signalk';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
 import { registerNavaidIcons } from './navaid-symbols';
-import { registerPoiIcons } from './note-icons';
 import { bboxKey, NotesCache, padBbox } from './notes-cache';
 import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
 import { buildRender, filterRecord } from './notes-features';

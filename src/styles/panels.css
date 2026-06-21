@@ -1,10 +1,6 @@
-/* The edge-docked slide-over panel shell: the full-height column that docks to a screen edge and
-   collapses to a bottom sheet on a phone, plus its shared header, scrolling body, and pinned footer. */
-
-/* The edge-docked slide-over panels (routes, layers, tracks, collision thresholds, and the note
-   detail) share one shell: a full-height column on
-   the translucent surface that docks to a screen edge, and collapses to a bottom sheet on a phone.
-   The dock modifier sets which edge it borders. */
+/* The edge-docked slide-over panel shell: the full-height column on the translucent surface that
+   docks to a screen edge and collapses to a bottom sheet on a phone, plus its shared header,
+   scrolling body, and pinned footer. The dock modifier sets which edge it borders. */
 .slide-over {
   display: flex;
   flex-direction: column;

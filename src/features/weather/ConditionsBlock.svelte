@@ -4,7 +4,6 @@ import {
   formatBearingOr,
   formatDayClock,
   formatFixed,
-  formatKnotsOr,
   formatLengthOr,
   formatMetersOrNm,
   formatPercent,
@@ -16,7 +15,7 @@ import {
   temperatureUnit,
 } from '$shared/lib';
 import type { PointConditions } from './signalk-weather';
-import { precipUnitLabel, RAIN_VISIBLE_MM_H } from './weather-readout';
+import { formatWholeKnots, precipUnitLabel, RAIN_VISIBLE_MM_H } from './weather-readout';
 
 interface Props {
   current: PointConditions;
@@ -27,7 +26,6 @@ interface Props {
 
 const { current, observed, tendencyText, units }: Props = $props();
 
-const knots = (v: number | undefined): string => formatKnotsOr(v, 0);
 const pressure = (v: number | undefined) => formatPressureOr(v, units.mode);
 const temp = (v: number | undefined) => formatTemperatureOr(v, units.mode);
 const height = (v: number | undefined) => formatLengthOr(v, units.mode);
@@ -37,19 +35,19 @@ const precip = (v: number | undefined) => formatPrecipRateOr(v, units.mode);
 const validLabel = (timeMs: number): string => formatDayClock(timeMs, { zone: true });
 </script>
 
-<p class="cond-when">{observed ? 'Observed' : 'Forecast'}· {validLabel(current.timeMs)}</p>
+<p class="cond-when">{observed ? 'Observed' : 'Forecast'} · {validLabel(current.timeMs)}</p>
 <dl class="now">
   <div>
     <dt>Wind</dt>
     <dd>
-      <b class="num">{knots(current.windMs)}</b>
+      <b class="num">{formatWholeKnots(current.windMs)}</b>
       kn from {formatBearingOr(current.fromRad)}&deg;T
     </dd>
   </div>
   {#if current.gustMs !== undefined}
     <div>
       <dt>Gust</dt>
-      <dd><b class="num">{knots(current.gustMs)}</b> kn</dd>
+      <dd><b class="num">{formatWholeKnots(current.gustMs)}</b> kn</dd>
     </div>
   {/if}
   {#if current.pressurePa !== undefined}

@@ -83,6 +83,7 @@ let listEl = $state<HTMLUListElement>();
 // template reads them back through its getters.
 const reorder = createLayerReorder(
   () => view,
+  () => movable,
   () => listEl,
 );
 </script>

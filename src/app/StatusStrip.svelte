@@ -20,7 +20,6 @@ import type { ConnectionPhase } from '$shared/signalk';
 
 let {
   connectionLabel,
-  connectionDown,
   streamError,
   online,
   fixStale,
@@ -41,7 +40,6 @@ let {
   onToggleWeather,
 }: {
   connectionLabel: string;
-  connectionDown: boolean;
   streamError: boolean;
   online: boolean;
   fixStale: boolean;
@@ -61,6 +59,8 @@ let {
   onToggleLayers: () => void;
   onToggleWeather: () => void;
 } = $props();
+
+const connectionDown = $derived(connectionPhase === 'reconnecting' || connectionPhase === 'closed');
 </script>
 
 <footer class="status-strip">

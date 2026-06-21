@@ -22,8 +22,8 @@ export function createProgram(gl: GL, vert: string, frag: string): WebGLProgram 
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     throw new Error(gl.getProgramInfoLog(program) ?? 'program link failed');
   }
-  // The linked program is self-contained: release the shader objects so each #build (initial plus
-  // every context-restore reinit) does not leak six of them.
+  // The linked program is self-contained, so release the shader objects after linking; otherwise
+  // every built program leaks its two compiled shaders.
   gl.detachShader(program, vertShader);
   gl.detachShader(program, fragShader);
   gl.deleteShader(vertShader);

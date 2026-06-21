@@ -30,6 +30,9 @@ export interface PointReadoutDeps {
 
 const READOUT_DISMISS_MS = 8000;
 
+// Enough forecast steps to cover scrubbing past the panel window.
+const TAP_FORECAST_COUNT = 48;
+
 // The point-tap readout: the conditions at the tapped point for the selected time, with a fast grid
 // sample shown immediately and a configured provider upgrading it when it answers. Owns the readout
 // state and the dismiss timer; the host wires onTap, hold, release, and dismiss to the map and the
@@ -87,7 +90,13 @@ export function createPointReadout(deps: PointReadoutDeps) {
     }
     // Bounded: past the provider's horizon its last step must not answer for a time days away; the
     // caller falls back to the grid sample instead.
-    const series = await fetchPointForecasts(deps.origin, lat, lon, 48, deps.token());
+    const series = await fetchPointForecasts(
+      deps.origin,
+      lat,
+      lon,
+      TAP_FORECAST_COUNT,
+      deps.token(),
+    );
     const step = series && nearestInTimeBounded(series, target);
     return step ? readoutFromSignalK(step) : undefined;
   }

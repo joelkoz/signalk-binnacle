@@ -1,3 +1,4 @@
+import type { LayerListItem } from '$shared/map';
 import { clampReorderSlot } from './layer-category';
 import type { LayersView } from './layers-view.svelte';
 
@@ -14,18 +15,20 @@ export interface LayerReorder {
 
 // The imperative pointer-and-keyboard drag-reorder controller for the Layers panel. It owns the
 // drag state and the window listeners, addressing rows by their index in the movable list (the
-// non-pinned, non-child rows), and commits a drop through view.reorder. getListEl is a getter so the
-// controller always reads the panel's current list element rather than capturing a stale ref.
+// non-pinned, non-child rows), and commits a drop through view.reorder. getMovable and getListEl are
+// getters so the controller always reads the panel's current movable list and list element rather
+// than capturing a stale ref, and so the movable list has a single owner (the panel) that cannot
+// drift from the controller's copy.
 export function createLayerReorder(
   getView: () => LayersView,
+  getMovable: () => LayerListItem[],
   getListEl: () => HTMLUListElement | undefined,
 ): LayerReorder {
   // The LayersView is a stable instance, so resolve it once; its items getter stays reactive below.
   const view = getView();
-  // The movable rows: the same non-pinned, non-child rows the panel addresses by index. Derived from
-  // view.items here so the controller resolves a row's index and category span without the panel
-  // threading the list in.
-  const movable = $derived(view.items.filter((item) => !item.pinned && !item.parent));
+  // The movable rows: the same non-pinned, non-child rows the panel addresses by index. Read through
+  // the panel's getter so there is one owner of the list and the controller cannot drift from it.
+  const movable = $derived(getMovable());
 
   // The non-pinned id being dragged, and the insertion slot it would land in. The slot is an
   // index in the movable list with the dragged row removed, matching view.reorder's contract.
@@ -68,14 +71,17 @@ export function createLayerReorder(
     const handle = event.currentTarget as HTMLElement;
     handle.setPointerCapture(event.pointerId);
 
+    // Resolve the list element once for this drag: both the initial measurement and the scroll
+    // listener close over the same ref rather than reading the getter twice.
+    const listEl = getListEl();
+
     // Measure each non-dragged row's vertical midpoint once at drag start, re-measuring only when
     // the list scrolls mid-drag, so a pointermove costs no layout read or reflow. Collapsed-category
     // rows stay in the DOM (hidden), so they measure as a zero midpoint and never become a drop
     // target, while still holding their movable index, so the slot the pointer resolves to is a
     // valid movable index.
-    const measureMidpoints = (): number[] => {
-      const listEl = getListEl();
-      return listEl
+    const measureMidpoints = (): number[] =>
+      listEl
         ? [...listEl.querySelectorAll<HTMLElement>('[data-layer-row]')]
             .filter((el) => el.dataset.layerRow !== id)
             .map((el) => {
@@ -83,7 +89,6 @@ export function createLayerReorder(
               return rect.top + rect.height / 2;
             })
         : [];
-    };
     let midpoints = measureMidpoints();
 
     // The slot is the first midpoint the pointer is above, matching view.reorder's contract, then
@@ -104,7 +109,7 @@ export function createLayerReorder(
     // lives in a single place rather than being repeated per handler.
     const drag = new AbortController();
     const { signal } = drag;
-    getListEl()?.addEventListener(
+    listEl?.addEventListener(
       'scroll',
       () => {
         midpoints = measureMidpoints();

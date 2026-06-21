@@ -296,13 +296,3 @@ $effect(() => {
     {/snippet}
   </SavedList>
 </SlideOver>
-
-<style>
-/* The card list, wrapper, stats, and actions come from the shared SavedList plus the global .saved
-   system in app.css, including the name's hover-to-accent locate interactivity (.saved button.name).
-   Only the active-route accent treatment is Routes-specific. */
-/* The active-card accent bar, fill, and the "Active" badge are the shared .saved system in app.css. */
-/* On the active card (its background is the accent tint), lift the muted stat labels to the body text
-   color so they stay readable, especially in night-red where muted-on-tint is the lowest-contrast
-   pairing. This raises contrast with the body color already in use, not a brighter one. */
-</style>

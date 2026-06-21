@@ -18,7 +18,9 @@ import { sizeToSpan, WIDGET_AREAS } from './util';
 // Unit tested without a DOM.
 
 // Fixed cell footprint (the overlay renders the same --pe-cell), so a chart-pixel press maps to
-// the same anchor area the overlay draws.
+// the same anchor area the overlay draws. These mirror values across a JS/CSS boundary with no
+// shared source, so keep them in sync with WidgetOverlay: CELL_PX is the --pe-cell fallback (88px)
+// and GAP_PX is --space-1 (0.25rem at the 16px root).
 const CELL_PX = 88;
 const GAP_PX = 4;
 

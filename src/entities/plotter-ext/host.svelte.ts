@@ -1,4 +1,4 @@
-import { uuidv4 } from '$shared/lib';
+import { isRecord, uuidv4 } from '$shared/lib';
 import { PersistedValue } from '$shared/settings';
 import type { PlotterExtension, WidgetContribution } from '$shared/signalk';
 import type { ExtContext, HostAdapters, WidgetPlacement } from './adapters';
@@ -13,16 +13,12 @@ import { PlotterExtState, type StateScope } from './state-store';
 // cannot reach from the entities layer arrives as injected adapters, so it is unit testable with
 // fakes and the Svelte components only have to wire iframes and the bus to it.
 
-// Re-export the bus connection contract from its new home so external import paths (and the slice's
-// index barrel) keep resolving it through host.svelte.
-export type { HostBusConnection } from './relay';
-
 export type ExtMethodHandler = (params: unknown) => unknown | Promise<unknown>;
 
 const PLACEMENTS_KEY = 'binnacle:plotterext:layout';
 
 function asRecord(params: unknown): Record<string, unknown> {
-  return params && typeof params === 'object' ? (params as Record<string, unknown>) : {};
+  return isRecord(params) ? params : {};
 }
 
 function isResourceFilter(value: unknown): value is ResourceFilter {

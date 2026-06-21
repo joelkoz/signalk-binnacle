@@ -1,8 +1,8 @@
 <script lang="ts">
 import type { UnitsStore } from '$entities/units';
-import { formatBearingOr, formatDayClock, formatKnotsOr, formatPrecipRateOr } from '$shared/lib';
+import { formatBearingOr, formatDayClock, formatPrecipRateOr } from '$shared/lib';
 import type { PointConditions } from './signalk-weather';
-import { precipUnitLabel, RAIN_VISIBLE_MM_H } from './weather-readout';
+import { formatWholeKnots, precipUnitLabel, RAIN_VISIBLE_MM_H } from './weather-readout';
 
 interface Props {
   forecast: PointConditions[];
@@ -12,7 +12,6 @@ interface Props {
 
 const { forecast, horizonH, units }: Props = $props();
 
-const knots = (v: number | undefined): string => formatKnotsOr(v, 0);
 const precip = (v: number | undefined) => formatPrecipRateOr(v, units.mode);
 
 function stepLabel(timeMs: number): string {
@@ -26,7 +25,7 @@ function stepLabel(timeMs: number): string {
     <li>
       <span class="f-time">{stepLabel(step.timeMs)}</span>
       <span class="f-wind">
-        <b class="num">{knots(step.windMs)}</b>
+        <b class="num">{formatWholeKnots(step.windMs)}</b>
         kn from {formatBearingOr(step.fromRad)}&deg;T
       </span>
       {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}

@@ -132,7 +132,7 @@ export class AuthController {
       return;
     }
     this.#pollAttempts = 0;
-    const body = await this.#json(res);
+    const body = await jsonOr<Record<string, unknown>>(res, {});
     this.#href = typeof body.href === 'string' ? body.href : undefined;
     if (!this.#href) {
       this.status = 'denied';
@@ -158,7 +158,7 @@ export class AuthController {
         this.#schedulePoll();
         return;
       }
-      const body = await this.#json(res);
+      const body = await jsonOr<Record<string, unknown>>(res, {});
       if (body.state !== 'COMPLETED') {
         this.#schedulePoll();
         return;
@@ -252,9 +252,5 @@ export class AuthController {
     } catch {
       return undefined;
     }
-  }
-
-  async #json(res: Response): Promise<Record<string, unknown>> {
-    return jsonOr(res, {});
   }
 }

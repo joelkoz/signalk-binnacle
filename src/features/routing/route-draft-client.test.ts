@@ -1,13 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stubFetch } from '$shared/testing/fetch-stub';
+import { type DraftRouteRequest, draftRoute, ROUTE_DRAFT_PATH } from './route-draft-client';
 import {
-  type DraftRouteRequest,
-  draftRoute,
-  ROUTE_DRAFT_PATH,
   ROUTE_DRAFT_PLUGIN_ID,
   ROUTE_DRAFT_PLUGIN_MIN_VERSION,
   routeDraftAvailable,
-} from './route-draft-client';
+} from './route-draft-parse';
 
 afterEach(() => vi.unstubAllGlobals());
 

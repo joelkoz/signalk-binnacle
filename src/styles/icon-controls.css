@@ -49,7 +49,7 @@
   color: var(--alarm);
 }
 /* Minimizing collapses the bottom sheet to its header, which only frees space on a phone, so the
-   control is hidden by default and the slide-over media query in shell.css shows it. Placed after the
+   control is hidden by default and the slide-over media query in panels.css shows it. Placed after the
    shared .icon-btn base so this default wins on source order. */
 .panel-minimize {
   display: none;

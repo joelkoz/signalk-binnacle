@@ -47,7 +47,7 @@ const chips = $derived(host.filters.chips);
   align-items: center;
   gap: var(--space-1);
   padding-inline-start: var(--space-3);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   background: var(--surface-raised);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);

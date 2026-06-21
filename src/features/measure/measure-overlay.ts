@@ -1,6 +1,5 @@
 import type {
   CircleLayerSpecification,
-  GeoJSONSource,
   GeoJSONSourceSpecification,
   LineLayerSpecification,
   SymbolLayerSpecification,
@@ -17,6 +16,7 @@ import {
   type OverlayModule,
   removeLayersAndSources,
   setLayersVisibility,
+  setSourceData,
 } from '$shared/map';
 
 const SRC = 'binnacle-measure';
@@ -137,7 +137,7 @@ export function createMeasureOverlay(measure: MeasureStore, units: UnitsStore): 
       if (points === lastPoints && mode === lastMode) return;
       lastPoints = points;
       lastMode = mode;
-      (ctx.map.getSource(SRC) as GeoJSONSource | undefined)?.setData(features(measure, mode));
+      setSourceData(ctx.map, SRC, features(measure, mode));
     },
     setVisible(ctx, visible) {
       setLayersVisibility(ctx.map, LAYERS, visible);

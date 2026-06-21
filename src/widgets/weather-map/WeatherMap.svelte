@@ -262,7 +262,7 @@ function scheduleFetch(): void {
 // when its layer is on. The grid carries all fields regardless of which is drawn, so for the free
 // source it is gated to what is visualized.
 const showField = (id: string): boolean =>
-  pointReadout.readoutSource === GRID_SOURCE_LABEL ? layerOn(id) : true;
+  readoutSource === GRID_SOURCE_LABEL ? layerOn(id) : true;
 
 // Refetch once when waves or radar is turned on, so the new source appears without a pan. Keyed on
 // the rising edge with a plain flag so a failed fetch cannot loop. This creates a $effect, so it MUST

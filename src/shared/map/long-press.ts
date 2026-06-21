@@ -25,9 +25,8 @@ export interface ContextMenuHandle {
 // a timeout (cancelled by movement, lift, or a second touch) synthesizes the same emit.
 export function installContextMenu(
   map: maplibregl.Map,
-  onContextMenu: (point: ContextMenuPoint) => void,
+  emit: (point: ContextMenuPoint) => void,
 ): ContextMenuHandle {
-  const emit = onContextMenu;
   const canvas = map.getCanvas();
   let pressTimer = 0;
   let startX = 0;

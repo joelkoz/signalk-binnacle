@@ -20,10 +20,10 @@ export {
 } from './capabilities';
 export type { FilterChip } from './filters.svelte';
 export { PlotterExtFilters } from './filters.svelte';
-export type { ExtMethodHandler, HostBusConnection } from './host.svelte';
+export type { ExtMethodHandler } from './host.svelte';
 export { PlotterExtHost } from './host.svelte';
 export type { MatchCondition, MatchOp, ResourceFilter } from './match';
-export { filterDisplays, passesFilters, resourceSelected } from './match';
+export type { HostBusConnection } from './relay';
 export { PlotterExtState, type StateScope } from './state-store';
 export type { UnitPreferences } from './units-adapter';
 export { unitsForMode } from './units-adapter';

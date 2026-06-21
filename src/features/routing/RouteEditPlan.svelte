@@ -55,7 +55,7 @@ const totalTime = $derived.by(() => {
 
 <dl class="stat-grid">
   <dt>Waypoints</dt>
-  <dd><span class="num">{working.waypoints.length}</span><span class="unit"></span></dd>
+  <dd><span class="num">{wptCount}</span><span class="unit"></span></dd>
   <dt>Distance</dt>
   <dd>
     <span class="num">{workingDistanceNm}</span>

@@ -19,10 +19,6 @@ export interface AnchorControllerDeps {
   // Whether the server exposes the standard Anchor API. A getter because it resolves asynchronously
   // from server feature discovery, and the transport is reselected as it changes.
   serverHasAnchorApi: () => boolean;
-  // Fly the chart to a position. Kept for parity with the host's shared locate plumbing; unused by
-  // the current action set but injected so the controller owns its map collaborator rather than the
-  // host reaching past it.
-  flyTo: (lat: number, lon: number) => void;
 }
 
 // The anchor watch orchestration: server-driven when the standard Anchor API or the anchoralarm plugin

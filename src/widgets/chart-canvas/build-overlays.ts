@@ -68,8 +68,9 @@ export interface DynamicOverlaysDeps {
 }
 
 // The store-driven overlay stack, in z order within each band (tides under the safety overlays, the
-// own vessel on top). One list feeds both manager registration and the per-frame tick, so the two
-// cannot drift.
+// own vessel on top). One list feeds both manager registration (OverlayModule) and the per-frame
+// tick (Syncable), so the return type is left inferred as the concrete union that satisfies both,
+// rather than widened to OverlayModule[], which would drop the sync method the tick requires.
 export function buildDynamicOverlays(deps: DynamicOverlaysDeps) {
   const {
     origin,
