@@ -17,9 +17,11 @@ export interface LayerReorder {
 // non-pinned, non-child rows), and commits a drop through view.reorder. getListEl is a getter so the
 // controller always reads the panel's current list element rather than capturing a stale ref.
 export function createLayerReorder(
-  view: LayersView,
+  getView: () => LayersView,
   getListEl: () => HTMLUListElement | undefined,
 ): LayerReorder {
+  // The LayersView is a stable instance, so resolve it once; its items getter stays reactive below.
+  const view = getView();
   // The movable rows: the same non-pinned, non-child rows the panel addresses by index. Derived from
   // view.items here so the controller resolves a row's index and category span without the panel
   // threading the list in.

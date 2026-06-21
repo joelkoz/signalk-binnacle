@@ -1,40 +1,22 @@
 <script lang="ts">
-import {
-  ArrowLeft,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Layers,
-  Pause,
-  Play,
-  X,
-} from '@lucide/svelte';
+import { ArrowLeft, ChevronDown, ChevronUp, Layers, X } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { fly } from 'svelte/transition';
 import type { UnitsStore } from '$entities/units';
 import { type Bbox, boundsToBbox, type WeatherStore } from '$entities/weather';
 import { LayersView } from '$features/layers-panel';
 import {
-  advancePlay,
-  clampTime,
   createCloudOverlay,
+  createPointReadout,
   createPrecipOverlay,
   createPressureOverlay,
   createRadarOverlay,
   createWavesOverlay,
   createWindOverlay,
-  fetchObservations,
-  fetchPointForecasts,
   GRID_SOURCE_LABEL,
-  NEAR_NOW_MS,
-  nearestInTimeBounded,
   precipUnitLabel,
   RAIN_VISIBLE_MM_H,
   radarScrubbedAway,
-  readoutAtBracket,
-  readoutFromSignalK,
-  stepTime,
   type TimeRange,
   WEATHER_FILL_ID_SET,
   WEATHER_FILL_IDS,
@@ -42,7 +24,6 @@ import {
   WeatherConditions,
   type WeatherLegend,
   type WeatherLoader,
-  type WeatherReadout,
   weatherLegend,
 } from '$features/weather';
 import {
@@ -65,7 +46,10 @@ import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shar
 import type { MapView } from '$shared/settings';
 import { serverOrigin } from '$shared/signalk';
 import { dialog, type Theme } from '$shared/ui';
+import { createForecastPlayback } from './playback.svelte';
 import WeatherLayerMenu from './WeatherLayerMenu.svelte';
+import WeatherLegendBar from './WeatherLegendBar.svelte';
+import WeatherScrubber from './WeatherScrubber.svelte';
 
 interface Props {
   store: WeatherStore;
@@ -151,17 +135,21 @@ let zoomNote = $state('');
 let zoomNoteShown = false;
 let zoomNoteTimer: ReturnType<typeof setTimeout> | undefined;
 
-let playing = $state(false);
-let playTimer: ReturnType<typeof setInterval> | undefined;
 let fetchTimer: ReturnType<typeof setTimeout> | undefined;
-let readout = $state<WeatherReadout | undefined>();
-let readoutSource = $state<string | undefined>();
-// A provider answer is pending and the grid had nothing to show meanwhile, so the tap must not
-// look dead on a slow boat link.
-let readoutPending = $state(false);
-let readoutTimer: ReturnType<typeof setTimeout> | undefined;
-// Each tap bumps this so a slow provider response from an earlier tap cannot overwrite a newer one.
-let tapSeq = 0;
+
+// The point-tap readout cluster: owns the tapped-point conditions, the provider upgrade, and the
+// dismiss timer. The grid sample only shows when at least one layer is on.
+const pointReadout = createPointReadout({
+  store: () => store,
+  origin,
+  token: () => token,
+  providerName: () => providerName,
+  activeCount: () => activeCount,
+  isDestroyed: () => destroyed,
+});
+const readout = $derived(pointReadout.readout);
+const readoutSource = $derived(pointReadout.readoutSource);
+const readoutPending = $derived(pointReadout.readoutPending);
 
 const items = $derived(layersView?.items ?? []);
 const fills = $derived(items.filter((i) => WEATHER_FILL_ID_SET.has(i.id)));
@@ -245,29 +233,12 @@ const nowFrac = $derived.by<number | undefined>(() => {
   return f >= 0 && f <= 1 ? f : undefined;
 });
 
-function setTime(t: number): void {
-  // A manual scrub or step takes the wheel: the play timer must not yank the thumb back.
-  stopPlay();
-  if (range) store.setSelectedTime(clampTime(t, range));
-}
-
-function stopPlay(): void {
-  playing = false;
-  if (playTimer) clearInterval(playTimer);
-  playTimer = undefined;
-}
-
-function togglePlay(): void {
-  if (playing || !range) {
-    stopPlay();
-    return;
-  }
-  playing = true;
-  playTimer = setInterval(
-    () => range && store.setSelectedTime(advancePlay(store.selectedTime, range)),
-    700,
-  );
-}
+// The forecast-scrubber playback: owns the play loop and its timer, driving the selected time on
+// the store. The range derives from the grid here and is injected as a getter.
+const playback = createForecastPlayback(
+  () => store,
+  () => range,
+);
 
 // Fetch a forecast for the mini-map's own viewport, debounced. The loader fetches atmospheric data
 // always, marine only when waves is on, and radar only when radar is on, so a wind-only view pulls
@@ -287,83 +258,11 @@ function scheduleFetch(): void {
   }, 400);
 }
 
-const READOUT_DISMISS_MS = 8000;
-// The pointer or focus is parked on the readout, so nothing (not even a provider upgrade landing
-// mid-read) may arm the dismiss timer until it leaves.
-let readoutHeld = false;
-
-function clearReadoutTimer(): void {
-  if (readoutTimer) clearTimeout(readoutTimer);
-  readoutTimer = undefined;
-}
-
-function showReadout(value: WeatherReadout | undefined, source: string | undefined): void {
-  clearReadoutTimer();
-  readout = value;
-  readoutSource = value ? source : undefined;
-  if (value && !readoutHeld) readoutTimer = setTimeout(dismissReadout, READOUT_DISMISS_MS);
-}
-
-function dismissReadout(): void {
-  clearReadoutTimer();
-  readout = undefined;
-  readoutSource = undefined;
-  readoutPending = false;
-}
-
-// A slow reader must not lose the readout mid-read: hovering or focusing it parks the dismiss
-// timer, leaving restarts it.
-function holdReadout(): void {
-  readoutHeld = true;
-  clearReadoutTimer();
-}
-
-function releaseReadout(): void {
-  readoutHeld = false;
-  if (readout && !readoutTimer) readoutTimer = setTimeout(dismissReadout, READOUT_DISMISS_MS);
-}
-
-// Conditions at the tapped point for the selected time. The free-grid sample (blended across the
-// time bracket, exactly as the fields are drawn) shows IMMEDIATELY; a configured provider then
-// upgrades it when it answers, so a slow boat link never leaves the tap looking dead.
-async function onTap(lng: number, lat: number): Promise<void> {
-  const seq = ++tapSeq;
-  const gridSample =
-    activeCount > 0 && store.grid
-      ? readoutAtBracket(store.grid, lng, lat, store.bracket)
-      : undefined;
-  if (!providerName) {
-    showReadout(gridSample, gridSample ? GRID_SOURCE_LABEL : undefined);
-    return;
-  }
-  if (gridSample) showReadout(gridSample, GRID_SOURCE_LABEL);
-  else readoutPending = true;
-  const value = await providerReadout(lat, lng);
-  if (destroyed || seq !== tapSeq) return;
-  readoutPending = false;
-  if (value) showReadout(value, providerName);
-  else if (!gridSample) dismissReadout();
-}
-
 // In the readout, show a field when it came from the provider (which returns every point field) or
 // when its layer is on. The grid carries all fields regardless of which is drawn, so for the free
 // source it is gated to what is visualized.
 const showField = (id: string): boolean =>
-  readoutSource === GRID_SOURCE_LABEL ? layerOn(id) : true;
-
-async function providerReadout(lat: number, lon: number): Promise<WeatherReadout | undefined> {
-  const target = store.selectedTime;
-  if (Math.abs(target - Date.now()) < NEAR_NOW_MS) {
-    const obs = await fetchObservations(origin, lat, lon, token);
-    const reading = obs && readoutFromSignalK(obs);
-    if (reading) return reading;
-  }
-  // Bounded: past the provider's horizon its last step must not answer for a time days away; the
-  // caller falls back to the grid sample instead.
-  const series = await fetchPointForecasts(origin, lat, lon, 48, token);
-  const step = series && nearestInTimeBounded(series, target);
-  return step ? readoutFromSignalK(step) : undefined;
-}
+  pointReadout.readoutSource === GRID_SOURCE_LABEL ? layerOn(id) : true;
 
 // Refetch once when waves or radar is turned on, so the new source appears without a pan. Keyed on
 // the rising edge with a plain flag so a failed fetch cannot loop. This creates a $effect, so it MUST
@@ -409,7 +308,7 @@ onMount(() => {
       // arrows and pressure isobars stay freely combinable on top.
       exclusive: [WEATHER_FILL_IDS],
     },
-    onClick: (lngLat) => void onTap(lngLat.lng, lngLat.lat),
+    onClick: (lngLat) => void pointReadout.onTap(lngLat.lng, lngLat.lat),
     onLoad: async ({ map, manager, recolor: recolorFn, isDestroyed, runTick }) => {
       // Band order, bottom to top: the waves height field sits at the bottom, then the precip,
       // cloud, and radar fills, with wind arrows and pressure isobars drawn over them.
@@ -457,7 +356,7 @@ onMount(() => {
         (event) => {
           if (event.key !== 'Enter') return;
           const center = map.getCenter();
-          void onTap(center.lng, center.lat);
+          void pointReadout.onTap(center.lng, center.lat);
         },
         { signal: mapKeyListeners.signal },
       );
@@ -470,9 +369,9 @@ onDestroy(() => {
   destroyed = true;
   clock.dispose();
   if (fetchTimer) clearTimeout(fetchTimer);
-  if (readoutTimer) clearTimeout(readoutTimer);
   if (zoomNoteTimer) clearTimeout(zoomNoteTimer);
-  stopPlay();
+  pointReadout.destroy();
+  playback.destroy();
   mapKeyListeners.abort();
   mapHandle?.destroy();
 });
@@ -562,10 +461,10 @@ onDestroy(() => {
         class="popover-card map-note map-note--readout"
         class:show={!!readout || readoutPending}
         role="status"
-        onpointerenter={holdReadout}
-        onpointerleave={releaseReadout}
-        onfocusin={holdReadout}
-        onfocusout={releaseReadout}
+        onpointerenter={pointReadout.hold}
+        onpointerleave={pointReadout.release}
+        onfocusin={pointReadout.hold}
+        onfocusout={pointReadout.release}
       >
         {#if readout}
           <span class="readout-line">
@@ -600,7 +499,7 @@ onDestroy(() => {
             type="button"
             class="readout-close"
             aria-label="Dismiss readout"
-            onclick={dismissReadout}
+            onclick={pointReadout.dismiss}
           >
             <X size={14} aria-hidden="true" />
           </button>
@@ -633,93 +532,20 @@ onDestroy(() => {
 
   <footer class="panel-foot">
     {#if range}
-      <div class="scrubber" role="group" aria-label="Forecast playback">
-        <button
-          type="button"
-          class="icon-btn step"
-          aria-label="Earlier"
-          onclick={() => setTime(stepTime(store.selectedTime, -1, range))}
-        >
-          <ChevronLeft size={16} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="icon-btn step"
-          aria-label={playing ? 'Pause' : 'Play'}
-          onclick={togglePlay}
-        >
-          {#if playing}
-            <Pause size={16} aria-hidden="true" />
-          {:else}
-            <Play size={16} aria-hidden="true" />
-          {/if}
-        </button>
-        <button
-          type="button"
-          class="icon-btn step"
-          aria-label="Later"
-          onclick={() => setTime(stepTime(store.selectedTime, 1, range))}
-        >
-          <ChevronRight size={16} aria-hidden="true" />
-        </button>
-        <span class="track-wrap">
-          <input
-            class="track range"
-            type="range"
-            min={range.start}
-            max={range.end}
-            step={range.stepMs}
-            value={store.selectedTime}
-            aria-label="Forecast time"
-            aria-valuetext="{timeKind} {timeLabel}"
-            oninput={(e) => setTime(Number(e.currentTarget.value))}
-          >
-          {#if nowFrac !== undefined}
-            <!-- The now tick: everything left of it already happened. -->
-            <span
-              class="now-tick"
-              style="inset-inline-start: {nowFrac * 100}%"
-              aria-hidden="true"
-            ></span>
-          {/if}
-        </span>
-        <span class="time">{timeKind} &middot; {timeLabel}</span>
-        <!-- Announce manual time changes (the visible label is too chatty to be live during
-             playback, so the mirror empties while playing). -->
-        <span class="visually-hidden" role="status">{playing ? '' : timeLabel}</span>
-      </div>
+      <WeatherScrubber
+        {range}
+        selectedTime={store.selectedTime}
+        playing={playback.playing}
+        {timeKind}
+        {timeLabel}
+        {nowFrac}
+        onStep={playback.step}
+        onTogglePlay={playback.toggle}
+        onSetTime={playback.setTime}
+      />
     {/if}
     {#if legends.length > 0}
-      <div class="legend" role="group" aria-label="Weather legend">
-        {#each legends as legend (legend.id)}
-          <div class="legend-row">
-            <span class="legend-title caps-label">{legend.title}</span>
-            {#if legend.gradient}
-              <span class="legend-scale">
-                <span class="legend-end">{legend.lowLabel}</span>
-                <span class="legend-bar" style="background:{legend.gradient}"></span>
-                <span class="legend-end">{legend.highLabel}</span>
-              </span>
-            {:else if legend.swatches}
-              <span class="legend-swatches">
-                {#each legend.swatches as swatch (swatch.label)}
-                  <span class="legend-swatch">
-                    <span class="legend-chip" style="background:{swatch.color}"></span>
-                    {swatch.label}
-                  </span>
-                {/each}
-              </span>
-            {/if}
-            {#if legend.note}
-              <!-- The radar note is live (which frame the loop paints, or why it is hidden),
-                   substituted here so its 600 ms beat touches one text node, not the legends. -->
-              <span class="legend-note">
-                {legend.id === WEATHER_LAYER_IDS.radar ? radarNote : legend.note}
-              </span>
-            {/if}
-          </div>
-        {/each}
-      </div>
+      <WeatherLegendBar {legends} {radarNote} />
     {/if}
     {#if menuProvenance}
       <!-- Provenance, not licensing: which source produced the fields and how old they are. The
@@ -893,95 +719,6 @@ onDestroy(() => {
   gap: 0.35rem;
   padding: 0.45rem 0.6rem;
   border-block-start: 1px solid var(--border);
-}
-.scrubber {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-/* The slider styling comes from the shared .range; the wrap exists so the now tick can be
-   positioned over the track. */
-.track-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex: 1;
-}
-.track {
-  inline-size: 100%;
-}
-.now-tick {
-  position: absolute;
-  inset-block: 0.45rem;
-  inline-size: 2px;
-  background: var(--accent);
-  pointer-events: none;
-}
-.scrubber .step {
-  flex: 0 0 auto;
-}
-.scrubber .time {
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-.legend {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.legend-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-.legend-title {
-  flex: 0 0 6.5rem;
-}
-.legend-swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.legend-swatch {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-xs);
-  font-variant-numeric: tabular-nums;
-}
-/* The chip and bar are element sizes, not spacing, so they stay literals off the --space scale. */
-.legend-chip {
-  inline-size: 0.85rem;
-  block-size: 0.85rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-}
-.legend-scale {
-  flex: 1;
-  min-inline-size: 8rem;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.legend-end {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-}
-.legend-bar {
-  flex: 1;
-  block-size: 0.55rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
-}
-.legend-note {
-  flex-basis: 100%;
-  font-size: var(--text-xs);
-  font-style: italic;
-  color: var(--text-muted);
 }
 .provenance {
   margin: 0;

@@ -81,7 +81,10 @@ let listEl = $state<HTMLUListElement>();
 // The imperative pointer-and-keyboard drag-reorder controller, given the live list element so it
 // can measure rows and refocus the moved handle. It owns the drag state and announcement; the
 // template reads them back through its getters.
-const reorder = createLayerReorder(view, () => listEl);
+const reorder = createLayerReorder(
+  () => view,
+  () => listEl,
+);
 </script>
 
 <!-- While a chart detail is open it shows its own "Back to layers" control, so the panel-level

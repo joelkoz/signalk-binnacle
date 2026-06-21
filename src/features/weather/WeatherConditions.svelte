@@ -2,24 +2,11 @@
 import { TriangleAlert } from '@lucide/svelte';
 import type { UnitsStore } from '$entities/units';
 import type { WeatherStore } from '$entities/weather';
-import {
-  formatBearingOr,
-  formatDayClock,
-  formatFixed,
-  formatKnotsOr,
-  formatLengthOr,
-  formatMetersOrNm,
-  formatPercent,
-  formatPrecipRateOr,
-  formatPressureOr,
-  formatTemperatureOr,
-  HOUR_MS,
-  lengthUnit,
-  PA_PER_HPA,
-  pressureUnit,
-  temperatureUnit,
-} from '$shared/lib';
+import { formatDayClock } from '$shared/lib';
+import ConditionsBlock from './ConditionsBlock.svelte';
+import ForecastList from './ForecastList.svelte';
 import { GRID_SOURCE_LABEL } from './fills';
+import { pickForecast, tendencyText as tendencyTextFor } from './forecast-series';
 
 import { createPointConditionsLoader } from './point-conditions';
 import {
@@ -30,17 +17,8 @@ import {
   type SignalKWeatherData,
   type WeatherWarning,
 } from './signalk-weather';
-import {
-  conditionsFromReadout,
-  PRESSURE_TREND_WINDOW_MS,
-  precipUnitLabel,
-  pressureTrendPa,
-  RAIN_VISIBLE_MM_H,
-  readoutAt,
-  readoutAtBracket,
-} from './weather-readout';
-
-const knots = (v: number | undefined): string => formatKnotsOr(v, 0);
+import { sortWarnings } from './warning-severity';
+import { conditionsFromReadout, readoutAtBracket } from './weather-readout';
 
 interface Props {
   origin: string;
@@ -53,9 +31,6 @@ interface Props {
 }
 
 const { origin, token, providerName, position, store, units }: Props = $props();
-
-const FORECAST_STEPS = 6;
-const FREE_STEP_MS = 6 * HOUR_MS;
 
 // Fetches the provider's point answers and persists them, so a panel opened with a failed or
 // absent network replays the last conditions for the spot (within the hour) instead of going blank.
@@ -157,95 +132,24 @@ const currentObserved = $derived(providerCurrent?.observed ?? false);
 
 // The barometric tendency, the datum a sailor actually decides by. The provider's qualitative
 // string wins when present; otherwise the trailing 3-hour delta computed from the free grid.
-const tendencyText = $derived.by<string | undefined>(() => {
-  const fromProvider = providerCurrent?.cond.pressureTendency;
-  if (fromProvider) return fromProvider;
-  if (!parsedPos || !store.grid) return undefined;
-  const [lat, lon] = parsedPos;
-  const dPa = pressureTrendPa(store.grid, lon, lat, targetMs);
-  if (dPa === undefined) return undefined;
-  const dHpa = dPa / PA_PER_HPA;
-  const hours = PRESSURE_TREND_WINDOW_MS / HOUR_MS;
-  if (Math.abs(dHpa) < 0.5) return 'steady';
-  const word = dHpa > 0 ? 'rising' : 'falling';
-  // Metric keeps a tenth of a hectopascal: formatPressureOr's whole hPa would round a real
-  // 0.7 hPa/3 h trend up to 1. Imperial uses the formatter's hundredths of inHg.
-  const value =
-    units.mode === 'imperial'
-      ? formatPressureOr(Math.abs(dPa), 'imperial')
-      : formatFixed(Math.abs(dHpa), 1);
-  return `${word} ${value} ${pressureUnit(units.mode)}/${hours} h`;
-});
+const tendencyText = $derived(
+  providerCurrent?.cond.pressureTendency ||
+    tendencyTextFor(store.grid, parsedPos, targetMs, units.mode),
+);
 
 // Parsed once per fetch, so scrubbing (700 ms ticks during playback) filters a stable array
 // instead of re-parsing twelve dates per step.
 const parsedSeries = $derived(seriesData?.map(conditionsFromSignalK));
 
-const forecast = $derived.by<PointConditions[]>(() => {
-  if (providerName && parsedSeries) {
-    const rows = parsedSeries
-      .filter((c) => !Number.isNaN(c.timeMs) && c.timeMs >= targetMs)
-      .slice(0, FORECAST_STEPS);
-    // An empty or fully-past provider series must not suppress the free-grid forecast.
-    if (rows.length > 0) return rows;
-  }
-  if (!parsedPos) return [];
-  const [lat, lon] = parsedPos;
-  return freeForecast(lat, lon);
-});
-
-// The forecast window the rows actually span, so the cadence (6-hourly free, provider-defined
-// otherwise) never has to be guessed from the row times.
-const forecastHorizonH = $derived(
-  forecast.length > 0
-    ? Math.max(1, Math.round((forecast[forecast.length - 1].timeMs - targetMs) / HOUR_MS))
-    : 0,
+// The forecast rows and the window they span; the provider series wins when it carries usable rows,
+// otherwise the free grid answers.
+const forecastPick = $derived(
+  pickForecast(store.grid, parsedSeries, parsedPos, store.selectedTime, targetMs, !!providerName),
 );
+const forecast = $derived(forecastPick.rows);
+const forecastHorizonH = $derived(forecastPick.horizonH);
 
-function freeForecast(lat: number, lon: number): PointConditions[] {
-  const grid = store.grid;
-  if (!grid) return [];
-  const out: PointConditions[] = [];
-  let lastMs = Number.NEGATIVE_INFINITY;
-  for (let i = 0; i < grid.times.length && out.length < FORECAST_STEPS; i++) {
-    const t = grid.times[i];
-    if (t < store.selectedTime || t - lastMs < FREE_STEP_MS) continue;
-    const r = readoutAt(grid, lon, lat, i);
-    if (!r) continue;
-    out.push(conditionsFromReadout(r, t));
-    lastMs = t;
-  }
-  return out;
-}
-
-// Severity order for the warnings list: the gale must never sit under a marginal advisory.
-const WARN_HURRICANE = /hurricane|typhoon/;
-const WARN_STORM = /\bstorm warning\b|\btropical storm\b/;
-const WARN_GALE = /gale/;
-const WARN_SMALL_CRAFT = /small craft/;
-function severityRank(type: string): number {
-  const t = type.toLowerCase();
-  if (WARN_HURRICANE.test(t)) return 0;
-  if (WARN_STORM.test(t)) return 1;
-  if (WARN_GALE.test(t)) return 2;
-  if (WARN_SMALL_CRAFT.test(t)) return 3;
-  return 4;
-}
-const sortedWarnings = $derived(
-  warnings.slice().sort((a, b) => severityRank(a.type) - severityRank(b.type)),
-);
-
-const pressure = (v: number | undefined) => formatPressureOr(v, units.mode);
-const temp = (v: number | undefined) => formatTemperatureOr(v, units.mode);
-const height = (v: number | undefined) => formatLengthOr(v, units.mode);
-const precip = (v: number | undefined) => formatPrecipRateOr(v, units.mode);
-
-function stepLabel(timeMs: number): string {
-  return formatDayClock(timeMs, { minute: false });
-}
-
-// The current block's valid time carries the zone (the formatDayClock rationale).
-const validLabel = (timeMs: number): string => formatDayClock(timeMs, { zone: true });
+const sortedWarnings = $derived(sortWarnings(warnings));
 
 const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTime));
 </script>
@@ -280,91 +184,7 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
     {/if}
 
     {#if current}
-      <p class="cond-when">
-        {currentObserved ? 'Observed' : 'Forecast'}
-        · {validLabel(current.timeMs)}
-      </p>
-      <dl class="now">
-        <div>
-          <dt>Wind</dt>
-          <dd>
-            <b class="num">{knots(current.windMs)}</b>
-            kn from {formatBearingOr(current.fromRad)}&deg;T
-          </dd>
-        </div>
-        {#if current.gustMs !== undefined}
-          <div>
-            <dt>Gust</dt>
-            <dd><b class="num">{knots(current.gustMs)}</b> kn</dd>
-          </div>
-        {/if}
-        {#if current.pressurePa !== undefined}
-          <div>
-            <dt>Pressure</dt>
-            <dd>
-              <b class="num">{pressure(current.pressurePa)}</b>
-              {pressureUnit(units.mode)}
-              {#if tendencyText}
-                <span class="trend">{tendencyText}</span>
-              {/if}
-            </dd>
-          </div>
-        {/if}
-        {#if current.airTempK !== undefined}
-          <div>
-            <dt>Air</dt>
-            <dd><b class="num">{temp(current.airTempK)}</b>{temperatureUnit(units.mode)}</dd>
-          </div>
-        {/if}
-        {#if current.waterTempK !== undefined}
-          <div>
-            <dt>Water</dt>
-            <dd><b class="num">{temp(current.waterTempK)}</b>{temperatureUnit(units.mode)}</dd>
-          </div>
-        {/if}
-        {#if current.visibilityM !== undefined}
-          <div>
-            <dt>Visibility</dt>
-            <dd><b class="num">{formatMetersOrNm(current.visibilityM, units.mode)}</b></dd>
-          </div>
-        {/if}
-        {#if current.cloudFraction !== undefined}
-          <div>
-            <dt>Cloud</dt>
-            <dd><b class="num">{formatPercent(current.cloudFraction)}</b>%</dd>
-          </div>
-        {/if}
-        {#snippet waveBlock(label: string, heightM: number, periodS: number | undefined, fromRad: number | undefined)}
-          <div>
-            <dt>{label}</dt>
-            <dd>
-              <b class="num">{height(heightM)}</b>
-              {lengthUnit(units.mode)}
-              {#if periodS !== undefined}
-                / <b class="num">{formatFixed(periodS, 1)}</b> s
-              {/if}
-              {#if fromRad !== undefined}
-                from {formatBearingOr(fromRad)}&deg;T
-              {/if}
-            </dd>
-          </div>
-        {/snippet}
-        {#if current.waveHeightM !== undefined}
-          {@render waveBlock('Waves', current.waveHeightM, current.wavePeriodS, current.waveFromRad)}
-        {/if}
-        {#if current.swellHeightM !== undefined}
-          {@render waveBlock('Swell', current.swellHeightM, current.swellPeriodS, current.swellFromRad)}
-        {/if}
-        {#if current.precipitationMm !== undefined && current.precipitationMm >= RAIN_VISIBLE_MM_H}
-          <div>
-            <dt>Rain</dt>
-            <dd>
-              <b class="num">{precip(current.precipitationMm)}</b>
-              {precipUnitLabel(current.precipIsRate, units.mode)}
-            </dd>
-          </div>
-        {/if}
-      </dl>
+      <ConditionsBlock {current} observed={currentObserved} {tendencyText} {units} />
     {:else if loading}
       <p class="muted-note" role="status">Loading conditions.</p>
     {:else if !providerName && !store.grid}
@@ -374,24 +194,7 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
     {/if}
 
     {#if forecast.length > 0}
-      <p class="caps-label forecast-head">Forecast · next {forecastHorizonH} h</p>
-      <ul class="forecast">
-        {#each forecast as step (step.timeMs)}
-          <li>
-            <span class="f-time">{stepLabel(step.timeMs)}</span>
-            <span class="f-wind">
-              <b class="num">{knots(step.windMs)}</b>
-              kn from {formatBearingOr(step.fromRad)}&deg;T
-            </span>
-            {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}
-              <span class="f-rain">
-                <b class="num">{precip(step.precipitationMm)}</b>
-                {precipUnitLabel(step.precipIsRate, units.mode)}
-              </span>
-            {/if}
-          </li>
-        {/each}
-      </ul>
+      <ForecastList {forecast} horizonH={forecastHorizonH} {units} />
     {/if}
   {/if}
 </section>
@@ -418,13 +221,6 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
   gap: var(--space-2);
 }
 .cond-source {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-/* Whether the block is an observation or model output, and for when: forecast data styled as
-   present conditions misleads. */
-.cond-when {
-  margin: 0;
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
@@ -463,65 +259,6 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
   display: block;
   font-size: var(--text-xs);
   color: var(--text-muted);
-}
-.now {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.3rem 0.6rem;
-  margin: 0;
-}
-.now div {
-  display: flex;
-  flex-direction: column;
-}
-.now dt {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.now dd {
-  margin: 0;
-  font-size: var(--text-sm);
-}
-/* The current-conditions values are the panel's hero numbers, so they step up over their caps labels
-   and the unit text, the instrument-readout gesture. */
-.now b {
-  font-size: var(--text-lg);
-}
-.trend {
-  display: block;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.forecast-head {
-  margin: 0;
-  padding-block-start: 0.4rem;
-  border-block-start: 1px solid var(--border);
-}
-.forecast {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.forecast li {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-}
-.f-time {
-  flex: 0 0 4.5rem;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.f-wind {
-  flex: 1;
-}
-.f-rain {
-  color: var(--text-muted);
-  font-size: var(--text-xs);
 }
 /* On a phone the conditions span the weather panel's width as a bottom sheet rather than a fixed
    15rem card that would cover most of the small map. */

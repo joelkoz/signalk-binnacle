@@ -6,6 +6,7 @@ export {
   WEATHER_LAYER_IDS,
 } from './fills';
 export { type WeatherLegend, weatherLegend } from './legend';
+export { createPointReadout } from './point-readout.svelte';
 export { createPrecipOverlay } from './precip-overlay';
 export { createPressureOverlay } from './pressure-overlay';
 export { createRadarOverlay, radarScrubbedAway } from './radar-overlay';
