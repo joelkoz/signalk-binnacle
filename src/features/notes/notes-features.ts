@@ -1,9 +1,9 @@
 import type { ExpressionSpecification } from 'maplibre-gl';
+import { categoryRank, poiIconId } from '$entities/poi-icons';
 import type { SymbolIconEntry } from '$entities/symbols';
 import { featureCollection } from '$shared/map';
 import { navaidClassify, navaidIconId } from './navaid-symbols';
 import type { NotePoint } from './notes-client';
-import { categoryRank, poiIconId } from './poi-categories';
 
 // A record shaped like the source notes resource, for a filter's `match` conditions. The plotter
 // search filter selects by id (where the record is unused), but a category filter keys off

@@ -1,6 +1,6 @@
 import type { GeoJSONSource, MapGeoJSONFeature, MapLayerMouseEvent } from 'maplibre-gl';
 import { asPoiCategory } from '$entities/poi-icons';
-import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
+import { createOverlayIconResolver, type SymbolsStore } from '$entities/symbols';
 import { bboxContains, lngLatBoundsToBbox4 } from '$shared/geo';
 import { DAY_MS } from '$shared/lib';
 import {
@@ -12,7 +12,7 @@ import {
   type OverlayModule,
   setLayersVisibility,
 } from '$shared/map';
-import { type SkSymbol, str } from '$shared/signalk';
+import { str } from '$shared/signalk';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
 import { registerNavaidIcons } from './navaid-symbols';
 import { registerPoiIcons } from './note-icons';
@@ -120,45 +120,25 @@ export function createNotesOverlay(
   let onClusterClick: ((event: MapLayerMouseEvent) => void) | undefined;
   let onEnter: (() => void) | undefined;
   let onLeave: (() => void) | undefined;
-  // Provided symbols (signalk-symbol-manager), absent on a stock server. The registry holds the
-  // registered map images; pendingSymbols collects the resolvable-but-not-yet-registered ones a
-  // render saw, so their loads can be kicked once and the set re-rendered when they land.
-  const registry = symbols?.createIconRegistry();
-  const pendingSymbols = new Map<string, SkSymbol>();
+  // Provided symbols (signalk-symbol-manager), absent on a stock server. The resolver owns the
+  // per-overlay icon registry and the pending-symbol queue; a note's skIcon resolves to a provided
+  // symbol via the `note` role, or undefined for the built-in category disc (no symbols store,
+  // unresolvable reference, image still loading, or a failed load).
+  const iconResolver = createOverlayIconResolver(symbols, (note: NotePoint) =>
+    note.skIcon ? symbols?.resolve(note.skIcon, 'note') : undefined,
+  );
   let themePaint = mapThemePaint('day');
-
-  // The registered icon for a note whose skIcon resolves to a provided symbol, or undefined for
-  // the built-in category disc (no symbols store, unresolvable reference, image still loading,
-  // or a failed load).
-  function managedIcon(note: NotePoint): SymbolIconEntry | undefined {
-    if (!registry || !symbols || !note.skIcon) return undefined;
-    const symbol = symbols.resolve(note.skIcon, 'note');
-    if (!symbol) return undefined;
-    const entry = registry.entry(symbol.uuid);
-    if (entry) return entry;
-    if (registry.status(symbol.uuid) !== 'failed') pendingSymbols.set(symbol.uuid, symbol);
-    return undefined;
-  }
 
   // Kick the loads a render queued; each success re-renders the same note set (if still shown)
   // so the now-registered symbol replaces its category disc. A failure resolves false and is
   // remembered by the registry, so the disc simply stays: no missing-image warning either way,
   // because a feature never references an unregistered image id.
   function ensurePendingIcons(ctx: OverlayContext, notes: NotePoint[]): void {
-    if (!registry || pendingSymbols.size === 0) return;
-    const pending = [...pendingSymbols.values()];
-    pendingSymbols.clear();
-    for (const symbol of pending) {
-      void registry
-        .ensure(ctx.map, symbol, themePaint)
-        .then((ok) => {
-          if (!ok || renderedNotes !== notes) return;
-          renderedNotes = undefined;
-          render(ctx, notes);
-        })
-        // A rejected load behaves like a resolved false: the category disc stays.
-        .catch(() => undefined);
-    }
+    iconResolver.ensurePending(ctx.map, themePaint, () => {
+      if (renderedNotes !== notes) return;
+      renderedNotes = undefined;
+      render(ctx, notes);
+    });
   }
 
   // Re-raster the 18 POI and navaid SVGs and the provided symbols to a new theme paint. Run on a
@@ -166,7 +146,7 @@ export function createNotesOverlay(
   function refreshIcons(ctx: OverlayContext, paint: MapThemePaint): void {
     void registerPoiIcons(ctx.map, paint);
     void registerNavaidIcons(ctx.map, paint);
-    registry?.retheme(ctx.map, paint);
+    iconResolver.retheme(ctx.map, paint);
   }
 
   function setData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
@@ -185,7 +165,7 @@ export function createNotesOverlay(
     const shown = filter
       ? notes.filter((note) => filter.passes(note.id, filterRecord(note)))
       : notes;
-    const { data, iconOffset } = buildRender(shown, managedIcon);
+    const { data, iconOffset } = buildRender(shown, iconResolver.iconEntry);
     setData(ctx, data);
     // The offset is a layer property, not a feature one (MapLibre stringifies an array feature
     // property), so it is restyled here. The getLayer guard mirrors setData's missing-source degrade.

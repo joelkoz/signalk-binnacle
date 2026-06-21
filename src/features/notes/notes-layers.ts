@@ -5,6 +5,7 @@ import type {
   Map as MapLibreMap,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
+import { categoryRank, POI_CATEGORIES, poiIconId } from '$entities/poi-icons';
 import {
   DARK_SCRIM,
   emptyFeatureCollection,
@@ -12,7 +13,6 @@ import {
   removeLayersAndSources,
   rgbaCss,
 } from '$shared/map';
-import { categoryRank, POI_CATEGORIES, poiIconId } from './poi-categories';
 
 export const SOURCE_ID = 'binnacle-notes';
 export const LAYER_ID = 'binnacle-notes-symbol';

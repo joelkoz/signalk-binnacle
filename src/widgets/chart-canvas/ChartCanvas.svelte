@@ -14,40 +14,21 @@ import type { UnitsStore } from '$entities/units';
 import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
 import type { WaypointsStore } from '$entities/waypoint';
-import {
-  createAisOverlay,
-  createAisTrailsOverlay,
-  createAisVectorsOverlay,
-} from '$features/ais-layer';
-import { createAnchorOverlay } from '$features/anchor-watch';
 import { BOUNDARY_SOURCES, createBoundaryOverlay } from '$features/boundaries-overlay';
 import { fetchCharts } from '$features/charts';
 import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
 import { LayersView } from '$features/layers-panel';
-import { COLLISION_OVERLAY_ID, createCollisionOverlay } from '$features/lookout';
-import { createMeasureOverlay } from '$features/measure';
-import { createMobOverlay, MOB_OVERLAY_ID } from '$features/mob';
+import { COLLISION_OVERLAY_ID } from '$features/lookout';
+import { MOB_OVERLAY_ID } from '$features/mob';
 import { createMpaOverlay, MPA_SOURCES } from '$features/mpa-overlays';
 import { createNotesOverlay, type NoteSelection, type NotesFilter } from '$features/notes';
 import { buildOceanSources, createOceanOverlay } from '$features/ocean-conditions';
 import type { RouteEditor } from '$features/route-edit';
-import {
-  createCourseOverlay,
-  createRouteOverlay,
-  createWorkingRouteOverlay,
-  type WorkingRouteOverlay,
-} from '$features/route-layer';
+import { createWorkingRouteOverlay, type WorkingRouteOverlay } from '$features/route-layer';
 import { createSeamarkOverlay, SEAMARK_SOURCES } from '$features/seamark-overlay';
-import { createTidesOverlay } from '$features/tides';
-import {
-  createHistoryTrackOverlay,
-  createTrackOverlay,
-  type SavedTracksSource,
-} from '$features/track-layer';
-import { createVesselOverlay, OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
-import { createWaypointOverlay } from '$features/waypoints';
-import { type LatLon, lngLatBoundsToBbox4, normalizeBounds } from '$shared/geo';
-import { prefersReducedMotion } from '$shared/lib';
+import type { SavedTracksSource } from '$features/track-layer';
+import { OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
+import type { LatLon } from '$shared/geo';
 import {
   chartSourceId,
   createChartOverlay,
@@ -59,6 +40,8 @@ import {
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
 import { type HistoryProviders, type SignalKStore, serverOrigin } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
+import { buildMapCommands } from './build-commands';
+import { buildDynamicOverlays } from './build-overlays';
 import ChartContextMenu from './ChartContextMenu.svelte';
 import type { MapCommands, UserChartRegistrar } from './commands';
 
@@ -298,28 +281,30 @@ onMount(() => {
       });
       // One list feeds both registration and the per-frame tick, so the two cannot drift. The order
       // sets z within each band (tides under the safety overlays, the own vessel on top).
-      const dynamicOverlays = [
-        createTidesOverlay(tides, units),
-        createAnchorOverlay(anchor, vessel, onAnchorMoved),
-        createMeasureOverlay(measure, units),
-        createRouteOverlay(routeStore),
-        createCourseOverlay(guidance, vessel),
-        createWaypointOverlay(waypoints, symbols),
+      const dynamicOverlays = buildDynamicOverlays({
+        origin,
+        chartsToken,
+        store,
+        vessel,
+        aisTargets,
+        anchor,
+        mob,
+        measure,
+        collision,
+        guidance,
+        recorder,
+        routeStore,
+        tides,
+        units,
+        waypoints,
+        symbols,
+        trackSettings,
+        savedTracks,
         notesOverlay,
-        createAisTrailsOverlay(
-          origin,
-          chartsToken,
-          aisTrailsAvailable ?? (() => false),
-          () => store.selfContext,
-        ),
-        createAisVectorsOverlay(aisTargets, () => collision.assessment),
-        createAisOverlay(aisTargets),
-        createCollisionOverlay(collision),
-        createMobOverlay(mob, vessel),
-        createHistoryTrackOverlay(origin, chartsToken, historyProviders ?? (() => undefined)),
-        createTrackOverlay(recorder, trackSettings, savedTracks),
-        createVesselOverlay(vessel),
-      ];
+        onAnchorMoved,
+        aisTrailsAvailable: aisTrailsAvailable ?? (() => false),
+        historyProviders: historyProviders ?? (() => undefined),
+      });
       await manager.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
         ...STREAMING_CHART_SOURCES.map((source) => createStreamingChartOverlay(source)),
@@ -386,63 +371,25 @@ onMount(() => {
 
       onMapReady?.(recolor);
 
-      onCommandsReady?.({
-        centerOnVessel: () => {
-          const position = vessel.position;
-          if (!position) return;
-          const zoom = map.getZoom();
-          map.flyTo({
-            center: [position.longitude, position.latitude],
-            zoom: zoom < 12 ? 14 : zoom,
-            ...(prefersReducedMotion() ? { duration: 0 } : {}),
-          });
-        },
-        recenterOnVessel: (latitude, longitude) => {
-          map.setCenter([longitude, latitude]);
-        },
-        flyTo: (latitude, longitude) => {
-          const zoom = map.getZoom();
-          map.flyTo({
-            center: [longitude, latitude],
-            zoom: zoom < 11 ? 12 : zoom,
-            ...(prefersReducedMotion() ? { duration: 0 } : {}),
-          });
-        },
-        fitBounds: (bounds) => {
-          // normalizeBounds rejects a malformed (non-finite or inverted) descriptor, unwraps an
-          // antimeridian crossing, and pads a degenerate box, so the widget just issues the move.
-          const corners = normalizeBounds(bounds);
-          if (!corners) return;
-          map.fitBounds(corners, {
-            padding: 40,
-            maxZoom: 16,
-            duration: prefersReducedMotion() ? 0 : 800,
-          });
-        },
-        getBounds: () => lngLatBoundsToBbox4(map.getBounds()),
-        clearNoteSelection: () => notesOverlay.deselect(ctx),
-        startRouteEdit: (route, initialPoint) => {
-          const generation = ++editGeneration;
-          void loadRouteEditor().then((editor) => {
-            if (generation !== editGeneration) return;
-            editor?.start(route, initialPoint);
-            // The editor's Terra Draw line was just added at the top of the routes band; lift the
-            // working-route dots and highlight back above it.
-            workingRouteOverlay?.raise(ctx);
-          });
-        },
-        stopRouteEdit: () => {
-          editGeneration += 1;
-          routeEditor?.stop();
-        },
-        applyLayers: (settings, order) => {
-          manager.applySnapshot(settings, order);
-          view.refresh();
-          // applySnapshot restacks the routes band, so re-lift the working overlay above the editor
-          // line while a route is being edited.
-          if (routeStore.working) workingRouteOverlay?.raise(ctx);
-        },
-      });
+      onCommandsReady?.(
+        buildMapCommands({
+          map,
+          ctx,
+          view,
+          manager,
+          vessel,
+          routeStore,
+          notesOverlay,
+          loadRouteEditor,
+          getWorkingRouteOverlay: () => workingRouteOverlay,
+          getRouteEditor: () => routeEditor,
+          nextEditGeneration: () => ++editGeneration,
+          cancelEditGeneration: () => {
+            editGeneration += 1;
+          },
+          currentEditGeneration: () => editGeneration,
+        }),
+      );
 
       // The working-route overlay rides the same tick but is not registered with the manager (it is
       // not a user-toggleable layer); its editVersion dirty-check gates its work. The initial theme

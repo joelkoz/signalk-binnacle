@@ -6,7 +6,7 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import { categoryForSkIcon, poiIconId, registerPoiIcons } from '$entities/poi-icons';
-import type { SymbolIconEntry, SymbolsStore } from '$entities/symbols';
+import { createOverlayIconResolver, type SymbolsStore } from '$entities/symbols';
 import type { Waypoint, WaypointsStore } from '$entities/waypoint';
 import { latLonToLonLat } from '$shared/geo';
 import {
@@ -20,7 +20,6 @@ import {
   removeLayersAndSources,
   setLayersVisibility,
 } from '$shared/map';
-import type { SkSymbol } from '$shared/signalk';
 
 const SOURCE_ID = 'binnacle-waypoints';
 const MARKER_LAYER = 'binnacle-waypoint-marker';
@@ -46,16 +45,19 @@ export function createWaypointOverlay(
   let lastVersion = -1;
   let visible = true;
   const layers = [MARKER_LAYER, SYMBOL_MARKER_LAYER, LABEL_LAYER];
-  // Provided symbols (signalk-symbol-manager), absent on a stock server. The registry holds the
-  // registered map images; pendingSymbols collects resolvable-but-not-yet-registered ones a render
-  // saw, so their loads are kicked once and the set redrawn when they land.
-  const registry = symbols?.createIconRegistry();
-  const pendingSymbols = new Map<string, SkSymbol>();
+  // Provided symbols (signalk-symbol-manager), absent on a stock server. The resolver owns the
+  // per-overlay icon registry and the pending-symbol queue; a waypoint's icon resolves to a provided
+  // symbol via the `waypoint` role, defaulting to the 'waypoint' built-in id so a `binnacle:waypoint`
+  // override applies to every plain waypoint, or undefined for the built-in disc (no symbols store,
+  // unresolvable reference, image still loading, or a failed load).
+  const iconResolver = createOverlayIconResolver(symbols, (waypoint: Waypoint) =>
+    symbols?.resolve(waypoint.icon ?? 'waypoint', 'waypoint'),
+  );
 
   // Resolve a waypoint icon to a built-in POI map image id. "waypoint" (the default marker)
   // returns undefined so it keeps its circle disc. Bare ids and binnacle:/default: qualified ids
   // are classified via the same skIcon vocabulary the notes overlay uses; qualified foreign-
-  // namespace ids are not built-ins and return undefined (let managedIcon handle them).
+  // namespace ids are not built-ins and return undefined (let the icon resolver handle them).
   function builtinPoiIconId(icon: string | undefined): string | undefined {
     if (!icon || icon === 'waypoint') return undefined;
     const colon = icon.indexOf(':');
@@ -68,27 +70,13 @@ export function createWaypointOverlay(
     return poiIconId(categoryForSkIcon(bareId));
   }
 
-  // The registered icon for a waypoint whose icon resolves to a provided symbol, or undefined for
-  // the built-in disc (no symbols store, unresolvable reference, image still loading, or a failed
-  // load). A reference defaults to the 'waypoint' built-in id so a `binnacle:waypoint` override
-  // applies to every plain waypoint.
-  function managedIcon(waypoint: Waypoint): SymbolIconEntry | undefined {
-    if (!registry || !symbols) return undefined;
-    const symbol = symbols.resolve(waypoint.icon ?? 'waypoint', 'waypoint');
-    if (!symbol) return undefined;
-    const entry = registry.entry(symbol.uuid);
-    if (entry) return entry;
-    if (registry.status(symbol.uuid) !== 'failed') pendingSymbols.set(symbol.uuid, symbol);
-    return undefined;
-  }
-
   function buildFeatures(waypoints: readonly Waypoint[]): {
     data: GeoJSON.FeatureCollection;
     iconOffset: ExpressionSpecification | [number, number];
   } {
     const offsets = new Map<string, readonly [number, number]>();
     const features = waypoints.map((waypoint): GeoJSON.Feature => {
-      const entry = managedIcon(waypoint);
+      const entry = iconResolver.iconEntry(waypoint);
       if (entry && (entry.offset[0] !== 0 || entry.offset[1] !== 0)) {
         offsets.set(entry.iconId, entry.offset);
       }
@@ -128,17 +116,7 @@ export function createWaypointOverlay(
   // Kick the loads a render queued; each success redraws so the now-registered symbol replaces its
   // disc. A failure is remembered by the registry, so the disc simply stays.
   function ensurePendingIcons(ctx: OverlayContext): void {
-    if (!registry || pendingSymbols.size === 0) return;
-    const pending = [...pendingSymbols.values()];
-    pendingSymbols.clear();
-    for (const symbol of pending) {
-      void registry
-        .ensure(ctx.map, symbol, paint)
-        .then((ok) => {
-          if (ok) redraw(ctx);
-        })
-        .catch(() => undefined);
-    }
+    iconResolver.ensurePending(ctx.map, paint, () => redraw(ctx));
   }
 
   return {
@@ -245,7 +223,7 @@ export function createWaypointOverlay(
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-color', paint.label);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-halo-color', paint.background);
       // Re-raster registered symbols in place (same image ids), so the symbol layer updates.
-      registry?.retheme(ctx.map, next);
+      iconResolver.retheme(ctx.map, next);
       void registerPoiIcons(ctx.map, next).then(() => redraw(ctx));
     },
     remove(ctx) {

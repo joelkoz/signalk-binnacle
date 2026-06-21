@@ -4,41 +4,18 @@ import {
   Download,
   Navigation,
   Plus,
-  Save,
-  Sparkles,
   Square,
   SquarePen,
   Trash2,
   Upload,
-  X,
 } from '@lucide/svelte';
-import {
-  litLegIndices,
-  type Route,
-  type RouteHighlight,
-  routeDistanceMeters,
-  routeLegs,
-} from '$entities/route';
-import {
-  formatBearingOr,
-  formatDuration,
-  formatDurationParts,
-  formatNm,
-  knotsToMetersPerSecond,
-  PLACEHOLDER,
-} from '$shared/lib';
-import { etaSeconds } from '$shared/nav';
+import { type Route, type RouteHighlight, routeDistanceMeters } from '$entities/route';
+import { formatNm } from '$shared/lib';
 import type { PersistedValue } from '$shared/settings';
-import {
-  InlineConfirm,
-  pickTextFile,
-  promptSaveName,
-  SavedList,
-  SlideOver,
-  UnitField,
-  VisibilityToggle,
-} from '$shared/ui';
-import { type DraftView, MAX_OPTIMIZE_WAYPOINTS } from './route-draft-client';
+import { InlineConfirm, pickTextFile, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
+import RouteDraftPanel from './RouteDraftPanel.svelte';
+import RouteEditPlan from './RouteEditPlan.svelte';
+import type { DraftView } from './route-draft-client';
 
 interface Props {
   routes: Route[];
@@ -126,11 +103,6 @@ const {
   optimizeUnchanged,
 }: Props = $props();
 
-function promptSave(): void {
-  const name = promptSaveName('Route');
-  if (name !== undefined) onSave(name);
-}
-
 // Delete is destructive and, for the active route, also stops navigation, so it arms a confirm step
 // rather than firing on a single tap where a mis-tap on a rolling deck would lose a saved route.
 let confirmingDelete = $state<string | undefined>();
@@ -149,32 +121,6 @@ async function importGpx(): Promise<void> {
 const savedCards = $derived(
   routes.map((route) => ({ route, distanceNm: formatNm(routeDistanceMeters(route.waypoints)) })),
 );
-const planSpeedMps = $derived(knotsToMetersPerSecond(Math.max(0, planningSpeed.value ?? 0)));
-// Each leg's distance, bearing, and the cumulative distance to reach that leg's end waypoint, so the
-// plan reads as a leg table the way a navigator lays out a passage, updating live as waypoints are
-// dragged or inserted. The per-leg passage times are layered on at render so this geometry walk does
-// not re-run when only the planning speed changes.
-const workingLegs = $derived.by(() => {
-  let cumulativeMeters = 0;
-  return routeLegs(working?.waypoints ?? []).map((leg) => {
-    cumulativeMeters += leg.distanceMeters;
-    return { ...leg, cumulativeMeters };
-  });
-});
-// The leg rows lit by the current cross-highlight (a leg lights itself; a waypoint lights the legs it
-// joins). Keyed off the waypoint count, not the working object, so a same-length drag move does not
-// rebuild the Set; a Set so each row checks its lit state in O(1).
-const wptCount = $derived(working?.waypoints.length ?? 0);
-const litLegs = $derived(new Set(litLegIndices(highlight, wptCount)));
-// The whole-route distance is the last leg's cumulative, so the total and the table cannot drift.
-const workingDistanceMeters = $derived(workingLegs.at(-1)?.cumulativeMeters ?? 0);
-const workingDistanceNm = $derived(formatNm(workingDistanceMeters));
-// The whole-passage time at the planning speed, shown alongside the total distance. Split into value
-// and unit so a minutes reading lines its "min" up in the unit column under the distance's "nm".
-const totalTime = $derived.by(() => {
-  const seconds = etaSeconds(workingDistanceMeters, planSpeedMps);
-  return seconds == null ? null : formatDurationParts(seconds);
-});
 
 // Minimize collapses the panel to its header on a phone, so the chart is usable while waypoints are
 // tapped in. Expand it whenever an edit begins, so the edit controls are visible before the navigator
@@ -186,39 +132,6 @@ $effect(() => {
   const editing = working !== undefined;
   if (editing && !wasEditing) minimized = false;
   wasEditing = editing;
-});
-
-// Draft input state: tracks whether the disclosure is open, the user's prompt text, and whether
-// the save confirm is armed.
-let draftOpen = $state(false);
-let draftPrompt = $state('');
-const trimmedPrompt = $derived(draftPrompt.trim());
-let saveArmed = $state(false);
-
-// Optimize hint: an opt-in one-liner so the action stays one-click. Collapsed by default.
-let hintOpen = $state(false);
-let optimizeHint = $state('');
-
-// Draft save name: seeded from the draft's name when the working route first becomes a draft, but not
-// overwritten while the user is typing. The wasDraft guard prevents the effect from fighting a user
-// edit on subsequent renders.
-let saveName = $state('');
-let wasDraft = false;
-$effect(() => {
-  if (draft && !wasDraft) saveName = draft.name;
-  wasDraft = draft !== undefined;
-});
-// When the caller clears the draft (after a save, cancel, or new route), collapse the disclosure and
-// clear the local draft state so re-opening starts clean.
-$effect(() => {
-  if (draft === undefined) {
-    draftOpen = false;
-    draftPrompt = '';
-    saveArmed = false;
-    saveName = '';
-    hintOpen = false;
-    optimizeHint = '';
-  }
 });
 </script>
 
@@ -251,232 +164,29 @@ $effect(() => {
     </button>
   </div>
 
-  {#if draftAvailable && working === undefined}
-    <div class="draft-control">
-      <button
-        type="button"
-        class="btn btn--grow"
-        onclick={() => (draftOpen = !draftOpen)}
-        aria-expanded={draftOpen}
-      >
-        Draft a route with AI
-      </button>
-      {#if draftOpen}
-        <textarea
-          class="input draft-prompt"
-          placeholder="Describe your passage, e.g. 'from here to Avalon, stay 3 nm off the coast'"
-          bind:value={draftPrompt}
-          disabled={draftLoading}
-          rows={3}
-        ></textarea>
-        {#if draftError}
-          <p class="alert-note" role="alert">{draftError}</p>
-        {/if}
-        {#if draftLoading}
-          <p class="muted-note">Drafting...</p>
-        {/if}
-        <div class="panel-controls">
-          <button
-            type="button"
-            class="btn btn-primary btn--grow"
-            disabled={draftLoading || trimmedPrompt === ''}
-            onclick={() => {
-              onDraft(trimmedPrompt);
-            }}
-          >
-            Draft
-          </button>
-        </div>
-      {/if}
-    </div>
-  {/if}
-
-  {#if working}
-    <div class="editing" role="group" aria-label="Route under edit">
-      {#snippet saveStrip(onSaveClick: () => void, disabled: boolean)}
-        <div class="panel-controls">
-          <button type="button" class="btn btn-primary btn--grow" {disabled} onclick={onSaveClick}>
-            <Save size={16} aria-hidden="true" />
-            Save
-          </button>
-          <button
-            type="button"
-            class="btn"
-            onclick={() => (optimizeDraft ? onCancelDraft() : onCancelEdit())}
-          >
-            <X size={16} aria-hidden="true" />
-            Cancel
-          </button>
-        </div>
-      {/snippet}
-      {#if draft}
-        <p class="alert-note" role="alert">
-          {#if draft.source === 'optimize'}
-            Not chart-verified. The AI moved your waypoints to find safer water.
-          {:else}
-            Not chart-verified.
-          {/if}
-          Check every leg against the chart and save only what you have verified. This AI draft is
-          checked leg by leg against charted and modeled marine data that varies by region and does
-          not cover depth everywhere. Read each flag below with its stated source and datum. It is
-          advisory and online, it is not a substitute for the chart, and the absence of a flag is
-          not proof of clear water.
-        </p>
-        {#if draft.confidence === 'low'}
-          <p class="alert-note" role="alert">
-            The model flagged this draft as low confidence. Scrutinize every leg with extra care.
-          </p>
-        {/if}
-        {#if draft.destination}
-          <p class="muted-note">Read as: {draft.destination}</p>
-        {/if}
-        {#if draft.note}
-          <p class="muted-note">{draft.note}</p>
-        {/if}
-        {#if draft.fuel}
-          <p class="muted-note">{draft.fuel}</p>
-        {/if}
-        {#if draft.flags && draft.flags.length > 0}
-          <ul class="draft-flags">
-            {#each draft.flags as flag}
-              <li class="alert-note">
-                {flag.message}
-                {#if flag.detail}
-                  <ul class="draft-hazards">
-                    {#each flag.detail as hazard}
-                      <li>{hazard}</li>
-                    {/each}
-                  </ul>
-                {/if}
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      {/if}
-      {#if draftAvailable && draft === undefined}
-        {@const waypointCount = working.waypoints.length}
-        {@const tooMany = waypointCount > MAX_OPTIMIZE_WAYPOINTS}
-        <div class="optimize">
-          <button
-            type="button"
-            class="btn btn--grow"
-            onclick={() => onOptimize(optimizeHint.trim())}
-            disabled={draftLoading || waypointCount < 2 || tooMany}
-            aria-label="Optimize this route with AI"
-          >
-            <Sparkles size={16} aria-hidden="true" />
-            Optimize route
-          </button>
-          <button
-            type="button"
-            class="btn"
-            onclick={() => (hintOpen = !hintOpen)}
-            aria-expanded={hintOpen}
-            aria-controls="optimize-constraint-input"
-            disabled={draftLoading}
-          >
-            Add a constraint
-          </button>
-        </div>
-        {#if hintOpen}
-          <input
-            id="optimize-constraint-input"
-            class="input"
-            type="text"
-            bind:value={optimizeHint}
-            placeholder="stay 3 nm off"
-            aria-label="Optimize constraint"
-          >
-        {/if}
-        {#if tooMany}
-          <p class="muted-note">
-            Simplify the route to optimize it: the limit is {MAX_OPTIMIZE_WAYPOINTS} waypoints.
-          </p>
-        {/if}
-        {#if draftLoading}
-          <p class="muted-note">Optimizing...</p>
-        {/if}
-        {#if optimizeUnchanged}
-          <p class="muted-note">No safer or shorter route found. Your route is unchanged.</p>
-        {/if}
-      {/if}
-      <dl class="stat-grid">
-        <dt>Waypoints</dt>
-        <dd><span class="num">{working.waypoints.length}</span><span class="unit"></span></dd>
-        <dt>Distance</dt>
-        <dd>
-          <span class="num">{workingDistanceNm}</span>
-          <span class="unit">nm</span>
-        </dd>
-        <dt>Time</dt>
-        <dd>
-          <span class="num">{totalTime ? totalTime.value : PLACEHOLDER}</span>
-          <span class="unit">{totalTime ? totalTime.unit : ''}</span>
-        </dd>
-      </dl>
-      <UnitField
-        label="Plan speed"
-        unit="kn"
-        value={planningSpeed.value}
-        min={0}
-        step={0.5}
-        inputWidth="4rem"
-        onCommit={(speed) => planningSpeed.set(Math.max(0, speed))}
-      />
-      {#if workingLegs.length > 0}
-        <ol class="legs" aria-label="Legs">
-          {#each workingLegs as leg (leg.fromIndex)}
-            {@const seconds = etaSeconds(leg.cumulativeMeters, planSpeedMps)}
-            <li>
-              <button
-                type="button"
-                class="leg-row"
-                class:is-on={litLegs.has(leg.fromIndex)}
-                aria-pressed={litLegs.has(leg.fromIndex)}
-                aria-label={`Highlight leg ${leg.fromIndex + 1}`}
-                onclick={() => onHighlightLeg(leg.fromIndex)}
-              >
-                <span class="leg-no">{leg.fromIndex + 1}</span>
-                <span class="leg-dist num">{formatNm(leg.distanceMeters)} nm</span>
-                <span class="leg-brg num">{formatBearingOr(leg.bearingRad)}&deg;T</span>
-                <span class="leg-time num">
-                  {seconds == null ? PLACEHOLDER : formatDuration(seconds)}
-                </span>
-              </button>
-            </li>
-          {/each}
-        </ol>
+  <RouteDraftPanel
+    {draftAvailable}
+    {working}
+    {draftLoading}
+    {draftError}
+    {draft}
+    {optimizeDraft}
+    {optimizeUnchanged}
+    {onDraft}
+    {onSave}
+    {onOptimize}
+    {onCancelDraft}
+    {onCancelEdit}
+  >
+    {#snippet body()}
+      {#if working}
+        <RouteEditPlan {working} {highlight} {onHighlightLeg} {planningSpeed} />
       {/if}
       <p class="muted-note">
         Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
       </p>
-      {#if draft}
-        <div class="draft-save">
-          <input
-            type="text"
-            class="input"
-            aria-label="Route name"
-            placeholder="Route name"
-            bind:value={saveName}
-          >
-          {#if saveArmed}
-            <InlineConfirm
-              question="I checked every leg. Save this route?"
-              onConfirm={() => {
-                saveArmed = false;
-                onSave(saveName.trim() || draft.name);
-              }}
-              onCancel={() => (saveArmed = false)}
-            />
-          {:else}
-            {@render saveStrip(() => (saveArmed = true), working.waypoints.length < 2)}
-          {/if}
-        </div>
-      {:else}
-        {@render saveStrip(promptSave, working.waypoints.length < 2)}
-      {/if}
-    </div>
-  {/if}
+    {/snippet}
+  </RouteDraftPanel>
 
   <SavedList
     heading="Saved routes"
@@ -588,117 +298,6 @@ $effect(() => {
 </SlideOver>
 
 <style>
-.editing {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.6rem;
-  border: 1px solid var(--accent);
-  border-inline-start-width: 3px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-tint);
-  box-shadow: var(--shadow-overlay);
-}
-/* The leg-by-leg readout for the route under edit: a scrolling list of leg number, distance, bearing,
-   and the cumulative passage time to reach that waypoint, mono and tabular so the columns line up. */
-.legs {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  max-block-size: 18rem;
-  overflow-y: auto;
-  font-size: var(--text-sm);
-}
-.leg-row {
-  display: grid;
-  grid-template-columns: 1.5rem 1fr auto auto;
-  gap: var(--space-2);
-  align-items: center;
-  inline-size: 100%;
-  min-block-size: var(--control-size);
-  padding: 0 var(--space-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: start;
-  cursor: pointer;
-}
-.leg-row:hover {
-  background: var(--surface-raised);
-}
-/* The lit leg is set here, not via the global .is-on utility, because the scoped .leg-row base
-   outweighs it; the data columns keep their own colors and only the row box changes. */
-.leg-row.is-on {
-  background: var(--accent-tint);
-  border-color: var(--accent);
-  border-inline-start-width: 3px;
-}
-.leg-no {
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.leg-dist {
-  color: var(--text);
-}
-.leg-brg {
-  color: var(--text-muted);
-}
-.leg-time {
-  color: var(--accent);
-  text-align: end;
-}
-.draft-control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.5rem 0;
-}
-/* The optimize action and its constraint toggle sit on one row above the working-plan stats. */
-.optimize {
-  display: flex;
-  gap: 0.4rem;
-}
-/* The box, border, and type come from the global .input utility; only the textarea-specific resize,
-   block padding (.input is a single-line control with inline padding only), and disabled dimming are
-   scoped here. */
-.draft-prompt {
-  box-sizing: border-box;
-  resize: vertical;
-  padding-block: var(--space-2);
-}
-.draft-prompt:disabled {
-  opacity: 0.6;
-}
-/* The flags list inherits the .alert-note appearance per item; no border on the list itself. */
-.draft-flags {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-/* The per-leg hazard breakdown under a grouped hazard summary: a compact, muted, indented list. */
-.draft-hazards {
-  margin: 0.25rem 0 0;
-  padding-left: 1.1rem;
-  list-style: disc;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-.draft-save {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-/* The inline alarm note and the armed delete confirm come from the global .alert-note rule and the
-   shared InlineConfirm component. */
-/* The route-edit working-plan stats use the global .stat-grid system in app.css. */
 /* The card list, wrapper, stats, and actions come from the shared SavedList plus the global .saved
    system in app.css, including the name's hover-to-accent locate interactivity (.saved button.name).
    Only the active-route accent treatment is Routes-specific. */

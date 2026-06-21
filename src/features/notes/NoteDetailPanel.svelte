@@ -1,11 +1,11 @@
 <script lang="ts">
 import { ExternalLink, Star } from '@lucide/svelte';
+import { categoryLabel } from '$entities/poi-icons';
 import { SlideOver } from '$shared/ui';
 import type { NoteSelection } from './notes-client';
 import type { NormalizedItem, NoteDetail } from './notes-detail';
 import { safeHttpUrl } from './notes-detail';
 import { isDangerFlag, isRedundantNoteLabel, orderSections } from './notes-present';
-import { categoryLabel } from './poi-categories';
 
 interface Props {
   selection: NoteSelection;
