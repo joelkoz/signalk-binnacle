@@ -8,6 +8,11 @@ import { authInit } from './resource';
 // routes but no provider; /values then answers 501, and _providers answers {}.
 const HISTORY_API = '/signalk/v2/api/history';
 
+// The default review window and bucket resolution, shared by the history-track overlay and the
+// time-travel scrub so their geometry lines up. 24 hours at 60 seconds is about 1440 buckets.
+export const HISTORY_WINDOW_SECONDS = 24 * 60 * 60;
+export const HISTORY_RESOLUTION_SECONDS = 60;
+
 export interface HistoryProviders {
   // Every registered provider id, the default first.
   ids: readonly string[];

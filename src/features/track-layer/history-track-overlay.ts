@@ -11,6 +11,8 @@ import {
 } from '$shared/map';
 import {
   fetchHistoryValuesAcrossProviders,
+  HISTORY_RESOLUTION_SECONDS,
+  HISTORY_WINDOW_SECONDS,
   type HistoryProviders,
   SK_PATHS,
 } from '$shared/signalk';
@@ -22,8 +24,8 @@ const BAND = 'track';
 const LINE_WIDTH = 2;
 const LINE_OPACITY = 0.6;
 const DASH = [2, 2];
-const WINDOW_SECONDS = 24 * 60 * 60;
-const RESOLUTION_SECONDS = 60;
+const WINDOW_SECONDS = HISTORY_WINDOW_SECONDS;
+const RESOLUTION_SECONDS = HISTORY_RESOLUTION_SECONDS;
 const REFRESH_MS = 15 * MINUTE_MS;
 // A break longer than this between positions starts a new line segment, so a day at the dock
 // followed by a sail does not draw a straight line across the gap.

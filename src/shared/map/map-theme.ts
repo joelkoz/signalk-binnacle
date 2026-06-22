@@ -50,6 +50,10 @@ export interface MapThemePaint {
   trackMid: string;
   trackFast: string;
   trackSolid: string;
+  // The time-travel scrub marker ring. A bright color distinct from the own-vessel and AIS markers
+  // in day and dusk, and a red brighter than ownVessel at night so it holds the pure-red-on-black
+  // contract. The marker is drawn as a hollow ring, so shape also separates it from the filled icons.
+  scrubMarker: string;
   ownVessel: Rgba;
   aisTarget: Rgba;
   // Raster depth and chart layers cannot be recolored, so each theme adjusts them instead: day
@@ -91,6 +95,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     trackMid: '#2c6da3',
     trackFast: '#6fb1e0',
     trackSolid: '#1f6fb2',
+    scrubMarker: '#ff7a18',
     ownVessel: { r: 0x1f, g: 0x6f, b: 0xb2, a: 0xff },
     aisTarget: { r: 0xe0, g: 0xa0, b: 0x20, a: 0xff },
     rasterSaturation: 0,
@@ -119,6 +124,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     trackMid: '#3f87bf',
     trackFast: '#84c0ea',
     trackSolid: '#4f9fd8',
+    scrubMarker: '#ff8a3a',
     ownVessel: { r: 0x4f, g: 0x9f, b: 0xd8, a: 0xff },
     aisTarget: { r: 0xd9, g: 0xa4, b: 0x41, a: 0xff },
     rasterSaturation: 0,
@@ -147,6 +153,7 @@ const PAINT: Record<Theme, Omit<MapThemePaint, 'theme'>> = {
     trackMid: '#9a3020',
     trackFast: '#ff6a5a',
     trackSolid: '#c8442e',
+    scrubMarker: '#ff6a5a',
     ownVessel: { r: 0xe0, g: 0x47, b: 0x3a, a: 0xff },
     aisTarget: { r: 0xb0, g: 0x2e, b: 0x22, a: 0xff },
     rasterSaturation: -1,

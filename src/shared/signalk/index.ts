@@ -14,6 +14,8 @@ export {
   fetchHistoryProviders,
   fetchHistoryValues,
   fetchHistoryValuesAcrossProviders,
+  HISTORY_RESOLUTION_SECONDS,
+  HISTORY_WINDOW_SECONDS,
 } from './history-client';
 export type {
   RaiseNotificationOptions,
