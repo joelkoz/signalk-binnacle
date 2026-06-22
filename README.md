@@ -17,7 +17,8 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 
 ## What's new in 0.9.0
 
-New ways to read and arrange the picture, plus a codebase-wide polish pass:
+This release adds a bunch of new features for reading and arranging the picture, plus a
+codebase-wide polish pass:
 
 - **Time travel.** Scrub the last 24 hours from a bottom strip. A marker walks the recorded track, a
   four-metric readout (depth, wind, barometer, and speed over ground) snaps to the scrubbed time, and
@@ -274,6 +275,11 @@ open data and open source:
   [OpenSeaMap](https://www.openseamap.org/) for the seamark overlay; and the
   [Flanders Marine Institute (VLIZ)](https://www.vliz.be/) Marine Regions service for the maritime
   boundaries.
+
+Custom chart symbols come from
+[`signalk-symbol-manager`](https://github.com/joelkoz/signalk-symbol-manager) by
+[Joel Kozikowski](https://github.com/joelkoz), who also contributed the symbol rendering Binnacle uses
+in [#6](https://github.com/NearlCrews/signalk-binnacle/pull/6).
 
 Binnacle pairs well with sibling plugins such as
 [`signalk-crows-nest`](https://github.com/NearlCrews/signalk-crows-nest), which supplies the points

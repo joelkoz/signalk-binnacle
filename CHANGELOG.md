@@ -103,7 +103,9 @@ when this heading gets its date.
   waypoint renders with its chosen symbol. Icons resolve through namespaces: `binnacle:` is Binnacle's
   built-in library (the default for a plain icon id), `custom:` is your own symbols from
   signalk-symbol-manager, and an icon another app stored in its own namespace still renders so nothing
-  placed elsewhere disappears.
+  placed elsewhere disappears. The symbol rendering here was contributed by
+  [Joel Kozikowski](https://github.com/joelkoz) in
+  [#6](https://github.com/NearlCrews/signalk-binnacle/pull/6).
 
 ### Fixed
 
