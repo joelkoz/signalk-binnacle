@@ -13,3 +13,21 @@ export function resolvePinned(items: MenuItem[], pinnedIds: unknown): MenuItem[]
   const ids = new Set(Array.isArray(pinnedIds) ? (pinnedIds as string[]) : []);
   return items.filter((item) => ids.has(item.id));
 }
+
+// The most pills the bottom bar shows on the wide layout before collapsing the rest into a "More"
+// popover. When the pinned set exceeds this, one slot is reserved for the More pill itself.
+export const MAX_BAR_PILLS = 6;
+
+export function splitBarActions(
+  actions: MenuItem[],
+  max: number,
+): { visible: MenuItem[]; overflow: MenuItem[] } {
+  if (actions.length <= max) return { visible: actions, overflow: [] };
+  return { visible: actions.slice(0, max - 1), overflow: actions.slice(max - 1) };
+}
+
+// Add an id when absent, remove it when present, returning a fresh array. The stored order is not the
+// bar order (resolvePinned re-imposes canonical order), so appending is fine.
+export function togglePinned(ids: string[], id: string): string[] {
+  return ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+}

@@ -1,3 +1,9 @@
 export { default as AppMenu } from './AppMenu.svelte';
 export type { MenuItem } from './menu-item';
-export { DEFAULT_PINNED, resolvePinned } from './pinned-actions';
+export {
+  DEFAULT_PINNED,
+  MAX_BAR_PILLS,
+  resolvePinned,
+  splitBarActions,
+  togglePinned,
+} from './pinned-actions';

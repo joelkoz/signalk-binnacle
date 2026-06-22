@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { MenuItem } from './menu-item';
-import { DEFAULT_PINNED, resolvePinned } from './pinned-actions';
+import {
+  DEFAULT_PINNED,
+  MAX_BAR_PILLS,
+  resolvePinned,
+  splitBarActions,
+  togglePinned,
+} from './pinned-actions';
 
 const noop = () => {};
 const item = (id: string): MenuItem => ({ id, label: id, onSelect: noop });
@@ -35,5 +41,41 @@ describe('resolvePinned', () => {
 describe('DEFAULT_PINNED', () => {
   it('is Center, Follow, and Charts (the layers action)', () => {
     expect([...DEFAULT_PINNED]).toEqual(['center', 'follow', 'layers']);
+  });
+});
+
+describe('splitBarActions', () => {
+  const actions = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(item);
+
+  it('shows all when at or under the cap', () => {
+    const r = splitBarActions(actions.slice(0, 6), 6);
+    expect(r.visible.map((i) => i.id)).toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
+    expect(r.overflow).toEqual([]);
+  });
+
+  it('reserves one slot for More when over the cap', () => {
+    const r = splitBarActions(actions, 6);
+    expect(r.visible.map((i) => i.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(r.overflow.map((i) => i.id)).toEqual(['f', 'g']);
+  });
+
+  it('MAX_BAR_PILLS is 6', () => {
+    expect(MAX_BAR_PILLS).toBe(6);
+  });
+});
+
+describe('togglePinned', () => {
+  it('appends an unpinned id', () => {
+    expect(togglePinned(['center'], 'anchor')).toEqual(['center', 'anchor']);
+  });
+
+  it('removes a pinned id', () => {
+    expect(togglePinned(['center', 'anchor'], 'anchor')).toEqual(['center']);
+  });
+
+  it('does not mutate the input', () => {
+    const ids = ['center'];
+    togglePinned(ids, 'anchor');
+    expect(ids).toEqual(['center']);
   });
 });
