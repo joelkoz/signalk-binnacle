@@ -4,13 +4,9 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<a id="unreleased"></a>
 <a id="v090"></a>
 
-## [0.9.0]
-
-This release is in progress. Everything landed since 0.8.0 accumulates here until the release is cut,
-when this heading gets its date.
+## [0.9.0] - 2026-06-22
 
 ### Added
 
