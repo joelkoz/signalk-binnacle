@@ -8,6 +8,16 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Time travel.** Scrub the last 24 hours from a bottom strip: a marker walks the recorded track, a
+  four-metric readout (depth, wind, barometer, and speed over ground) snaps to the scrubbed time, and
+  the live vessel dims while you review. It reads the server history API and says plainly when no
+  history provider is installed.
+- **POI search.** A themed panel lists the points of interest in the current map view as a sortable
+  table (name, type, distance, and bearing). Tapping a row flies the chart to the point and opens its
+  detail while the search panel stays open.
+
 ### Security
 
 - Off-origin plotter-extension URLs are now rejected. An extension manifest URL without a leading

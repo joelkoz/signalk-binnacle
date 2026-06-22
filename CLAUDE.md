@@ -140,7 +140,7 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   equivalent to `eslint-plugin-boundaries`.
 - The global stylesheet is modular too (user rule, keep this style for everything going forward):
   `src/app.css` is only an ordered `@import` manifest over `src/styles/` modules (tokens, base, text,
-  buttons, forms, cards, icon-controls, overlays, panels, strips, a11y, vendor), and the import order IS
+  buttons, forms, cards, icon-controls, scrubber, overlays, panels, strips, a11y, vendor), and the import order IS
   the cascade order. The utility vocabularies are split one concern per module (text helpers, the button
   system, form controls, the saved-card and stat grid, the icon controls plus the lit `.is-on` state, the
   popover and modal scrims) and the shell into panels and strips; the order keeps `.is-on` after the
