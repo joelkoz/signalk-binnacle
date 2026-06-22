@@ -142,7 +142,7 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   `src/app.css` is only an ordered `@import` manifest over `src/styles/` modules (tokens, base, text,
   buttons, forms, cards, icon-controls, scrubber, overlays, panels, strips, a11y, vendor), and the import order IS
   the cascade order. The utility vocabularies are split one concern per module (text helpers, the button
-  system, form controls, the saved-card and stat grid, the icon controls plus the lit `.is-on` state, the
+  system, form controls, the saved-card, stat grid, and `.nav-*` sortable two-line row list, the icon controls plus the lit `.is-on` state, the
   popover and modal scrims) and the shell into panels and strips; the order keeps `.is-on` after the
   `.btn` and `.icon-pill` bases it overrides, so do not reorder the manifest blindly. New global styling
   goes into the right module, never back into one monolith; new shared UI behavior goes through
@@ -152,7 +152,9 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   and promptSaveName dialogs) and the
   global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.popover-card`, `.modal-card`,
   `.menu-item`, `.overlay-backdrop`, `.modal-scrim`, `.alert-note`, `.muted-note`, `.sev-danger` and
-  `.sev-warning`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`, `.stat-grid`, `.num`)
+  `.sev-warning`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`, `.stat-grid`, `.num`, and the
+  `.nav-*` family (`.nav-sort`, `.nav-list`, `.nav-row`, `.nav-name`, `.nav-metrics`, `.nav-metric`)
+  shared by the AIS targets and POI search panels)
   before any panel grows a scoped duplicate. When the same markup or CSS appears in a second place,
   hoist it; a third copy is a review failure.
 - Reuse the shared non-UI helpers before re-implementing them: `$shared/lib` (isRecord, formatPercent,

@@ -18,13 +18,19 @@ when this heading gets its date.
   four-metric readout (depth, wind, barometer, and speed over ground) snaps to the scrubbed time, and
   the live vessel dims while you review. It reads the server history API and says plainly when no
   history provider is installed.
-- **POI search.** A themed panel lists the points of interest in the current map view as a sortable
-  table (name, type, distance, and bearing). Tapping a row flies the chart to the point and opens its
-  detail while the search panel stays open.
+- **POI search.** A themed panel lists the points of interest in the current map view as a two-line
+  list, sortable by name, type, distance, or bearing: each row leads with its category icon and name,
+  then shows its distance and bearing below. Hovering or focusing a row rings that point on the chart
+  without moving the map, and tapping a row rings it and opens its detail in the same panel.
 - **Configurable bottom bar.** Choose which actions ride the bottom bar. A "Customize bottom toolbar" mode
   in the menu pins or unpins any action (Center, Follow, Charts, Forecast, Tides, Anchor, and the rest);
   Center, Follow, and Charts are pinned by default. The choice is saved with your profile and follows
   you across devices. Pin more than fit and the extras collapse into a "More" button.
+
+### Changed
+
+- The AIS targets list and the POI search now share one row and sort style, so the two panels read
+  and behave the same: a full-width sort control above a column of two-line rows.
 
 ### Removed
 
