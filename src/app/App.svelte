@@ -10,6 +10,7 @@ import {
   Radar,
   Route,
   Ruler,
+  Search,
   Spline,
   UserCog,
   VolumeX,
@@ -64,10 +65,12 @@ import {
   createNoteDetailLoader,
   type NoteDetailLoader,
   NoteDetailPanel,
+  type NotePoint,
   type NoteSelection,
   type NotesFilter,
 } from '$features/notes';
 import { addWidgetActionAt, PlotterExtHostView } from '$features/plotter-extensions';
+import { type Poi, PoiSearchPanel } from '$features/poi-search';
 import {
   createProfileBindings,
   downloadProfileJson,
@@ -432,6 +435,7 @@ type LeftPanel =
   | 'ais'
   | 'anchor'
   | 'alarms'
+  | 'poi-search'
   | 'profiles';
 let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
@@ -461,6 +465,26 @@ let chartsToken = $state<string | undefined>();
 let selectedNote = $state<NoteSelection | undefined>();
 let noteLoader = $state<NoteDetailLoader | undefined>();
 let mapView = $state<MapView | undefined>();
+// The on-screen POIs reported by the notes overlay, clipped to the live viewport for the POI search.
+let poiNotes = $state<NotePoint[]>([]);
+// Reading mapView ties this to every map move, so the in-view clip recomputes on pan and zoom; the
+// live bounds come from the map. The clip is only computed while the POI search panel reads it.
+const poiInView = $derived.by<Poi[]>(() => {
+  void mapView;
+  const bounds = mapCommands?.getBounds();
+  const source = bounds
+    ? poiNotes.filter((note) => bboxContainsPoint(bounds, note.position))
+    : poiNotes;
+  return source.map((note) => ({
+    id: note.id,
+    name: note.name,
+    position: note.position,
+    category: note.category,
+    source: note.source,
+    attribution: note.attribution,
+    url: note.url,
+  }));
+});
 let updateReady = $state(false);
 const pwa = registerPwa(() => (updateReady = true));
 
@@ -898,6 +922,13 @@ const menuItems = $derived<MenuItem[]>([
     onSelect: () => openPanel('waypoints'),
   },
   {
+    id: 'poi-search',
+    label: 'POI search',
+    icon: Search,
+    group: 'Navigate',
+    onSelect: () => openPanel('poi-search'),
+  },
+  {
     id: 'measure',
     label: 'Measure',
     icon: Ruler,
@@ -1235,6 +1266,17 @@ async function stopActiveCourse(): Promise<boolean> {
 // Fly the chart to a position: the shared locate action for the MOB mark and AIS list rows.
 function flyToPosition(position: LatLon): void {
   mapCommands?.flyTo(position.latitude, position.longitude);
+}
+
+function locatePoi(poi: Poi): void {
+  flyToPosition(poi.position);
+  selectNote({
+    id: poi.id,
+    name: poi.name,
+    category: poi.category,
+    attribution: poi.attribution,
+    url: poi.url,
+  });
 }
 
 // Fly the chart to a saved route's first waypoint, so showing, editing, activating, or tapping a
@@ -2039,6 +2081,7 @@ onDestroy(() => {
       onUserChartsReady={(registrar) => (userChartRegistrar = registrar)}
       {onViewChange}
       onNoteSelect={selectNote}
+      onNotes={(notes) => (poiNotes = notes)}
       onUserPan={() => (following = false)}
       {onGoToHere}
       onStartRoute={onStartRouteHere}
@@ -2193,6 +2236,19 @@ onDestroy(() => {
           {vessel}
           {collision}
           onLocate={flyToPosition}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
+      </div>
+    {/if}
+    {#if activePanel === 'poi-search'}
+      <div class="panel-slot">
+        <PoiSearchPanel
+          pois={poiInView}
+          {vessel}
+          {units}
+          selectedId={selectedNote?.id}
+          onSelect={locatePoi}
           onClose={closePanel}
           onBack={backToMenu}
         />
