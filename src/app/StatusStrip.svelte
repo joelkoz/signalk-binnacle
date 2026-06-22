@@ -116,6 +116,7 @@ const closeMore = (): void => {
         class:is-on={action.pressed === true}
         aria-pressed={action.pressed === undefined ? undefined : action.pressed}
         disabled={action.disabled}
+        title={action.label}
         onclick={action.onSelect}
       >
         {#if action.icon}
