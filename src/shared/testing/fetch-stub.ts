@@ -1,5 +1,16 @@
 import { vi } from 'vitest';
 
+// A minimal JSON Response stub for the REST client tests: ok is derived from the status, and json()
+// resolves to the given body. Shared so the client tests do not each hand-roll the same shape.
+// Imported by *.test.ts files only.
+export function jsonResponse(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  } as unknown as Response;
+}
+
 // Test-only fetch stub shared by the REST client tests: stubs the global fetch with a mock that
 // answers { ok, body } or throws on 'reject', returning the mock for call assertions. Set rejectJson
 // to make response.json() throw, modeling a 200 with an empty or invalid body (which real Response

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TrackPoint } from '$entities/track';
+import { jsonResponse } from '$shared/testing/fetch-stub';
 import {
   deleteTrack,
   fetchSavedTracks,
@@ -15,14 +16,6 @@ const p = (lat: number, lon: number, gap?: boolean): TrackPoint => ({
   sog: 1,
   gap,
 });
-
-function jsonResponse(status: number, body: unknown): Response {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-  } as unknown as Response;
-}
 
 describe('fetchSavedTracks', () => {
   afterEach(() => vi.unstubAllGlobals());

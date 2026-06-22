@@ -1,18 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { jsonResponse } from '$shared/testing/fetch-stub';
 import { fetchCharts } from './charts-client';
 
 afterEach(() => vi.restoreAllMocks());
-
-function jsonResponse(body: unknown, ok = true, status = 200) {
-  return Promise.resolve({ ok, status, json: () => Promise.resolve(body) } as Response);
-}
 
 describe('fetchCharts', () => {
   it('normalizes the v2 charts map to an array', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() =>
-        jsonResponse({
+        jsonResponse(200, {
           noaa: { identifier: 'noaa', name: 'NOAA', type: 'tilelayer' },
           enc: { identifier: 'enc', name: 'ENC', type: 'tileJSON' },
         }),
@@ -26,9 +23,9 @@ describe('fetchCharts', () => {
   it('falls back to v1 when v2 returns 404', async () => {
     const fetchMock = vi
       .fn()
-      .mockReturnValueOnce(jsonResponse({}, false, 404))
+      .mockReturnValueOnce(jsonResponse(404, {}))
       .mockReturnValueOnce(
-        jsonResponse({ noaa: { identifier: 'noaa', name: 'NOAA', type: 'tilelayer' } }),
+        jsonResponse(200, { noaa: { identifier: 'noaa', name: 'NOAA', type: 'tilelayer' } }),
       );
     vi.stubGlobal('fetch', fetchMock);
     const charts = (await fetchCharts('http://pi.local')) ?? [];
@@ -39,7 +36,7 @@ describe('fetchCharts', () => {
   it('returns undefined when both endpoints fail so a caller keeps its charts', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() => jsonResponse({}, false, 500)),
+      vi.fn(() => jsonResponse(500, {})),
     );
     expect(await fetchCharts('http://pi.local')).toBeUndefined();
   });
@@ -55,14 +52,14 @@ describe('fetchCharts', () => {
   it('returns an empty array for a reachable server with no charts', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() => jsonResponse({})),
+      vi.fn(() => jsonResponse(200, {})),
     );
     expect(await fetchCharts('http://pi.local')).toEqual([]);
   });
 
   it('sends the auth token as a Bearer header when given', async () => {
     const fetchMock = vi.fn(() =>
-      jsonResponse({ noaa: { identifier: 'noaa', name: 'NOAA', type: 'tilelayer' } }),
+      jsonResponse(200, { noaa: { identifier: 'noaa', name: 'NOAA', type: 'tilelayer' } }),
     );
     vi.stubGlobal('fetch', fetchMock);
     await fetchCharts('http://pi.local', 'tok');

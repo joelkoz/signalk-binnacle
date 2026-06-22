@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { jsonResponse } from '$shared/testing/fetch-stub';
 import {
   conditionsFromSignalK,
   defaultProviderName,
@@ -14,12 +15,8 @@ import {
 
 const ORIGIN = 'https://boat.local';
 
-function jsonResponse(body: unknown, ok = true): Response {
-  return { ok, json: async () => body } as Response;
-}
-
 function mockFetch(body: unknown, ok = true) {
-  return vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(body, ok));
+  return vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(ok ? 200 : 500, body));
 }
 
 describe('fetchWeatherProviders', () => {

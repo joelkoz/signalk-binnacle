@@ -1,12 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Waypoint } from '$entities/waypoint';
+import { jsonResponse } from '$shared/testing/fetch-stub';
 import { deleteWaypoint, fetchWaypoints, saveWaypoint } from './waypoints-client';
 
 afterEach(() => vi.restoreAllMocks());
-
-function jsonResponse(body: unknown, ok = true): Response {
-  return { ok, status: ok ? 200 : 500, json: async () => body } as Response;
-}
 
 const WAYPOINT_BODY = {
   name: 'W',
@@ -21,7 +18,7 @@ describe('fetchWaypoints', () => {
   it('reads v2 and parses the keyed object into waypoints', async () => {
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(jsonResponse({ 'id-1': WAYPOINT_BODY }));
+      .mockResolvedValue(jsonResponse(200, { 'id-1': WAYPOINT_BODY }));
     const waypoints = await fetchWaypoints('http://pi', 'tok');
     expect(fetchMock.mock.calls[0][0]).toContain('/signalk/v2/api/resources/waypoints');
     expect(waypoints?.[0]?.id).toBe('id-1');
@@ -29,15 +26,15 @@ describe('fetchWaypoints', () => {
   });
 
   it('returns undefined when both v2 and v1 are unreachable, so the list is not blanked', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, false));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(500, {}));
     expect(await fetchWaypoints('http://pi')).toBeUndefined();
   });
 
   it('falls back to v1 when v2 is not ok', async () => {
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(jsonResponse({}, false))
-      .mockResolvedValueOnce(jsonResponse({ 'id-1': WAYPOINT_BODY }));
+      .mockResolvedValueOnce(jsonResponse(500, {}))
+      .mockResolvedValueOnce(jsonResponse(200, { 'id-1': WAYPOINT_BODY }));
     const waypoints = await fetchWaypoints('http://pi');
     expect(fetchMock.mock.calls[1][0]).toContain('/signalk/v1/api/resources/waypoints');
     expect(waypoints).toHaveLength(1);
@@ -45,7 +42,7 @@ describe('fetchWaypoints', () => {
 
   it('skips malformed entries instead of failing the list', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      jsonResponse({ good: WAYPOINT_BODY, bad: { name: 'no feature' } }),
+      jsonResponse(200, { good: WAYPOINT_BODY, bad: { name: 'no feature' } }),
     );
     const waypoints = await fetchWaypoints('http://pi');
     expect(waypoints?.map((w) => w.id)).toEqual(['good']);
@@ -54,7 +51,7 @@ describe('fetchWaypoints', () => {
 
 describe('saveWaypoint', () => {
   it('PUTs a GeoJSON waypoint body to the waypoint id and returns ok', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, true));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(200, {}));
     const waypoint: Waypoint = {
       id: 'abc',
       name: 'W',
@@ -75,7 +72,7 @@ describe('saveWaypoint', () => {
 
 describe('deleteWaypoint', () => {
   it('DELETEs the waypoint id and returns ok', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}, true));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(200, {}));
     const ok = await deleteWaypoint('http://pi', 'tok', 'abc');
     expect(ok).toBe(true);
     expect((fetchMock.mock.calls[0][1] as RequestInit).method).toBe('DELETE');

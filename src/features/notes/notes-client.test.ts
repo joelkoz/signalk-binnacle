@@ -1,13 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { jsonResponse } from '$shared/testing/fetch-stub';
 import { fetchNotes } from './notes-client';
-
-function jsonResponse(status: number, body: unknown): Response {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-  } as unknown as Response;
-}
 
 describe('fetchNotes', () => {
   afterEach(() => vi.unstubAllGlobals());

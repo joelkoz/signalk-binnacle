@@ -1,16 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { jsonResponse } from '$shared/testing/fetch-stub';
 import type { ProfilesState } from './profile-types';
 import { SignalKProfileAdapter } from './signalk-adapter';
 
 const URL = 'http://pi/signalk/v1/applicationData/user/signalk-binnacle/1.0.0';
-
-function jsonResponse(status: number, body: unknown): Response {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-  } as unknown as Response;
-}
 
 const STATE: ProfilesState = {
   profiles: [
