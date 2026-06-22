@@ -276,7 +276,7 @@ describe('notes overlay', () => {
     }
   });
 
-  it('hides the POIs a host display filter does not select, and re-renders on a filter change', async () => {
+  it('hands the on-screen note set to onNotes, and empties it below the zoom floor', async () => {
     const notes: NotePoint[] = [
       MARINA_NOTE,
       {
@@ -287,51 +287,8 @@ describe('notes overlay', () => {
       },
     ];
     fetchNotesMock.mockResolvedValue(notes);
-    const allowed = new Set(['n1']);
-    let version = 1;
-    const filter = { version: () => version, passes: (id: string) => allowed.has(id) };
-    const overlay = createNotesOverlay('http://pi', () => undefined, undefined, undefined, {
-      filter,
-    });
-    const map = viewFakeMap({ zoom: 12, lng: 0, lat: 0 });
-    const ctx = ctxFor(map);
-    await overlay.add(ctx);
-    overlay.sync(ctx);
-    await settle();
-    const ids = () =>
-      (map.sources.get('binnacle-notes')?.data as GeoJSON.FeatureCollection).features
-        .map((f) => f.properties?.id as string)
-        .sort();
-    // Only the selected POI renders; the unselected note is dropped from the source data.
-    expect(ids()).toEqual(['n1']);
-
-    // Widening the filter (a version bump) re-renders the full set with the map stationary, so a
-    // "Show all" reaches the chart without a pan.
-    allowed.add('n2');
-    version = 2;
-    overlay.sync(ctx);
-    await settle();
-    expect(ids()).toEqual(['n1', 'n2']);
-  });
-
-  it('hands the host-filtered on-screen set to onNotes, and empties it below the zoom floor', async () => {
-    const notes: NotePoint[] = [
-      MARINA_NOTE,
-      {
-        id: 'n2',
-        name: 'Quiet Cove',
-        position: { latitude: 0.01, longitude: 0.01 },
-        category: 'anchorage',
-      },
-    ];
-    fetchNotesMock.mockResolvedValue(notes);
-    const filter = {
-      version: () => 1,
-      passes: (id: string, rec: unknown) => id === 'n1' && rec !== undefined,
-    };
     const seen: NotePoint[][] = [];
     const overlay = createNotesOverlay('http://pi', () => undefined, undefined, undefined, {
-      filter,
       onNotes: (set) => seen.push(set),
     });
     const state = { zoom: 12, lng: 0, lat: 0 };
@@ -340,7 +297,7 @@ describe('notes overlay', () => {
     await overlay.add(ctx);
     overlay.sync(ctx);
     await settle();
-    expect(seen.at(-1)?.map((n) => n.id)).toEqual(['n1']);
+    expect(seen.at(-1)?.map((n) => n.id)).toEqual(['n1', 'n2']);
 
     // Below MIN_ZOOM (9) the overlay clears and reports an empty set so the list does not go stale.
     state.zoom = 8;

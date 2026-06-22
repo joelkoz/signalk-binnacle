@@ -26,12 +26,13 @@ when this heading gets its date.
   Center, Follow, and Charts are pinned by default. The choice is saved with your profile and follows
   you across devices. Pin more than fit and the extras collapse into a "More" button.
 
-### Security
+### Removed
 
-- Off-origin plotter-extension URLs are now rejected. An extension manifest URL without a leading
-  slash, or a protocol-relative URL, could previously resolve to a different origin and load into an
-  iframe that runs with allow-same-origin and the live host bus under your session. Every extension
-  URL is now resolved against the server origin and accepted only when the result is same-origin.
+- The plotter-extensions integration is gone: Binnacle no longer surfaces third-party Signal K
+  plugins' own buttons, panels, widgets, or iframes on the chart. Plugin data still renders through
+  Binnacle's own overlays (points of interest and notes, routes, waypoints, charts, and the symbols
+  from signalk-symbol-manager); this only drops the plugins' injected UI, which did not match the
+  app's design and duplicated built-in features such as the POI search.
 
 ### Fixed
 
@@ -55,8 +56,7 @@ when this heading gets its date.
   the stream reconnects, instead of staying dark until the page is reloaded.
 - The "Here" conditions panel keeps reading the latest sample as a live observation during a long open
   with no weather layer loaded, rather than drifting into treating it as a forecast step.
-- Two display tokens are corrected: the plotter-extension filter chips and placed widgets render with
-  their intended drop shadow, and the default waypoint marker and the disabled course-skip control hold
+- A display token is corrected: the default waypoint marker and the disabled course-skip control hold
   their colors under the night-red theme.
 
 ### Changed
@@ -69,7 +69,7 @@ when this heading gets its date.
 - Internal: a large modularization pass broke the biggest files into cohesive modules, components, and
   controllers without changing behavior. The App.svelte composition root, the WeatherMap and ChartCanvas
   widgets, the routes, layers, and weather panels, the notes overlay, and the pmtiles, themed-map,
-  wind-gl, route-draft, and plotter-extension-host modules were split; the global stylesheet was split
+  wind-gl, and route-draft modules were split; the global stylesheet was split
   one concern per module; and a whole-codebase reuse pass consolidated shared helpers (object guards,
   GeoJSON source updates, the icon-offset expression, the JSON-or-default fetch helper, and the
   provided-symbol overlay resolver). No user-facing behavior change.

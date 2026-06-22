@@ -6,17 +6,6 @@ import { featureCollection, iconOffsetExpression } from '$shared/map';
 import { navaidClassify, navaidIconId } from './navaid-symbols';
 import type { NotePoint } from './notes-client';
 
-// A record shaped like the source notes resource, for a filter's `match` conditions. The plotter
-// search filter selects by id (where the record is unused), but a category filter keys off
-// `properties.skIcon`, the path ActiveCaptain providers use, so expose it here too.
-export function filterRecord(note: NotePoint): unknown {
-  return {
-    name: note.name,
-    position: note.position,
-    properties: note.skIcon ? { skIcon: note.skIcon } : {},
-  };
-}
-
 // The registered map-image id for a note. Navaids resolve to a type- and side-specific
 // symbol inferred from the name; every other category uses its disc.
 function iconFor(note: NotePoint): string {

@@ -1,5 +1,5 @@
 <script lang="ts">
-import { LayoutGrid, MapPin, Navigation, Route, Ruler } from '@lucide/svelte';
+import { MapPin, Navigation, Route, Ruler } from '@lucide/svelte';
 import { registerDismiss, rovingFocus } from '$shared/ui';
 
 interface Props {
@@ -19,9 +19,6 @@ interface Props {
   // Optional: arms the measure tool with its first point at the pressed position, so measuring
   // starts where the navigator is looking instead of via the app menu.
   onMeasureFrom?: () => void;
-  // Optional: present only when the press lands in a plotter-extension widget area that can take a
-  // widget. Opens the add-widget picker for that area.
-  onAddWidget?: () => void;
   onClose: () => void;
 }
 
@@ -34,7 +31,6 @@ const {
   onStartRoute,
   onDropWaypoint,
   onMeasureFrom,
-  onAddWidget,
   onClose,
 }: Props = $props();
 
@@ -64,9 +60,7 @@ const left = $derived(
   ),
 );
 // Prefer above the press so a finger does not cover the menu; drop below near the top edge.
-const itemCount = $derived(
-  2 + (onDropWaypoint ? 1 : 0) + (onMeasureFrom ? 1 : 0) + (onAddWidget ? 1 : 0),
-);
+const itemCount = $derived(2 + (onDropWaypoint ? 1 : 0) + (onMeasureFrom ? 1 : 0));
 const menuHeight = $derived(itemCount * ITEM_HEIGHT + MENU_PADDING);
 const above = $derived(y > menuHeight + EDGE * 2 || y > height / 2);
 const top = $derived(above ? y - EDGE : y + EDGE);
@@ -102,12 +96,6 @@ const top = $derived(above ? y - EDGE : y + EDGE);
     <button type="button" role="menuitem" class="menu-item item" onclick={onMeasureFrom}>
       <Ruler size={16} aria-hidden="true" />
       Measure from here
-    </button>
-  {/if}
-  {#if onAddWidget}
-    <button type="button" role="menuitem" class="menu-item item" onclick={onAddWidget}>
-      <LayoutGrid size={16} aria-hidden="true" />
-      Add widget
     </button>
   {/if}
 </div>

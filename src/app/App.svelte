@@ -26,7 +26,6 @@ import { CourseGuidance } from '$entities/course';
 import { MeasureStore } from '$entities/measure';
 import { MobStore } from '$entities/mob';
 import { type ActiveNotification, NotificationsStore } from '$entities/notifications';
-import { offerableExtensions, PlotterExtHost, unitsForMode } from '$entities/plotter-ext';
 import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$entities/profile';
 import {
   type Route as RouteModel,
@@ -75,9 +74,7 @@ import {
   NoteDetailPanel,
   type NotePoint,
   type NoteSelection,
-  type NotesFilter,
 } from '$features/notes';
-import { addWidgetActionAt, PlotterExtHostView } from '$features/plotter-extensions';
 import { type Poi, PoiSearchPanel } from '$features/poi-search';
 import {
   createProfileBindings,
@@ -179,12 +176,9 @@ import {
   acknowledgeNotification,
   createSignalKClient,
   fetchHistoryProviders,
-  fetchPlotterExtensions,
   fetchServerFeatures,
   fetchSymbols,
-  listResources,
   postNotification,
-  putSignalKPath,
   resolveNotification,
   SELF_CONTEXT,
   type ServerFeatures,
@@ -568,61 +562,6 @@ const waypointsStore = new WaypointsStore();
 // On a stock server the resource type 404s and every icon stays built-in.
 const symbolsStore = new SymbolsStore(origin, undefined);
 
-// Plotter-extension host: discovers plotterExtensions manifests and runs their widgets, panels,
-// buttons, and background runtimes over the published bus. Constructed empty; on a stock server with
-// no provider the collection 404s and nothing renders, so the chart is untouched. The adapters
-// bridge the host API to the chart commands, the multiplexed Signal K relay, the resource clients,
-// and the unit preference.
-const plotterExtHost = new PlotterExtHost({
-  map: {
-    getView: () => {
-      const view = mapView ?? savedView;
-      const bounds = mapCommands?.getBounds();
-      return view && bounds ? { center: [view.lon, view.lat], zoom: view.zoom, bounds } : undefined;
-    },
-    center: (position) => mapCommands?.flyTo(position[1], position[0]),
-    fitBounds: (bounds) => mapCommands?.fitBounds(bounds),
-  },
-  signalk: {
-    ensurePaths: (paths) => {
-      if (paths.length > 0) {
-        void client.raw.subscribe(
-          paths.map((path) => ({ path, policy: 'instant', minPeriod: 1000 })),
-        );
-      }
-    },
-    read: (path) => {
-      const cell = store.cell(path);
-      if (cell.value === undefined) return undefined;
-      return {
-        value: cell.value,
-        timestamp: cell.epoch ? new Date(cell.epoch).toISOString() : undefined,
-      };
-    },
-    put: (path, value) => putSignalKPath(origin, chartsToken, path, value),
-  },
-  resources: {
-    list: (type, query) => listResources(origin, chartsToken, type, query),
-  },
-  units: () => unitsForMode(units.mode),
-});
-
-// The POI display filter the chart's notes overlay consults, reading through to the host's live
-// filter set: an extension's resources.setFilter for `notes` (the POI search pushing its matches)
-// hides every marker it does not select, and clearFilter restores them. The version bumps on any
-// change so the imperative overlay re-renders without the map moving.
-const notesFilter: NotesFilter = {
-  version: () => plotterExtHost.filters.version,
-  passes: (id, record) => plotterExtHost.filters.passes('notes', id, record),
-};
-
-// Discover (or refresh) the offered extensions through the authenticated session. Undefined is the
-// stock-server degrade signal: keep whatever is loaded rather than blanking on a transient failure.
-async function refreshPlotterExtensions(): Promise<void> {
-  const list = await fetchPlotterExtensions(origin, chartsToken);
-  if (list) plotterExtHost.load(offerableExtensions(list));
-}
-
 // Provided chart symbols; absent on a stock server, in which case the built-ins stand. A
 // symbol-manager plugin installed or updated while the link was down would otherwise leave stale
 // icons until the page reloads, so the reconnect path refreshes these alongside the other resources.
@@ -631,11 +570,6 @@ async function refreshSymbols(): Promise<void> {
   if (list) symbolsStore.setSymbols(list);
 }
 
-// A development handle for driving the extension host without a server (load a manifest, inspect
-// placements), mirroring Freeboard's dev console handle. Stripped from production builds.
-if (import.meta.env.DEV) {
-  (globalThis as unknown as Record<string, unknown>).binnaclePlotterExt = plotterExtHost;
-}
 let waypointError = $state<string | undefined>();
 
 async function refreshWaypoints(): Promise<void> {
@@ -1956,8 +1890,6 @@ $effect(() => {
   void refreshWaypoints();
   // A provider plugin enabled while the link was down would otherwise stay undetected.
   void refreshWeatherProvider(authToken);
-  // An extension provider enabled (or disabled) while the link was down would otherwise stay stale.
-  void refreshPlotterExtensions();
   // A symbol-manager plugin installed or updated while the link was down would otherwise leave the
   // waypoint and note icons stale until a reload.
   void refreshSymbols();
@@ -2023,7 +1955,6 @@ async function connectStream(token: string | undefined): Promise<void> {
     refreshRoutes(),
     refreshWaypoints(),
     hydrateAndSeedCourse(),
-    refreshPlotterExtensions(),
   ]);
 }
 
@@ -2159,7 +2090,6 @@ onDestroy(() => {
       {origin}
       {units}
       waypoints={waypointsStore}
-      {notesFilter}
       symbols={symbolsStore}
       onDropWaypoint={(position) => void onDropWaypoint(position)}
       aisTrailsAvailable={() => serverFeatures?.plugins.has('tracks') ?? false}
@@ -2208,10 +2138,7 @@ onDestroy(() => {
         flagRouteError('Could not load the route editor. Check the connection and try again.')}
       {onRouteEdited}
       onAnchorMoved={(position) => void anchorController.onAnchorMoved(position)}
-      resolveAddWidget={(x, y, width, height) =>
-        addWidgetActionAt(plotterExtHost, x, y, width, height)}
     />
-    <PlotterExtHostView host={plotterExtHost} {origin} />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
     </div>
@@ -2459,7 +2386,6 @@ onDestroy(() => {
     {units}
     {vessel}
     {mapView}
-    {plotterExtHost}
     pinnedActions={resolvedPinned}
   />
 </main>

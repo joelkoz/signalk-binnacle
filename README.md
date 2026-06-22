@@ -29,9 +29,8 @@ New ways to read and arrange the picture, plus a codebase-wide polish pass:
 - **Configurable bottom bar.** Pin the actions you want on the bottom bar from a "Customize bottom
   toolbar" mode in the menu. Center, Follow, and Charts are the default; your choice saves with your profile.
 - **Consistency and polish.** A whole-codebase pass put the dialogs, the collision strips, and the
-  overlays behind shared frames and helpers, corrected two theme tokens so the extension chips and the
-  night-red markers render right, and let the anchor controls pick up a freshly approved login without
-  a page reload.
+  overlays behind shared frames and helpers, corrected a theme token so the night-red markers render
+  right, and let the anchor controls pick up a freshly approved login without a page reload.
 
 See the [changelog](CHANGELOG.md#v090) for the full list.
 

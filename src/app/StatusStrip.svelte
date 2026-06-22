@@ -1,11 +1,9 @@
 <script lang="ts">
 import { Ellipsis } from '@lucide/svelte';
 import type { AnchorWatch } from '$entities/anchor';
-import type { PlotterExtHost } from '$entities/plotter-ext';
 import type { UnitsStore } from '$entities/units';
 import type { OwnVessel } from '$entities/vessel';
 import { MAX_BAR_PILLS, type MenuItem, splitBarActions } from '$features/menu';
-import { ToolbarButtons } from '$features/plotter-extensions';
 import {
   formatBearingOr,
   formatFixed,
@@ -30,7 +28,6 @@ let {
   units,
   vessel,
   mapView,
-  plotterExtHost,
   pinnedActions,
 }: {
   connectionLabel: string;
@@ -43,7 +40,6 @@ let {
   units: UnitsStore;
   vessel: OwnVessel;
   mapView: MapView | undefined;
-  plotterExtHost: PlotterExtHost;
   pinnedActions: MenuItem[];
 } = $props();
 
@@ -177,7 +173,6 @@ const closeMore = (): void => {
         </AnchoredMenu>
       </div>
     {/if}
-    <ToolbarButtons host={plotterExtHost} />
   </div>
   <div class="center-cluster">
     <span class="readout">View</span>
