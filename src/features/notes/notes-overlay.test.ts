@@ -308,6 +308,39 @@ describe('notes overlay', () => {
     expect(ids()).toEqual(['n1', 'n2']);
   });
 
+  it('hands the host-filtered on-screen set to onNotes, and empties it below the zoom floor', async () => {
+    const notes: NotePoint[] = [
+      MARINA_NOTE,
+      {
+        id: 'n2',
+        name: 'Quiet Cove',
+        position: { latitude: 0.01, longitude: 0.01 },
+        category: 'anchorage',
+      },
+    ];
+    fetchNotesMock.mockResolvedValue(notes);
+    const filter = { version: () => 1, passes: (id: string) => id === 'n1' };
+    const seen: NotePoint[][] = [];
+    const overlay = createNotesOverlay('http://pi', undefined, undefined, undefined, {
+      filter,
+      onNotes: (set) => seen.push(set),
+    });
+    const state = { zoom: 12, lng: 0, lat: 0 };
+    const map = viewFakeMap(state);
+    const ctx = ctxFor(map);
+    await overlay.add(ctx);
+    overlay.sync(ctx);
+    await settle();
+    // Only the filtered-in note reaches the consumer, matching what the chart draws.
+    expect(seen.at(-1)?.map((n) => n.id)).toEqual(['n1']);
+
+    // Below MIN_ZOOM (9) the overlay clears and reports an empty set so the list does not go stale.
+    state.zoom = 8;
+    overlay.sync(ctx);
+    await settle();
+    expect(seen.at(-1)).toEqual([]);
+  });
+
   it('retries a failed fetch on a stationary map once the cooldown passes', async () => {
     vi.useFakeTimers();
     try {

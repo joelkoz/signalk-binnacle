@@ -67,6 +67,9 @@ export interface NotesOverlayOptions {
   persist?: ExpiringStore<NotePoint[]>;
   // The plotter-extension display filter for the `notes` type, when a host provides one.
   filter?: NotesFilter;
+  // Fired with the host-filtered on-screen note set whenever it changes, and with [] when the
+  // overlay clears below the zoom floor, so a consumer (the POI search) can mirror the chart.
+  onNotes?: (notes: NotePoint[]) => void;
 }
 
 export function createNotesOverlay(
@@ -78,6 +81,7 @@ export function createNotesOverlay(
 ): NotesOverlay {
   const isOnline = options.isOnline ?? (() => true);
   const filter = options.filter;
+  const onNotes = options.onNotes;
   const persist =
     options.persist ??
     createExpiringStore<NotePoint[]>('binnacle-notes', { maxEntries: MAX_PERSIST_ENTRIES });
@@ -166,6 +170,7 @@ export function createNotesOverlay(
     // property), so it is restyled here. The getLayer guard mirrors setData's missing-source degrade.
     if (ctx.map.getLayer(LAYER_ID)) ctx.map.setLayoutProperty(LAYER_ID, 'icon-offset', iconOffset);
     ensurePendingIcons(ctx, notes);
+    onNotes?.(shown);
   }
 
   // Resolve an area's notes from the persisted store (only the first time this session sees the
@@ -198,6 +203,7 @@ export function createNotesOverlay(
     if (renderedNotes === undefined) return;
     renderedNotes = undefined;
     setSourceData(ctx.map, SOURCE_ID, emptyFeatureCollection());
+    onNotes?.([]);
   }
 
   // Highlight the selected marker by drawing a ring at its position; clearing it sets the
