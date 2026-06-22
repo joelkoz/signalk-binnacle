@@ -41,7 +41,7 @@ vi.mock('terra-draw', () => {
     getSnapshot(): StoreFeature[] {
       return [...this.features];
     }
-    addFeatures(features: StoreFeature[]): void {
+    addFeatures(features: StoreFeature[]): Array<{ valid: boolean }> {
       for (const f of features) {
         this.features.push({
           ...f,
@@ -51,6 +51,8 @@ vi.mock('terra-draw', () => {
         this.#clock += 1;
       }
       this.#emit();
+      // Real Terra Draw returns one StoreValidation per feature; the seed path reads `.valid`.
+      return features.map(() => ({ valid: true }));
     }
     removeFeatures(ids: Array<string | number>): void {
       this.features = this.features.filter((f) => f.id == null || !ids.includes(f.id));

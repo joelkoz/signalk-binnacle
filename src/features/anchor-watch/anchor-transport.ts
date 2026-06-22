@@ -44,35 +44,37 @@ export const NO_ANCHOR_TRANSPORT: AnchorTransport = {
 
 export function resolveAnchorTransport(
   base: string,
-  token: string | undefined,
+  getToken: () => string | undefined,
   opts: { standardApiAvailable: boolean },
 ): AnchorTransport {
+  // Each method reads getToken() at call time so a token that arrives or changes mid-session (an
+  // auth approval from another station) is used live, never frozen at resolve time.
   if (!opts.standardApiAvailable) {
     return {
       kind: 'plugin',
-      drop: (radiusMeters) => dropAnchorOnServer(base, token, radiusMeters),
-      raise: () => raiseServerAnchor(base, token),
-      setRadius: (radiusMeters) => setServerRadius(base, token, radiusMeters),
-      setPosition: (position) => putServerAnchorPosition(base, token, position),
+      drop: (radiusMeters) => dropAnchorOnServer(base, getToken(), radiusMeters),
+      raise: () => raiseServerAnchor(base, getToken()),
+      setRadius: (radiusMeters) => setServerRadius(base, getToken(), radiusMeters),
+      setPosition: (position) => putServerAnchorPosition(base, getToken(), position),
     };
   }
   return {
     kind: 'standard',
     async drop(radiusMeters) {
-      if (!(await dropAnchorViaApi(base, token))) return false;
+      if (!(await dropAnchorViaApi(base, getToken()))) return false;
       // The proposal's drop takes no body, so the watch radius is a second POST. Its failure does
       // not fail the drop: the server watch is already active, and a false here would start a
       // duplicate client watch under it; the navigator can re-set the radius from the panel.
-      await setRadiusViaApi(base, token, radiusMeters);
+      await setRadiusViaApi(base, getToken(), radiusMeters);
       return true;
     },
-    raise: () => raiseAnchorViaApi(base, token),
-    setRadius: (radiusMeters) => setRadiusViaApi(base, token, radiusMeters),
+    raise: () => raiseAnchorViaApi(base, getToken()),
+    setRadius: (radiusMeters) => setRadiusViaApi(base, getToken(), radiusMeters),
     // The proposal defines no position-correction route. The v1 PUT on the standard anchor path is
     // what the anchoralarm plugin handles today; an implementation without that handler answers
     // non-OK and this degrades to false like any other call.
-    setPosition: (position) => putServerAnchorPosition(base, token, position),
+    setPosition: (position) => putServerAnchorPosition(base, getToken(), position),
     reposition: (rodeLengthMeters, anchorDepthMeters) =>
-      repositionAnchorViaApi(base, token, rodeLengthMeters, anchorDepthMeters),
+      repositionAnchorViaApi(base, getToken(), rodeLengthMeters, anchorDepthMeters),
   };
 }

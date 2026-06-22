@@ -1,14 +1,15 @@
 <script lang="ts">
 import { TriangleAlert } from '@lucide/svelte';
+import { onDestroy } from 'svelte';
 import type { UnitsStore } from '$entities/units';
 import type { WeatherStore } from '$entities/weather';
-import { formatDayClock } from '$shared/lib';
+import { Clock, formatDayClock, MINUTE_MS } from '$shared/lib';
 import ConditionsBlock from './ConditionsBlock.svelte';
 import ForecastList from './ForecastList.svelte';
 import { GRID_SOURCE_LABEL } from './fills';
 import { pickForecast, tendencyText as tendencyTextFor } from './forecast-series';
 
-import { createPointConditionsLoader } from './point-conditions';
+import { createPointConditionsLoader, type PointConditionsLoader } from './point-conditions';
 import {
   conditionsFromSignalK,
   NEAR_NOW_MS,
@@ -28,13 +29,33 @@ interface Props {
   position?: { latitude: number; longitude: number };
   store: WeatherStore;
   units: UnitsStore;
+  // The point-conditions loader, constructed once by the host so reopening the panel reuses one
+  // persisted-cache connection instead of opening a fresh one per mount. Falls back to a local
+  // instance when a host does not supply it (tests, standalone use).
+  pointLoader?: PointConditionsLoader;
 }
 
-const { origin, token, providerName, position, store, units }: Props = $props();
+const {
+  origin,
+  token,
+  providerName,
+  position,
+  store,
+  units,
+  pointLoader: pointLoaderProp,
+}: Props = $props();
+
+// A coarse minute tick so the "is the target near now" check and the now-fallback target both stay
+// live when no grid is loaded. A bare Date.now() inside the deriveds below would freeze at mount,
+// since nothing else changes to re-run them, and observations would misclassify as forecasts.
+const clock = new Clock(MINUTE_MS);
+onDestroy(() => clock.dispose());
 
 // Fetches the provider's point answers and persists them, so a panel opened with a failed or
 // absent network replays the last conditions for the spot (within the hour) instead of going blank.
-const pointLoader = createPointConditionsLoader();
+// Derived from the prop so a host-supplied loader is used live; the local fallback (tests, standalone
+// use) is constructed lazily only when no loader is provided.
+const pointLoader = $derived(pointLoaderProp ?? createPointConditionsLoader());
 
 let loading = $state(false);
 // The provider's raw answers, kept as data so the conditions DERIVE from them and the selected
@@ -101,14 +122,14 @@ async function loadProvider(provider: string, lat: number, lon: number): Promise
 }
 
 // The time the conditions answer for: the scrubbed forecast time once a grid exists, otherwise now.
-const targetMs = $derived(store.grid ? store.selectedTime : Date.now());
+const targetMs = $derived(store.grid ? store.selectedTime : clock.now);
 
 // The provider's answer for the target time: the latest observation when the target is near now,
 // else the bounded nearest forecast step (never an entry days from the target).
 const providerCurrent = $derived.by<{ cond: PointConditions; observed: boolean } | undefined>(
   () => {
     if (!providerName) return undefined;
-    if (Math.abs(targetMs - Date.now()) < NEAR_NOW_MS && obsData) {
+    if (Math.abs(targetMs - clock.now) < NEAR_NOW_MS && obsData) {
       return { cond: conditionsFromSignalK(obsData), observed: true };
     }
     if (seriesData) {

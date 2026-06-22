@@ -20,7 +20,7 @@ afterEach(() => {
 describe('resolveAnchorTransport', () => {
   it('picks the standard API when the features endpoint advertises it', async () => {
     const mock = stubFetch();
-    const transport = resolveAnchorTransport(BASE, 'tok', { standardApiAvailable: true });
+    const transport = resolveAnchorTransport(BASE, () => 'tok', { standardApiAvailable: true });
     expect(transport.kind).toBe('standard');
     await expect(transport.raise()).resolves.toBe(true);
     await transport.setRadius(75);
@@ -37,7 +37,7 @@ describe('resolveAnchorTransport', () => {
 
   it('standard drop posts drop then the radius', async () => {
     const mock = stubFetch();
-    const transport = resolveAnchorTransport(BASE, 'tok', { standardApiAvailable: true });
+    const transport = resolveAnchorTransport(BASE, () => 'tok', { standardApiAvailable: true });
     await expect(transport.drop(45)).resolves.toBe(true);
     const urls = mock.mock.calls.map((call) => call[0]);
     expect(urls).toEqual([`${API}/drop`, `${API}/radius`]);
@@ -47,20 +47,20 @@ describe('resolveAnchorTransport', () => {
 
   it('standard drop fails without attempting the radius when the drop is refused', async () => {
     const mock = stubFetch(() => false);
-    const transport = resolveAnchorTransport(BASE, undefined, { standardApiAvailable: true });
+    const transport = resolveAnchorTransport(BASE, () => undefined, { standardApiAvailable: true });
     await expect(transport.drop(45)).resolves.toBe(false);
     expect(mock.mock.calls.map((call) => call[0])).toEqual([`${API}/drop`]);
   });
 
   it('standard drop still succeeds when only the radius call fails', async () => {
     stubFetch((url) => !url.endsWith('/radius'));
-    const transport = resolveAnchorTransport(BASE, undefined, { standardApiAvailable: true });
+    const transport = resolveAnchorTransport(BASE, () => undefined, { standardApiAvailable: true });
     await expect(transport.drop(45)).resolves.toBe(true);
   });
 
   it('falls back to the plugin endpoints when the standard API is absent', async () => {
     const mock = stubFetch();
-    const transport = resolveAnchorTransport(BASE, 'tok', { standardApiAvailable: false });
+    const transport = resolveAnchorTransport(BASE, () => 'tok', { standardApiAvailable: false });
     expect(transport.kind).toBe('plugin');
     expect(transport.reposition).toBeUndefined();
     await expect(transport.drop(45)).resolves.toBe(true);

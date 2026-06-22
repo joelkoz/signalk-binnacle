@@ -130,6 +130,7 @@ import {
   WaypointsPanel,
 } from '$features/waypoints';
 import {
+  createPointConditionsLoader,
   createWeatherLoader,
   defaultProviderName,
   fetchWeatherProviders,
@@ -398,6 +399,9 @@ const weather = new WeatherStore();
 // The cached weather loader (Open-Meteo plus RainViewer), constructed here and passed to the panel
 // so it is swappable in tests and its in-memory cache lives for the session.
 const weatherLoader = createWeatherLoader();
+// The point-conditions loader, constructed once here (not per WeatherConditions mount) so reopening
+// the weather panel reuses a single persisted-cache connection rather than opening a fresh one.
+const pointConditionsLoader = createPointConditionsLoader();
 let weatherPanelOpen = $state(false);
 // The default Signal K weather provider's display name (for example AccuWeather), detected once the
 // stream connects. When set, the weather panel prefers the provider for point data and falls back to
@@ -844,6 +848,8 @@ const tidesWanted = $derived(
 // The view changes once per animation frame while panning; persist only after it
 // settles so a drag is one write, not hundreds.
 let viewSaveTimer: ReturnType<typeof setTimeout> | undefined;
+// Debounce the view save so a drag settles into one write, not hundreds.
+const VIEW_SAVE_DEBOUNCE_MS = 400;
 function onViewChange(view: MapView): void {
   mapView = view;
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
@@ -851,7 +857,7 @@ function onViewChange(view: MapView): void {
     mapViewStore.set(view);
     // Refresh tides for the settled view; the loader skips small moves and dedups in flight.
     if (tidesWanted) void tidesLoader.load(tidesStore, view.lat, view.lon);
-  }, 400);
+  }, VIEW_SAVE_DEBOUNCE_MS);
 }
 
 // Load tides for the current view, so opening the Tides panel shows data without a pan first.
@@ -1756,6 +1762,8 @@ let arrivalBannerTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Sound the arrival alarm and request the next point when the boat enters the active arrival circle.
 let arrivedLast = false;
+// How long the arrival banner stays up before it auto-clears.
+const ARRIVAL_BANNER_MS = 8000;
 $effect(() => {
   const arrived = courseGuidance.arrived && courseActive;
   arrivalAlarm.update(arrived && !arrivalMuted.value);
@@ -1766,7 +1774,7 @@ $effect(() => {
     if (arrivalBannerTimer) clearTimeout(arrivalBannerTimer);
     arrivalBannerTimer = setTimeout(() => {
       arrivalBanner = undefined;
-    }, 8000);
+    }, ARRIVAL_BANNER_MS);
     // Auto-advance only along a route; a single "go to here" destination has no next point to step to.
     if (routeStore.activeId !== undefined && !courseGuidance.isLastPoint) {
       // The streamed activeRoute.pointIndex stays authoritative, so a server that also auto-advances
@@ -1876,6 +1884,15 @@ $effect(() => {
   // A symbol-manager plugin installed or updated while the link was down would otherwise leave the
   // waypoint and note icons stale until a reload.
   void refreshSymbols();
+  // A notifications, anchor, or other capability plugin enabled while the link was down (with no
+  // token change, so the token-keyed effect above does not re-run) would otherwise stay undetected
+  // until a reload, leaving the alarm path stuck on the v1 fallback. Re-probe both here.
+  void fetchServerFeatures(origin, authToken).then((features) => {
+    if (features) serverFeatures = features;
+  });
+  void fetchHistoryProviders(origin, authToken).then((providers) => {
+    if (providers) historyProviders = providers;
+  });
   // A unit preset changed on the server while the link was down would otherwise hold until the
   // token changes or the page reloads.
   void units.syncFromServer(origin);
@@ -1964,6 +1981,10 @@ $effect(() => {
   void refreshSymbols();
 });
 
+// The phone breakpoint, in CSS pixels. The scoped CSS below repeats the literal because a media
+// query cannot reference this constant.
+const NARROW_BREAKPOINT_PX = 600;
+
 onMount(() => {
   trendRecorder.start(() => ({
     depth: vessel.depthMeters,
@@ -1976,8 +1997,9 @@ onMount(() => {
   auth.watch();
   void auth.probe();
   // Track the phone breakpoint so the note detail and a leading panel can be made mutually exclusive
-  // at narrow widths, where they would otherwise both bottom-dock and overlap.
-  const narrowQuery = window.matchMedia('(max-width: 600px)');
+  // at narrow widths, where they would otherwise both bottom-dock and overlap. The scoped CSS media
+  // queries hardcode the same value, since a media query cannot reference a JS constant or CSS var.
+  const narrowQuery = window.matchMedia(`(max-width: ${NARROW_BREAKPOINT_PX}px)`);
   const syncNarrow = (): void => {
     narrow = narrowQuery.matches;
   };
@@ -1990,6 +2012,8 @@ onDestroy(() => {
   trendRecorder.stop();
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   if (arrivalBannerTimer) clearTimeout(arrivalBannerTimer);
+  // Covers the case where the component unmounts before any pointer gesture; once the listener has
+  // fired its `once: true` registration has already removed it, so this is a harmless no-op then.
   window.removeEventListener('pointerdown', primeAudio);
   lookoutAlarm.stop();
   anchorAlarm.stop();
@@ -1999,6 +2023,9 @@ onDestroy(() => {
   net.dispose();
   clock.dispose();
   void client.disconnect();
+  // Release the Comlink proxy and terminate the worker so an HMR reload or test remount does not
+  // leak it; disconnect above closes the socket first.
+  client.dispose();
 });
 </script>
 
@@ -2044,6 +2071,7 @@ onDestroy(() => {
   </header>
   <section class="chart-host" aria-label="Chart">
     <ChartCanvas
+      {origin}
       {units}
       waypoints={waypointsStore}
       {notesFilter}
@@ -2325,6 +2353,7 @@ onDestroy(() => {
         token={chartsToken}
         providerName={weatherProviderName}
         position={vessel.position}
+        pointLoader={pointConditionsLoader}
         online={net.online}
         onClose={() => (weatherPanelOpen = false)}
         onBack={() => {

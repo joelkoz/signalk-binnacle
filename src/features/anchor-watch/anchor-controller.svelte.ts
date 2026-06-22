@@ -41,7 +41,7 @@ export function createAnchorController(deps: AnchorControllerDeps) {
   // then fails it has a problem masking would hide. Until features resolve, every action lands on
   // the local path.
   const anchorTransport = $derived(
-    resolveAnchorTransport(deps.origin, deps.getToken(), {
+    resolveAnchorTransport(deps.origin, deps.getToken, {
       standardApiAvailable: deps.serverHasAnchorApi(),
     }),
   );

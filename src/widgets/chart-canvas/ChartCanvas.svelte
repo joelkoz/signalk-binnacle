@@ -41,11 +41,10 @@ import {
   createThemedMap,
   type LayerManager,
   type LayerSettings,
-  registerPmtilesProtocol,
   type ThemedMapHandle,
 } from '$shared/map';
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
-import { type HistoryProviders, type SignalKStore, serverOrigin } from '$shared/signalk';
+import type { HistoryProviders, SignalKStore } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
 import { buildMapCommands } from './build-commands';
 import { buildDynamicOverlays } from './build-overlays';
@@ -54,6 +53,9 @@ import type { MapCommands, UserChartRegistrar } from './commands';
 
 interface Props {
   store: SignalKStore;
+  // The Signal K server origin, resolved once by the host and passed down rather than re-read from
+  // window.location here, so the widget stays testable without a real location.
+  origin: string;
   vessel: OwnVessel;
   aisTargets: AisTargets;
   // The anchor watch, drawn as the swing circle, rode line, and draggable drop-point marker.
@@ -146,6 +148,7 @@ interface Props {
 
 const {
   store,
+  origin,
   vessel,
   aisTargets,
   anchor,
@@ -240,8 +243,6 @@ $effect(() => {
   };
 });
 
-registerPmtilesProtocol();
-
 onMount(() => {
   // createThemedMap defaults to the world view ([0, 30], zoom 2) when no saved view is passed.
   mapHandle = createThemedMap({
@@ -293,9 +294,6 @@ onMount(() => {
         if (index !== undefined) routeStore.setHighlight({ kind: 'waypoint', index });
         else routeStore.clearHighlight();
       });
-      // The server origin is fixed for the session, so resolve it once and reuse it for the chart
-      // fetch, the overlays built here, and the user-chart registrar closure below.
-      const origin = serverOrigin();
       // A URL chart this device synced to the server comes back from the charts API with the same id
       // as its local user-chart descriptor. Drop those server entries so the chart registers once,
       // from the local descriptor (the manageable version); other devices, with no local descriptor,
@@ -444,7 +442,13 @@ onMount(() => {
   });
 });
 
-onDestroy(() => mapHandle?.destroy());
+onDestroy(() => {
+  // Stop the route editor before the map is removed so Terra Draw deregisters its adapter and
+  // layers in the right order (start -> stop, before map.remove()); the guard makes it a no-op when
+  // editing never started. Then tear the map down.
+  routeEditor?.stop();
+  mapHandle?.destroy();
+});
 </script>
 
 <div class="chart-canvas" bind:this={container}>

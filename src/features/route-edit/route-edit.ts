@@ -13,8 +13,11 @@ import { mapThemePaint } from '$shared/map';
 import type { Theme } from '$shared/ui';
 
 // Terra Draw tags every feature with its mode in properties.mode; the on-chart route is a
-// single linestring drawn or edited in that mode.
+// single linestring drawn or edited in that mode. These names are Terra Draw's registered mode
+// ids, so they must match the modes constructed below.
 const LINESTRING_MODE = 'linestring';
+const POINT_MODE = 'point';
+const SELECT_MODE = 'select';
 
 // The on-chart editing line uses the theme's bright selection accent so it reads vividly against
 // blue water and the chart instead of blending in. It reads the one source (the map-theme select,
@@ -220,8 +223,11 @@ export function createRouteEditor(opts: {
     return reconcileNames(waypoints);
   };
 
-  draw.on('change', () => {
+  draw.on('change', (_ids, type) => {
     if (pruning) return;
+    // Styling changes come from setTheme's updateModeOptions, not a geometry edit, so they must not
+    // re-run the change pipeline or count as a user edit.
+    if (type === 'styling') return;
     const next = read();
     remember(next);
     opts.onChange(next);
@@ -259,15 +265,21 @@ export function createRouteEditor(opts: {
     });
   };
 
+  let started = false;
   return {
     start(route, initialPoint) {
       remember(route ? route.waypoints.slice() : []);
       draw.start();
+      started = true;
       if (route && route.waypoints.length > 0) {
         drawing = false;
         seeding = true;
-        draw.addFeatures([routeToStoreFeature(route)]);
-        draw.setMode('select');
+        const validations = draw.addFeatures([routeToStoreFeature(route)]);
+        // A seed that fails Terra Draw's coordinate-precision validation is dropped silently and the
+        // editor would open blank; surface it so a rejected seed is observable rather than invisible.
+        const rejected = validations.filter((v) => !v.valid);
+        if (rejected.length > 0) console.warn('Route seed rejected by Terra Draw', rejected);
+        draw.setMode(SELECT_MODE);
         // Clear after the synchronous seeding change has fired, so only later edits count as the user's.
         queueMicrotask(() => {
           seeding = false;
@@ -280,15 +292,19 @@ export function createRouteEditor(opts: {
     },
     setTheme(theme) {
       const color = drawColor(theme);
-      draw.updateModeOptions('point', { styles: { pointColor: color, pointWidth: 6 } });
-      draw.updateModeOptions('linestring', {
+      draw.updateModeOptions(POINT_MODE, { styles: { pointColor: color, pointWidth: 6 } });
+      draw.updateModeOptions(LINESTRING_MODE, {
         styles: { lineStringColor: color, lineStringWidth: 4 },
       });
-      draw.updateModeOptions('select', {
+      draw.updateModeOptions(SELECT_MODE, {
         styles: { selectionPointColor: color, midPointColor: color },
       });
     },
     stop() {
+      // Guarded so a stop on unmount when editing never started (or already stopped) is a no-op
+      // rather than a Terra Draw "not started" throw.
+      if (!started) return;
+      started = false;
       draw.stop();
     },
   };

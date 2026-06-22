@@ -157,24 +157,32 @@ export function createTrackOverlay(
         type: 'geojson',
         data: emptyFeatureCollection(),
       };
-      ctx.map.addSource(ACTIVE_SOURCE, activeSrc);
-      ctx.map.addSource(SAVED_SOURCE, { type: 'geojson', data: emptyFeatureCollection() });
-      const savedLayer: LineLayerSpecification = {
-        id: SAVED_LAYER,
-        type: 'line',
-        source: SAVED_SOURCE,
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': paint.trackSolid, 'line-width': 2 },
-      };
-      ctx.map.addLayer(savedLayer, before);
-      const activeLayer: LineLayerSpecification = {
-        id: ACTIVE_LAYER,
-        type: 'line',
-        source: ACTIVE_SOURCE,
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': lineColor(paint, settings.value.colorMode), 'line-width': 3 },
-      };
-      ctx.map.addLayer(activeLayer, before);
+      // Guard each add so a base-style reattach (which calls add() again) cannot throw "source
+      // already exists", matching every other overlay's add lifecycle.
+      if (!ctx.map.getSource(ACTIVE_SOURCE)) ctx.map.addSource(ACTIVE_SOURCE, activeSrc);
+      if (!ctx.map.getSource(SAVED_SOURCE)) {
+        ctx.map.addSource(SAVED_SOURCE, { type: 'geojson', data: emptyFeatureCollection() });
+      }
+      if (!ctx.map.getLayer(SAVED_LAYER)) {
+        const savedLayer: LineLayerSpecification = {
+          id: SAVED_LAYER,
+          type: 'line',
+          source: SAVED_SOURCE,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': paint.trackSolid, 'line-width': 2 },
+        };
+        ctx.map.addLayer(savedLayer, before);
+      }
+      if (!ctx.map.getLayer(ACTIVE_LAYER)) {
+        const activeLayer: LineLayerSpecification = {
+          id: ACTIVE_LAYER,
+          type: 'line',
+          source: ACTIVE_SOURCE,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': lineColor(paint, settings.value.colorMode), 'line-width': 3 },
+        };
+        ctx.map.addLayer(activeLayer, before);
+      }
     },
     sync(ctx) {
       const mode = settings.value.colorMode;

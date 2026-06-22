@@ -6,6 +6,10 @@ export interface SignalKClient {
   publish(delta: Delta): Promise<void>;
   reconnect(): Promise<void>;
   disconnect(): Promise<void>;
+  // Release the Comlink proxy and terminate the worker. The worker is page-lifetime in production,
+  // so this is teardown hygiene: without it an HMR reload or a test remount leaks the worker and the
+  // MessagePort the wrapped proxy holds.
+  dispose(): void;
   raw: Comlink.Remote<SignalKClientApi>;
 }
 
@@ -47,6 +51,10 @@ export function createSignalKClient(): SignalKClient {
     },
     async disconnect() {
       await raw.disconnect();
+    },
+    dispose() {
+      raw[Comlink.releaseProxy]();
+      worker.terminate();
     },
   };
 }
