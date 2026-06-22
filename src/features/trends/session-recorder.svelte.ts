@@ -1,6 +1,8 @@
 import { DAY_MS, isFiniteNumber } from '$shared/lib';
 import { TREND_METRICS, type TrendKey, type TrendSeries } from './trend-metrics';
 
+// One sample every 30 s: fine enough to draw a day-long trend without growing the ring buffer past
+// MAX_SAMPLES points.
 const SAMPLE_MS = 30_000;
 const WINDOW_MS = DAY_MS;
 const MAX_SAMPLES = Math.ceil(WINDOW_MS / SAMPLE_MS);

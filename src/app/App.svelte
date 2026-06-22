@@ -153,7 +153,14 @@ import {
   type LatLon,
   padBbox,
 } from '$shared/geo';
-import { Clock, formatNm, formatTcpaMin, nauticalMilesToMeters, uuidv4 } from '$shared/lib';
+import {
+  Clock,
+  formatNm,
+  formatTcpaMin,
+  MINUTE_MS,
+  nauticalMilesToMeters,
+  uuidv4,
+} from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
 import { etaSeconds, routesRoughlyEqual } from '$shared/nav';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
@@ -1112,7 +1119,7 @@ const collisionAlert = $derived.by(() => {
 // is silent. The mute auto-expires, so the badge shows the minutes left to make the bounded window
 // and the coming re-arm obvious.
 const muteAlert = $derived(collisionMute.active ? 'Collision alarm muted.' : '');
-const muteRemainingMin = $derived(Math.max(1, Math.ceil(collisionMute.remainingMs / 60_000)));
+const muteRemainingMin = $derived(Math.max(1, Math.ceil(collisionMute.remainingMs / MINUTE_MS)));
 
 // Publish the collision notification to Signal K as the assessment changes.
 $effect(() => {
@@ -1387,6 +1394,13 @@ let optimizeUnchanged = $state(false);
 // shows a note instead of forcing a full re-verification.
 const UNCHANGED_TOLERANCE_M = nauticalMilesToMeters(0.05);
 
+// padBbox fractions for the three route-fit framings, each a fraction of the bounding box. The
+// optimize pad is wider than the draft pad so the route optimizer has room to move waypoints seaward
+// to clear hazards without the server dropping a good turn as out of window.
+const DRAFT_FIT_PAD_FRACTION = 0.15;
+const LEG_FIT_PAD_FRACTION = 0.3;
+const OPTIMIZE_FIT_PAD_FRACTION = 0.25;
+
 function clearDraftState(): void {
   draftAbort?.abort();
   draftAbort = undefined;
@@ -1447,7 +1461,7 @@ function applyDraft(route: DraftedRoute, source: 'draft' | 'optimize', id: strin
   mapCommands?.startRouteEdit(working);
   // Frame the whole passage so every leg is visible before the navigator verifies it.
   const box = boundsOfPoints(route.waypoints.map((w) => w.position));
-  if (box) mapCommands?.fitBounds(padBbox(box, 0.15));
+  if (box) mapCommands?.fitBounds(padBbox(box, DRAFT_FIT_PAD_FRACTION));
   draftView = {
     name: working.name,
     destination: route.destination?.name,
@@ -1476,7 +1490,7 @@ function onHighlightLeg(index: number): void {
   const view = mapCommands?.getBounds();
   if (view && bboxContainsPoint(view, a.position) && bboxContainsPoint(view, b.position)) return;
   const box = boundsOfPoints([a.position, b.position]);
-  if (box) mapCommands?.fitBounds(padBbox(box, 0.3));
+  if (box) mapCommands?.fitBounds(padBbox(box, LEG_FIT_PAD_FRACTION));
 }
 
 async function onDraftRoute(prompt: string): Promise<void> {
@@ -1518,11 +1532,10 @@ async function onOptimizeRoute(hint: string): Promise<void> {
   // No GPS-fix requirement: the drawn route defines start, end, and area. Send the fix as context when
   // fresh, else fall back to the route's first waypoint.
   const from = vessel.position && !vessel.positionStale ? vessel.position : positions[0];
-  // The pad is wider than the draft's 0.15 so the model has room to move waypoints seaward to clear
-  // hazards without the server dropping a good turn as out of window. padBbox clamps to the world and
-  // unwraps a crossing (dateline) box itself, so a crossing box flows through unchanged.
+  // padBbox clamps to the world and unwraps a crossing (dateline) box itself, so a crossing box
+  // flows through unchanged.
   const box = boundsOfPoints(positions);
-  const bounds = box ? padBbox(box, 0.25) : vesselAreaBounds(positions[0]);
+  const bounds = box ? padBbox(box, OPTIMIZE_FIT_PAD_FRACTION) : vesselAreaBounds(positions[0]);
   optimizeOriginal = working;
   optimizeUnchanged = false;
   const result = await runDraft({
@@ -2574,7 +2587,7 @@ onDestroy(() => {
   /* Above the weather panel (which sits at z-panel + 1) so an active collision danger and its Mute and
      Acknowledge stay reachable while the Forecast mini-map is open. The danger strip is a safety
      surface, so it sits over every panel; only the menu (z-menu) is higher. */
-  z-index: calc(var(--z-panel) + 2);
+  z-index: var(--z-safety-strips);
 }
 .bottom-stack :global(.bottom-strip) {
   pointer-events: auto;

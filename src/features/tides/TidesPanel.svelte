@@ -2,7 +2,7 @@
 import { onDestroy } from 'svelte';
 import type { TidesStore } from '$entities/tides';
 import type { UnitsStore } from '$entities/units';
-import { Clock, formatBearingOr, formatClockTime } from '$shared/lib';
+import { Clock, formatBearingOr, formatClockTime, MINUTE_MS } from '$shared/lib';
 import { SlideOver } from '$shared/ui';
 import {
   formatCurrentRate,
@@ -37,7 +37,7 @@ const stationDistanceText = $derived(
 // A live clock so "next" events and the now-marker stay current while the panel is open, not frozen
 // at the last refresh (a stationary boat may not trigger a reload for hours). Ticks once a minute,
 // which is fine for tide and current events that turn over hours apart.
-const clock = new Clock(60_000);
+const clock = new Clock(MINUTE_MS);
 onDestroy(() => clock.dispose());
 
 // The upcoming high and low events, computed once, so next-high and next-low each scan the same

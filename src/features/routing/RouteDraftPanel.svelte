@@ -296,7 +296,7 @@ $effect(() => {
   padding-block: var(--space-2);
 }
 .draft-prompt:disabled {
-  opacity: 0.6;
+  opacity: var(--disabled-opacity);
 }
 /* The flags list inherits the .alert-note appearance per item; no border on the list itself. */
 .draft-flags {

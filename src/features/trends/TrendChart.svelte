@@ -13,6 +13,10 @@ interface Props {
 const { times, values, theme }: Props = $props();
 
 const CHART_HEIGHT = 120;
+// The left value-axis gutter; wide enough for a four-digit pressure label without clipping.
+const YAXIS_SIZE = 52;
+// Width used for the first chart build before the host has laid out and reported a clientWidth.
+const FALLBACK_WIDTH = 280;
 
 let host: HTMLDivElement | undefined = $state();
 // $state.raw, not a plain let: the data and theme effects below must re-run when the mount
@@ -44,7 +48,7 @@ function makeChart(el: HTMLDivElement, width: number): uPlot {
           points: { show: false },
         },
       ],
-      axes: [axis, { ...axis, size: 52 }],
+      axes: [axis, { ...axis, size: YAXIS_SIZE }],
       legend: { show: false },
       cursor: { show: false },
     },
@@ -57,7 +61,7 @@ function makeChart(el: HTMLDivElement, width: number): uPlot {
 $effect(() => {
   const el = host;
   if (!el) return;
-  const width = el.clientWidth || 280;
+  const width = el.clientWidth || FALLBACK_WIDTH;
   chart = makeChart(el, width);
   const resize = new ResizeObserver(() => {
     if (chart && el.clientWidth > 0) chart.setSize({ width: el.clientWidth, height: CHART_HEIGHT });

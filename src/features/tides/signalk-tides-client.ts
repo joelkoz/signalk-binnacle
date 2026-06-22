@@ -1,4 +1,9 @@
-import type { TideEvent, TideReading, TideStation } from '$entities/tides';
+import {
+  TIDE_WINDOW_HOURS,
+  type TideEvent,
+  type TideReading,
+  type TideStation,
+} from '$entities/tides';
 import { HOUR_MS, withTimeout } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
 import { authInit } from '$shared/signalk';
@@ -15,7 +20,6 @@ const RESOURCE_PATH = '/signalk/v2/api/resources/tides';
 // The plugin answers with about a week of extremes. Trim to the CO-OPS window (the current UTC
 // day plus 48 hours) so the panel's curve and next-event readouts read the same whichever source
 // served them.
-const WINDOW_HOURS = 48;
 const SYNTHETIC_STATION = 'Local tides (signalk-tides)';
 
 export interface SignalkTidesOptions {
@@ -96,7 +100,7 @@ export function parseTidesResource(
   // reading replays identically from either source; upcomingEvents trims to now at render time.
   const now = new Date(nowMs);
   const windowStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const windowEnd = windowStart + WINDOW_HOURS * HOUR_MS;
+  const windowEnd = windowStart + TIDE_WINDOW_HOURS * HOUR_MS;
   const events = parseExtremes(record.extremes).filter(
     (event) => event.timeMs >= windowStart && event.timeMs <= windowEnd,
   );

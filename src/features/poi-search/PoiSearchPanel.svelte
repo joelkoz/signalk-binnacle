@@ -64,7 +64,7 @@ function ariaSort(key: PoiSort): 'ascending' | 'descending' | 'none' {
 <SlideOver title="POI search" {subtitle} {onClose} {onBack}>
   <section class="poi-search">
     <input
-      class="search-input"
+      class="input search-input"
       type="search"
       placeholder="Filter by name"
       aria-label="Filter POIs by name"
@@ -117,15 +117,9 @@ function ariaSort(key: PoiSort): 'ascending' | 'descending' | 'none' {
   flex-direction: column;
   gap: var(--space-3);
 }
+/* Composes the shared .input primitive; only the full-panel width is local. */
 .search-input {
   inline-size: 100%;
-  min-block-size: var(--control-size);
-  padding: var(--space-2) var(--space-3);
-  font: inherit;
-  color: var(--text);
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
 }
 .poi-table {
   inline-size: 100%;

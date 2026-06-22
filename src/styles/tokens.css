@@ -37,6 +37,8 @@
   --text-readout: 1.25rem;
   --z-overlay: 1;
   --z-panel: 2;
+  /* Safety strips (collision danger and its actions) sit above every panel but below the menu. */
+  --z-safety-strips: calc(var(--z-panel) + 2);
   --z-menu: 5;
   /* The MOB confirm is the one true modal: above every panel, strip, and menu. */
   --z-modal: 6;

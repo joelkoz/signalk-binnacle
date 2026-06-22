@@ -8,3 +8,4 @@ export type {
   TidesSource,
   TidesStatus,
 } from './tides-types';
+export { TIDE_WINDOW_HOURS } from './tides-types';

@@ -42,8 +42,16 @@ export function normalizeBounds(bbox: Bbox4): CornerBounds | null {
 // crossing boxes only: it clamps each longitude into [-180, 180], so an antimeridian-crossing box
 // (east < west) would be flattened. padBbox keeps its crossing output within range, so the clamp is a
 // no-op there.
+// The Web Mercator projection is undefined toward the poles, so the world clamp stops at the
+// standard latitude limit on both sides.
+const WEB_MERCATOR_MAX_LAT = 85;
 export function clampToWorld([west, south, east, north]: Bbox4): Bbox4 {
-  return [Math.max(-180, west), Math.max(-85, south), Math.min(180, east), Math.min(85, north)];
+  return [
+    Math.max(-180, west),
+    Math.max(-WEB_MERCATOR_MAX_LAT, south),
+    Math.min(180, east),
+    Math.min(WEB_MERCATOR_MAX_LAT, north),
+  ];
 }
 
 // The default fraction the viewport-keyed fetch overlays pad their bbox by, so a small pan or a

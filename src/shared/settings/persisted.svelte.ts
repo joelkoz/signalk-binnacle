@@ -104,11 +104,13 @@ export interface Thresholds {
   warningTcpaSeconds: number;
 }
 
+const MINUTE_S = 60;
+
 export const DEFAULT_THRESHOLDS: Thresholds = {
   dangerCpaMeters: Math.round(nauticalMilesToMeters(0.5)),
-  dangerTcpaSeconds: 10 * 60,
+  dangerTcpaSeconds: 10 * MINUTE_S,
   warningCpaMeters: Math.round(nauticalMilesToMeters(1)),
-  warningTcpaSeconds: 20 * 60,
+  warningTcpaSeconds: 20 * MINUTE_S,
 };
 
 export function createThresholds(storage?: StorageLike): PersistedValue<Thresholds> {

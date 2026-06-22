@@ -62,7 +62,7 @@ const acknowledged = $derived(collision.suppressed && !collision.escalating);
     </div>
     <ul class="list">
       {#each top as contact (contact.id)}
-        <li class="row {contact.severity}">
+        <li class="row">
           <span
             class="name"
             class:sev-danger={contact.severity === 'danger'}
