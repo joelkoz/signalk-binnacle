@@ -4,6 +4,7 @@ import {
   Bell,
   ChartLine,
   CloudSun,
+  History,
   Layers,
   MapPin,
   Radar,
@@ -106,6 +107,7 @@ import {
   SIGNALK_TIDES_PLUGIN_ID,
   TidesPanel,
 } from '$features/tides';
+import { HistoryStrip, TimeTravelStore } from '$features/time-travel';
 import { type SavedTracksSource, trackToRoute } from '$features/track-layer';
 import {
   deleteTrack,
@@ -486,6 +488,14 @@ const units = new UnitsStore();
 // Samples the live instruments from app start so the Trends panel has an honest in-session
 // series on servers with no history provider. Stopped on destroy.
 const trendRecorder = new TrendSessionRecorder();
+
+// Time-travel review: scrubs the last 24 h of recorded history, reading the same token and provider
+// list as the other history clients, and degrading to an honest empty state when no provider runs.
+const timeTravel = new TimeTravelStore(
+  origin,
+  () => chartsToken,
+  () => historyProviders,
+);
 
 // Standard server waypoints: fetched from /resources/waypoints, rendered by the chart overlay,
 // managed in the Waypoints panel, and dropped from the chart's long-press menu.
@@ -929,6 +939,13 @@ const menuItems = $derived<MenuItem[]>([
     onSelect: () => openPanel('trends'),
   },
   {
+    id: 'time-travel',
+    label: 'Time travel',
+    icon: History,
+    group: 'Conditions',
+    onSelect: () => void timeTravel.enter(),
+  },
+  {
     id: 'ais',
     label: 'AIS targets',
     icon: Radar,
@@ -999,6 +1016,14 @@ const muteRemainingMin = $derived(Math.max(1, Math.ceil(collisionMute.remainingM
 // Publish the collision notification to Signal K as the assessment changes.
 $effect(() => {
   collisionNotifier.update(collision.assessment);
+});
+
+// Exit time-travel review the instant a safety alarm fires: a MOB or a danger-grade collision must
+// take the chart back to now. Only danger, not warning, interrupts, matching where the alarm sounds.
+$effect(() => {
+  if (!timeTravel.active) return;
+  const dangerNow = !collision.suppressed && collision.assessment.worst === 'danger';
+  if (mob.active || dangerNow) timeTravel.exit();
 });
 
 // The man-overboard orchestration: the alarm effect, the MOB live-region string, and the trigger,
@@ -1983,6 +2008,7 @@ onDestroy(() => {
       aisTrailsAvailable={() => serverFeatures?.plugins.has('tracks') ?? false}
       isOnline={() => net.online}
       historyProviders={() => historyProviders}
+      {timeTravel}
       {store}
       {vessel}
       {aisTargets}
@@ -2035,6 +2061,7 @@ onDestroy(() => {
       <div class="arrival-banner" role="status">Arrived at {arrivalBanner}</div>
     {/if}
     <div class="bottom-stack" class:above-weather={weatherPanelOpen}>
+      <HistoryStrip store={timeTravel} {units} onExit={() => timeTravel.exit()} />
       <NavStrip
         guidance={courseGuidance}
         {routeProgress}

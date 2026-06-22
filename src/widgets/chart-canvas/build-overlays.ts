@@ -22,6 +22,7 @@ import { createMeasureOverlay } from '$features/measure';
 import { createMobOverlay } from '$features/mob';
 import { createCourseOverlay, createRouteOverlay } from '$features/route-layer';
 import { createTidesOverlay } from '$features/tides';
+import { createTimeTravelOverlay, type TimeTravelStore } from '$features/time-travel';
 import {
   createHistoryTrackOverlay,
   createTrackOverlay,
@@ -65,6 +66,7 @@ export interface DynamicOverlaysDeps {
   onAnchorMoved?: (position: LatLon) => void;
   aisTrailsAvailable: () => boolean;
   historyProviders: () => HistoryProviders | undefined;
+  timeTravel: TimeTravelStore;
 }
 
 // The store-driven overlay stack, in z order within each band (tides under the safety overlays, the
@@ -95,6 +97,7 @@ export function buildDynamicOverlays(deps: DynamicOverlaysDeps) {
     onAnchorMoved,
     aisTrailsAvailable,
     historyProviders,
+    timeTravel,
   } = deps;
   return [
     createTidesOverlay(tides, units),
@@ -112,5 +115,6 @@ export function buildDynamicOverlays(deps: DynamicOverlaysDeps) {
     createHistoryTrackOverlay(origin, chartsToken, historyProviders),
     createTrackOverlay(recorder, trackSettings, savedTracks),
     createVesselOverlay(vessel),
+    createTimeTravelOverlay(timeTravel),
   ];
 }

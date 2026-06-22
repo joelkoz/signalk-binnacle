@@ -26,6 +26,7 @@ import { buildOceanSources, createOceanOverlay } from '$features/ocean-condition
 import type { RouteEditor } from '$features/route-edit';
 import { createWorkingRouteOverlay, type WorkingRouteOverlay } from '$features/route-layer';
 import { createSeamarkOverlay, SEAMARK_SOURCES } from '$features/seamark-overlay';
+import type { TimeTravelStore } from '$features/time-travel';
 import type { SavedTracksSource } from '$features/track-layer';
 import { OWN_VESSEL_OVERLAY_ID } from '$features/vessel-layer';
 import type { LatLon } from '$shared/geo';
@@ -33,6 +34,7 @@ import {
   chartSourceId,
   createChartOverlay,
   createThemedMap,
+  type LayerManager,
   type LayerSettings,
   registerPmtilesProtocol,
   type ThemedMapHandle,
@@ -128,6 +130,9 @@ interface Props {
   isOnline?: () => boolean;
   // The known history providers, for the 24 h track history overlay; undefined gates its fetches.
   historyProviders?: () => HistoryProviders | undefined;
+  // The time-travel store, drawn as the scrub marker and read by the review-mode effect that dims
+  // the live vessel and forces the history track on while scrubbing.
+  timeTravel: TimeTravelStore;
   // Commit a drag-to-adjust of the anchor marker (the app PUTs it server-side or moves it locally).
   onAnchorMoved?: (position: LatLon) => void;
 }
@@ -175,6 +180,7 @@ const {
   aisTrailsAvailable,
   isOnline,
   historyProviders,
+  timeTravel,
   onAnchorMoved,
 }: Props = $props();
 
@@ -187,6 +193,15 @@ let workingRouteOverlay: WorkingRouteOverlay | undefined;
 // Bumped on every start and stop so a route edit cancelled before the lazily-loaded editor resolves
 // does not start on a route that is no longer current.
 let editGeneration = 0;
+// The layer manager, captured from onLoad so the time-travel review effect can dim the live vessel
+// and force the history track on while scrubbing. $state so the effect re-runs once it is assigned.
+let manager = $state<LayerManager | undefined>();
+// Time-travel review state, captured on enter and restored on exit so review does not clobber the
+// navigator's saved track-history visibility or vessel opacity. reviewing guards the initial
+// inactive effect run from touching saved layer state.
+let reviewing = false;
+let trackHistoryWasVisible = false;
+let vesselOpacityBeforeReview = 1;
 // The open "go to here" menu, anchored at the press point in chart pixels with the chart size
 // captured for edge clamping, or undefined when closed.
 let chartMenu = $state<
@@ -199,6 +214,26 @@ let chartMenu = $state<
 $effect(() => {
   routeEditor?.setTheme(theme);
   workingRouteOverlay?.setTheme(theme);
+});
+
+// Time-travel review mode: dim the live vessel and force the 24 h history track on while scrubbing,
+// then restore both on exit. Guarded so the initial inactive run does not touch saved layer state.
+$effect(() => {
+  const active = timeTravel.active;
+  const mgr = manager;
+  if (!mgr) return;
+  if (active && !reviewing) {
+    reviewing = true;
+    const layers = mgr.layers();
+    trackHistoryWasVisible = layers.find((l) => l.id === 'track-history')?.visible ?? false;
+    vesselOpacityBeforeReview = layers.find((l) => l.id === OWN_VESSEL_OVERLAY_ID)?.opacity ?? 1;
+    mgr.toggle('track-history', true);
+    mgr.setOpacity(OWN_VESSEL_OVERLAY_ID, 0.35);
+  } else if (!active && reviewing) {
+    reviewing = false;
+    mgr.toggle('track-history', trackHistoryWasVisible);
+    mgr.setOpacity(OWN_VESSEL_OVERLAY_ID, vesselOpacityBeforeReview);
+  }
 });
 
 registerPmtilesProtocol();
@@ -233,7 +268,7 @@ onMount(() => {
         height: container.clientHeight,
       };
     },
-    onLoad: async ({ map, ctx, manager, recolor, isDestroyed, runTick }) => {
+    onLoad: async ({ map, ctx, manager: mgr, recolor, isDestroyed, runTick }) => {
       // A pan or zoom moves the chart out from under the menu's pixel anchor, so dismiss it on move.
       map.on('movestart', () => {
         chartMenu = undefined;
@@ -304,8 +339,9 @@ onMount(() => {
         onAnchorMoved,
         aisTrailsAvailable: aisTrailsAvailable ?? (() => false),
         historyProviders: historyProviders ?? (() => undefined),
+        timeTravel,
       });
-      await manager.registerAll([
+      await mgr.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
         ...STREAMING_CHART_SOURCES.map((source) => createStreamingChartOverlay(source)),
         ...buildOceanSources().map((source) => createOceanOverlay(source)),
@@ -316,6 +352,8 @@ onMount(() => {
         ...SEAMARK_SOURCES.map((source) => createSeamarkOverlay(source)),
         ...dynamicOverlays,
       ]);
+      // Capture the manager so the time-travel review effect can dim the vessel and toggle history.
+      manager = mgr;
       if (isDestroyed()) return;
 
       // The Terra Draw route editor draws into its own layers anchored in the routes band. It writes
@@ -352,18 +390,18 @@ onMount(() => {
         return editorLoading;
       };
 
-      const view = new LayersView(manager);
+      const view = new LayersView(mgr);
       view.refresh();
       onReady?.(view);
 
       const userChartRegistrar: UserChartRegistrar = {
         register: async (chart) => {
           if (isDestroyed()) return;
-          await manager.register(createChartOverlay(chart, origin, 'bathymetry'));
+          await mgr.register(createChartOverlay(chart, origin, 'bathymetry'));
           view.refresh();
         },
         unregister: (identifier) => {
-          manager.unregister(chartSourceId(identifier));
+          mgr.unregister(chartSourceId(identifier));
           view.refresh();
         },
       };
@@ -376,7 +414,7 @@ onMount(() => {
           map,
           ctx,
           view,
-          manager,
+          manager: mgr,
           vessel,
           routeStore,
           notesOverlay,
