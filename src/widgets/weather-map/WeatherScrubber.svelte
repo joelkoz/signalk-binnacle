@@ -70,37 +70,3 @@ const {
        playback, so the mirror empties while playing). -->
   <span class="visually-hidden" role="status">{playing ? '' : timeLabel}</span>
 </div>
-
-<style>
-.scrubber {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-/* The slider styling comes from the shared .range; the wrap exists so the now tick can be
-   positioned over the track. */
-.track-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex: 1;
-}
-.track {
-  inline-size: 100%;
-}
-.now-tick {
-  position: absolute;
-  inset-block: 0.45rem;
-  inline-size: 2px;
-  background: var(--accent);
-  pointer-events: none;
-}
-.scrubber .step {
-  flex: 0 0 auto;
-}
-.scrubber .time {
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-</style>

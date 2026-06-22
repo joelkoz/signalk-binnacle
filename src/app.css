@@ -10,6 +10,7 @@
 @import "./styles/forms.css";
 @import "./styles/cards.css";
 @import "./styles/icon-controls.css";
+@import "./styles/scrubber.css";
 @import "./styles/overlays.css";
 @import "./styles/panels.css";
 @import "./styles/strips.css";

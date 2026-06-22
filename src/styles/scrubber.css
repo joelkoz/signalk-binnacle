@@ -1,0 +1,32 @@
+/* The scrubber: a row of step buttons and a full-width range slider, with an optional now-tick
+   marking the live edge. Shared by the weather forecast scrubber and the time-travel history strip.
+   The slider styling itself comes from the shared .range in forms.css; this module is layout only. */
+.scrubber {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.scrubber .track-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+.scrubber .track {
+  inline-size: 100%;
+}
+.scrubber .now-tick {
+  position: absolute;
+  inset-block: 0.45rem;
+  inline-size: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.scrubber .step {
+  flex: 0 0 auto;
+}
+.scrubber .time {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
