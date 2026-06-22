@@ -1,4 +1,4 @@
-import { isLatitude, isLongitude } from '$shared/geo';
+import { isLatitude, isLongitude, type MapView } from '$shared/geo';
 import { isFiniteNumber, isRecord, nauticalMilesToMeters } from '$shared/lib';
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
@@ -52,13 +52,6 @@ export class PersistedValue<T> {
       return { value: fallback, fromStorage: false };
     }
   }
-}
-
-// The map's saved center and zoom, restored on the next visit.
-export interface MapView {
-  lat: number;
-  lon: number;
-  zoom: number;
 }
 
 // Guards a stored view against corruption: a NaN or out-of-range center would break the map.

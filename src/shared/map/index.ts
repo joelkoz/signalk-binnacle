@@ -25,7 +25,6 @@ export type { SymbolOverlay, SymbolOverlayConfig } from './symbol-overlay';
 export { createSymbolOverlay } from './symbol-overlay';
 export {
   createThemedMap,
-  type MapViewLike,
   type ThemedMapApi,
   type ThemedMapHandle,
   type ThemedMapOptions,

@@ -1,4 +1,5 @@
 import maplibregl from 'maplibre-gl';
+import type { MapView } from '$shared/geo';
 import type { Theme } from '$shared/ui';
 import { baseStyleUrl, fallbackBaseStyle } from './base-style';
 import {
@@ -14,14 +15,6 @@ import { mapThemePaint } from './map-theme';
 import { createOverlayTick, type Syncable } from './overlay-tick';
 import { beforeIdFor, installSentinels } from './sentinels';
 import type { OverlayContext } from './types';
-
-// A plain lat/lon/zoom view, structurally compatible with the settings MapView, kept local so this
-// shared map helper does not depend on the settings slice.
-export interface MapViewLike {
-  lat: number;
-  lon: number;
-  zoom: number;
-}
 
 // Handed to the widget once the style has loaded, the sentinels are installed, and the LayerManager
 // is built. The widget registers its overlays (guarding async steps with isDestroyed), wires any
@@ -46,14 +39,14 @@ export interface ThemedMapApi {
 export interface ThemedMapOptions {
   container: HTMLElement;
   // The view to open at; capped to maxZoom. Falls back to the default center and zoom.
-  view?: MapViewLike;
+  view?: MapView;
   defaultCenter?: [number, number];
   defaultZoom?: number;
   minZoom?: number;
   maxZoom?: number;
   managerOptions?: LayerManagerOptions;
   // Coalesced to one emit per animation frame, for the live position readout and view persistence.
-  onView?: (view: MapViewLike) => void;
+  onView?: (view: MapView) => void;
   // A hand drag (not a programmatic move or a scroll-zoom), for releasing a follow lock.
   onUserPan?: () => void;
   onClick?: (lngLat: { lng: number; lat: number }) => void;
