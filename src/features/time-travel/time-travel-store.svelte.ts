@@ -61,7 +61,10 @@ export class TimeTravelStore {
 
   async #load(): Promise<void> {
     const providers = this.#providers();
-    if (!providers) {
+    // A stock server with no history plugin returns { ids: [] } (truthy), so guard on the id count,
+    // not just presence, or the query falls through to a 501 and reports failed instead of honestly
+    // saying a provider is needed. Mirrors the history-track overlay's guard.
+    if (!providers || providers.ids.length === 0) {
       this.status = 'no-provider';
       return;
     }

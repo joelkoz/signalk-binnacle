@@ -33,8 +33,16 @@ describe('TimeTravelStore', () => {
   });
 
   it('sets no-provider without querying when providers is undefined', async () => {
-    const load = vi.fn();
-    const store = make(load as never, () => undefined);
+    const load = vi.fn<() => Promise<TimeTravelData | undefined>>();
+    const store = make(load, () => undefined);
+    await store.enter();
+    expect(store.status).toBe('no-provider');
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it('sets no-provider without querying when the provider list is empty', async () => {
+    const load = vi.fn<() => Promise<TimeTravelData | undefined>>();
+    const store = make(load, () => ({ ids: [] }));
     await store.enter();
     expect(store.status).toBe('no-provider');
     expect(load).not.toHaveBeenCalled();
@@ -68,16 +76,31 @@ describe('TimeTravelStore', () => {
     expect(store.active).toBe(false);
     expect(store.status).toBe('idle');
     expect(store.samples).toEqual([]);
+    expect(store.current).toBeUndefined();
+    expect(store.markerSample).toBeUndefined();
+  });
+
+  it('discards a load that resolves after exit', async () => {
+    let resolve: (d: TimeTravelData) => void = () => {};
+    const held = new Promise<TimeTravelData>((r) => (resolve = r));
+    const load = vi.fn<() => Promise<TimeTravelData | undefined>>().mockReturnValue(held);
+    const store = make(load);
+    const entering = store.enter();
+    store.exit();
+    resolve(data);
+    await entering;
+    expect(store.status).toBe('idle');
+    expect(store.samples).toEqual([]);
   });
 
   it('ignores a stale load that resolves after a newer one', async () => {
     let resolveFirst: (d: TimeTravelData) => void = () => {};
     const first = new Promise<TimeTravelData>((r) => (resolveFirst = r));
     const load = vi
-      .fn()
+      .fn<() => Promise<TimeTravelData | undefined>>()
       .mockReturnValueOnce(first)
       .mockResolvedValueOnce({ ...data, to: 9000, samples: [{ t: 9000, lon: 3, lat: 3 }] });
-    const store = make(load as never);
+    const store = make(load);
     const p1 = store.enter();
     const p2 = store.reload();
     resolveFirst(data);

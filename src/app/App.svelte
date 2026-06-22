@@ -1054,7 +1054,9 @@ $effect(() => {
 $effect(() => {
   if (!timeTravel.active) return;
   const dangerNow = !collision.suppressed && collision.assessment.worst === 'danger';
-  if (mob.active || dangerNow) timeTravel.exit();
+  // untrack the exit so writing timeTravel.active does not re-trigger this effect (it terminates
+  // either way via the guard, but untrack keeps it a single clean run).
+  if (mob.active || dangerNow) untrack(() => timeTravel.exit());
 });
 
 // The man-overboard orchestration: the alarm effect, the MOB live-region string, and the trigger,

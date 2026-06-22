@@ -204,12 +204,6 @@ let editGeneration = 0;
 // The layer manager, captured from onLoad so the time-travel review effect can dim the live vessel
 // and force the history track on while scrubbing. $state so the effect re-runs once it is assigned.
 let manager = $state<LayerManager | undefined>();
-// Time-travel review state, captured on enter and restored on exit so review does not clobber the
-// navigator's saved track-history visibility or vessel opacity. reviewing guards the initial
-// inactive effect run from touching saved layer state.
-let reviewing = false;
-let trackHistoryWasVisible = false;
-let vesselOpacityBeforeReview = 1;
 // The open "go to here" menu, anchored at the press point in chart pixels with the chart size
 // captured for edge clamping, or undefined when closed.
 let chartMenu = $state<
@@ -224,24 +218,26 @@ $effect(() => {
   workingRouteOverlay?.setTheme(theme);
 });
 
-// Time-travel review mode: dim the live vessel and force the 24 h history track on while scrubbing,
-// then restore both on exit. Guarded so the initial inactive run does not touch saved layer state.
+// The live vessel dims to this opacity during time-travel review so the scrub marker stands out.
+const REVIEW_DIM_OPACITY = 0.35;
+
+// Time-travel review mode: dim the live vessel and force the 24 h history track on while scrubbing.
+// The prior state is captured as closure locals and restored in the teardown, which Svelte runs on
+// exit, on a manager swap, and on unmount, so review can never leave the vessel dimmed or the track
+// forced on. The active guard means the initial inactive run registers no teardown and touches
+// nothing.
 $effect(() => {
-  const active = timeTravel.active;
   const mgr = manager;
-  if (!mgr) return;
-  if (active && !reviewing) {
-    reviewing = true;
-    const layers = mgr.layers();
-    trackHistoryWasVisible = layers.find((l) => l.id === 'track-history')?.visible ?? false;
-    vesselOpacityBeforeReview = layers.find((l) => l.id === OWN_VESSEL_OVERLAY_ID)?.opacity ?? 1;
-    mgr.toggle('track-history', true);
-    mgr.setOpacity(OWN_VESSEL_OVERLAY_ID, 0.35);
-  } else if (!active && reviewing) {
-    reviewing = false;
-    mgr.toggle('track-history', trackHistoryWasVisible);
-    mgr.setOpacity(OWN_VESSEL_OVERLAY_ID, vesselOpacityBeforeReview);
-  }
+  if (!mgr || !timeTravel.active) return;
+  const layers = mgr.layers();
+  const priorTrackVisible = layers.find((l) => l.id === 'track-history')?.visible ?? false;
+  const priorVesselOpacity = layers.find((l) => l.id === OWN_VESSEL_OVERLAY_ID)?.opacity ?? 1;
+  mgr.toggle('track-history', true);
+  mgr.setOpacity(OWN_VESSEL_OVERLAY_ID, REVIEW_DIM_OPACITY);
+  return () => {
+    mgr.toggle('track-history', priorTrackVisible);
+    mgr.setOpacity(OWN_VESSEL_OVERLAY_ID, priorVesselOpacity);
+  };
 });
 
 registerPmtilesProtocol();
