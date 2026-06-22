@@ -73,7 +73,6 @@ describe('sortRows', () => {
   });
 
   it('sorts by type using the category label', () => {
-    // Labels: anchorage, hazard, marina -> Anchorage, Hazard, Marina sort alphabetically.
     expect(sortRows(rows, 'type', 'asc').map((r) => r.poi.category)).toEqual([
       'anchorage',
       'hazard',
