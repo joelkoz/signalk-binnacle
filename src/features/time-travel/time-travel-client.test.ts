@@ -30,6 +30,7 @@ describe('loadTimeTravelHistory', () => {
     ]);
     expect(query.durationSeconds).toBe(24 * 60 * 60);
     expect(query.resolutionSeconds).toBe(60);
+    expect(fetchValues.mock.calls[0][1]).toBe('t');
   });
 
   it('returns parsed samples and range on success', async () => {

@@ -1,5 +1,5 @@
 import { isLatLon } from '$shared/geo';
-import { nearestBy } from '$shared/lib';
+import { HOUR_MS, nearestBy } from '$shared/lib';
 import { type HistoryValues, SK_PATHS } from '$shared/signalk';
 
 export interface HistorySample {
@@ -56,15 +56,23 @@ export function nearestPositioned(
   samples: readonly HistorySample[],
   targetMs: number,
 ): HistorySample | undefined {
-  return nearestBy(
-    samples.filter((s) => s.lon !== undefined && s.lat !== undefined),
-    (s) => s.t,
-    targetMs,
-  );
+  // Single pass over the samples so a scrub tick does not allocate a filtered copy of up to ~1440
+  // entries; the position guard is folded into the scan.
+  let best: HistorySample | undefined;
+  let bestGap = Number.POSITIVE_INFINITY;
+  for (const s of samples) {
+    if (s.lon === undefined || s.lat === undefined) continue;
+    const gap = Math.abs(s.t - targetMs);
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = s;
+    }
+  }
+  return best;
 }
 
 export function relativeHours(toMs: number, sampleMs: number): number {
-  return Math.max(0, Math.round((toMs - sampleMs) / 3_600_000));
+  return Math.max(0, Math.round((toMs - sampleMs) / HOUR_MS));
 }
 
 export function scrubValueText(clock: string, hoursAgo: number): string {

@@ -12,6 +12,8 @@ import type { TimeTravelStore } from './time-travel-store.svelte';
 const SOURCE_ID = 'binnacle-time-travel-marker';
 const LAYER_ID = 'binnacle-time-travel-marker-circle';
 const BAND = 'vessel';
+const MARKER_RADIUS = 7;
+const MARKER_STROKE_WIDTH = 3;
 
 export interface TimeTravelOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -57,10 +59,10 @@ export function createTimeTravelOverlay(store: TimeTravelStore): TimeTravelOverl
           type: 'circle',
           source: SOURCE_ID,
           paint: {
-            'circle-radius': 7,
+            'circle-radius': MARKER_RADIUS,
             'circle-color': 'rgba(0, 0, 0, 0)',
             'circle-stroke-color': paint.scrubMarker,
-            'circle-stroke-width': 3,
+            'circle-stroke-width': MARKER_STROKE_WIDTH,
           },
         };
         ctx.map.addLayer(layer, ctx.beforeIdFor(BAND));

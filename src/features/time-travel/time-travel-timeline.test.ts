@@ -73,6 +73,11 @@ describe('nearest lookups', () => {
   it('nearestPositioned skips position-less samples', () => {
     expect(nearestPositioned(samples, 1100)?.t).toBe(2000);
   });
+
+  it('returns undefined for an empty sample list', () => {
+    expect(nearestSample([], 0)).toBeUndefined();
+    expect(nearestPositioned([], 0)).toBeUndefined();
+  });
 });
 
 describe('label helpers', () => {

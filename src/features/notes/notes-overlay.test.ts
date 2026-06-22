@@ -319,7 +319,10 @@ describe('notes overlay', () => {
       },
     ];
     fetchNotesMock.mockResolvedValue(notes);
-    const filter = { version: () => 1, passes: (id: string) => id === 'n1' };
+    const filter = {
+      version: () => 1,
+      passes: (id: string, rec: unknown) => id === 'n1' && rec !== undefined,
+    };
     const seen: NotePoint[][] = [];
     const overlay = createNotesOverlay('http://pi', undefined, undefined, undefined, {
       filter,
@@ -331,7 +334,6 @@ describe('notes overlay', () => {
     await overlay.add(ctx);
     overlay.sync(ctx);
     await settle();
-    // Only the filtered-in note reaches the consumer, matching what the chart draws.
     expect(seen.at(-1)?.map((n) => n.id)).toEqual(['n1']);
 
     // Below MIN_ZOOM (9) the overlay clears and reports an empty set so the list does not go stale.

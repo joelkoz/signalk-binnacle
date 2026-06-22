@@ -15,6 +15,7 @@ export interface TimeTravelData {
 
 // Position is sent bare: the server defaults it to the `first` aggregate and the provider reads a
 // special position table, so a numeric aggregate suffix would 400. The metrics carry their methods.
+// Wind speed takes `:max` to surface the peak gust in each bucket; the other scalars take `:average`.
 const PATHS: readonly string[] = [
   SK_PATHS.position,
   `${SK_PATHS.depthBelowTransducer}:average`,

@@ -72,6 +72,11 @@ describe('sortRows', () => {
     expect(sortRows(rows, 'distance', 'desc').map((r) => r.poi.id)).toEqual(['a', 'b', 'c']);
   });
 
+  it('sorts by bearing with unknowns last in both directions', () => {
+    expect(sortRows(rows, 'bearing', 'asc').map((r) => r.poi.id)).toEqual(['a', 'b', 'c']);
+    expect(sortRows(rows, 'bearing', 'desc').map((r) => r.poi.id)).toEqual(['b', 'a', 'c']);
+  });
+
   it('sorts by type using the category label', () => {
     expect(sortRows(rows, 'type', 'asc').map((r) => r.poi.category)).toEqual([
       'anchorage',

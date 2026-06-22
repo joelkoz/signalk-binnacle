@@ -53,6 +53,9 @@ describe('time-travel overlay', () => {
     expect(src?.setData).toHaveBeenCalledTimes(1);
     overlay.sync(ctx);
     expect(src?.setData).toHaveBeenCalledTimes(1);
+    s.active = false;
+    overlay.sync(ctx);
+    expect(src?.setData).toHaveBeenCalledTimes(2);
   });
 
   it('remove cleans up the source and layer', () => {

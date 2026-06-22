@@ -7,8 +7,10 @@ import {
   formatLengthOr,
   formatPressureOr,
   lengthUnit,
+  MINUTE_MS,
   pressureUnit,
 } from '$shared/lib';
+import { HISTORY_RESOLUTION_SECONDS } from '$shared/signalk';
 import { registerDismiss } from '$shared/ui';
 import type { TimeTravelStore } from './time-travel-store.svelte';
 import { relativeHours, scrubValueText } from './time-travel-timeline';
@@ -23,7 +25,7 @@ const { store, units, onExit }: Props = $props();
 
 // Coarse button step: a quarter-hour nudge keeps gloved-hand stepping useful across the 24 h
 // window, while the slider's fine 60 s step (keyboard arrows) still allows precise scrubbing.
-const STEP_MS = 15 * 60_000;
+const STEP_MS = 15 * MINUTE_MS;
 
 $effect(() => {
   if (store.active) return registerDismiss(onExit);
@@ -57,7 +59,7 @@ const liveMessage = $derived(
     <div class="head">
       <span class="title">History</span>
       {#if store.status === 'ready'}
-        <span class="note num">{clock} ({hoursAgo}h ago)</span>
+        <span class="note num" aria-hidden="true">{clock} ({hoursAgo}h ago)</span>
       {/if}
       <div class="actions">
         {#if store.status === 'ready'}
@@ -83,7 +85,7 @@ const liveMessage = $derived(
         <button type="button" class="ack" onclick={() => void store.reload()}>Retry</button>
       </div>
     {:else}
-      <div class="scrubber" role="group" aria-label="History time">
+      <div class="scrubber" role="group" aria-label="Scrub history">
         <button
           type="button"
           class="icon-btn step"
@@ -106,7 +108,7 @@ const liveMessage = $derived(
             type="range"
             min={store.from}
             max={store.to}
-            step={60000}
+            step={HISTORY_RESOLUTION_SECONDS * 1000}
             value={store.scrubMs}
             aria-label="History time"
             aria-valuetext={valueText}
