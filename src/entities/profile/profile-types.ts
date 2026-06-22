@@ -22,6 +22,9 @@ export interface ProfileSettings {
   // The LOCAL units fallback only; optional so profiles saved before it existed stay valid. When the
   // server's unit preferences resolve, they win and this field is inert.
   units?: UnitsMode;
+  // The ids of the actions pinned to the bottom bar, in stored (pin) order. Optional so profiles
+  // saved before this field stay valid; the default applies at the read edge when absent.
+  pinnedActionIds?: string[];
   mode?: string;
 }
 

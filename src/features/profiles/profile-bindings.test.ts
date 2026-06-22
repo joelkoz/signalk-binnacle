@@ -31,6 +31,7 @@ function makeDeps(): ProfileBindingDeps {
     planningSpeedKn: pv(5),
     arrivalMuted: pv(false),
     unitsLocal: pv('metric'),
+    pinnedActions: pv<string[]>([]),
   } as unknown as ProfileBindingDeps;
 }
 
@@ -71,5 +72,30 @@ describe('createProfileBindings', () => {
     bundle.units = undefined;
     bindings.apply(bundle);
     expect(deps.unitsLocal.value).toBe('metric');
+  });
+
+  it('captures pinnedActionIds as a copy', () => {
+    const deps = makeDeps();
+    (deps.pinnedActions as unknown as { value: string[] }).value = ['center'];
+    const bindings = createProfileBindings(deps);
+    const captured = bindings.capture();
+    expect(captured.pinnedActionIds).toEqual(['center']);
+    (deps.pinnedActions as unknown as { value: string[] }).value = ['center', 'anchor'];
+    expect(captured.pinnedActionIds).toEqual(['center']);
+  });
+
+  it('applies an empty pinnedActionIds (a deliberately cleared bar)', () => {
+    const deps = makeDeps();
+    const bindings = createProfileBindings(deps);
+    bindings.apply({ ...bindings.capture(), pinnedActionIds: [] });
+    expect(deps.pinnedActions.value).toEqual([]);
+  });
+
+  it('ignores a non-array pinnedActionIds and leaves the prior value', () => {
+    const deps = makeDeps();
+    (deps.pinnedActions as unknown as { value: string[] }).value = ['center'];
+    const bindings = createProfileBindings(deps);
+    bindings.apply({ ...bindings.capture(), pinnedActionIds: 'oops' as unknown as string[] });
+    expect(deps.pinnedActions.value).toEqual(['center']);
   });
 });

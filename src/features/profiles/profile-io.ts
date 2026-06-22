@@ -49,6 +49,13 @@ export function isProfileSettings(value: unknown): value is ProfileSettings {
   if (value.units !== undefined && value.units !== 'metric' && value.units !== 'imperial') {
     return false;
   }
+  if (
+    value.pinnedActionIds !== undefined &&
+    (!Array.isArray(value.pinnedActionIds) ||
+      !value.pinnedActionIds.every((id) => typeof id === 'string'))
+  ) {
+    return false;
+  }
   if (value.mode !== undefined && typeof value.mode !== 'string') return false;
   return true;
 }

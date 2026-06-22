@@ -19,6 +19,8 @@ export interface ProfileBindingDeps {
   arrivalMuted: PersistedValue<boolean>;
   // The local units fallback (the server preference, when resolved, wins outside profiles).
   unitsLocal: PersistedValue<UnitsMode>;
+  // The bottom-bar pinned action ids.
+  pinnedActions: PersistedValue<string[]>;
 }
 
 export interface ProfileBindings {
@@ -85,6 +87,15 @@ export function createProfileBindings(deps: ProfileBindingDeps): ProfileBindings
       read: () => ({ arrivalMuted: deps.arrivalMuted.value }),
       write: (s) => deps.arrivalMuted.set(s.arrivalMuted),
       track: () => void deps.arrivalMuted.value,
+    },
+    pinnedActionIds: {
+      read: () => ({ pinnedActionIds: [...deps.pinnedActions.value] }),
+      // Array-guarded, not truthy-guarded: an intentionally empty array (a cleared bar) must apply,
+      // and a non-array from a corrupt or cross-version document must be ignored.
+      write: (s) => {
+        if (Array.isArray(s.pinnedActionIds)) deps.pinnedActions.set(s.pinnedActionIds);
+      },
+      track: () => void deps.pinnedActions.value,
     },
     units: {
       read: () => ({ units: deps.unitsLocal.value }),

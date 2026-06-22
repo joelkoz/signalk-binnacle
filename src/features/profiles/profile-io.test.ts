@@ -101,6 +101,19 @@ describe('isProfileSettings', () => {
     expect(isProfileSettings(settings({ alarmMuted: true } as never))).toBe(true);
   });
 
+  it('accepts settings with no pinnedActionIds', () => {
+    expect(isProfileSettings({ ...settings(), pinnedActionIds: undefined })).toBe(true);
+  });
+
+  it('accepts a string-array pinnedActionIds', () => {
+    expect(isProfileSettings({ ...settings(), pinnedActionIds: ['center', 'follow'] })).toBe(true);
+  });
+
+  it('rejects a non-string-array pinnedActionIds', () => {
+    expect(isProfileSettings({ ...settings(), pinnedActionIds: [1, 2] as never })).toBe(false);
+    expect(isProfileSettings({ ...settings(), pinnedActionIds: 'center' as never })).toBe(false);
+  });
+
   it('accepts an optional string mode and rejects a non-string mode', () => {
     expect(isProfileSettings(settings({ mode: 'anchor' }))).toBe(true);
     expect(isProfileSettings(settings({ mode: 5 as never }))).toBe(false);

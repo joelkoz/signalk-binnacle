@@ -58,7 +58,7 @@ import {
   LookoutAlarm,
 } from '$features/lookout';
 import { MeasureStrip } from '$features/measure';
-import { AppMenu, type MenuItem } from '$features/menu';
+import { AppMenu, DEFAULT_PINNED, type MenuItem } from '$features/menu';
 import { createMobController, MOB_TONE, MobButton, MobStrip } from '$features/mob';
 import { ARRIVAL_TONE, NavStrip, type RouteProgress } from '$features/navigation';
 import {
@@ -502,6 +502,7 @@ const savedView = isMapView(mapViewStore.value) ? mapViewStore.value : undefined
 const currentView = $derived(mapView ?? savedView);
 const layerSettings = new PersistedValue<LayerSettings>('binnacle:layers', {});
 const layerOrder = new PersistedValue<string[]>('binnacle:layer-order', []);
+const pinnedActions = new PersistedValue<string[]>('binnacle:pinned-actions', [...DEFAULT_PINNED]);
 // Which Layers-panel categories the navigator has left open or closed, so the panel reopens that way.
 const layerCategoriesOpen = new PersistedValue<Record<string, boolean>>(
   'binnacle:layer-categories',
@@ -698,6 +699,7 @@ const profileBindings = createProfileBindings({
   planningSpeedKn,
   arrivalMuted,
   unitsLocal: units.localSetting,
+  pinnedActions,
 });
 
 function captureProfileSettings(): ProfileSettings {
