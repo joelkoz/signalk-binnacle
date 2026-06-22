@@ -9,10 +9,8 @@ export interface MapCommands {
   // Pan to a position at the current zoom, with no animation, for the follow lock that keeps
   // the boat centered as it moves. Unlike centerOnVessel it never changes the zoom.
   recenterOnVessel: (latitude: number, longitude: number) => void;
-  // Clear any selected note (drop the selection ring); used when the detail panel closes.
-  clearNoteSelection: () => void;
   // Ring the POI marker at a position, or clear the ring with undefined. Drives the chart highlight
-  // from the POI search panel (a hovered or a selected result) without moving the map.
+  // from a selected or hovered note: a map-marker click, or a POI search result. Never moves the map.
   highlightPoi: (position: LatLon | undefined) => void;
   // Fly the map to a position (for example a route's start) at a usable zoom, animated.
   flyTo: (latitude: number, longitude: number) => void;

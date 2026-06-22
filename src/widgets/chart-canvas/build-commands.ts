@@ -86,7 +86,6 @@ export function buildMapCommands(deps: MapCommandsDeps): MapCommands {
       });
     },
     getBounds: () => lngLatBoundsToBbox4(map.getBounds()),
-    clearNoteSelection: () => notesOverlay.deselect(ctx),
     highlightPoi: (position) => notesOverlay.highlight(ctx, position),
     startRouteEdit: (route, initialPoint) => {
       const generation = nextEditGeneration();

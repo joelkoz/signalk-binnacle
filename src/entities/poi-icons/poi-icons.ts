@@ -52,19 +52,25 @@ function markerSvg(category: PoiCategory, paint: MapThemePaint): string {
   ].join('');
 }
 
-// Inline SVG for HTML UI contexts (dialogs, pickers). Uses CSS variables so the icon adapts to
-// the app's light/dark theme without canvas rasterization.
+// Inline SVG for HTML UI contexts (dialogs, pickers, the POI search list). Uses CSS variables so the
+// icon adapts to the theme without canvas rasterization, so the string depends only on the category.
+// Cached once per category: the POI search rebuilds its list on every filter keystroke.
+const inlineIconCache = new Map<PoiCategory, string>();
 export function poiInlineIconSvg(category: PoiCategory): string {
+  const cached = inlineIconCache.get(category);
+  if (cached !== undefined) return cached;
   const fill = { danger: 'var(--alarm)', warning: 'var(--warning)', default: 'var(--accent)' }[
     fillRole(category)
   ];
-  return [
+  const svg = [
     '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 30 30" aria-hidden="true">',
     `<circle cx="15" cy="15" r="14" fill="${fill}"/>`,
     '<g transform="translate(3,3)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">',
     GLYPHS[category],
     '</g></svg>',
   ].join('');
+  inlineIconCache.set(category, svg);
+  return svg;
 }
 
 const ICON_PX = 60;

@@ -1809,14 +1809,27 @@ $effect(() => {
 });
 
 function closeNote(): void {
+  // The highlight effect clears the chart ring once selectedNote is undefined.
   selectedNote = undefined;
-  mapCommands?.clearNoteSelection();
 }
 const selectNote = (selection: NoteSelection | undefined): void => {
   selectedNote = selection;
   // Only yield a leading panel when actually opening a note, not when the selection clears.
   if (narrow && selection) activePanel = null;
 };
+// Close the POI search, whether on the list or its detail: clear the hovered and the selected POI so
+// the highlight effect drops the chart ring, then close the pane.
+function closePoiSearch(): void {
+  hoveredPoi = undefined;
+  selectedNote = undefined;
+  closePanel();
+}
+// Back from a result's detail to the list. The list remounts, so no row blur fires to clear the
+// hover; clear it here along with the selection so the ring does not stick at the chosen marker.
+function backToPoiList(): void {
+  hoveredPoi = undefined;
+  selectedNote = undefined;
+}
 
 // Browsers block audio until a user gesture; prime the audio contexts on the first one so the
 // collision and arrival alarms can sound later on their own.
@@ -2302,8 +2315,8 @@ onDestroy(() => {
             selection={selectedNote}
             load={noteLoader.load}
             dock="left"
-            onClose={closePanel}
-            onBack={() => selectNote(undefined)}
+            onClose={closePoiSearch}
+            onBack={backToPoiList}
           />
         {:else}
           <PoiSearchPanel
@@ -2312,7 +2325,7 @@ onDestroy(() => {
             {units}
             onSelect={selectPoi}
             onHover={(poi) => (hoveredPoi = poi)}
-            onClose={closePanel}
+            onClose={closePoiSearch}
             onBack={backToMenu}
           />
         {/if}

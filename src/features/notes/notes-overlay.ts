@@ -53,7 +53,6 @@ const MAX_PERSIST_ENTRIES = 24;
 
 export interface NotesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
-  deselect(ctx: OverlayContext): void;
   // Ring the marker at a position, or clear the ring with undefined. Position-driven so the POI
   // search can highlight a result without a rendered map feature and without moving the map.
   highlight(ctx: OverlayContext, position: LatLon | undefined): void;
@@ -194,10 +193,15 @@ export function createNotesOverlay(
     onNotes?.([]);
   }
 
-  // Draw the selection ring at a position, or clear it with undefined. Position-driven so a list
-  // selection rings a marker without a rendered map feature and without moving the map; the app owns
-  // what is highlighted (a hovered or a selected POI) and drives this.
+  // The "lat,lon" of the ring last drawn (empty when cleared), so a redundant source rewrite is
+  // skipped when the highlighted position has not changed; reset in add() once the source is recreated.
+  let lastRingKey = '';
+  // Position-driven so a list selection rings a marker without a rendered map feature and without
+  // moving the map; the app owns what is highlighted (a hovered or a selected POI) and drives this.
   function drawSelectRing(ctx: OverlayContext, position: LatLon | undefined): void {
+    const key = position ? `${position.latitude},${position.longitude}` : '';
+    if (key === lastRingKey) return;
+    lastRingKey = key;
     const data = position
       ? featureCollection([
           {
@@ -219,6 +223,8 @@ export function createNotesOverlay(
     async add(ctx) {
       const before = ctx.beforeIdFor('routes');
       addNoteLayers(ctx.map, themePaint, before);
+      // The selection source was just recreated empty, so a later same-position highlight redraws.
+      lastRingKey = '';
 
       onClick = (event) => {
         const feature = event.features?.[0];
@@ -331,9 +337,6 @@ export function createNotesOverlay(
     },
     highlight(ctx, position) {
       drawSelectRing(ctx, position);
-    },
-    deselect(ctx) {
-      drawSelectRing(ctx, undefined);
     },
     applyTheme(ctx, paint) {
       themePaint = paint;

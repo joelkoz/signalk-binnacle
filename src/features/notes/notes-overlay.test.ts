@@ -98,9 +98,25 @@ describe('notes overlay', () => {
     expect(map.layers.has('binnacle-notes-selected-casing')).toBe(true);
   });
 
-  it('exposes deselect to clear the selection ring', () => {
+  it('highlights a position by ringing it, and clears the ring with undefined', async () => {
     const overlay = createNotesOverlay('http://pi', () => undefined);
-    expect(typeof overlay.deselect).toBe('function');
+    const map = createFakeMap();
+    const ctx = ctxFor(map);
+    await overlay.add(ctx);
+
+    overlay.highlight(ctx, { latitude: 12, longitude: 34 });
+    const ringed = map.sources.get('binnacle-notes-selected-source')?.data as {
+      features: { geometry: { coordinates: [number, number] } }[];
+    };
+    expect(ringed.features).toHaveLength(1);
+    // Stored as GeoJSON lon, lat order.
+    expect(ringed.features[0].geometry.coordinates).toEqual([34, 12]);
+
+    overlay.highlight(ctx, undefined);
+    const cleared = map.sources.get('binnacle-notes-selected-source')?.data as {
+      features: unknown[];
+    };
+    expect(cleared.features).toHaveLength(0);
   });
 
   it('refetches after an in-flight fetch settles for an area the map has left', async () => {
