@@ -1,7 +1,7 @@
 import { type AisTargetView, vesselLabel } from '$entities/ais';
 import type { DangerContact, Severity } from '$entities/collision';
 import type { LatLon } from '$shared/geo';
-import { isFiniteNumber } from '$shared/lib';
+import { compareOptionalNumber } from '$shared/lib';
 import { haversineMeters, rhumbBearingRad } from '$shared/nav';
 
 export type AisSort = 'range' | 'cpa' | 'name';
@@ -18,19 +18,6 @@ export interface AisListRow {
   tcpaSeconds?: number;
   // The lookout's grading for this contact, when it considers it a risk.
   severity?: Severity;
-}
-
-// Sort comparators put targets with no value for the key last, so the unknowns do not bury the
-// nearest or most pressing contacts.
-function byOptional(a: number | undefined, b: number | undefined): number {
-  // Treat a non-finite value (a NaN from a degenerate distance) as missing so it sorts last with the
-  // unknowns rather than scrambling the order, since every comparison against NaN is false.
-  const av = isFiniteNumber(a) ? a : undefined;
-  const bv = isFiniteNumber(b) ? b : undefined;
-  if (av === undefined && bv === undefined) return 0;
-  if (av === undefined) return 1;
-  if (bv === undefined) return -1;
-  return av - bv;
 }
 
 export function buildAisRows(
@@ -65,7 +52,7 @@ export function buildAisRows(
     };
   });
   if (sort === 'name') rows.sort((a, b) => a.label.localeCompare(b.label));
-  else if (sort === 'cpa') rows.sort((a, b) => byOptional(a.cpaMeters, b.cpaMeters));
-  else rows.sort((a, b) => byOptional(a.rangeMeters, b.rangeMeters));
+  else if (sort === 'cpa') rows.sort((a, b) => compareOptionalNumber(a.cpaMeters, b.cpaMeters));
+  else rows.sort((a, b) => compareOptionalNumber(a.rangeMeters, b.rangeMeters));
   return rows;
 }

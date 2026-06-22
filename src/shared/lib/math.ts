@@ -10,6 +10,21 @@ export function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+// Compare two optional numbers so missing or non-finite values sort last regardless of direction,
+// keeping unknowns from burying the meaningful values. Shared by the AIS list and the POI search.
+export function compareOptionalNumber(
+  a: number | undefined,
+  b: number | undefined,
+  dir: 'asc' | 'desc' = 'asc',
+): number {
+  const av = isFiniteNumber(a) ? a : undefined;
+  const bv = isFiniteNumber(b) ? b : undefined;
+  if (av === undefined && bv === undefined) return 0;
+  if (av === undefined) return 1;
+  if (bv === undefined) return -1;
+  return dir === 'asc' ? av - bv : bv - av;
+}
+
 // The item whose time is nearest the target, skipping items with a NaN time. One scan shared by
 // the nearest-forecast-step, nearest-grid-time, and latest-observation lookups.
 export function nearestBy<T>(
