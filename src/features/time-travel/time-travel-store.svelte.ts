@@ -1,0 +1,89 @@
+import type { HistoryProviders } from '$shared/signalk';
+import { loadTimeTravelHistory } from './time-travel-client';
+import { type HistorySample, nearestPositioned, nearestSample } from './time-travel-timeline';
+
+export type TimeTravelStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'no-provider' | 'failed';
+
+interface Deps {
+  load: typeof loadTimeTravelHistory;
+}
+
+export class TimeTravelStore {
+  active = $state(false);
+  status = $state<TimeTravelStatus>('idle');
+  samples = $state<HistorySample[]>([]);
+  from = $state(0);
+  to = $state(0);
+  scrubMs = $state(0);
+
+  current = $derived(nearestSample(this.samples, this.scrubMs));
+  markerSample = $derived(nearestPositioned(this.samples, this.scrubMs));
+
+  #origin: string;
+  #token: () => string | undefined;
+  #providers: () => HistoryProviders | undefined;
+  #deps: Deps;
+  #loadSeq = 0;
+
+  constructor(
+    origin: string,
+    token: () => string | undefined,
+    providers: () => HistoryProviders | undefined,
+    deps: Deps = { load: loadTimeTravelHistory },
+  ) {
+    this.#origin = origin;
+    this.#token = token;
+    this.#providers = providers;
+    this.#deps = deps;
+  }
+
+  async enter(): Promise<void> {
+    this.active = true;
+    await this.#load();
+  }
+
+  exit(): void {
+    this.active = false;
+    this.status = 'idle';
+    this.samples = [];
+    this.from = 0;
+    this.to = 0;
+    this.scrubMs = 0;
+  }
+
+  setScrub(ms: number): void {
+    this.scrubMs = Math.min(this.to, Math.max(this.from, ms));
+  }
+
+  reload(): Promise<void> {
+    return this.#load();
+  }
+
+  async #load(): Promise<void> {
+    const providers = this.#providers();
+    if (!providers) {
+      this.status = 'no-provider';
+      return;
+    }
+    const mine = ++this.#loadSeq;
+    this.status = 'loading';
+    const data = await this.#deps.load(this.#origin, this.#token(), providers);
+    if (mine !== this.#loadSeq || !this.active) return;
+    if (!data) {
+      this.status = 'failed';
+      return;
+    }
+    if (data.samples.length === 0) {
+      this.samples = [];
+      this.from = data.from;
+      this.to = data.to;
+      this.status = 'empty';
+      return;
+    }
+    this.samples = data.samples;
+    this.from = data.from;
+    this.to = data.to;
+    this.scrubMs = data.to;
+    this.status = 'ready';
+  }
+}
