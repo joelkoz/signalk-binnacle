@@ -116,7 +116,7 @@ const closeMore = (): void => {
         class:is-on={action.pressed === true}
         aria-pressed={action.pressed === undefined ? undefined : action.pressed}
         disabled={action.disabled}
-        title={action.label}
+        title={action.disabled ? (action.disabledLabel ?? action.label) : action.label}
         onclick={action.onSelect}
       >
         {#if action.icon}
@@ -132,8 +132,9 @@ const closeMore = (): void => {
           type="button"
           class="btn btn-pill"
           class:is-on={moreActive || moreOpen}
-          aria-haspopup="menu"
+          aria-haspopup="dialog"
           aria-expanded={moreOpen}
+          aria-controls={moreOpen ? 'bar-more-menu' : undefined}
           aria-label="More actions"
           title="More actions"
           onclick={() => (moreOpen = !moreOpen)}
@@ -145,8 +146,9 @@ const closeMore = (): void => {
           open={moreOpen}
           onClose={closeMore}
           backdropLabel="Close more actions"
-          surfaceClass="bar-more"
+          surfaceClass="popover-card bar-more"
           ariaLabel="More actions"
+          id="bar-more-menu"
         >
           {#snippet children()}
             {#each split.overflow as action (action.id)}
@@ -157,8 +159,11 @@ const closeMore = (): void => {
                 aria-pressed={action.pressed === undefined ? undefined : action.pressed}
                 disabled={action.disabled}
                 onclick={() => {
-                  action.onSelect();
-                  closeMore();
+                  try {
+                    action.onSelect();
+                  } finally {
+                    closeMore();
+                  }
                 }}
               >
                 {#if action.icon}
@@ -285,6 +290,8 @@ const closeMore = (): void => {
 .more-wrap {
   position: relative;
 }
+/* Positions and lays out the More popover; the frame (border, surface, radius, and shadow) comes
+   from the shared .popover-card it is composed with, so it cannot drift from the other menus. */
 :global(.bar-more) {
   position: absolute;
   inset-block-end: calc(100% + var(--space-1));
@@ -296,10 +303,6 @@ const closeMore = (): void => {
   gap: var(--space-1);
   min-inline-size: 12rem;
   padding: var(--space-1);
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-overlay);
 }
 /* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
 .readout {

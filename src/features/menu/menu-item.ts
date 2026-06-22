@@ -5,10 +5,13 @@ import type { LucideIcon } from '@lucide/svelte';
 export interface MenuItem {
   id: string;
   label: string;
-  // The compact label the bottom-bar pill renders when set, so a bar pill stays short ("Charts")
-  // while the menu tile keeps the full descriptive label ("Layers and charts"). The menu always
-  // renders `label`; the bar renders `shortLabel ?? label`.
+  // The compact label a bottom-bar pill renders when set, so a pill stays short ("Charts") while the
+  // full descriptive label is kept elsewhere. The menu tiles and the bar's "More" overflow render
+  // the full `label`; only the bar's visible pills render `shortLabel ?? label`.
   shortLabel?: string;
+  // The tooltip a bottom-bar pill shows while the action is disabled, when the reason differs from the
+  // label (for example "Layers and charts (chart is loading)"). Falls back to the label when unset.
+  disabledLabel?: string;
   // Optional leading icon (a lucide-svelte component).
   icon?: LucideIcon;
   disabled?: boolean;

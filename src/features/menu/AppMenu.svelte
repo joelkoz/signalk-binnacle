@@ -55,11 +55,14 @@ function closeMenu(restoreFocus = false): void {
 }
 
 function select(item: MenuItem): void {
-  if (item.disabled) return;
+  // Pinning is a preference, not an invocation, so edit mode toggles the pin even for an action that
+  // is currently disabled (Center before the map loads, a panel gated by a missing plugin). The
+  // disabled guard only blocks running the action outside edit mode.
   if (editing) {
     onTogglePin?.(item.id);
     return;
   }
+  if (item.disabled) return;
   item.onSelect();
   closeMenu(true);
 }
@@ -123,22 +126,26 @@ function onCardKeydown(event: KeyboardEvent): void {
   onKeydown={onCardKeydown}
 >
   {#snippet children()}
-    {#if items.length > 0}
+    {#if items.length === 0}
+      <span class="muted-note">No options</span>
+    {:else}
       <div class="menu-head">
         <button
           type="button"
           class="btn btn-compact"
           class:is-on={editing}
           aria-pressed={editing}
+          aria-label="Customize bar"
           onclick={() => onEditingChange?.(!editing)}
         >
           {editing ? 'Done' : 'Customize bar'}
         </button>
       </div>
-    {/if}
-    {#if items.length === 0}
-      <span class="muted-note">No options</span>
-    {:else}
+      {#if editing}
+        <!-- Announce the mode change: in edit mode the tile accent means "pinned to the bar", not
+             "panel open", which is invisible to a screen reader without this. -->
+        <p class="muted-note">Tap an action to pin or unpin it on the bar.</p>
+      {/if}
       {#each groups as group, gi (gi)}
         <!-- Every menu item carries a group label, so role="group" always has an accessible name
              here; the static role is required by the linter's valid-role rule. -->
@@ -152,12 +159,8 @@ function onCardKeydown(event: KeyboardEvent): void {
                 type="button"
                 class="tile"
                 class:is-on={editing ? pinnedSet.has(item.id) : item.pressed === true}
-                aria-pressed={editing
-                  ? pinnedSet.has(item.id)
-                  : item.pressed === undefined
-                    ? undefined
-                    : item.pressed}
-                disabled={item.disabled}
+                aria-pressed={editing ? pinnedSet.has(item.id) : item.pressed}
+                disabled={editing ? false : item.disabled}
                 onclick={() => select(item)}
               >
                 {#if item.icon}

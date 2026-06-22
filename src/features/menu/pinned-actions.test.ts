@@ -33,6 +33,14 @@ describe('resolvePinned', () => {
     expect(resolvePinned(registry, 'abc' as unknown)).toEqual([]);
   });
 
+  it('drops non-string elements rather than matching on them', () => {
+    expect(resolvePinned(registry, [1, 2] as unknown)).toEqual([]);
+  });
+
+  it('deduplicates a repeated id (each action renders once)', () => {
+    expect(resolvePinned(registry, ['center', 'center']).map((i) => i.id)).toEqual(['center']);
+  });
+
   it('returns the empty array for an empty pin list', () => {
     expect(resolvePinned(registry, [])).toEqual([]);
   });
@@ -47,14 +55,20 @@ describe('DEFAULT_PINNED', () => {
 describe('splitBarActions', () => {
   const actions = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(item);
 
-  it('shows all when at or under the cap', () => {
-    const r = splitBarActions(actions.slice(0, 6), 6);
+  it('shows all when under the cap', () => {
+    const r = splitBarActions(actions.slice(0, 3), MAX_BAR_PILLS);
+    expect(r.visible.map((i) => i.id)).toEqual(['a', 'b', 'c']);
+    expect(r.overflow).toEqual([]);
+  });
+
+  it('shows all when exactly at the cap', () => {
+    const r = splitBarActions(actions.slice(0, MAX_BAR_PILLS), MAX_BAR_PILLS);
     expect(r.visible.map((i) => i.id)).toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
     expect(r.overflow).toEqual([]);
   });
 
   it('reserves one slot for More when over the cap', () => {
-    const r = splitBarActions(actions, 6);
+    const r = splitBarActions(actions, MAX_BAR_PILLS);
     expect(r.visible.map((i) => i.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
     expect(r.overflow.map((i) => i.id)).toEqual(['f', 'g']);
   });

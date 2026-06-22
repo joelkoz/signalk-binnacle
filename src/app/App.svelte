@@ -454,9 +454,6 @@ let activePanel = $state<LeftPanel | null>(null);
 // the menu after it closed on selection.
 let menuOpen = $state(false);
 let menuEditing = $state(false);
-function onTogglePin(id: string): void {
-  pinnedActions.set(togglePinned(pinnedActions.value, id));
-}
 const closePanel = (): void => {
   activePanel = null;
 };
@@ -525,6 +522,13 @@ const currentView = $derived(mapView ?? savedView);
 const layerSettings = new PersistedValue<LayerSettings>('binnacle:layers', {});
 const layerOrder = new PersistedValue<string[]>('binnacle:layer-order', []);
 const pinnedActions = new PersistedValue<string[]>('binnacle:pinned-actions', [...DEFAULT_PINNED]);
+// PersistedValue parses localStorage without a schema guard, so a corrupt or hand-edited value could
+// be a non-array. Heal it to the default once at startup, so the menu's Set and the pin toggle never
+// receive a non-iterable; resolvePinned defends the bar render separately.
+if (!Array.isArray(pinnedActions.value as unknown)) pinnedActions.set([...DEFAULT_PINNED]);
+const onTogglePin = (id: string): void => {
+  pinnedActions.set(togglePinned(pinnedActions.value, id));
+};
 // Which Layers-panel categories the navigator has left open or closed, so the panel reopens that way.
 const layerCategoriesOpen = new PersistedValue<Record<string, boolean>>(
   'binnacle:layer-categories',
@@ -933,6 +937,7 @@ const menuItems = $derived<MenuItem[]>([
     icon: LocateFixed,
     group: 'Map',
     disabled: !mapCommands,
+    disabledLabel: 'Center (chart is loading)',
     onSelect: () => mapCommands?.centerOnVessel(),
   },
   {
@@ -993,6 +998,7 @@ const menuItems = $derived<MenuItem[]>([
     icon: Layers,
     group: 'Navigate',
     disabled: !layersView,
+    disabledLabel: 'Layers and charts (chart is loading)',
     pressed: activePanel === 'layers',
     onSelect: () => togglePanel('layers'),
   },
