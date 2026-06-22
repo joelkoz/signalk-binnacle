@@ -15,26 +15,23 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.8.0
+## What's new in 0.9.0
 
-Third-party plotter add-ons and custom waypoint icons:
+Two new ways to read the picture, plus a codebase-wide polish pass:
 
-- **Plotter extensions.** Binnacle now hosts plotter add-ons that other Signal K plugins ship: action
-  buttons in the bottom toolbar, slide-in side panels, on-chart instrument widgets you place with a
-  long press, and live display filters that hide non-matching markers behind a clearable chip. With no
-  extension plugin installed nothing new renders and the chart is untouched. Try it with
-  signalk-instrument-widgets and signalk-poi-search.
-- **Custom waypoint icons.** Choose a waypoint's icon when you drop it, from Binnacle's built-in
-  markers or any symbols the signalk-symbol-manager plugin provides for the waypoint role, and each
-  waypoint renders with its chosen symbol. Icons resolve through namespaces (`binnacle:` for the
-  built-ins, `custom:` for your own), and an icon another app stored in its own namespace stays
-  visible.
-- **Reliability and polish.** Saved tracks no longer blink out on a transient network hiccup, the
-  severe-weather banner ranks a gale warning correctly above a thunderstorm watch or storm-surge
-  advisory, and a round of performance and consistency work runs through the chart, the panels, and
-  the overlays.
+- **Time travel.** Scrub the last 24 hours from a bottom strip. A marker walks the recorded track, a
+  four-metric readout (depth, wind, barometer, and speed over ground) snaps to the scrubbed time, and
+  the live vessel dims while you review. It reads the server history API and says plainly when no
+  history provider is installed.
+- **POI search.** A themed panel lists the points of interest in the current map view as a sortable
+  table by name, type, distance, and bearing. Tapping a row flies the chart to the point and opens its
+  detail while the search panel stays open.
+- **Consistency and polish.** A whole-codebase pass put the dialogs, the collision strips, and the
+  overlays behind shared frames and helpers, corrected two theme tokens so the extension chips and the
+  night-red markers render right, and let the anchor controls pick up a freshly approved login without
+  a page reload.
 
-See the [changelog](CHANGELOG.md#v080) for the full list.
+See the [changelog](CHANGELOG.md#v090) for the full list.
 
 ## What it does
 

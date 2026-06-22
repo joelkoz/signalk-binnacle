@@ -150,16 +150,16 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   VisibilityToggle, the dialog dismiss stack, the rovingFocus, focusTrap, focusOnMount, and
   onKeydownAction focus actions, the isTabKey helper, the pickTextFile importer, and the promptRename
   and promptSaveName dialogs) and the
-  global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.popover-card`, `.menu-item`,
-  `.overlay-backdrop`, `.modal-scrim`, `.alert-note`, `.muted-note`, `.segmented`, `.caps-label`,
-  `.panel-*`, `.saved`, `.stat-grid`, `.num`)
+  global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.popover-card`, `.modal-card`,
+  `.menu-item`, `.overlay-backdrop`, `.modal-scrim`, `.alert-note`, `.muted-note`, `.sev-danger` and
+  `.sev-warning`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`, `.stat-grid`, `.num`)
   before any panel grows a scoped duplicate. When the same markup or CSS appears in a second place,
   hoist it; a third copy is a review failure.
 - Reuse the shared non-UI helpers before re-implementing them: `$shared/lib` (isRecord, formatPercent,
   formatFixed and the unit formatters, the SI converters, uuidv4), `$shared/map` (featureCollection,
   emptyFeatureCollection, setSourceData, iconOffsetExpression with CENTERED_OFFSET, removeLayersAndSources,
-  setLayersVisibility, rgbaCss), `$shared/geo` (latLonToLonLat, the single lat/lon-to-GeoJSON-order
-  crossing), `$shared/signalk` resource.ts (jsonOr, sendJson, fetchKeyedResource), and `$entities/symbols`
+  setLayersVisibility, createSafetyOverlay for safety-band rasters, rgbaCss), `$shared/geo`
+  (latLonToLonLat and the single lat/lon-to-GeoJSON-order crossing, the Bbox4 bounding-box tuple), `$shared/signalk` resource.ts (jsonOr, sendJson, fetchKeyedResource), and `$entities/symbols`
   (createOverlayIconResolver, the provided-symbol overlay glue). An overlay that hand-rolls a
   `getSource(...) as { setData }` cast or a `{ type: 'FeatureCollection', features }` literal should use
   setSourceData and featureCollection instead.

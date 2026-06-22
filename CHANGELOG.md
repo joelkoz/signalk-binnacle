@@ -5,8 +5,12 @@ All notable changes to Binnacle are documented here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <a id="unreleased"></a>
+<a id="v090"></a>
 
-## [Unreleased]
+## [0.9.0]
+
+This release is in progress. Everything landed since 0.8.0 accumulates here until the release is cut,
+when this heading gets its date.
 
 ### Added
 
@@ -35,6 +39,15 @@ All notable changes to Binnacle are documented here. The format follows
   file." instead of doing nothing, so a flaky USB read is not mistaken for a cancel.
 - A restored man-overboard mark is rebuilt from its known fields, so an unknown persisted field cannot
   carry into the live mark.
+- The anchor controls use a freshly approved auth token at once: a token that arrives or changes
+  mid-session is now read live, so an anchor action no longer needs a page reload to authenticate.
+- A plugin enabled while the data stream was down (history, notifications, or anchor) is detected when
+  the stream reconnects, instead of staying dark until the page is reloaded.
+- The "Here" conditions panel keeps reading the latest sample as a live observation during a long open
+  with no weather layer loaded, rather than drifting into treating it as a forecast step.
+- Two display tokens are corrected: the plotter-extension filter chips and placed widgets render with
+  their intended drop shadow, and the default waypoint marker and the disabled course-skip control hold
+  their colors under the night-red theme.
 
 ### Changed
 
@@ -50,6 +63,10 @@ All notable changes to Binnacle are documented here. The format follows
   one concern per module; and a whole-codebase reuse pass consolidated shared helpers (object guards,
   GeoJSON source updates, the icon-offset expression, the JSON-or-default fetch helper, and the
   provided-symbol overlay resolver). No user-facing behavior change.
+- Internal: a whole-codebase consistency pass unified the four modal dialogs behind one shared frame,
+  the two collision surfaces behind one severity-color definition, and the safety-band overlays behind
+  one helper; named the remaining magic values; removed dead exports; tightened a few reactive and
+  hot-path operations; and held the design system to its tokens. No user-facing behavior change.
 
 <a id="v080"></a>
 
