@@ -35,6 +35,12 @@ const rows = $derived(
   sortRows(filterRows(toRows(pois, vessel.position), query), sortState.key, sortState.dir),
 );
 
+const subtitle = $derived(
+  rows.length === pois.length
+    ? `${pois.length} in view`
+    : `${rows.length} of ${pois.length} in view`,
+);
+
 const COLUMNS: { key: PoiSort; label: string }[] = [
   { key: 'name', label: 'Name' },
   { key: 'type', label: 'Type' },
@@ -55,7 +61,7 @@ function ariaSort(key: PoiSort): 'ascending' | 'descending' | 'none' {
 }
 </script>
 
-<SlideOver title="POI search" subtitle="{pois.length} in view" {onClose} {onBack}>
+<SlideOver title="POI search" {subtitle} {onClose} {onBack}>
   <section class="poi-search">
     <input
       class="search-input"
