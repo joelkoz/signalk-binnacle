@@ -132,13 +132,13 @@ function onCardKeydown(event: KeyboardEvent): void {
       <div class="menu-head">
         <button
           type="button"
-          class="btn btn-compact"
+          class="btn btn-compact customize-toggle"
           class:is-on={editing}
           aria-pressed={editing}
-          aria-label="Customize bar"
+          aria-label="Customize toolbar"
           onclick={() => onEditingChange?.(!editing)}
         >
-          {editing ? 'Done' : 'Customize bar'}
+          {editing ? 'Done' : 'Customize toolbar'}
         </button>
       </div>
       {#if editing}
@@ -219,7 +219,11 @@ function onCardKeydown(event: KeyboardEvent): void {
 }
 .menu-head {
   display: flex;
-  justify-content: flex-end;
+}
+/* The customize control spans the full menu width as a header action, rather than a small
+   right-aligned button, so it reads as the menu's mode switch. */
+.customize-toggle {
+  inline-size: 100%;
 }
 .group {
   display: flex;
