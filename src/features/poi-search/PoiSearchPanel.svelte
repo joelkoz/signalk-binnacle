@@ -69,7 +69,7 @@ function toggleSort(key: PoiSort): void {
       aria-label="Filter POIs by name"
       bind:value={query}
     >
-    <div class="sort">
+    <div class="nav-sort">
       <span class="caps-label">Sort by</span>
       <div class="segmented" role="group" aria-label="Sort POIs by">
         {#each SORTS as option (option.key)}
@@ -82,7 +82,7 @@ function toggleSort(key: PoiSort): void {
           >
             {option.label}
             {#if sortState.key === option.key}
-              <span aria-hidden="true">{sortState.dir === 'asc' ? '↑' : '↓'}</span>
+              <span aria-hidden="true">{sortState.dir === 'asc' ? '▲' : '▼'}</span>
               <span class="visually-hidden">
                 {sortState.dir === 'asc' ? 'ascending' : 'descending'}
               </span>
@@ -96,12 +96,13 @@ function toggleSort(key: PoiSort): void {
         {pois.length === 0 ? 'No POIs in this view. Pan or zoom the chart.' : 'No matches.'}
       </p>
     {:else}
-      <ul class="poi-list">
+      <ul class="nav-list">
         {#each rows as row (row.poi.id)}
           <li>
             <button
               type="button"
-              class="poi-row"
+              class="nav-row"
+              title="Open the detail for {row.poi.name}"
               onclick={() => onSelect(row.poi)}
               onmouseenter={() => onHover(row.poi)}
               onmouseleave={() => onHover(undefined)}
@@ -109,18 +110,18 @@ function toggleSort(key: PoiSort): void {
               onblur={() => onHover(undefined)}
             >
               <span class="poi-head">
-                <span class="poi-cat" title={categoryLabel(row.poi.category)}>
+                <span class="poi-cat">
                   <!-- The category SVG is a static literal from a fixed enum, never external input. -->
                   {@html poiInlineIconSvg(row.poi.category)}
                   <span class="visually-hidden">{categoryLabel(row.poi.category)}</span>
                 </span>
-                <span class="poi-name">{row.poi.name}</span>
+                <span class="nav-name">{row.poi.name}</span>
               </span>
-              <span class="metrics">
-                <span class="metric">
+              <span class="nav-metrics">
+                <span class="nav-metric">
                   Dist <b class="num">{formatMetersOrNm(row.distanceMeters, units.mode)}</b>
                 </span>
-                <span class="metric">
+                <span class="nav-metric">
                   Brg <b class="num">{formatBearingOr(row.bearingRad)}</b>&deg;T
                 </span>
               </span>
@@ -133,6 +134,9 @@ function toggleSort(key: PoiSort): void {
 </SlideOver>
 
 <style>
+/* The sort header, the result rows, and the readout line come from the shared .nav-* family in
+   cards.css, shared with the AIS targets panel; only the panel section and the leading category icon
+   are local. */
 .poi-search {
   display: flex;
   flex-direction: column;
@@ -141,50 +145,6 @@ function toggleSort(key: PoiSort): void {
 /* Composes the shared .input primitive; only the full-panel width is local. */
 .search-input {
   inline-size: 100%;
-}
-/* The sort label sits above a full-width segmented so all four keys fit the narrow dock; the active
-   key shows its direction with an arrow and a visually-hidden word, never color alone. */
-.sort {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.sort .segmented {
-  inline-size: 100%;
-}
-.sort .segmented .btn {
-  flex: 1;
-  gap: var(--space-1);
-}
-.poi-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-/* Each result is one tappable two-line card: the category icon and full name on top, the mono
-   distance and bearing below, so a long name uses the panel width instead of clipping in a column.
-   Mirrors the AIS targets list; a candidate to hoist into a shared list primitive. */
-.poi-row {
-  inline-size: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  font: inherit;
-  text-align: start;
-  background: var(--surface-raised);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-.poi-row:hover {
-  border-color: var(--accent);
 }
 .poi-head {
   display: flex;
@@ -195,21 +155,7 @@ function toggleSort(key: PoiSort): void {
   flex-shrink: 0;
   display: inline-flex;
 }
-.poi-name {
+.poi-cat + .nav-name {
   flex: 1;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-.metric .num {
-  color: var(--text);
 }
 </style>

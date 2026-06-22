@@ -56,7 +56,7 @@ const rows = $derived(
 
 <SlideOver title="AIS targets" subtitle="{rows.length} tracked" {onClose} {onBack}>
   <section class="ais-list">
-    <div class="sort">
+    <div class="nav-sort">
       <span class="caps-label">Sort by</span>
       <div class="segmented" role="group" aria-label="Sort targets by">
         {#each SORTS as option (option.id)}
@@ -75,35 +75,39 @@ const rows = $derived(
     {#if rows.length === 0}
       <p class="muted-note">No AIS targets.</p>
     {:else}
-      <ul class="targets">
+      <ul class="nav-list">
         {#each rows as row (row.id)}
           <li>
             <button
               type="button"
-              class="target"
+              class="nav-row"
               title="Show {row.label} on the chart"
               onclick={() => onLocate(row.position)}
             >
               <span
-                class="name"
+                class="nav-name"
                 class:sev-danger={row.severity === 'danger'}
                 class:sev-warning={row.severity === 'warning'}
               >
                 {row.label}
               </span>
-              <span class="metrics">
-                <span class="metric">
+              <span class="nav-metrics">
+                <span class="nav-metric">
                   Range <b class="num">{formatMetersOrNm(row.rangeMeters, units.mode)}</b>
                 </span>
-                <span class="metric"
+                <span class="nav-metric"
                   >Brg <b class="num">{formatBearingOr(row.bearingRad)}</b>&deg;T</span
                 >
-                <span class="metric">SOG <b class="num">{formatKnotsOr(row.sogMps)}</b> kn</span>
+                <span class="nav-metric"
+                  >SOG <b class="num">{formatKnotsOr(row.sogMps)}</b> kn</span
+                >
                 {#if row.cpaMeters !== undefined}
-                  <span class="metric">CPA <b class="num">{formatNm(row.cpaMeters)}</b> nm</span>
+                  <span class="nav-metric"
+                    >CPA <b class="num">{formatNm(row.cpaMeters)}</b> nm</span
+                  >
                 {/if}
                 {#if row.tcpaSeconds !== undefined}
-                  <span class="metric"
+                  <span class="nav-metric"
                     >TCPA <b class="num">{formatTcpaMin(row.tcpaSeconds, 1)}</b> min</span
                   >
                 {/if}
@@ -117,59 +121,11 @@ const rows = $derived(
 </SlideOver>
 
 <style>
+/* The list rows, the readout line, and the sort header come from the shared .nav-* family in
+   cards.css, shared with the POI search panel; only the panel section gap is local. */
 .ais-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-.sort {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.targets {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-/* Each target is one tappable card: name on top, the mono readouts wrapping below. */
-.target {
-  inline-size: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  font: inherit;
-  text-align: start;
-  background: var(--surface-raised);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-.target:hover {
-  border-color: var(--accent);
-}
-.name {
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-.metric .num {
-  color: var(--text);
 }
 </style>

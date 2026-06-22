@@ -165,3 +165,68 @@
   color: var(--text-muted);
   font-size: var(--text-xs);
 }
+
+/* The tappable two-line nav-list shared by the AIS targets and POI search panels: a column sort
+   header over a list of cards, each a name (or icon-and-name) line above a wrapping line of mono
+   readouts. One definition so the two list panels read as one family, every row is a full --control-size
+   touch target, and the sort segments may shrink rather than overflow the narrow dock. */
+.nav-sort {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.nav-sort .segmented {
+  inline-size: 100%;
+}
+.nav-sort .segmented .btn {
+  flex: 1;
+  /* Default flex min-width is the content size, which would push a long label (Distance) past the
+     dock and break the joined-segment border; let an over-wide segment shrink instead. */
+  min-inline-size: 0;
+  gap: var(--space-1);
+}
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.nav-row {
+  inline-size: 100%;
+  min-block-size: var(--control-size);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  text-align: start;
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+.nav-row:hover {
+  border-color: var(--accent);
+}
+.nav-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.nav-metric .num {
+  color: var(--text);
+}
