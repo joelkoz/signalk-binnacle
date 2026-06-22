@@ -21,7 +21,8 @@ when this heading gets its date.
 - **POI search.** A themed panel lists the points of interest in the current map view as a two-line
   list, sortable by name, type, distance, or bearing: each row leads with its category icon and name,
   then shows its distance and bearing below. Hovering or focusing a row rings that point on the chart
-  without moving the map, and tapping a row rings it and opens its detail in the same panel.
+  without moving the map, and tapping a row rings it and opens its detail in the note popup, exactly as
+  tapping the marker on the chart does, so you can click through results while the list stays open.
 - **Configurable bottom bar.** Choose which actions ride the bottom bar. A "Customize bottom toolbar" mode
   in the menu pins or unpins any action (Center, Follow, Charts, Forecast, Tides, Anchor, and the rest);
   Center, Follow, and Charts are pinned by default. The choice is saved with your profile and follows

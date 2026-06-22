@@ -25,7 +25,8 @@ New ways to read and arrange the picture, plus a codebase-wide polish pass:
   history provider is installed.
 - **POI search.** A themed panel lists the points of interest in the current map view as a two-line
   list, sortable by name, type, distance, or bearing. Hovering or focusing a row rings that point on
-  the chart without moving the map, and tapping a row rings it and opens its detail in the same panel.
+  the chart without moving the map, and tapping a row opens its detail in the note popup, exactly as
+  tapping the marker on the chart does, so you can click through results while the list stays open.
 - **Configurable bottom bar.** Pin the actions you want on the bottom bar from a "Customize bottom
   toolbar" mode in the menu. Center, Follow, and Charts are the default; your choice saves with your profile.
 - **Consistency and polish.** A whole-codebase pass put the dialogs, the collision strips, and the
