@@ -135,10 +135,10 @@ function onCardKeydown(event: KeyboardEvent): void {
           class="btn btn-compact customize-toggle"
           class:is-on={editing}
           aria-pressed={editing}
-          aria-label="Customize toolbar"
+          aria-label="Customize bottom toolbar"
           onclick={() => onEditingChange?.(!editing)}
         >
-          {editing ? 'Done' : 'Customize toolbar'}
+          {editing ? 'Done' : 'Customize bottom toolbar'}
         </button>
       </div>
       {#if editing}
