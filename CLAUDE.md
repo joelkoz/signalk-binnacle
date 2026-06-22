@@ -159,7 +159,8 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   formatFixed and the unit formatters, the SI converters, uuidv4), `$shared/map` (featureCollection,
   emptyFeatureCollection, setSourceData, iconOffsetExpression with CENTERED_OFFSET, removeLayersAndSources,
   setLayersVisibility, createSafetyOverlay for safety-band rasters, rgbaCss), `$shared/geo`
-  (latLonToLonLat and the single lat/lon-to-GeoJSON-order crossing, the Bbox4 bounding-box tuple), `$shared/signalk` resource.ts (jsonOr, sendJson, fetchKeyedResource), and `$entities/symbols`
+  (latLonToLonLat and the single lat/lon-to-GeoJSON-order crossing, the Bbox4 bounding-box tuple,
+  quantizeLatLonKey for a position-keyed reactive cell, VIEWPORT_FETCH_PAD_FRACTION), `$shared/signalk` resource.ts (jsonOr, sendJson, fetchKeyedResource), and `$entities/symbols`
   (createOverlayIconResolver, the provided-symbol overlay glue). An overlay that hand-rolls a
   `getSource(...) as { setData }` cast or a `{ type: 'FeatureCollection', features }` literal should use
   setSourceData and featureCollection instead.

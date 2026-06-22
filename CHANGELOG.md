@@ -35,6 +35,12 @@ when this heading gets its date.
 
 ### Fixed
 
+- On a secured Signal K server, the points-of-interest, AIS-trail, and history-track overlays now
+  fetch with a live auth token. They captured the token at map load, before sign-in finished, so they
+  stayed unauthenticated for the whole session and never loaded their data; the token is now read at
+  fetch time, the way the rest of the app already reads it.
+- Offline caching sweeps stale precache entries from earlier builds, so a returning visit no longer
+  serves an outdated asset alongside the current one.
 - The point-conditions valid-time line renders with its space restored before the middot ("Observed ·
   14:30" rather than "Observed· 14:30").
 - A collision alarm now goes silent the instant the danger clears, instead of playing out the rest of
