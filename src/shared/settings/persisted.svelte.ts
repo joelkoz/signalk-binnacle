@@ -1,7 +1,7 @@
 import { isLatitude, isLongitude } from '$shared/geo';
 import { isFiniteNumber, isRecord, nauticalMilesToMeters } from '$shared/lib';
 
-type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
+export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 function resolveStorage(injected?: StorageLike): StorageLike | undefined {
   if (injected) return injected;

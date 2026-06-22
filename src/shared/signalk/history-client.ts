@@ -1,5 +1,5 @@
 import { fetchJsonOrUndefined } from '$shared/lib';
-import { authInit } from './resource';
+import { asKeyedObject, authInit } from './resource';
 
 // The server's v2 History API (signalk-server 2.19 and later): the server core mounts
 // /signalk/v2/api/history and proxies to pluggable providers (signalk-questdb,
@@ -42,13 +42,11 @@ export async function fetchHistoryProviders(
   base: string,
   token?: string,
 ): Promise<HistoryProviders | undefined> {
-  const body = await fetchJsonOrUndefined<Record<string, { isDefault?: boolean }>>(
-    `${base}${HISTORY_API}/_providers`,
-    authInit(token),
-  );
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
-  const ids = Object.keys(body).sort(
-    (a, b) => Number(body[b]?.isDefault === true) - Number(body[a]?.isDefault === true),
+  const body = await fetchJsonOrUndefined(`${base}${HISTORY_API}/_providers`, authInit(token));
+  const keyed = asKeyedObject(body) as Record<string, { isDefault?: boolean }> | undefined;
+  if (!keyed) return undefined;
+  const ids = Object.keys(keyed).sort(
+    (a, b) => Number(keyed[b]?.isDefault === true) - Number(keyed[a]?.isDefault === true),
   );
   return { ids };
 }

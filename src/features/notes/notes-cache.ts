@@ -1,4 +1,9 @@
-import { type Bbox4, bboxContains, padBbox as sharedPadBbox } from '$shared/geo';
+import {
+  type Bbox4,
+  bboxContains,
+  padBbox as sharedPadBbox,
+  VIEWPORT_FETCH_PAD_FRACTION,
+} from '$shared/geo';
 import { MINUTE_MS } from '$shared/lib';
 import type { NotePoint } from './notes-client';
 
@@ -8,10 +13,6 @@ import type { NotePoint } from './notes-client';
 const TTL_MS = 5 * MINUTE_MS;
 // Keep only the most recent fetches so a long session of panning cannot grow the cache without bound.
 const MAX_ENTRIES = 12;
-// Fetch this fraction of the viewport beyond every edge, so a small pan or a zoom-in stays inside a
-// recent fetch and reuses it instead of hitting the network.
-const PAD_FRACTION = 0.5;
-
 interface CacheEntry {
   bbox: Bbox4;
   notes: NotePoint[];
@@ -20,7 +21,7 @@ interface CacheEntry {
 
 // The shared pad with this slice's default fraction baked in, re-exported so the overlay and the
 // cache key stay on one definition.
-export function padBbox(bbox: Bbox4, fraction = PAD_FRACTION): Bbox4 {
+export function padBbox(bbox: Bbox4, fraction = VIEWPORT_FETCH_PAD_FRACTION): Bbox4 {
   return sharedPadBbox(bbox, fraction);
 }
 

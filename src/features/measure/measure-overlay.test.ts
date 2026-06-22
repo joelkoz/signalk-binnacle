@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { MeasureStore } from '$entities/measure';
-import type { UnitsStore } from '$entities/units';
 import type { UnitsMode } from '$shared/lib';
 import type { OverlayContext } from '$shared/map';
 import { createFakeMap } from '$shared/testing/fake-map';
@@ -14,7 +13,7 @@ function setup(mode: UnitsMode = 'metric') {
   const measure = new MeasureStore();
   const map = createFakeMap();
   const units: { mode: UnitsMode } = { mode };
-  const overlay = createMeasureOverlay(measure, units as unknown as UnitsStore);
+  const overlay = createMeasureOverlay(measure, units);
   return { measure, map, units, overlay, ctx: ctxFor(map) };
 }
 

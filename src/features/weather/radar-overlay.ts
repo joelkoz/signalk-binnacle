@@ -6,6 +6,7 @@ import {
   type MapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
 } from '$shared/map';
 import { WEATHER_LAYER_IDS } from './fills';
 import { frameTiles, TILE_SIZE } from './radar-frames';
@@ -158,8 +159,7 @@ export function createRadarOverlay(
       applyFrame(ctx);
     },
     remove(ctx) {
-      if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
-      if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
+      removeLayersAndSources(ctx.map, [LAYER_ID], [SOURCE_ID]);
     },
     setVisible(ctx, isVisible) {
       desiredVisible = isVisible;

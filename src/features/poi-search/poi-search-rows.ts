@@ -1,7 +1,7 @@
 import { categoryLabel, type PoiCategory } from '$entities/poi-icons';
 import type { LatLon } from '$shared/geo';
 import { compareOptionalNumber } from '$shared/lib';
-import { haversineMeters, rhumbBearingRad } from '$shared/nav';
+import { rhumbBearingRad, rhumbDistanceMeters } from '$shared/nav';
 
 export interface Poi {
   id: string;
@@ -25,14 +25,9 @@ export interface PoiRow {
 export function toRows(pois: readonly Poi[], vessel?: LatLon): PoiRow[] {
   return pois.map((poi) => ({
     poi,
-    distanceMeters: vessel
-      ? haversineMeters(
-          vessel.latitude,
-          vessel.longitude,
-          poi.position.latitude,
-          poi.position.longitude,
-        )
-      : undefined,
+    // Rhumb distance to pair with the rhumb bearing below, so the column and the heading describe
+    // the same straight-line-on-a-Mercator-chart leg the navigator would actually steer.
+    distanceMeters: vessel ? rhumbDistanceMeters(vessel, poi.position) : undefined,
     bearingRad: vessel ? rhumbBearingRad(vessel, poi.position) : undefined,
   }));
 }

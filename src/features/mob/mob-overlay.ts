@@ -6,7 +6,7 @@ import type {
 } from 'maplibre-gl';
 import type { MobStore } from '$entities/mob';
 import type { OwnVessel } from '$entities/vessel';
-import type { LatLon } from '$shared/geo';
+import { type LatLon, latLonToLonLat } from '$shared/geo';
 import {
   emptyFeatureCollection,
   featureCollection,
@@ -33,7 +33,7 @@ function features(mark: LatLon | undefined, vessel: LatLon | undefined): GeoJSON
   const out: GeoJSON.Feature[] = [
     {
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: [mark.longitude, mark.latitude] },
+      geometry: { type: 'Point', coordinates: latLonToLonLat(mark) },
       properties: {},
     },
   ];
@@ -42,10 +42,7 @@ function features(mark: LatLon | undefined, vessel: LatLon | undefined): GeoJSON
       type: 'Feature',
       geometry: {
         type: 'LineString',
-        coordinates: [
-          [vessel.longitude, vessel.latitude],
-          [mark.longitude, mark.latitude],
-        ],
+        coordinates: [latLonToLonLat(vessel), latLonToLonLat(mark)],
       },
       properties: { line: true },
     });

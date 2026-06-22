@@ -43,7 +43,6 @@ export function createWaypointOverlay(
 ): WaypointOverlay {
   let paint: MapThemePaint = mapThemePaint('day');
   let lastVersion = -1;
-  let visible = true;
   const layers = [MARKER_LAYER, SYMBOL_MARKER_LAYER, LABEL_LAYER];
   // Provided symbols (signalk-symbol-manager), absent on a stock server. The resolver owns the
   // per-overlay icon registry and the pending-symbol queue; a waypoint's icon resolves to a provided
@@ -207,8 +206,7 @@ export function createWaypointOverlay(
       redraw(ctx);
     },
     setVisible(ctx, isVisible) {
-      visible = isVisible;
-      setLayersVisibility(ctx.map, layers, visible);
+      setLayersVisibility(ctx.map, layers, isVisible);
     },
     setOpacity(ctx, opacity) {
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-opacity', opacity);

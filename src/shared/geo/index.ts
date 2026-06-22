@@ -7,6 +7,7 @@ export {
   lngLatBoundsToBbox4,
   normalizeBounds,
   padBbox,
+  VIEWPORT_FETCH_PAD_FRACTION,
 } from './bounds';
 export type { LatLon, LonLat } from './geo-guards';
 export {
@@ -19,4 +20,4 @@ export {
   lonLatToLatLon,
   roundLatLon,
 } from './geo-guards';
-export { COORD_CELL_DEG, quantizeCellDeg } from './quantize';
+export { COORD_CELL_DEG, quantizeCellDeg, quantizeLatLonKey } from './quantize';

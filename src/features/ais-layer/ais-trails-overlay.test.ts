@@ -79,7 +79,11 @@ afterEach(() => {
 
 describe('ais trails overlay', () => {
   it('adds an empty line source and layer in the traffic band', () => {
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => true);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => true,
+    );
     const map = createFakeMap();
     overlay.add(ctxFor(map));
     expect(overlay.id).toBe('ais-trails');
@@ -91,7 +95,11 @@ describe('ais trails overlay', () => {
   });
 
   it('fetches nothing while the tracks plugin is unavailable', async () => {
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => false);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => false,
+    );
     const state = { zoom: 12, lng: 0, lat: 0 };
     const map = viewFakeMap(state);
     const ctx = ctxFor(map);
@@ -106,7 +114,7 @@ describe('ais trails overlay', () => {
     fetchMock.mockResolvedValue([trailA(), trailSelf()]);
     const overlay = createAisTrailsOverlay(
       'http://pi',
-      undefined,
+      () => undefined,
       () => true,
       () => 'vessels.urn:self',
     );
@@ -124,7 +132,11 @@ describe('ais trails overlay', () => {
 
   it('skips the rebuild when a refetch returns unchanged trails, rebuilds when one moved', async () => {
     fetchMock.mockImplementation(async () => [trailA()]);
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => true);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => true,
+    );
     const state = { zoom: 12, lng: 0, lat: 0 };
     const map = viewFakeMap(state);
     const ctx = ctxFor(map);
@@ -151,7 +163,11 @@ describe('ais trails overlay', () => {
 
   it('holds one fetch in flight', async () => {
     fetchMock.mockImplementation(() => new Promise(() => {}));
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => true);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => true,
+    );
     const state = { zoom: 12, lng: 0, lat: 0 };
     const ctx = ctxFor(viewFakeMap(state));
     overlay.add(ctx);
@@ -163,7 +179,11 @@ describe('ais trails overlay', () => {
 
   it('keeps the shown wakes on a failed refetch and clears on a real empty answer', async () => {
     fetchMock.mockResolvedValueOnce([trailA()]);
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => true);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => true,
+    );
     const state = { zoom: 12, lng: 0, lat: 0 };
     const map = viewFakeMap(state);
     const ctx = ctxFor(map);
@@ -185,7 +205,11 @@ describe('ais trails overlay', () => {
 
   it('reuses the padded fetch area for a small pan, refetches once the viewport leaves it', async () => {
     fetchMock.mockResolvedValue([]);
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => true);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => true,
+    );
     const state = { zoom: 12, lng: 0, lat: 0 };
     const ctx = ctxFor(viewFakeMap(state));
     overlay.add(ctx);
@@ -205,7 +229,11 @@ describe('ais trails overlay', () => {
 
   it('a hidden layer neither fetches nor renders', async () => {
     fetchMock.mockResolvedValue([trailA()]);
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => true);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => true,
+    );
     const state = { zoom: 12, lng: 0, lat: 0 };
     const map = viewFakeMap(state);
     const ctx = ctxFor(map);
@@ -221,7 +249,11 @@ describe('ais trails overlay', () => {
   it('clears the shown wakes when the plugin becomes unavailable', async () => {
     fetchMock.mockResolvedValue([trailA()]);
     let available = true;
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => available);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => available,
+    );
     const state = { zoom: 12, lng: 0, lat: 0 };
     const map = viewFakeMap(state);
     const ctx = ctxFor(map);
@@ -234,7 +266,11 @@ describe('ais trails overlay', () => {
   });
 
   it('applyTheme recolors the trail line with the theme AIS color', () => {
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => true);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => true,
+    );
     const map = createFakeMap();
     const ctx = ctxFor(map);
     overlay.add(ctx);
@@ -248,7 +284,11 @@ describe('ais trails overlay', () => {
   });
 
   it('setOpacity scales the built-in fade rather than overriding it', () => {
-    const overlay = createAisTrailsOverlay('http://pi', undefined, () => true);
+    const overlay = createAisTrailsOverlay(
+      'http://pi',
+      () => undefined,
+      () => true,
+    );
     const map = createFakeMap();
     const ctx = ctxFor(map);
     overlay.add(ctx);

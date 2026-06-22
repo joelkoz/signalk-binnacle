@@ -6,7 +6,6 @@ import type {
 
 import type { AisTargets, AisTargetView } from '$entities/ais';
 import type { Assessment, Severity } from '$entities/collision';
-import { MINUTE_MS } from '$shared/lib';
 import {
   emptyFeatureCollection,
   featureCollection,
@@ -27,7 +26,7 @@ const BAND = 'traffic';
 
 // Project each target 10 minutes along its COG at its SOG.
 const VECTOR_MINUTES = 10;
-const SECONDS_PER_MINUTE = MINUTE_MS / 1000;
+const VECTOR_SECONDS = VECTOR_MINUTES * 60;
 // GPS scatter on a stationary vessel can produce a small apparent SOG. Targets below this
 // threshold (about 0.5 kt) are treated as stationary and show no vector.
 const MIN_SOG_MPS = 0.25;
@@ -56,7 +55,7 @@ export function buildFeatures(
     if (target.cogRad === undefined) continue;
     const sog = target.sogMps ?? 0;
     if (sog < MIN_SOG_MPS) continue;
-    const distanceMeters = sog * VECTOR_MINUTES * SECONDS_PER_MINUTE;
+    const distanceMeters = sog * VECTOR_SECONDS;
     const origin: [number, number] = [target.position.longitude, target.position.latitude];
     const tip = geodesicDestination(
       target.position.latitude,

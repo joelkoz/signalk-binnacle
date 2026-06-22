@@ -4,7 +4,7 @@ import type {
   RasterLayerSpecification,
 } from 'maplibre-gl';
 import type { TimeBracket, WeatherGrid, WeatherStore } from '$entities/weather';
-import type { OverlayContext, OverlayModule } from '$shared/map';
+import { type OverlayContext, type OverlayModule, removeLayersAndSources } from '$shared/map';
 import type { Theme } from '$shared/ui';
 import type { FieldBitmap } from './field-rgba';
 
@@ -168,8 +168,7 @@ export function createFieldOverlay(
       refreshSource(ctx.map);
     },
     remove(ctx) {
-      if (ctx.map.getLayer(layerId)) ctx.map.removeLayer(layerId);
-      if (ctx.map.getSource(sourceId)) ctx.map.removeSource(sourceId);
+      removeLayersAndSources(ctx.map, [layerId], [sourceId]);
     },
     setVisible(ctx, visible) {
       ctx.map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');

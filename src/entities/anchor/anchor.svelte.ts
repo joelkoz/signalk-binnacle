@@ -2,12 +2,10 @@ import type { OwnVessel } from '$entities/vessel';
 import { asNumber, isLatLon, type LatLon } from '$shared/geo';
 import { isFiniteNumber } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
-import { PersistedValue } from '$shared/settings';
+import { PersistedValue, type StorageLike } from '$shared/settings';
 import { type SignalKStore, SK_PATHS, SOUNDING_NOTIFICATION_STATES } from '$shared/signalk';
 import { DEFAULT_RADIUS_M, MIN_RADIUS_M } from './anchor-geometry';
 import { DragDetector } from './drag-detector';
-
-type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 // 'server' when the signalk-anchoralarm-plugin is watching (its navigation.anchor.position is on the
 // stream), 'client' when this browser watches on its own, 'off' when no anchor is down.

@@ -20,6 +20,7 @@ import { createAnchorOverlay } from '$features/anchor-watch';
 import { createCollisionOverlay } from '$features/lookout';
 import { createMeasureOverlay } from '$features/measure';
 import { createMobOverlay } from '$features/mob';
+import type { NotesOverlay } from '$features/notes';
 import { createCourseOverlay, createRouteOverlay } from '$features/route-layer';
 import { createTidesOverlay } from '$features/tides';
 import { createTimeTravelOverlay, type TimeTravelStore } from '$features/time-travel';
@@ -31,20 +32,15 @@ import {
 import { createVesselOverlay } from '$features/vessel-layer';
 import { createWaypointOverlay } from '$features/waypoints';
 import type { LatLon } from '$shared/geo';
-import type { OverlayContext, OverlayModule } from '$shared/map';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
 import type { HistoryProviders, SignalKStore } from '$shared/signalk';
 
-// The notes overlay is built in the host (it is also handed to the map commands as the
-// selection-clearing target), so it is injected here rather than created in this module.
-interface NotesOverlayLike extends OverlayModule {
-  sync(ctx: OverlayContext): void;
-}
-
 export interface DynamicOverlaysDeps {
-  // The server origin and read token, shared by the AIS-trail and history-track overlays.
+  // The server origin and a live read-token getter, shared by the AIS-trail and history-track
+  // overlays. A getter, not a value: the map mounts before auth resolves on a secured server, so a
+  // captured token would freeze at undefined and every fetch would stay unauthenticated.
   origin: string;
-  chartsToken?: string;
+  getToken: () => string | undefined;
   store: SignalKStore;
   vessel: OwnVessel;
   aisTargets: AisTargets;
@@ -62,7 +58,7 @@ export interface DynamicOverlaysDeps {
   trackSettings: PersistedValue<TrackSettings>;
   savedTracks?: SavedTracksSource;
   // The already-built notes overlay, woven into the stack at its band position.
-  notesOverlay: NotesOverlayLike;
+  notesOverlay: NotesOverlay;
   onAnchorMoved?: (position: LatLon) => void;
   aisTrailsAvailable: () => boolean;
   historyProviders: () => HistoryProviders | undefined;
@@ -76,7 +72,7 @@ export interface DynamicOverlaysDeps {
 export function buildDynamicOverlays(deps: DynamicOverlaysDeps) {
   const {
     origin,
-    chartsToken,
+    getToken,
     store,
     vessel,
     aisTargets,
@@ -107,12 +103,12 @@ export function buildDynamicOverlays(deps: DynamicOverlaysDeps) {
     createCourseOverlay(guidance, vessel),
     createWaypointOverlay(waypoints, symbols),
     notesOverlay,
-    createAisTrailsOverlay(origin, chartsToken, aisTrailsAvailable, () => store.selfContext),
+    createAisTrailsOverlay(origin, getToken, aisTrailsAvailable, () => store.selfContext),
     createAisVectorsOverlay(aisTargets, () => collision.assessment),
     createAisOverlay(aisTargets),
     createCollisionOverlay(collision),
     createMobOverlay(mob, vessel),
-    createHistoryTrackOverlay(origin, chartsToken, historyProviders),
+    createHistoryTrackOverlay(origin, getToken, historyProviders),
     createTrackOverlay(recorder, trackSettings, savedTracks),
     createVesselOverlay(vessel),
     createTimeTravelOverlay(timeTravel),

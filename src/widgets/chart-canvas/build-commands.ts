@@ -2,17 +2,13 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { RouteStore } from '$entities/route';
 import type { OwnVessel } from '$entities/vessel';
 import type { LayersView } from '$features/layers-panel';
+import type { NotesOverlay } from '$features/notes';
 import type { RouteEditor } from '$features/route-edit';
 import type { WorkingRouteOverlay } from '$features/route-layer';
 import { lngLatBoundsToBbox4, normalizeBounds } from '$shared/geo';
 import { prefersReducedMotion } from '$shared/lib';
 import type { LayerManager, OverlayContext } from '$shared/map';
 import type { MapCommands } from './commands';
-
-// The notes overlay handed up so the "clear note selection" command can drop the selection ring.
-interface NotesOverlayLike {
-  deselect(ctx: OverlayContext): void;
-}
 
 export interface MapCommandsDeps {
   map: MapLibreMap;
@@ -21,7 +17,7 @@ export interface MapCommandsDeps {
   manager: LayerManager;
   vessel: OwnVessel;
   routeStore: RouteStore;
-  notesOverlay: NotesOverlayLike;
+  notesOverlay: NotesOverlay;
   // The lazily-imported on-chart route editor, loaded on first use; resolves undefined on a
   // chunk-load failure so route editing degrades rather than throwing.
   loadRouteEditor: () => Promise<RouteEditor | undefined>;

@@ -312,7 +312,7 @@ onMount(() => {
       // vessel and collision pinned on top, then the navigator's routes and track, then AIS and the
       // safety overlays, the ocean fields, and the charts at the base); the order below sets only the
       // order within a band.
-      const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect, symbols, {
+      const notesOverlay = createNotesOverlay(origin, () => chartsToken, onNoteSelect, symbols, {
         isOnline: isOnline ?? (() => true),
         filter: notesFilter,
         onNotes,
@@ -321,7 +321,7 @@ onMount(() => {
       // sets z within each band (tides under the safety overlays, the own vessel on top).
       const dynamicOverlays = buildDynamicOverlays({
         origin,
-        chartsToken,
+        getToken: () => chartsToken,
         store,
         vessel,
         aisTargets,

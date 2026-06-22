@@ -34,7 +34,7 @@ export interface NoteSelection {
   url?: string;
 }
 
-const NOTES_PATH = '/signalk/v2/api/resources/notes';
+export const NOTES_PATH = '/signalk/v2/api/resources/notes';
 
 // Map one keyed resource entry to a NotePoint, or undefined to skip it. An error payload
 // ({state, statusCode, message}) has non-object values or no position, so it falls through here;

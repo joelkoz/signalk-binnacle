@@ -46,6 +46,11 @@ export function clampToWorld([west, south, east, north]: Bbox4): Bbox4 {
   return [Math.max(-180, west), Math.max(-85, south), Math.min(180, east), Math.min(85, north)];
 }
 
+// The default fraction the viewport-keyed fetch overlays pad their bbox by, so a small pan or a
+// zoom-in stays inside the last fetch's area and reuses it. Shared so the notes cache and the
+// AIS-trail overlay pad by the same amount.
+export const VIEWPORT_FETCH_PAD_FRACTION = 0.5;
+
 // Expand a viewport bbox outward by `fraction` on each side, clamped to the world and the Web
 // Mercator latitude limit, so one padded fetch covers more than the visible area and a small pan
 // reuses it. Shared by the notes and AIS-trails overlays.

@@ -1,4 +1,4 @@
-export type { MapView, Thresholds, TrackSettings } from './persisted.svelte';
+export type { MapView, StorageLike, Thresholds, TrackSettings } from './persisted.svelte';
 export {
   createMapView,
   createThresholds,

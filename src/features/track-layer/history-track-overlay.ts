@@ -1,5 +1,5 @@
 import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
-import { isLatLon } from '$shared/geo';
+import { isLatLon, latLonToLonLat } from '$shared/geo';
 import { MINUTE_MS } from '$shared/lib';
 import {
   emptyFeatureCollection,
@@ -46,7 +46,7 @@ export interface HistoryTrackOverlay extends OverlayModule {
 // showing it is the opt-in that starts the queries.
 export function createHistoryTrackOverlay(
   origin: string,
-  token: string | undefined,
+  getToken: () => string | undefined,
   providers: () => HistoryProviders | undefined,
   deps: Deps = { fetchValues: fetchHistoryValuesAcrossProviders, now: Date.now },
 ): HistoryTrackOverlay {
@@ -76,7 +76,7 @@ export function createHistoryTrackOverlay(
         if (line.length > 1) lines.push(line);
         line = [];
       }
-      line.push([position.longitude, position.latitude]);
+      line.push(latLonToLonLat(position));
       lastSeconds = seconds;
     }
     if (line.length > 1) lines.push(line);
@@ -94,7 +94,7 @@ export function createHistoryTrackOverlay(
     if (!known || known.ids.length === 0 || fetching) return;
     fetching = true;
     try {
-      const got = await deps.fetchValues(origin, token, known, {
+      const got = await deps.fetchValues(origin, getToken(), known, {
         paths: [SK_PATHS.position],
         durationSeconds: HISTORY_WINDOW_SECONDS,
         resolutionSeconds: HISTORY_RESOLUTION_SECONDS,

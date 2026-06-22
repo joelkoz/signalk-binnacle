@@ -3,7 +3,7 @@ import type { AisTargets } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
 import type { UnitsStore } from '$entities/units';
 import type { OwnVessel } from '$entities/vessel';
-import type { LatLon } from '$shared/geo';
+import { type LatLon, quantizeLatLonKey } from '$shared/geo';
 import {
   formatBearingOr,
   formatKnotsOr,
@@ -39,11 +39,7 @@ const SORTS: { id: AisSort; label: string }[] = [
 // not recompute the range and bearing of every target on every tick; the list does not need finer.
 // The key is a string so the derived halts when the rounded cell is unchanged, then parsedOwn (and
 // the rows below) only recompute when the cell, the traffic, the risks, or the sort actually change.
-const ownCellKey = $derived(
-  vessel.position
-    ? `${vessel.position.latitude.toFixed(3)},${vessel.position.longitude.toFixed(3)}`
-    : '',
-);
+const ownCellKey = $derived(vessel.position ? quantizeLatLonKey(vessel.position) : '');
 const parsedOwn = $derived<LatLon | undefined>(
   ownCellKey
     ? (() => {

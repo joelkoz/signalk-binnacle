@@ -29,10 +29,17 @@ const GLYPHS: Record<PoiCategory, string> = {
     '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
 };
 
+// A hazard reads as danger, a navaid as a caution, everything else as the standard POI accent.
+// Shared so the canvas marker and the inline HTML icon classify a category the same way.
+type FillRole = 'danger' | 'warning' | 'default';
+function fillRole(category: PoiCategory): FillRole {
+  if (category === 'hazard') return 'danger';
+  if (category === 'navaid') return 'warning';
+  return 'default';
+}
+
 function fillColor(category: PoiCategory, paint: MapThemePaint): string {
-  if (category === 'hazard') return paint.danger;
-  if (category === 'navaid') return paint.warning;
-  return paint.note;
+  return { danger: paint.danger, warning: paint.warning, default: paint.note }[fillRole(category)];
 }
 
 function markerSvg(category: PoiCategory, paint: MapThemePaint): string {
@@ -48,12 +55,9 @@ function markerSvg(category: PoiCategory, paint: MapThemePaint): string {
 // Inline SVG for HTML UI contexts (dialogs, pickers). Uses CSS variables so the icon adapts to
 // the app's light/dark theme without canvas rasterization.
 export function poiInlineIconSvg(category: PoiCategory): string {
-  const fill =
-    category === 'hazard'
-      ? 'var(--alarm)'
-      : category === 'navaid'
-        ? 'var(--warning)'
-        : 'var(--accent)';
+  const fill = { danger: 'var(--alarm)', warning: 'var(--warning)', default: 'var(--accent)' }[
+    fillRole(category)
+  ];
   return [
     '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 30 30" aria-hidden="true">',
     `<circle cx="15" cy="15" r="14" fill="${fill}"/>`,

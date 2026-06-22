@@ -3,6 +3,7 @@ import { TriangleAlert } from '@lucide/svelte';
 import { onDestroy } from 'svelte';
 import type { UnitsStore } from '$entities/units';
 import type { WeatherStore } from '$entities/weather';
+import { quantizeLatLonKey } from '$shared/geo';
 import { Clock, formatDayClock, MINUTE_MS } from '$shared/lib';
 import ConditionsBlock from './ConditionsBlock.svelte';
 import ForecastList from './ForecastList.svelte';
@@ -75,9 +76,7 @@ const sourceLabel = $derived(providerName ?? GRID_SOURCE_LABEL);
 // rounded value is unchanged: the fix jitters every GPS delta, and a fresh tuple each tick would
 // refetch (and burst provider 400s), but an equal string does not. parsedPos parses it back, so it
 // too only changes when the rounded position does; weather does not change within 110 m.
-const posKey = $derived(
-  position ? `${position.latitude.toFixed(3)},${position.longitude.toFixed(3)}` : '',
-);
+const posKey = $derived(position ? quantizeLatLonKey(position) : '');
 
 const parsedPos = $derived<[number, number] | undefined>(
   posKey ? (posKey.split(',').map(Number) as [number, number]) : undefined,

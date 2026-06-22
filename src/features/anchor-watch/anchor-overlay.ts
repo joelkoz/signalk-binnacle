@@ -10,7 +10,7 @@ import type {
 } from 'maplibre-gl';
 import type { AnchorWatch } from '$entities/anchor';
 import type { OwnVessel } from '$entities/vessel';
-import type { LatLon } from '$shared/geo';
+import { type LatLon, latLonToLonLat } from '$shared/geo';
 import {
   emptyFeatureCollection,
   featureCollection,
@@ -65,10 +65,7 @@ function shapeFeatures(
       type: 'Feature',
       geometry: {
         type: 'LineString',
-        coordinates: [
-          [anchor.longitude, anchor.latitude],
-          [vessel.longitude, vessel.latitude],
-        ],
+        coordinates: [latLonToLonLat(anchor), latLonToLonLat(vessel)],
       },
       properties: { dragging, rode: true },
     });
@@ -81,7 +78,7 @@ function pointFeatures(anchor: LatLon | undefined, dragging: boolean): GeoJSON.F
   return featureCollection([
     {
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: [anchor.longitude, anchor.latitude] },
+      geometry: { type: 'Point', coordinates: latLonToLonLat(anchor) },
       properties: { dragging },
     },
   ]);

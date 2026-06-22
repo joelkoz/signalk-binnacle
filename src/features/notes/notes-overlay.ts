@@ -45,7 +45,7 @@ const RETRY_COOLDOWN_MS = 30_000;
 const PERSIST_TTL_MS = 7 * DAY_MS;
 const MAX_PERSIST_ENTRIES = 24;
 
-interface NotesOverlay extends OverlayModule {
+export interface NotesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
   deselect(ctx: OverlayContext): void;
 }
@@ -75,7 +75,7 @@ export interface NotesOverlayOptions {
 
 export function createNotesOverlay(
   serverBase: string,
-  token: string | undefined,
+  getToken: () => string | undefined,
   onSelect?: (selection: NoteSelection | undefined) => void,
   symbols?: SymbolsStore,
   options: NotesOverlayOptions = {},
@@ -188,7 +188,7 @@ export function createNotesOverlay(
         return stored.value;
       }
     }
-    const notes = await fetchNotes(serverBase, token, fetchBbox);
+    const notes = await fetchNotes(serverBase, getToken(), fetchBbox);
     if (notes) {
       promotedKeys.add(key);
       const now = Date.now();

@@ -1,6 +1,12 @@
 import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
 
-import { type Bbox4, bboxContains, lngLatBoundsToBbox4, padBbox } from '$shared/geo';
+import {
+  type Bbox4,
+  bboxContains,
+  lngLatBoundsToBbox4,
+  padBbox,
+  VIEWPORT_FETCH_PAD_FRACTION,
+} from '$shared/geo';
 import {
   emptyFeatureCollection,
   featureCollection,
@@ -29,8 +35,6 @@ const SETTLE_MS = 400;
 const REFETCH_MS = 30_000;
 // Consecutive failed refetch cycles before frozen wakes clear (a few minutes of staleness).
 const MAX_STALE_FETCHES = 4;
-// Fetch this fraction beyond every viewport edge so a small pan stays inside the last fetch's area.
-const PAD_FRACTION = 0.5;
 
 export interface AisTrailsOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -42,7 +46,7 @@ export interface AisTrailsOverlay extends OverlayModule {
 // vessel's context is excluded; Binnacle's track feature draws that line.
 export function createAisTrailsOverlay(
   base: string,
-  token: string | undefined,
+  getToken: () => string | undefined,
   isAvailable: () => boolean,
   selfContext?: () => string | undefined,
 ): AisTrailsOverlay {
@@ -161,9 +165,9 @@ export function createAisTrailsOverlay(
       // Claim the cadence and the area up front, so a failed fetch backs off for a full interval
       // instead of retrying every frame (the notes cooldown pattern).
       nextFetchAt = now + REFETCH_MS;
-      const fetchBbox = padBbox(viewport, PAD_FRACTION);
+      const fetchBbox = padBbox(viewport, VIEWPORT_FETCH_PAD_FRACTION);
       fetchedBbox = fetchBbox;
-      fetchAisTrails(base, token, fetchBbox)
+      fetchAisTrails(base, getToken(), fetchBbox)
         .then((trails) => {
           if (trails) {
             failedFetches = 0;

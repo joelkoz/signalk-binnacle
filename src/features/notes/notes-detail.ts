@@ -1,6 +1,7 @@
 import type { PoiType } from '$entities/poi-icons';
 import { withTimeout } from '$shared/lib';
 import { asKeyedObject, authInit, str, strArray } from '$shared/signalk';
+import { NOTES_PATH } from './notes-client';
 
 const ITEM_KINDS = [
   'text',
@@ -39,7 +40,6 @@ export interface NoteDetail {
   url?: string;
 }
 
-const V2 = '/signalk/v2/api/resources/notes';
 const V1 = '/signalk/v1/api/resources/notes';
 
 // A provider description is untrusted, so it is shown as plain text; its markup is never injected.
@@ -155,7 +155,7 @@ export async function fetchNoteDetail(
   // The v1 leg is a last-resort fallback: marker ids only come from the v2 list, so it is
   // reachable only if a v2 list once served ids and the server later stopped answering v2.
   return (
-    (await tryFetch(`${base}${V2}${path}`, token, id)) ??
+    (await tryFetch(`${base}${NOTES_PATH}${path}`, token, id)) ??
     (await tryFetch(`${base}${V1}${path}`, token, id))
   );
 }

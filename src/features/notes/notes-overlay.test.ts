@@ -83,7 +83,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('notes overlay', () => {
   it('adds the cluster ring, icon, count, point, and selection layers in the routes band', async () => {
-    const overlay = createNotesOverlay('http://pi', undefined);
+    const overlay = createNotesOverlay('http://pi', () => undefined);
     const map = createFakeMap();
     await overlay.add(ctxFor(map));
     expect(overlay.band).toBe('routes');
@@ -99,7 +99,7 @@ describe('notes overlay', () => {
   });
 
   it('exposes deselect to clear the selection ring', () => {
-    const overlay = createNotesOverlay('http://pi', undefined);
+    const overlay = createNotesOverlay('http://pi', () => undefined);
     expect(typeof overlay.deselect).toBe('function');
   });
 
@@ -112,7 +112,7 @@ describe('notes overlay', () => {
         }),
     );
     fetchNotesMock.mockResolvedValue([]);
-    const overlay = createNotesOverlay('http://pi', undefined);
+    const overlay = createNotesOverlay('http://pi', () => undefined);
     const state = { zoom: 12, lng: 0, lat: 0 };
     const ctx = viewCtx(state);
     overlay.sync(ctx);
@@ -142,7 +142,7 @@ describe('notes overlay', () => {
     });
     const store = storeWith(marinaSymbol(), rasterize);
     fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
-    const overlay = createNotesOverlay('http://pi', undefined, undefined, store);
+    const overlay = createNotesOverlay('http://pi', () => undefined, undefined, store);
     const map = viewFakeMap({ zoom: 12, lng: 0, lat: 0 });
     const ctx = ctxFor(map);
     await overlay.add(ctx);
@@ -166,7 +166,7 @@ describe('notes overlay', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network')));
     const store = storeWith(marinaSymbol(), vi.fn());
     fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
-    const overlay = createNotesOverlay('http://pi', undefined, undefined, store);
+    const overlay = createNotesOverlay('http://pi', () => undefined, undefined, store);
     const map = viewFakeMap({ zoom: 12, lng: 0, lat: 0 });
     const ctx = ctxFor(map);
     await overlay.add(ctx);
@@ -185,7 +185,7 @@ describe('notes overlay', () => {
 
   it('uses the category disc with a centered offset when no symbols store is passed', async () => {
     fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
-    const overlay = createNotesOverlay('http://pi', undefined);
+    const overlay = createNotesOverlay('http://pi', () => undefined);
     const map = viewFakeMap({ zoom: 12, lng: 0, lat: 0 });
     const ctx = ctxFor(map);
     await overlay.add(ctx);
@@ -204,12 +204,16 @@ describe('notes overlay', () => {
   it('serves a persisted note set to a fresh overlay (a reload) without fetching', async () => {
     const persist = createExpiringStore<NotePoint[]>('shared', { factory: undefined });
     fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
-    const first = createNotesOverlay('http://pi', undefined, undefined, undefined, { persist });
+    const first = createNotesOverlay('http://pi', () => undefined, undefined, undefined, {
+      persist,
+    });
     first.sync(viewCtx({ zoom: 12, lng: 0, lat: 0 }));
     await settle();
     expect(fetchNotesMock).toHaveBeenCalledTimes(1);
 
-    const second = createNotesOverlay('http://pi', undefined, undefined, undefined, { persist });
+    const second = createNotesOverlay('http://pi', () => undefined, undefined, undefined, {
+      persist,
+    });
     second.sync(viewCtx({ zoom: 12, lng: 0, lat: 0 }));
     await settle();
     expect(fetchNotesMock).toHaveBeenCalledTimes(1);
@@ -220,7 +224,7 @@ describe('notes overlay', () => {
     try {
       fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
       let online = true;
-      const overlay = createNotesOverlay('http://pi', undefined, undefined, undefined, {
+      const overlay = createNotesOverlay('http://pi', () => undefined, undefined, undefined, {
         isOnline: () => online,
         persist: createExpiringStore<NotePoint[]>('t', { factory: undefined }),
       });
@@ -246,7 +250,7 @@ describe('notes overlay', () => {
     vi.useFakeTimers();
     try {
       fetchNotesMock.mockResolvedValue([MARINA_NOTE]);
-      const overlay = createNotesOverlay('http://pi', undefined, undefined, undefined, {
+      const overlay = createNotesOverlay('http://pi', () => undefined, undefined, undefined, {
         persist: createExpiringStore<NotePoint[]>('t', { factory: undefined }),
       });
       const state = { zoom: 12, lng: 0, lat: 0 };
@@ -286,7 +290,9 @@ describe('notes overlay', () => {
     const allowed = new Set(['n1']);
     let version = 1;
     const filter = { version: () => version, passes: (id: string) => allowed.has(id) };
-    const overlay = createNotesOverlay('http://pi', undefined, undefined, undefined, { filter });
+    const overlay = createNotesOverlay('http://pi', () => undefined, undefined, undefined, {
+      filter,
+    });
     const map = viewFakeMap({ zoom: 12, lng: 0, lat: 0 });
     const ctx = ctxFor(map);
     await overlay.add(ctx);
@@ -324,7 +330,7 @@ describe('notes overlay', () => {
       passes: (id: string, rec: unknown) => id === 'n1' && rec !== undefined,
     };
     const seen: NotePoint[][] = [];
-    const overlay = createNotesOverlay('http://pi', undefined, undefined, undefined, {
+    const overlay = createNotesOverlay('http://pi', () => undefined, undefined, undefined, {
       filter,
       onNotes: (set) => seen.push(set),
     });
@@ -347,7 +353,7 @@ describe('notes overlay', () => {
     vi.useFakeTimers();
     try {
       fetchNotesMock.mockResolvedValue(undefined);
-      const overlay = createNotesOverlay('http://pi', undefined);
+      const overlay = createNotesOverlay('http://pi', () => undefined);
       const ctx = viewCtx({ zoom: 12, lng: 0, lat: 0 });
       overlay.sync(ctx);
       await settle();

@@ -2,10 +2,8 @@ import type { OwnVessel } from '$entities/vessel';
 import { isLatLon, type LatLon } from '$shared/geo';
 import { isFiniteNumber, type ReactiveClock } from '$shared/lib';
 import { haversineMeters, rhumbBearingRad } from '$shared/nav';
-import { PersistedValue } from '$shared/settings';
+import { PersistedValue, type StorageLike } from '$shared/settings';
 import { type SignalKStore, SK_PATHS, SOUNDING_NOTIFICATION_STATES } from '$shared/signalk';
-
-type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 // The mark this station made: where and when the person went in. Persisted so a reload during a
 // recovery cannot lose the spot. The position is optional: an MOB without a fix is still an MOB

@@ -174,7 +174,7 @@ $effect(() => {
       {/if}
       {#if draft.flags && draft.flags.length > 0}
         <ul class="draft-flags">
-          {#each draft.flags as flag (flag.message)}
+          {#each draft.flags as flag, i (i)}
             <li class="alert-note">
               {flag.message}
               {#if flag.detail}

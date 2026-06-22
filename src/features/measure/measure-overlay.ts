@@ -5,7 +5,6 @@ import type {
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import type { MeasureStore } from '$entities/measure';
-import type { UnitsStore } from '$entities/units';
 import { type LatLon, latLonToLonLat } from '$shared/geo';
 import { formatMetersOrNm, type UnitsMode } from '$shared/lib';
 import {
@@ -55,7 +54,10 @@ export interface MeasureOverlay extends OverlayModule {
 
 // The on-chart measurement: tapped vertices, the dashed line through them, and the running total
 // labeled at the last point. Renders nothing while no measurement is in progress.
-export function createMeasureOverlay(measure: MeasureStore, units: UnitsStore): MeasureOverlay {
+export function createMeasureOverlay(
+  measure: MeasureStore,
+  units: { mode: UnitsMode },
+): MeasureOverlay {
   let paint = mapThemePaint('day');
   let lastPoints: readonly LatLon[] | undefined;
   // The total label bakes in the unit preference, so a mode flip redraws like a point change.
