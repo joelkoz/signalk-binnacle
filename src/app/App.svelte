@@ -6,7 +6,9 @@ import {
   CloudSun,
   History,
   Layers,
+  LocateFixed,
   MapPin,
+  Navigation,
   Radar,
   Route,
   Ruler,
@@ -462,6 +464,16 @@ const openPanel = (panel: LeftPanel): void => {
   activePanel = panel;
   if (narrow) selectedNote = undefined;
 };
+// Open the panel if it is closed, close it if it is already open, so a bar pill and a menu tile both
+// toggle. Delegates to openPanel/closePanel to keep the narrow-width clear-selectedNote side effect.
+const togglePanel = (panel: LeftPanel, onOpen?: () => void): void => {
+  if (activePanel === panel) {
+    closePanel();
+  } else {
+    openPanel(panel);
+    onOpen?.();
+  }
+};
 let recolorMap: ((theme: Theme) => void) | undefined;
 let chartsToken = $state<string | undefined>();
 
@@ -901,41 +913,61 @@ function armMeasure(): void {
   measure.start();
 }
 
-// The app menu's options, grouped from the data into four intent groups: Navigate (plan and chart),
-// Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings. Center, Follow,
-// Charts, and the Forecast pill live on the bottom status strip too, so the chart and weather
-// surfaces stay one tap away; the menu rows keep them findable.
+// The app menu's options, grouped into five intent groups: Map (center/follow), Navigate (plan and
+// chart), Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings.
 // Adding an option is a single entry; the launcher renders and groups whatever it is given.
 const menuItems = $derived<MenuItem[]>([
+  {
+    id: 'center',
+    label: 'Center',
+    icon: LocateFixed,
+    group: 'Map',
+    disabled: !mapCommands,
+    onSelect: () => mapCommands?.centerOnVessel(),
+  },
+  {
+    id: 'follow',
+    label: 'Follow',
+    icon: Navigation,
+    group: 'Map',
+    pressed: following,
+    onSelect: () => (following = !following),
+  },
   {
     id: 'routes',
     label: 'Routes',
     icon: Route,
     group: 'Navigate',
     disabled: !mapCommands,
-    onSelect: () => openPanel('routes'),
+    pressed: activePanel === 'routes',
+    onSelect: () => togglePanel('routes'),
   },
   {
     id: 'tracks',
     label: 'Tracks',
     icon: Spline,
     group: 'Navigate',
-    onSelect: () => openPanel('tracks'),
+    pressed: activePanel === 'tracks',
+    onSelect: () => togglePanel('tracks'),
   },
   {
     id: 'waypoints',
     label: 'Waypoints',
     icon: MapPin,
     group: 'Navigate',
-    onSelect: () => openPanel('waypoints'),
+    pressed: activePanel === 'waypoints',
+    onSelect: () => togglePanel('waypoints'),
   },
   {
     id: 'poi-search',
     label: 'POI search',
+    shortLabel: 'POI',
     icon: Search,
     group: 'Navigate',
-    onSelect: () => openPanel('poi-search'),
+    pressed: activePanel === 'poi-search',
+    onSelect: () => togglePanel('poi-search'),
   },
+  // measure re-arms on every tap rather than toggling; pressed reflects the active state.
   {
     id: 'measure',
     label: 'Measure',
@@ -947,10 +979,12 @@ const menuItems = $derived<MenuItem[]>([
   {
     id: 'layers',
     label: 'Layers and charts',
+    shortLabel: 'Charts',
     icon: Layers,
     group: 'Navigate',
     disabled: !layersView,
-    onSelect: () => openPanel('layers'),
+    pressed: activePanel === 'layers',
+    onSelect: () => togglePanel('layers'),
   },
   {
     id: 'forecast',
@@ -965,52 +999,60 @@ const menuItems = $derived<MenuItem[]>([
     label: 'Tides',
     icon: Waves,
     group: 'Conditions',
-    onSelect: () => {
-      openPanel('tides');
-      loadTides();
-    },
+    pressed: activePanel === 'tides',
+    onSelect: () => togglePanel('tides', loadTides),
   },
   {
     id: 'trends',
     label: 'Trends',
     icon: ChartLine,
     group: 'Conditions',
-    onSelect: () => openPanel('trends'),
+    pressed: activePanel === 'trends',
+    onSelect: () => togglePanel('trends'),
   },
+  // time-travel is not a LeftPanel; it has its own active flag and enter/exit API.
   {
     id: 'time-travel',
     label: 'Time travel',
+    shortLabel: 'Time',
     icon: History,
     group: 'Conditions',
-    onSelect: () => void timeTravel.enter(),
+    pressed: timeTravel.active,
+    onSelect: () => (timeTravel.active ? timeTravel.exit() : void timeTravel.enter()),
   },
   {
     id: 'ais',
     label: 'AIS targets',
+    shortLabel: 'AIS',
     icon: Radar,
     group: 'Safety',
-    onSelect: () => openPanel('ais'),
+    pressed: activePanel === 'ais',
+    onSelect: () => togglePanel('ais'),
   },
   {
     id: 'anchor',
     label: 'Anchor watch',
+    shortLabel: 'Anchor',
     icon: Anchor,
     group: 'Safety',
-    onSelect: () => openPanel('anchor'),
+    pressed: activePanel === 'anchor',
+    onSelect: () => togglePanel('anchor'),
   },
   {
     id: 'alarms',
     label: 'Alarms',
     icon: Bell,
     group: 'Safety',
-    onSelect: () => openPanel('alarms'),
+    pressed: activePanel === 'alarms',
+    onSelect: () => togglePanel('alarms'),
   },
   {
     id: 'profiles',
     label: 'Profiles',
     icon: UserCog,
     group: 'Settings',
-    onSelect: () => openPanel('profiles'),
+    pressed: activePanel === 'profiles',
+    onSelect: () => togglePanel('profiles'),
   },
 ]);
 
