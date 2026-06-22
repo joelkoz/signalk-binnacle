@@ -1,10 +1,10 @@
 <script lang="ts">
-import { CloudSun, Layers, LocateFixed, Navigation } from '@lucide/svelte';
+import { Ellipsis } from '@lucide/svelte';
 import type { AnchorWatch } from '$entities/anchor';
 import type { PlotterExtHost } from '$entities/plotter-ext';
 import type { UnitsStore } from '$entities/units';
 import type { OwnVessel } from '$entities/vessel';
-import type { LayersView } from '$features/layers-panel';
+import { MAX_BAR_PILLS, type MenuItem, splitBarActions } from '$features/menu';
 import { ToolbarButtons } from '$features/plotter-extensions';
 import {
   formatBearingOr,
@@ -17,6 +17,7 @@ import {
 } from '$shared/lib';
 import type { MapView } from '$shared/settings';
 import type { ConnectionPhase } from '$shared/signalk';
+import { AnchoredMenu } from '$shared/ui';
 
 let {
   connectionLabel,
@@ -28,16 +29,9 @@ let {
   anchor,
   units,
   vessel,
-  following,
-  activePanel,
-  layersView,
-  weatherPanelOpen,
   mapView,
   plotterExtHost,
-  onCenter,
-  onToggleFollow,
-  onToggleLayers,
-  onToggleWeather,
+  pinnedActions,
 }: {
   connectionLabel: string;
   streamError: boolean;
@@ -48,19 +42,18 @@ let {
   anchor: AnchorWatch;
   units: UnitsStore;
   vessel: OwnVessel;
-  following: boolean;
-  activePanel: string | null;
-  layersView: LayersView | undefined;
-  weatherPanelOpen: boolean;
   mapView: MapView | undefined;
   plotterExtHost: PlotterExtHost;
-  onCenter: () => void;
-  onToggleFollow: () => void;
-  onToggleLayers: () => void;
-  onToggleWeather: () => void;
+  pinnedActions: MenuItem[];
 } = $props();
 
 const connectionDown = $derived(connectionPhase === 'reconnecting' || connectionPhase === 'closed');
+const split = $derived(splitBarActions(pinnedActions, MAX_BAR_PILLS));
+const moreActive = $derived(split.overflow.some((a) => a.pressed === true));
+let moreOpen = $state(false);
+const closeMore = (): void => {
+  moreOpen = false;
+};
 </script>
 
 <footer class="status-strip">
@@ -116,56 +109,68 @@ const connectionDown = $derived(connectionPhase === 'reconnecting' || connection
     >
   </div>
   <div class="strip-center">
-    <button
-      type="button"
-      class="btn btn-pill"
-      aria-label="Center on boat"
-      title="Center on boat"
-      onclick={onCenter}
-    >
-      <LocateFixed size={16} aria-hidden="true" />
-      Center
-    </button>
-    <button
-      type="button"
-      class="btn btn-pill"
-      class:is-on={following}
-      aria-pressed={following}
-      aria-label="Follow boat"
-      title={following ? 'Stop following' : 'Follow boat'}
-      onclick={onToggleFollow}
-    >
-      <Navigation size={16} aria-hidden="true" />
-      Follow
-    </button>
-    <!-- No aria-label: the accessible name must be the visible "Charts" so voice control
-         matches what a user says; the title carries the longer description. -->
-    <button
-      type="button"
-      class="btn btn-pill"
-      class:is-on={activePanel === 'layers'}
-      aria-expanded={layersView ? activePanel === 'layers' : undefined}
-      aria-haspopup="dialog"
-      aria-controls={activePanel === 'layers' ? 'layers-panel' : undefined}
-      title={layersView ? 'Layers and charts' : 'Layers and charts (chart is loading)'}
-      disabled={!layersView}
-      onclick={onToggleLayers}
-    >
-      <Layers size={16} aria-hidden="true" />
-      Charts
-    </button>
-    <button
-      type="button"
-      class="btn btn-pill"
-      class:is-on={weatherPanelOpen}
-      aria-expanded={weatherPanelOpen}
-      aria-haspopup="dialog"
-      aria-controls={weatherPanelOpen ? 'weather-panel' : undefined}
-      onclick={onToggleWeather}
-    >
-      <CloudSun size={16} aria-hidden="true" />
-      Forecast
-    </button>
+    {#each split.visible as action (action.id)}
+      <button
+        type="button"
+        class="btn btn-pill"
+        class:is-on={action.pressed === true}
+        aria-pressed={action.pressed === undefined ? undefined : action.pressed}
+        disabled={action.disabled}
+        onclick={action.onSelect}
+      >
+        {#if action.icon}
+          {@const Icon = action.icon}
+          <Icon size={16} aria-hidden="true" />
+        {/if}
+        {action.shortLabel ?? action.label}
+      </button>
+    {/each}
+    {#if split.overflow.length > 0}
+      <div class="more-wrap">
+        <button
+          type="button"
+          class="btn btn-pill"
+          class:is-on={moreActive || moreOpen}
+          aria-haspopup="menu"
+          aria-expanded={moreOpen}
+          aria-label="More actions"
+          title="More actions"
+          onclick={() => (moreOpen = !moreOpen)}
+        >
+          <Ellipsis size={16} aria-hidden="true" />
+          More
+        </button>
+        <AnchoredMenu
+          open={moreOpen}
+          onClose={closeMore}
+          backdropLabel="Close more actions"
+          surfaceClass="bar-more"
+          ariaLabel="More actions"
+        >
+          {#snippet children()}
+            {#each split.overflow as action (action.id)}
+              <button
+                type="button"
+                class="menu-item"
+                class:is-on={action.pressed === true}
+                aria-pressed={action.pressed === undefined ? undefined : action.pressed}
+                disabled={action.disabled}
+                onclick={() => {
+                  action.onSelect();
+                  closeMore();
+                }}
+              >
+                {#if action.icon}
+                  {@const Icon = action.icon}
+                  <Icon size={16} aria-hidden="true" />
+                {/if}
+                {action.label}
+              </button>
+            {/each}
+          {/snippet}
+        </AnchoredMenu>
+      </div>
+    {/if}
     <ToolbarButtons host={plotterExtHost} />
   </div>
   <div class="center-cluster">
@@ -177,17 +182,17 @@ const connectionDown = $derived(connectionPhase === 'reconnecting' || connection
 </footer>
 
 <style>
-/* A three-column grid: the leading readouts, the Forecast button centered in the flexible middle,
-   and the trailing position cluster. Forecast is real grid content, not an absolute overlay, so it
-   can never paint over or steal taps from the readouts at any width. */
+/* A three-column grid: the leading readouts, the pinned action pills centered in the flexible
+   middle, and the trailing position cluster. The action area is real grid content, not an absolute
+   overlay, so it can never paint over or steal taps from the readouts at any width. */
 .status-strip {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
-  /* Tall enough for the Forecast button (a full control-size touch target), so it is not clipped at
-     the bottom by the overflow-hidden viewport. */
+  /* Tall enough for a full control-size touch target, so it is not clipped at the bottom by the
+     overflow-hidden viewport. */
   min-block-size: calc(var(--control-size) + var(--space-2));
   border-block-start: 1px solid var(--border);
   color: var(--text-muted);
@@ -199,8 +204,8 @@ const connectionDown = $derived(connectionPhase === 'reconnecting' || connection
   gap: var(--space-3);
   min-inline-size: 0;
 }
-/* Center, Follow, Charts, and Forecast read as one row of matching labeled pills in the flexible
-   middle. They wrap rather than overflow when a narrow phone leaves too little width. */
+/* The pinned action pills read as one row of matching labeled pills in the flexible middle.
+   They wrap rather than overflow when a narrow phone leaves too little width. */
 .strip-center {
   display: flex;
   flex-wrap: wrap;
@@ -275,6 +280,25 @@ const connectionDown = $derived(connectionPhase === 'reconnecting' || connection
 }
 .anchor-chip--alarm b {
   color: var(--alarm);
+}
+.more-wrap {
+  position: relative;
+}
+:global(.bar-more) {
+  position: absolute;
+  inset-block-end: calc(100% + var(--space-1));
+  inset-inline-end: 0;
+  transform-origin: bottom right;
+  z-index: var(--z-menu);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 12rem;
+  padding: var(--space-1);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
 }
 /* Keep each readout on one line, so "SOG -- kn" does not wrap to two lines when the strip is tight. */
 .readout {

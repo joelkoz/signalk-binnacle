@@ -60,7 +60,13 @@ import {
   LookoutAlarm,
 } from '$features/lookout';
 import { MeasureStrip } from '$features/measure';
-import { AppMenu, DEFAULT_PINNED, type MenuItem } from '$features/menu';
+import {
+  AppMenu,
+  DEFAULT_PINNED,
+  type MenuItem,
+  resolvePinned,
+  togglePinned,
+} from '$features/menu';
 import { createMobController, MOB_TONE, MobButton, MobStrip } from '$features/mob';
 import { ARRIVAL_TONE, NavStrip, type RouteProgress } from '$features/navigation';
 import {
@@ -447,6 +453,10 @@ let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
 // the menu after it closed on selection.
 let menuOpen = $state(false);
+let menuEditing = $state(false);
+function onTogglePin(id: string): void {
+  pinnedActions.set(togglePinned(pinnedActions.value, id));
+}
 const closePanel = (): void => {
   activePanel = null;
 };
@@ -1055,6 +1065,10 @@ const menuItems = $derived<MenuItem[]>([
     onSelect: () => togglePanel('profiles'),
   },
 ]);
+
+// The pinned actions in canonical order, resolved from the persisted id list against the live
+// registry, for the bottom bar to render.
+const resolvedPinned = $derived(resolvePinned(menuItems, pinnedActions.value));
 
 // Sound the collision alarm whenever the assessment, acknowledgement, mute, or escalation changes.
 // Escalation past the inner ring overrides both acknowledge and mute, so a close, imminent contact
@@ -2082,7 +2096,15 @@ onDestroy(() => {
   />
   <header class="topbar">
     <span class="topbar-start">
-      <AppMenu items={menuItems} open={menuOpen} onOpenChange={(next) => (menuOpen = next)} />
+      <AppMenu
+        items={menuItems}
+        open={menuOpen}
+        onOpenChange={(next) => (menuOpen = next)}
+        pinnedIds={pinnedActions.value}
+        editing={menuEditing}
+        onEditingChange={(next) => (menuEditing = next)}
+        {onTogglePin}
+      />
       <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
     </span>
     <MobButton {mob} onTrigger={mobController.onTrigger} onLocate={flyToPosition} />
@@ -2417,16 +2439,9 @@ onDestroy(() => {
     {anchor}
     {units}
     {vessel}
-    {following}
-    {activePanel}
-    {layersView}
-    {weatherPanelOpen}
     {mapView}
     {plotterExtHost}
-    onCenter={() => mapCommands?.centerOnVessel()}
-    onToggleFollow={() => (following = !following)}
-    onToggleLayers={() => (activePanel === 'layers' ? closePanel() : openPanel('layers'))}
-    onToggleWeather={() => (weatherPanelOpen = !weatherPanelOpen)}
+    pinnedActions={resolvedPinned}
   />
 </main>
 
