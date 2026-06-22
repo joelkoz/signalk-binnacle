@@ -7,6 +7,7 @@ import {
 } from '$entities/poi-icons';
 import type { SymbolsStore } from '$entities/symbols';
 import type { SkSymbol } from '$shared/signalk';
+import { registerDismiss } from '$shared/ui';
 
 // Optional "default" entry at the top of the list (e.g. "Default waypoint marker"). When provided,
 // value='' selects it. If no override symbol exists for defaultOption.iconId, fallbackSvg renders.
@@ -91,11 +92,18 @@ const optionEls: (HTMLElement | null)[] = [];
 
 $effect(() => {
   if (!isOpen) return;
+  // An outside pointer closes without moving focus (the pointer already left). Escape goes through
+  // the shared dismiss stack so it peels this picker before the dialog it sits inside, and returns
+  // focus to the trigger the way a keyboard close should.
   const close = (e: MouseEvent) => {
     if (pickerEl && !pickerEl.contains(e.target as Node)) isOpen = false;
   };
   window.addEventListener('click', close, { capture: true });
-  return () => window.removeEventListener('click', close, { capture: true });
+  const unregister = registerDismiss(closeAndReturnFocus);
+  return () => {
+    window.removeEventListener('click', close, { capture: true });
+    unregister();
+  };
 });
 
 function closeAndReturnFocus(): void {
@@ -125,6 +133,9 @@ function handleTriggerKey(e: KeyboardEvent): void {
   }
 }
 
+// Arrow keys rove the options; ArrowUp from the first returns to the trigger (a combobox idiom the
+// generic rovingFocus action does not model, so the nav stays bespoke here). Escape is handled by
+// the shared dismiss stack, and Enter or Space activate the option natively as a button.
 function handleOptionKey(e: KeyboardEvent, i: number): void {
   if (e.key === 'ArrowDown') {
     e.preventDefault();
@@ -136,11 +147,6 @@ function handleOptionKey(e: KeyboardEvent, i: number): void {
     } else {
       optionEls[i - 1]?.focus();
     }
-  } else if (e.key === 'Escape') {
-    closeAndReturnFocus();
-  } else if (e.key === 'Enter' || e.key === ' ') {
-    e.preventDefault();
-    select(options[i].value);
   }
 }
 
@@ -207,7 +213,8 @@ const poiStart = $derived(defaultOption ? 1 : 0);
         {:else if i === poiStart + poiOptions.length && symbolOptions.length > 0}
           <div class="caps-label picker-group-label" aria-hidden="true">Custom symbols</div>
         {/if}
-        <div
+        <button
+          type="button"
           role="option"
           aria-selected={value === opt.value}
           class:is-selected={value === opt.value}
@@ -218,7 +225,7 @@ const poiStart = $derived(defaultOption ? 1 : 0);
         >
           <span class="picker-icon"> {@render iconGlyph(opt)} </span>
           <span>{opt.label}</span>
-        </div>
+        </button>
       {/each}
     </div>
   {/if}
@@ -283,24 +290,30 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   z-index: var(--z-menu);
 }
 
-.picker-list div[role="option"] {
+/* Option rows are buttons so Enter and Space activate them natively and keyboard focus picks up the
+   shared :focus-visible ring (a tabindex=-1 div gets neither). */
+.picker-list button[role="option"] {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  inline-size: 100%;
   min-block-size: var(--control-size);
   padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
   cursor: pointer;
+  font-family: inherit;
   font-size: var(--text-md);
+  text-align: start;
   color: var(--text);
 }
 
-.picker-list div[role="option"]:hover,
-.picker-list div[role="option"]:focus {
+.picker-list button[role="option"]:hover,
+.picker-list button[role="option"]:focus {
   background: var(--accent-tint);
-  outline: none;
 }
 
-.picker-list div[role="option"].is-selected {
+.picker-list button[role="option"].is-selected {
   background: var(--accent-tint-strong);
 }
 
