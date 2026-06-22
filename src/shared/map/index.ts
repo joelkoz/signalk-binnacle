@@ -10,7 +10,7 @@ export { LayerManager } from './layer-manager';
 export { setMapImage } from './map-image';
 export type { MapThemePaint } from './map-theme';
 export { applyRasterTheme, mapThemePaint } from './map-theme';
-export { CENTERED_OFFSET, iconOffsetExpression } from './overlay-expressions';
+export { iconOffsetExpression } from './overlay-expressions';
 export { removeLayersAndSources, setLayersVisibility, setSourceData } from './overlay-helpers';
 export { registerPmtilesProtocol } from './pmtiles';
 export { readPmtilesMeta } from './pmtiles-metadata';

@@ -47,6 +47,13 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/signalk-binnacle/index.html',
+        // Do not answer file-like navigation requests (a path with an extension) from the app shell;
+        // they should hit the network or 404, not the HTML. The /signalk-binnacle/ scope already
+        // isolates the worker from the Signal K server API and admin paths, and a /^\/signalk/ entry
+        // would falsely match the app's own /signalk-binnacle/ routes and break the offline fallback.
+        navigateFallbackDenylist: [/\/[^/?]+\.[^/?]+$/],
+        // Sweep precache entries left by prior builds; register.ts assumes this is on.
+        cleanupOutdatedCaches: true,
         // The app chunk is large (MapLibre), so raise the precache size ceiling.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],

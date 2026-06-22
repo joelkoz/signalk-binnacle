@@ -19,9 +19,10 @@ export const ALL_VESSELS_CONTEXT: Context = 'vessels.*';
 // with this, and SK_PATHS.allNotifications is the wildcard subscription built from it.
 export const NOTIFICATIONS_PREFIX = 'notifications.';
 
-// The notification states that actually sound: 'normal', 'alert', and 'warn' do not. The narrow
-// name says so, since the canonical NotificationState below carries all six grades; shared by every
-// consumer that grades a notifications.* cell for an audible alarm (anchor drag, MOB).
+// The notification states that actually sound, alarm and emergency; nominal, normal, alert, and
+// warn are the quiet grades. The narrow name says so, since the canonical NotificationState below
+// carries all six grades; shared by every consumer that grades a notifications.* cell for an
+// audible alarm (anchor drag, MOB).
 export const SOUNDING_NOTIFICATION_STATES: ReadonlySet<string> = new Set(['alarm', 'emergency']);
 
 // The full Signal K alarm-state set (server-api ALARM_STATE). 'nominal' and 'normal' are the

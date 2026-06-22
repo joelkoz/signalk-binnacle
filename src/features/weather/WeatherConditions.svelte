@@ -55,8 +55,14 @@ onDestroy(() => clock.dispose());
 // Fetches the provider's point answers and persists them, so a panel opened with a failed or
 // absent network replays the last conditions for the spot (within the hour) instead of going blank.
 // Derived from the prop so a host-supplied loader is used live; the local fallback (tests, standalone
-// use) is constructed lazily only when no loader is provided.
-const pointLoader = $derived(pointLoaderProp ?? createPointConditionsLoader());
+// use) is built lazily and memoized, so even if the derived recomputes it cannot open a second
+// IndexedDB connection.
+let ownLoader: PointConditionsLoader | undefined;
+function fallbackLoader(): PointConditionsLoader {
+  ownLoader ??= createPointConditionsLoader();
+  return ownLoader;
+}
+const pointLoader = $derived(pointLoaderProp ?? fallbackLoader());
 
 let loading = $state(false);
 // The provider's raw answers, kept as data so the conditions DERIVE from them and the selected

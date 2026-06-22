@@ -32,9 +32,11 @@ export function toRows(pois: readonly Poi[], vessel?: LatLon): PoiRow[] {
   }));
 }
 
-export function filterRows(rows: readonly PoiRow[], query: string): PoiRow[] {
+export function filterRows(rows: readonly PoiRow[], query: string): readonly PoiRow[] {
   const q = query.trim().toLowerCase();
-  if (q === '') return [...rows];
+  // Return the input as-is for an empty query: sortRows owns the copy, so a spread here would be a
+  // redundant second allocation of the whole list.
+  if (q === '') return rows;
   return rows.filter((row) => row.poi.name.toLowerCase().includes(q));
 }
 

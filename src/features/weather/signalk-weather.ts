@@ -67,6 +67,8 @@ export interface WeatherWarning {
 
 // The Signal K server serializes each provider as { name, isDefault }. The provider id (the map
 // key) is the last resort so detection still works for a provider the server emits without a name.
+// CAVEAT: the v2 Weather _providers shape is still evolving upstream; this mirror matches current
+// master and is tracked by the weekly Signal K API watch.
 export interface WeatherProviderInfo {
   name?: string;
   isDefault: boolean;

@@ -20,7 +20,7 @@ export const LAYER_ID = 'binnacle-notes-symbol';
 export const CLUSTER_RING_LAYER = 'binnacle-notes-cluster-ring';
 export const CLUSTER_ICON_LAYER = 'binnacle-notes-cluster-icon';
 export const CLUSTER_COUNT_LAYER = 'binnacle-notes-cluster-count';
-export const SELECT_SOURCE = 'binnacle-notes-selected';
+export const SELECT_SOURCE = 'binnacle-notes-selected-source';
 export const SELECT_LAYER = 'binnacle-notes-selected';
 export const SELECT_CASING_LAYER = 'binnacle-notes-selected-casing';
 // A fixed dark casing under the amber selection ring, so it holds on light day water; invisible on the

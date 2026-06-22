@@ -62,17 +62,17 @@ export class ExtRelay {
 
   addSubscription(context: ExtContext, paths: readonly string[]): { subscriptionId: string } {
     const set = getOrCreate(this.#paths, context, () => new Set<string>());
-    const admitted: string[] = [];
-    for (const path of paths) {
-      if (!set.has(path) && set.size >= MAX_PATHS_PER_CONTEXT) {
-        throw new Error(`signalk.subscribe: path cap (${MAX_PATHS_PER_CONTEXT}) reached`);
-      }
-      set.add(path);
-      admitted.push(path);
+    // Admit the whole batch or none: reject before mutating the set if the not-yet-subscribed paths
+    // would exceed the cap, so a partial batch never lingers in the set with no subscription id to
+    // clean it up.
+    const fresh = paths.filter((path) => !set.has(path));
+    if (set.size + fresh.length > MAX_PATHS_PER_CONTEXT) {
+      throw new Error(`signalk.subscribe: path cap (${MAX_PATHS_PER_CONTEXT}) reached`);
     }
-    this.#signalk.ensurePaths(admitted);
+    for (const path of fresh) set.add(path);
+    this.#signalk.ensurePaths(paths);
     const subscriptionId = `sk-${++this.#subSeq}`;
-    this.#subById.set(subscriptionId, { context, paths: admitted });
+    this.#subById.set(subscriptionId, { context, paths: [...paths] });
     return { subscriptionId };
   }
 

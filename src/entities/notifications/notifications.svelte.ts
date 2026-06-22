@@ -21,6 +21,8 @@ export interface ActiveNotification {
   canAcknowledge?: boolean;
 }
 
+const boolField = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : undefined);
+
 function parseNotification(path: string, value: unknown): ActiveNotification | undefined {
   if (!isRecord(value)) return undefined;
   const raw = value;
@@ -31,7 +33,6 @@ function parseNotification(path: string, value: unknown): ActiveNotification | u
     ? raw.method.filter((m): m is string => typeof m === 'string')
     : [];
   const status = isRecord(raw.status) ? raw.status : {};
-  const bool = (v: unknown) => (typeof v === 'boolean' ? v : undefined);
   return {
     path,
     state: state as NotificationState,
@@ -39,10 +40,10 @@ function parseNotification(path: string, value: unknown): ActiveNotification | u
     method,
     timestamp: typeof raw.createdAt === 'string' ? raw.createdAt : undefined,
     id: typeof raw.id === 'string' ? raw.id : undefined,
-    silenced: bool(status.silenced),
-    acknowledged: bool(status.acknowledged),
-    canSilence: bool(status.canSilence),
-    canAcknowledge: bool(status.canAcknowledge),
+    silenced: boolField(status.silenced),
+    acknowledged: boolField(status.acknowledged),
+    canSilence: boolField(status.canSilence),
+    canAcknowledge: boolField(status.canAcknowledge),
   };
 }
 

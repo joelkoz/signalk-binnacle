@@ -19,7 +19,7 @@ export type {
   DraftRouteRequest,
   DraftView,
 } from './route-draft-client';
-export { draftRoute, MAX_OPTIMIZE_WAYPOINTS, ROUTE_DRAFT_PATH } from './route-draft-client';
+export { draftRoute } from './route-draft-client';
 export {
   ROUTE_DRAFT_PLUGIN_ID,
   ROUTE_DRAFT_PLUGIN_MIN_VERSION,

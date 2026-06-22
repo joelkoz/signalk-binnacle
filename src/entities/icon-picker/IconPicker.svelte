@@ -43,14 +43,14 @@ function iconRef(symbol: SkSymbol): string {
   );
 }
 
-const poiOptions: IconOption[] = $derived(
-  POI_CATEGORIES.map((cat) => ({
-    value: cat,
-    label: categoryLabel(cat),
-    kind: 'poi' as const,
-    category: cat,
-  })),
-);
+// POI_CATEGORIES and categoryLabel are static, so this list never changes; a plain const computes
+// it once instead of a $derived that would re-allocate in the reactive graph but never recompute.
+const poiOptions: IconOption[] = POI_CATEGORIES.map((cat) => ({
+  value: cat,
+  label: categoryLabel(cat),
+  kind: 'poi' as const,
+  category: cat,
+}));
 
 const symbolOptions: IconOption[] = $derived(
   (symbols?.forRole(symbolRole) ?? []).map((s) => ({

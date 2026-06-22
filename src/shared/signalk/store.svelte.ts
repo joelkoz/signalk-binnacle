@@ -1,8 +1,10 @@
 import type { AisTargetState, ConnectionState, SKFrame, Value } from './types';
 import { INITIAL_CONNECTION_STATE, NOTIFICATIONS_PREFIX } from './types';
 
-// The four v2 status flags are all the alert list renders, so the notification dedup compares
-// them field by field; serializing the status object would allocate per delta for active alarms.
+// The four v2 status flags the alert list renders, so the notification dedup compares them field by
+// field; serializing the status object would allocate per delta for active alarms. canClear is
+// intentionally omitted: Binnacle renders no clear affordance, so a canClear-only change should not
+// bump the version.
 type Flags =
   | { silenced?: unknown; acknowledged?: unknown; canSilence?: unknown; canAcknowledge?: unknown }
   | undefined;
