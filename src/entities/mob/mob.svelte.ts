@@ -3,7 +3,7 @@ import { isLatLon, type LatLon } from '$shared/geo';
 import { isFiniteNumber, type ReactiveClock } from '$shared/lib';
 import { haversineMeters, rhumbBearingRad } from '$shared/nav';
 import { PersistedValue } from '$shared/settings';
-import { ALARM_NOTIFICATION_STATES, type SignalKStore, SK_PATHS } from '$shared/signalk';
+import { type SignalKStore, SK_PATHS, SOUNDING_NOTIFICATION_STATES } from '$shared/signalk';
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -65,7 +65,7 @@ export class MobStore {
 
   #remoteActive = $derived.by<boolean>(() => {
     const state = this.#notification?.state;
-    return typeof state === 'string' && ALARM_NOTIFICATION_STATES.has(state);
+    return typeof state === 'string' && SOUNDING_NOTIFICATION_STATES.has(state);
   });
 
   #remotePosition = $derived.by<LatLon | undefined>(() => {

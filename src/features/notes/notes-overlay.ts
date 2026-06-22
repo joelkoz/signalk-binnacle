@@ -1,7 +1,7 @@
 import type { GeoJSONSource, MapGeoJSONFeature, MapLayerMouseEvent } from 'maplibre-gl';
 import { asPoiCategory, registerPoiIcons } from '$entities/poi-icons';
 import { createOverlayIconResolver, type SymbolsStore } from '$entities/symbols';
-import { bboxContains, lngLatBoundsToBbox4 } from '$shared/geo';
+import { type Bbox4, bboxContains, lngLatBoundsToBbox4 } from '$shared/geo';
 import { DAY_MS } from '$shared/lib';
 import {
   emptyFeatureCollection,
@@ -17,13 +17,14 @@ import { str } from '$shared/signalk';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
 import { registerNavaidIcons } from './navaid-symbols';
 import { bboxKey, NotesCache, padBbox } from './notes-cache';
-import { type Bbox, fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
+import { fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
 import { buildRender, filterRecord } from './notes-features';
 import {
   addNoteLayers,
   CLUSTER_COUNT_LAYER,
   CLUSTER_HIT_LAYERS,
   CLUSTER_ICON_LAYER,
+  CLUSTER_RING_BASE_OPACITY,
   CLUSTER_RING_LAYER,
   LAYER_ID,
   LAYERS,
@@ -177,7 +178,7 @@ export function createNotesOverlay(
   // area, which is the reload case), else from the network, persisting a successful fetch for the
   // next reload. The in-memory cache write stays with the caller, the weather loader's promote
   // pattern.
-  async function resolveNotes(key: string, fetchBbox: Bbox): Promise<NotePoint[] | undefined> {
+  async function resolveNotes(key: string, fetchBbox: Bbox4): Promise<NotePoint[] | undefined> {
     if (!promotedKeys.has(key)) {
       const now = Date.now();
       const stored = await persist.get(key);
@@ -209,15 +210,11 @@ export function createNotesOverlay(
   // Highlight the selected marker by drawing a ring at its position; clearing it sets the
   // selection source back to empty.
   function setSelected(ctx: OverlayContext, feature: MapGeoJSONFeature | undefined): void {
-    const source = ctx.map.getSource(SELECT_SOURCE) as GeoJSONSource | undefined;
-    if (!source) return;
-    if (feature?.geometry.type !== 'Point') {
-      source.setData(emptyFeatureCollection());
-      return;
-    }
-    source.setData(
-      featureCollection([{ type: 'Feature', geometry: feature.geometry, properties: {} }]),
-    );
+    const data =
+      feature?.geometry.type === 'Point'
+        ? featureCollection([{ type: 'Feature', geometry: feature.geometry, properties: {} }])
+        : emptyFeatureCollection();
+    setSourceData(ctx.map, SELECT_SOURCE, data);
   }
 
   return {
@@ -312,7 +309,7 @@ export function createNotesOverlay(
         clearRendered(ctx);
         return;
       }
-      const viewport: Bbox = lngLatBoundsToBbox4(ctx.map.getBounds());
+      const viewport: Bbox4 = lngLatBoundsToBbox4(ctx.map.getBounds());
       // A recent fetch whose padded area still covers the viewport serves the markers with no
       // network. This runs before the in-flight guard, so a cache hit renders even mid-fetch.
       // Offline, an expired entry still answers: stale POIs beat a chart that goes blank.
@@ -344,7 +341,7 @@ export function createNotesOverlay(
           render(ctx, notes);
           // The map may have moved while the fetch was in flight; when this fetch no longer covers
           // the current viewport, drop the fast-path anchor so the next sync serves the new area.
-          const current: Bbox = lngLatBoundsToBbox4(ctx.map.getBounds());
+          const current: Bbox4 = lngLatBoundsToBbox4(ctx.map.getBounds());
           if (!bboxContains(fetchBbox, current)) invalidateIdleAnchor();
         })
         .finally(() => {
@@ -384,7 +381,11 @@ export function createNotesOverlay(
       ctx.map.setPaintProperty(LAYER_ID, 'icon-opacity', opacity);
       ctx.map.setPaintProperty(LAYER_ID, 'text-opacity', opacity);
       ctx.map.setPaintProperty(CLUSTER_ICON_LAYER, 'icon-opacity', opacity);
-      ctx.map.setPaintProperty(CLUSTER_RING_LAYER, 'circle-stroke-opacity', opacity * 0.9);
+      ctx.map.setPaintProperty(
+        CLUSTER_RING_LAYER,
+        'circle-stroke-opacity',
+        opacity * CLUSTER_RING_BASE_OPACITY,
+      );
       ctx.map.setPaintProperty(CLUSTER_COUNT_LAYER, 'text-opacity', opacity);
       ctx.map.setPaintProperty(SELECT_CASING_LAYER, 'circle-stroke-opacity', opacity);
       ctx.map.setPaintProperty(SELECT_LAYER, 'circle-stroke-opacity', opacity);

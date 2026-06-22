@@ -1,3 +1,4 @@
+import { DAY_MS } from '$shared/lib';
 import {
   fetchHistoryValuesAcrossProviders,
   type HistoryProviders,
@@ -5,7 +6,7 @@ import {
 } from '$shared/signalk';
 import { TREND_METRICS, type TrendKey, type TrendSeries } from './trend-metrics';
 
-export const TREND_WINDOW_SECONDS = 24 * 60 * 60;
+export const TREND_WINDOW_SECONDS = DAY_MS / 1000;
 export const TREND_RESOLUTION_SECONDS = 300;
 
 export interface TrendHistory {

@@ -52,6 +52,14 @@ export const wmsTiles = (base: string, layers: string, styles = ''): string =>
 export const arcgisExportTiles = (base: string): string =>
   `${base}/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&dpi=96&format=png32&transparent=true&f=image`;
 
+// The safety band hosts the navigation-hazard rasters (seamarks, protected areas, and maritime
+// boundaries): they draw above charts and routes so a hazard mark always reads over the chart
+// picture. The seamark, MPA, and boundary slices share this one binding so the band lives in a
+// single place rather than being re-spelled in each slice.
+export function createSafetyOverlay(source: RasterOverlaySource): OverlayModule {
+  return createRasterOverlay(source, 'safety');
+}
+
 // Wrap a hosted raster tile service as a themed overlay in the given band. The layer manager sets
 // opacity via setOpacity right after add, and MapLibre defaults raster-opacity to 1, so no inline
 // opacity is set on the layer.

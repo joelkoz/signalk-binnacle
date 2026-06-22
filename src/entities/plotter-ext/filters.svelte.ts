@@ -95,15 +95,18 @@ export class PlotterExtFilters {
   // Whether any filter is active for a resource type, so an overlay can skip filtering work
   // entirely when none is.
   hasFilter(type: string): boolean {
-    return this.forType(type).length > 0;
+    for (const entry of this.#entries.values()) {
+      if (entry.type === type) return true;
+    }
+    return false;
   }
 
-  get chips(): FilterChip[] {
-    return [...this.#entries.entries()].map(([key, entry]) => ({
+  readonly chips = $derived.by<FilterChip[]>(() =>
+    [...this.#entries.entries()].map(([key, entry]) => ({
       key,
       extensionId: entry.extensionId,
       type: entry.type,
       label: entry.filter.label,
-    }));
-  }
+    })),
+  );
 }

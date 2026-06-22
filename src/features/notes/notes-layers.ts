@@ -37,6 +37,9 @@ export const LAYERS = [
 ];
 // The cluster layers that respond to a click (expand) and a hover (pointer cursor).
 export const CLUSTER_HIT_LAYERS = [CLUSTER_ICON_LAYER, CLUSTER_RING_LAYER];
+// The cluster ring's base stroke opacity, shared by the layer spec and the overlay's setOpacity so
+// the two cannot drift.
+export const CLUSTER_RING_BASE_OPACITY = 0.9;
 // Below this zoom the viewport spans too much to usefully fetch or show every POI.
 export const MIN_ZOOM = 9;
 // Past this zoom each point unclusters and shows its own icon. Clusters live at z9 to z11 so the
@@ -129,7 +132,7 @@ export function addNoteLayers(
         'circle-color': 'rgba(0,0,0,0)',
         'circle-stroke-color': themePaint.markerGlyph,
         'circle-stroke-width': 2.5,
-        'circle-stroke-opacity': 0.9,
+        'circle-stroke-opacity': CLUSTER_RING_BASE_OPACITY,
       },
     };
     map.addLayer(clusterRing, before);

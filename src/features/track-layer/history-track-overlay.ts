@@ -7,6 +7,8 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
+  setLayersVisibility,
   setSourceData,
 } from '$shared/map';
 import {
@@ -24,8 +26,6 @@ const BAND = 'track';
 const LINE_WIDTH = 2;
 const LINE_OPACITY = 0.6;
 const DASH = [2, 2];
-const WINDOW_SECONDS = HISTORY_WINDOW_SECONDS;
-const RESOLUTION_SECONDS = HISTORY_RESOLUTION_SECONDS;
 const REFRESH_MS = 15 * MINUTE_MS;
 // A break longer than this between positions starts a new line segment, so a day at the dock
 // followed by a sail does not draw a straight line across the gap.
@@ -96,8 +96,8 @@ export function createHistoryTrackOverlay(
     try {
       const got = await deps.fetchValues(origin, token, known, {
         paths: [SK_PATHS.position],
-        durationSeconds: WINDOW_SECONDS,
-        resolutionSeconds: RESOLUTION_SECONDS,
+        durationSeconds: HISTORY_WINDOW_SECONDS,
+        resolutionSeconds: HISTORY_RESOLUTION_SECONDS,
       });
       if (got) setData(ctx, toFeature(got.values.rows));
       // A failed query retries on the same cadence; the drawn line stays until then.
@@ -148,9 +148,7 @@ export function createHistoryTrackOverlay(
     },
     setVisible(ctx, next) {
       visible = next;
-      if (ctx.map.getLayer(LAYER_ID)) {
-        ctx.map.setLayoutProperty(LAYER_ID, 'visibility', next ? 'visible' : 'none');
-      }
+      setLayersVisibility(ctx.map, [LAYER_ID], next);
       // First show fetches immediately rather than waiting out the refresh window.
       if (next) nextFetchAt = 0;
     },
@@ -166,8 +164,7 @@ export function createHistoryTrackOverlay(
       }
     },
     remove(ctx) {
-      if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
-      if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
+      removeLayersAndSources(ctx.map, [LAYER_ID], [SOURCE_ID]);
     },
   };
 }

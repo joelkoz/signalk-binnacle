@@ -73,7 +73,7 @@ export interface WeatherProviderInfo {
 }
 
 type Fetch = typeof fetch;
-const defaultFetch: Fetch = (...args) => globalThis.fetch(...args);
+const defaultFetch: Fetch = globalThis.fetch.bind(globalThis);
 
 // The configured weather providers keyed by id, or {} when none. undefined on any transport failure.
 export async function fetchWeatherProviders(

@@ -51,6 +51,7 @@ export class SymbolsStore {
   // overlays hold one stable store reference and resolve against whatever is known at render time.
   setSymbols(symbols: readonly SkSymbol[]): void {
     this.#symbols = symbols;
+    this.#svgTexts.clear();
     this.#byRef.clear();
     const adopted: SkSymbol[] = [];
     for (const symbol of symbols) {

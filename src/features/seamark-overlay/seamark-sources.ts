@@ -1,4 +1,4 @@
-import { createRasterOverlay, type OverlayModule, type RasterOverlaySource } from '$shared/map';
+import { createSafetyOverlay, type OverlayModule, type RasterOverlaySource } from '$shared/map';
 
 // The OpenSeaMap seamark overlay: a transparent global raster layer of navigation aids (buoys,
 // beacons, lights, light sectors, and harbors) derived from OpenStreetMap. It sits in the safety
@@ -20,7 +20,8 @@ export const SEAMARK_SOURCES: RasterOverlaySource[] = [
   },
 ];
 
-// The safety band lives in the slice, not the composing widget, matching depth-charts.
+// The seamark raster draws in the safety band, bound through the shared createSafetyOverlay so the
+// band is not re-spelled per slice.
 export function createSeamarkOverlay(source: RasterOverlaySource): OverlayModule {
-  return createRasterOverlay(source, 'safety');
+  return createSafetyOverlay(source);
 }

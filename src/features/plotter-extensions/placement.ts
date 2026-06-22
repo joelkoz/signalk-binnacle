@@ -2,7 +2,7 @@ import type { PlotterExtHost, WidgetPlacement } from '$entities/plotter-ext';
 import type { PlotterExtension, WidgetContribution } from '$shared/signalk';
 import { sizeToSpan, WIDGET_AREAS } from './util';
 
-// Layout model duplicated from Freeboard-SK's plotter-ext
+// Layout model adapted from Freeboard-SK's plotter-ext
 // (plotterext.service.ts + widget-overlay.component.ts), adapted to Binnacle's area ids:
 //
 //  - Per-area grids: corners are 4 wide (up to eight 1x1, or four 2x1), centers stay 2 wide;
@@ -19,8 +19,9 @@ import { sizeToSpan, WIDGET_AREAS } from './util';
 
 // Fixed cell footprint (the overlay renders the same --pe-cell), so a chart-pixel press maps to
 // the same anchor area the overlay draws. These mirror values across a JS/CSS boundary with no
-// shared source, so keep them in sync with WidgetOverlay: CELL_PX is the --pe-cell fallback (88px)
-// and GAP_PX is --space-1 (0.25rem at the 16px root).
+// shared source: changing --pe-cell or --space-1 in CSS requires updating CELL_PX and GAP_PX here,
+// because the hit-test math cannot read CSS custom properties at runtime. CELL_PX is the --pe-cell
+// fallback (88px) and GAP_PX is --space-1 (0.25rem at the 16px root).
 const CELL_PX = 88;
 const GAP_PX = 4;
 

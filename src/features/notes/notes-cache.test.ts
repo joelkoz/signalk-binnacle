@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { bboxContains } from '$shared/geo';
+import { type Bbox4, bboxContains } from '$shared/geo';
 import { bboxKey, NotesCache, padBbox } from './notes-cache';
-import type { Bbox, NotePoint } from './notes-client';
+import type { NotePoint } from './notes-client';
 
 const note = (id: string): NotePoint => ({
   id,
@@ -39,7 +39,7 @@ describe('bboxContains', () => {
 });
 
 describe('NotesCache', () => {
-  const viewport: Bbox = [0, 0, 1, 1];
+  const viewport: Bbox4 = [0, 0, 1, 1];
   const fetchArea = padBbox(viewport);
 
   it('reuses a containing fetch while it is fresh, including after a small pan', () => {

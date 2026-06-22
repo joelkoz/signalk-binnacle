@@ -11,7 +11,9 @@ interface Deps {
 export class TimeTravelStore {
   active = $state(false);
   status = $state<TimeTravelStatus>('idle');
-  samples = $state<HistorySample[]>([]);
+  // Replace-only: the whole history track is reassigned wholesale on each load and read through the
+  // deriveds below, never mutated in place, so raw state skips proxying hundreds of sample objects.
+  samples = $state.raw<HistorySample[]>([]);
   from = $state(0);
   to = $state(0);
   scrubMs = $state(0);

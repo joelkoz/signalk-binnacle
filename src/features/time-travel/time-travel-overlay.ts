@@ -5,6 +5,8 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  removeLayersAndSources,
+  setLayersVisibility,
   setSourceData,
 } from '$shared/map';
 import type { TimeTravelStore } from './time-travel-store.svelte';
@@ -79,9 +81,7 @@ export function createTimeTravelOverlay(store: TimeTravelStore): TimeTravelOverl
       setSourceData(ctx.map, SOURCE_ID, markerData());
     },
     setVisible(ctx, visible) {
-      if (ctx.map.getLayer(LAYER_ID)) {
-        ctx.map.setLayoutProperty(LAYER_ID, 'visibility', visible ? 'visible' : 'none');
-      }
+      setLayersVisibility(ctx.map, [LAYER_ID], visible);
     },
     applyTheme(ctx, next) {
       paint = next;
@@ -90,8 +90,7 @@ export function createTimeTravelOverlay(store: TimeTravelStore): TimeTravelOverl
       }
     },
     remove(ctx) {
-      if (ctx.map.getLayer(LAYER_ID)) ctx.map.removeLayer(LAYER_ID);
-      if (ctx.map.getSource(SOURCE_ID)) ctx.map.removeSource(SOURCE_ID);
+      removeLayersAndSources(ctx.map, [LAYER_ID], [SOURCE_ID]);
     },
   };
 }

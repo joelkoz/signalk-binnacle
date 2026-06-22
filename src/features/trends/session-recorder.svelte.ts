@@ -1,4 +1,4 @@
-import { DAY_MS } from '$shared/lib';
+import { DAY_MS, isFiniteNumber } from '$shared/lib';
 import { TREND_METRICS, type TrendKey, type TrendSeries } from './trend-metrics';
 
 const SAMPLE_MS = 30_000;
@@ -44,9 +44,7 @@ export class TrendSessionRecorder {
     this.#times.push(nowMs / 1000);
     for (const metric of TREND_METRICS) {
       const value = sample[metric.key];
-      this.#values
-        .get(metric.key)
-        ?.push(typeof value === 'number' && Number.isFinite(value) ? value : null);
+      this.#values.get(metric.key)?.push(isFiniteNumber(value) ? value : null);
     }
     if (this.#times.length > MAX_SAMPLES) {
       const drop = this.#times.length - MAX_SAMPLES;

@@ -10,7 +10,7 @@ export class RouteStore {
   version = $state(0);
   // The leg or waypoint of the working route the leg list and the chart cross-highlight.
   highlight = $state<RouteHighlight | undefined>(undefined);
-  // A separate poll counter for the working route, bumped on every working-route edit and highlight
+  // A separate version counter for the working route, bumped on every working-route edit and highlight
   // change. The saved-route overlay polls `version` and the working-route overlay polls this, so a
   // per-pointermove edit re-syncs only the working overlay, not the saved-route layers.
   editVersion = $state(0);
@@ -52,6 +52,7 @@ export class RouteStore {
   setHighlight(next: RouteHighlight): void {
     // A plain set, not a toggle: a click MapLibre synthesizes at the end of a small drag must not
     // toggle a dot's highlight off. The leg-list toggle lives in the panel's handler instead.
+    if (this.highlight?.kind === next.kind && this.highlight?.index === next.index) return;
     this.highlight = next;
     this.editVersion += 1;
   }

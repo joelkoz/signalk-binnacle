@@ -13,6 +13,7 @@
 // padding per entry.
 
 const DAY_SECONDS = 60 * 60 * 24;
+const THIRTY_SIX_HOURS_SECONDS = 36 * 60 * 60;
 const TWO_HOURS_SECONDS = 60 * 60 * 2;
 
 interface MatchContext {
@@ -129,7 +130,11 @@ export const runtimeCaching = [
     options: {
       cacheName: 'binnacle-tides',
       networkTimeoutSeconds: 8,
-      expiration: { maxEntries: 32, maxAgeSeconds: 36 * 60 * 60, purgeOnQuotaError: true },
+      expiration: {
+        maxEntries: 32,
+        maxAgeSeconds: THIRTY_SIX_HOURS_SECONDS,
+        purgeOnQuotaError: true,
+      },
       cacheableResponse: { statuses: [200] },
     },
   },

@@ -4,6 +4,7 @@ import {
   type PoiType,
   poiCategoryForType,
 } from '$entities/poi-icons';
+import type { Bbox4 } from '$shared/geo';
 import { fetchKeyedResource, str } from '$shared/signalk';
 
 // A point-of-interest note from the Signal K resources API. Providers like
@@ -32,9 +33,6 @@ export interface NoteSelection {
   attribution?: string;
   url?: string;
 }
-
-// [west, south, east, north] in decimal degrees (GeoJSON / longitude-first order).
-export type Bbox = [number, number, number, number];
 
 const NOTES_PATH = '/signalk/v2/api/resources/notes';
 
@@ -84,7 +82,7 @@ function noteFromEntry(id: string, raw: unknown): NotePoint | undefined {
 export function fetchNotes(
   serverBase: string,
   token: string | undefined,
-  bbox: Bbox,
+  bbox: Bbox4,
 ): Promise<NotePoint[] | undefined> {
   const params = new URLSearchParams({ bbox: JSON.stringify(bbox) });
   return fetchKeyedResource(serverBase, [`${NOTES_PATH}?${params}`], token, noteFromEntry);

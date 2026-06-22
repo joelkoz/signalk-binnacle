@@ -77,15 +77,18 @@ describe('RouteStore', () => {
     expect(s.highlight).toBeUndefined();
   });
 
-  it('sets and clears the cross-highlight, and a redundant clear does not bump', () => {
+  it('sets and clears the cross-highlight, and redundant set or clear does not bump', () => {
     const s = new RouteStore();
     const v0 = s.editVersion;
     s.setHighlight({ kind: 'waypoint', index: 2 });
     expect(s.highlight).toEqual({ kind: 'waypoint', index: 2 });
     expect(s.editVersion).toBeGreaterThan(v0);
-    // setHighlight has no equality guard, so re-setting the same value still bumps.
+    // Re-setting the same highlight must not bump the version.
     const v1 = s.editVersion;
     s.setHighlight({ kind: 'waypoint', index: 2 });
+    expect(s.editVersion).toBe(v1);
+    // A different highlight must bump the version.
+    s.setHighlight({ kind: 'waypoint', index: 3 });
     expect(s.editVersion).toBeGreaterThan(v1);
     s.clearHighlight();
     expect(s.highlight).toBeUndefined();

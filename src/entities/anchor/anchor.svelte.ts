@@ -3,7 +3,7 @@ import { asNumber, isLatLon, type LatLon } from '$shared/geo';
 import { isFiniteNumber } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
 import { PersistedValue } from '$shared/settings';
-import { ALARM_NOTIFICATION_STATES, type SignalKStore, SK_PATHS } from '$shared/signalk';
+import { type SignalKStore, SK_PATHS, SOUNDING_NOTIFICATION_STATES } from '$shared/signalk';
 import { DEFAULT_RADIUS_M, MIN_RADIUS_M } from './anchor-geometry';
 import { DragDetector } from './drag-detector';
 
@@ -93,7 +93,7 @@ export class AnchorWatch {
 
   #serverDragging = $derived.by<boolean>(() => {
     const state = this.#notificationState;
-    return state !== undefined && ALARM_NOTIFICATION_STATES.has(state);
+    return state !== undefined && SOUNDING_NOTIFICATION_STATES.has(state);
   });
 
   get mode(): AnchorMode {

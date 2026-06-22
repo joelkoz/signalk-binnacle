@@ -83,9 +83,10 @@ export type DraftResult =
 
 // Larger than a standard fetch timeout because an AI draft round-trip includes model inference time plus
 // the per-leg safety check, which on a dense channel-routed track can run to fifty-plus legs. It must
-// stay above the plugin's own 50 s request deadline so the server returns its result (a route, or an
-// honest "check timed out" degrade) before this client gives up.
-const DRAFT_TIMEOUT_MS = 55_000;
+// stay above the plugin's own deadline so the server returns its result (a route, or an honest
+// "check timed out" degrade) before this client gives up.
+const PLUGIN_DEADLINE_MS = 50_000;
+const DRAFT_TIMEOUT_MS = PLUGIN_DEADLINE_MS + 5_000;
 
 export async function draftRoute(
   base: string,

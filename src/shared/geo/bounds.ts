@@ -5,7 +5,7 @@ import type { LatLon } from './geo-guards';
 export type Bbox4 = [number, number, number, number];
 
 // A MapLibre-ready corner pair: [[west, south], [east, north]].
-export type CornerBounds = [[number, number], [number, number]];
+type CornerBounds = [[number, number], [number, number]];
 
 // Pad applied to a degenerate (zero-width, zero-height, or point) box so a fit does not jump to an
 // extreme zoom trying to frame nothing. About 55 m.

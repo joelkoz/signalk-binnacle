@@ -6,6 +6,7 @@ export const DEFAULT_INTERVAL_HPA = 4;
 const LABEL_STRIDE = 6; // place a label every Nth segment of each level so labels stay sparse
 
 type Pt = [number, number];
+type Side = 'a' | 'b' | 'c' | 'd';
 
 export interface Isobars {
   lines: GeoJSON.FeatureCollection;
@@ -15,7 +16,7 @@ export interface Isobars {
 // Edge crossings of a grid cell, named for the four sides: a bottom, b right, c top, d left. Each
 // case lists the side pairs a contour segment connects. 5 and 10 are saddles, split with a fixed
 // (non-averaged) choice, which is fine for smooth pressure fields where saddles are rare.
-const CASES: string[][][] = [
+const CASES: Side[][][] = [
   [],
   [['d', 'a']],
   [['a', 'b']],
@@ -92,21 +93,9 @@ export function isobarFeatures(
         const lon1 = grid.lons[c + 1];
         const lat0 = grid.lats[r];
         const lat1 = grid.lats[r + 1];
-        const edge = (side: string): Pt => {
-          switch (side) {
-            case 'a':
-              return [lerp(lon0, lon1, edgeCrossing(vbl, vbr, level)), lat0];
-            case 'b':
-              return [lon1, lerp(lat0, lat1, edgeCrossing(vbr, vtr, level))];
-            case 'c':
-              return [lerp(lon1, lon0, edgeCrossing(vtr, vtl, level)), lat1];
-            default:
-              return [lon0, lerp(lat1, lat0, edgeCrossing(vtl, vbl, level))];
-          }
-        };
         for (const [e1, e2] of CASES[idx]) {
-          const a = edge(e1);
-          const b = edge(e2);
+          const a = cellEdge(e1, lon0, lon1, lat0, lat1, vbl, vbr, vtr, vtl, level);
+          const b = cellEdge(e2, lon0, lon1, lat0, lat1, vbl, vbr, vtr, vtl, level);
           lines.push(lineFeature(a, b, level));
           const n = perLevel.get(level) ?? 0;
           if (n % LABEL_STRIDE === 0) {
@@ -118,6 +107,31 @@ export function isobarFeatures(
     }
   }
   return collections(lines, labels);
+}
+
+// Interpolate the crossing point on one named cell side. Sides: a bottom, b right, c top, d left.
+function cellEdge(
+  side: Side,
+  lon0: number,
+  lon1: number,
+  lat0: number,
+  lat1: number,
+  vbl: number,
+  vbr: number,
+  vtr: number,
+  vtl: number,
+  level: number,
+): Pt {
+  switch (side) {
+    case 'a':
+      return [lerp(lon0, lon1, edgeCrossing(vbl, vbr, level)), lat0];
+    case 'b':
+      return [lon1, lerp(lat0, lat1, edgeCrossing(vbr, vtr, level))];
+    case 'c':
+      return [lerp(lon1, lon0, edgeCrossing(vtr, vtl, level)), lat1];
+    case 'd':
+      return [lon0, lerp(lat1, lat0, edgeCrossing(vtl, vbl, level))];
+  }
 }
 
 // The 0..1 position along a cell edge where the contour level crosses, between the edge's two

@@ -1,6 +1,6 @@
-import { bboxContains, padBbox as sharedPadBbox } from '$shared/geo';
+import { type Bbox4, bboxContains, padBbox as sharedPadBbox } from '$shared/geo';
 import { MINUTE_MS } from '$shared/lib';
-import type { Bbox, NotePoint } from './notes-client';
+import type { NotePoint } from './notes-client';
 
 // A fetched note set stays usable for this long before a re-fetch. POIs (marinas, anchorages, and
 // hazards) are effectively static within a session, so a few minutes keeps them fresh while cutting
@@ -13,20 +13,20 @@ const MAX_ENTRIES = 12;
 const PAD_FRACTION = 0.5;
 
 interface CacheEntry {
-  bbox: Bbox;
+  bbox: Bbox4;
   notes: NotePoint[];
   expires: number;
 }
 
 // The shared pad with this slice's default fraction baked in, re-exported so the overlay and the
 // cache key stay on one definition.
-export function padBbox(bbox: Bbox, fraction = PAD_FRACTION): Bbox {
+export function padBbox(bbox: Bbox4, fraction = PAD_FRACTION): Bbox4 {
   return sharedPadBbox(bbox, fraction);
 }
 
 // The persisted-store key for a fetch area. Joined raw, not quantized: a reload restores the same
 // camera, so the padded bbox reproduces bit-identically; any other view simply misses and fetches.
-export function bboxKey(bbox: Bbox): string {
+export function bboxKey(bbox: Bbox4): string {
   return bbox.join(',');
 }
 
@@ -40,7 +40,7 @@ export class NotesCache {
   // undefined when nothing covers it and a fetch is needed. With allowExpired (the caller knows
   // the app is offline, so a re-fetch cannot succeed), an expired containing entry still answers
   // rather than letting the POIs vanish at TTL expiry; a fresh entry is still preferred.
-  get(viewport: Bbox, nowMs: number, allowExpired = false): NotePoint[] | undefined {
+  get(viewport: Bbox4, nowMs: number, allowExpired = false): NotePoint[] | undefined {
     let expired: NotePoint[] | undefined;
     for (let i = this.#entries.length - 1; i >= 0; i--) {
       const entry = this.#entries[i];
@@ -53,7 +53,7 @@ export class NotesCache {
 
   // Record a fetch's area and its notes, dropping expired entries and keeping only the newest
   // MAX_ENTRIES so the cache stays bounded.
-  put(bbox: Bbox, notes: NotePoint[], nowMs: number): void {
+  put(bbox: Bbox4, notes: NotePoint[], nowMs: number): void {
     this.#entries.push({ bbox, notes, expires: nowMs + TTL_MS });
     this.#entries = this.#entries.filter((entry) => entry.expires > nowMs).slice(-MAX_ENTRIES);
   }

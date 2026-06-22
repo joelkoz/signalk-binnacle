@@ -1,6 +1,6 @@
 import {
   arcgisExportTiles,
-  createRasterOverlay,
+  createSafetyOverlay,
   type OverlayModule,
   type RasterOverlaySource,
   wmsTiles,
@@ -43,8 +43,8 @@ export const MPA_SOURCES: RasterOverlaySource[] = [
   },
 ];
 
-// The protected-area overlays draw in the safety band; the band lives in the slice so the composing
-// widget does not hardcode it, matching depth-charts' createStreamingChartOverlay.
+// The protected-area overlays draw in the safety band, bound through the shared createSafetyOverlay
+// so the band is not re-spelled per slice.
 export function createMpaOverlay(source: RasterOverlaySource): OverlayModule {
-  return createRasterOverlay(source, 'safety');
+  return createSafetyOverlay(source);
 }

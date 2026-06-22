@@ -24,7 +24,8 @@ export interface SignalkTidesOptions {
   now?: () => number;
 }
 
-// Accepts string-typed numbers: the v1 signalk-tides API returns height and level values as strings.
+// Not the same as isFiniteNumber from $shared/lib: the string branch is intentional because the
+// v1 signalk-tides API returns height and level values as strings, not numbers.
 function toFiniteNumber(value: unknown): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {

@@ -1,5 +1,6 @@
 import { PLACEHOLDER } from './coords';
 
+// 1852 (meters per nautical mile) / 3600 (seconds per hour): meters per second to knots.
 const MS_TO_KNOTS = 1.943844492;
 const METERS_PER_NAUTICAL_MILE = 1852;
 const DEG_PER_RAD = 180 / Math.PI;
@@ -169,7 +170,8 @@ export function temperatureUnit(mode: UnitsMode): string {
   return mode === 'imperial' ? '°F' : '°C';
 }
 
-export function kelvinToFahrenheit(value: number | null | undefined): number | undefined {
+// Internal to the temperature formatter below; not part of the lib public surface.
+function kelvinToFahrenheit(value: number | null | undefined): number | undefined {
   const celsius = kelvinToCelsius(value);
   return celsius == null ? undefined : celsius * (9 / 5) + 32;
 }

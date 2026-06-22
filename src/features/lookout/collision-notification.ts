@@ -6,10 +6,17 @@ import { formatNm, formatTcpaMin } from '$shared/lib';
 // devices on the boat see the same alarm.
 export const NOTIFICATION_PATH = 'notifications.navigation.collision';
 
-export type NotificationState = 'normal' | 'warn' | 'alarm';
+// The notifier republishes only when a contact crosses one of these coarse buckets, so a closing
+// contact refreshes the message without a server write on every per-second CPA tick.
+const CPA_BUCKET_METERS = 100;
+const TCPA_BUCKET_SECONDS = 60;
+
+// A deliberately narrow three-state subset, named so it does not shadow the canonical six-state
+// NotificationState in $shared/signalk.
+export type CollisionNotificationState = 'normal' | 'warn' | 'alarm';
 
 export interface SkNotification {
-  state: NotificationState;
+  state: CollisionNotificationState;
   method: string[];
   message: string;
 }
@@ -60,8 +67,8 @@ export class CollisionNotifier {
     const top = assessment.contacts[0];
     let signature: string = value.state;
     if (top) {
-      const cpaBucket = Math.round(top.cpaMeters / 100);
-      const tcpaBucket = Math.round(top.tcpaSeconds / 60);
+      const cpaBucket = Math.round(top.cpaMeters / CPA_BUCKET_METERS);
+      const tcpaBucket = Math.round(top.tcpaSeconds / TCPA_BUCKET_SECONDS);
       signature = `${value.state}|${top.id}|${cpaBucket}|${tcpaBucket}`;
     }
     if (signature === this.#last) return;

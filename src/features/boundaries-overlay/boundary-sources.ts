@@ -1,5 +1,5 @@
 import {
-  createRasterOverlay,
+  createSafetyOverlay,
   type OverlayModule,
   type RasterOverlaySource,
   wmsTiles,
@@ -31,8 +31,8 @@ export const BOUNDARY_SOURCES: RasterOverlaySource[] = [
   },
 ];
 
-// The boundary lines draw in the safety band; the band lives in the slice so the composing widget
-// does not hardcode it, matching depth-charts' createStreamingChartOverlay.
+// The boundary lines draw in the safety band, bound through the shared createSafetyOverlay so the
+// band is not re-spelled per slice.
 export function createBoundaryOverlay(source: RasterOverlaySource): OverlayModule {
-  return createRasterOverlay(source, 'safety');
+  return createSafetyOverlay(source);
 }

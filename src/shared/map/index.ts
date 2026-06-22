@@ -17,6 +17,7 @@ export { readPmtilesMeta } from './pmtiles-metadata';
 export {
   arcgisExportTiles,
   createRasterOverlay,
+  createSafetyOverlay,
   type RasterOverlaySource,
   wmsTiles,
 } from './raster-overlay';

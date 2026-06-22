@@ -21,6 +21,8 @@ export function parseIso8601DurationSeconds(value: unknown): number | undefined 
     return undefined;
   }
   const n = (p: string | undefined) => (p == null ? 0 : Number.parseFloat(p));
+  // Fixed-average approximations: 365-day year and 30-day month, ignoring leap years and calendar
+  // month lengths. Acceptable because TCPA providers publish only sub-hour durations in practice.
   const total =
     n(years) * 31_536_000 +
     n(months) * 2_592_000 +

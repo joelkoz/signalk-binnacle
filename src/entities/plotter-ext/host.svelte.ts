@@ -202,7 +202,8 @@ export class PlotterExtHost {
   // exist yet), so per-context subscriptions are keyed by the context object.
   handlersFor(context: ExtContext): Record<string, ExtMethodHandler> {
     const ext = context.extensionId;
-    const withWidget = (fn: (instanceId: string) => void): Record<string, never> => {
+    // Returns an empty object so a handler can return it as the method result.
+    const withWidget = (fn: (instanceId: string) => void): Record<string, unknown> => {
       if (context.kind === 'widget' && context.instanceId) fn(context.instanceId);
       return {};
     };
@@ -290,10 +291,15 @@ export class PlotterExtHost {
         }
         return {};
       },
-      'ui.openConfigPanel': () =>
-        withWidget((instanceId) => this.openConfig(ext, instanceId, context.id)),
-      'ui.toggleConfigPanel': () =>
-        withWidget((instanceId) => this.toggleConfig(ext, instanceId, context.id)),
+      'ui.openConfigPanel': () => {
+        // context.id is the manifest-local widget id, valid only for a widget context (withWidget guards this).
+        const widgetId = context.id;
+        return withWidget((instanceId) => this.openConfig(ext, instanceId, widgetId));
+      },
+      'ui.toggleConfigPanel': () => {
+        const widgetId = context.id;
+        return withWidget((instanceId) => this.toggleConfig(ext, instanceId, widgetId));
+      },
     };
   }
 
