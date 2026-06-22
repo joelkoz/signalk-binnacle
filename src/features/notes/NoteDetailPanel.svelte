@@ -11,9 +11,14 @@ interface Props {
   selection: NoteSelection;
   load: (id: string) => Promise<NoteDetail | undefined>;
   onClose: () => void;
+  // Which edge the panel docks to: right as the standalone map-note detail, left when it stands in
+  // for the POI search list as that pane's detail view.
+  dock?: 'left' | 'right';
+  // Optional Back affordance, used by the POI search master-detail to return to the results list.
+  onBack?: () => void;
 }
 
-const { selection, load, onClose }: Props = $props();
+const { selection, load, onClose, dock = 'right', onBack }: Props = $props();
 
 let detail = $state<NoteDetail | undefined>();
 let loading = $state(true);
@@ -62,12 +67,13 @@ function measure(item: NormalizedItem): string {
 </script>
 
 <SlideOver
-  dock="right"
+  {dock}
   title={selection.name}
   subtitle={categoryLabel(selection.category)}
   ariaLabel="Point of interest detail"
   closeLabel="Close detail"
   {onClose}
+  {onBack}
   footer={hasFooter ? footer : undefined}
 >
   <div class="body">

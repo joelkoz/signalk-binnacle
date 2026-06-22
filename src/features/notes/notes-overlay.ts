@@ -1,7 +1,13 @@
-import type { GeoJSONSource, MapGeoJSONFeature, MapLayerMouseEvent } from 'maplibre-gl';
+import type { GeoJSONSource, MapLayerMouseEvent } from 'maplibre-gl';
 import { asPoiCategory, registerPoiIcons } from '$entities/poi-icons';
 import { createOverlayIconResolver, type SymbolsStore } from '$entities/symbols';
-import { type Bbox4, bboxContains, lngLatBoundsToBbox4 } from '$shared/geo';
+import {
+  type Bbox4,
+  bboxContains,
+  type LatLon,
+  latLonToLonLat,
+  lngLatBoundsToBbox4,
+} from '$shared/geo';
 import { DAY_MS } from '$shared/lib';
 import {
   emptyFeatureCollection,
@@ -48,6 +54,9 @@ const MAX_PERSIST_ENTRIES = 24;
 export interface NotesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
   deselect(ctx: OverlayContext): void;
+  // Ring the marker at a position, or clear the ring with undefined. Position-driven so the POI
+  // search can highlight a result without a rendered map feature and without moving the map.
+  highlight(ctx: OverlayContext, position: LatLon | undefined): void;
 }
 
 export interface NotesOverlayOptions {
@@ -185,13 +194,19 @@ export function createNotesOverlay(
     onNotes?.([]);
   }
 
-  // Highlight the selected marker by drawing a ring at its position; clearing it sets the
-  // selection source back to empty.
-  function setSelected(ctx: OverlayContext, feature: MapGeoJSONFeature | undefined): void {
-    const data =
-      feature?.geometry.type === 'Point'
-        ? featureCollection([{ type: 'Feature', geometry: feature.geometry, properties: {} }])
-        : emptyFeatureCollection();
+  // Draw the selection ring at a position, or clear it with undefined. Position-driven so a list
+  // selection rings a marker without a rendered map feature and without moving the map; the app owns
+  // what is highlighted (a hovered or a selected POI) and drives this.
+  function drawSelectRing(ctx: OverlayContext, position: LatLon | undefined): void {
+    const data = position
+      ? featureCollection([
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: latLonToLonLat(position) },
+            properties: {},
+          },
+        ])
+      : emptyFeatureCollection();
     setSourceData(ctx.map, SELECT_SOURCE, data);
   }
 
@@ -207,7 +222,7 @@ export function createNotesOverlay(
 
       onClick = (event) => {
         const feature = event.features?.[0];
-        if (!feature) return;
+        if (feature?.geometry.type !== 'Point') return;
         const props = feature.properties ?? {};
         const id = String(props.id ?? '');
         // A note with no id cannot be fetched for detail, so do not select it.
@@ -216,11 +231,12 @@ export function createNotesOverlay(
         // than trusting the string into PoiCategory: an out-of-vocabulary value would key the label
         // and icon records to nothing instead of falling back.
         const category = asPoiCategory(String(props.category ?? ''));
-        setSelected(ctx, feature);
+        const [longitude, latitude] = feature.geometry.coordinates as [number, number];
         onSelect?.({
           id,
           name: String(props.name ?? 'Point of interest'),
           category,
+          position: { latitude, longitude },
           attribution: str(props.attribution) ?? str(props.source),
           url: str(props.url),
         });
@@ -313,8 +329,11 @@ export function createNotesOverlay(
           fetching = false;
         });
     },
+    highlight(ctx, position) {
+      drawSelectRing(ctx, position);
+    },
     deselect(ctx) {
-      setSelected(ctx, undefined);
+      drawSelectRing(ctx, undefined);
     },
     applyTheme(ctx, paint) {
       themePaint = paint;

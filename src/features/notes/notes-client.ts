@@ -30,6 +30,9 @@ export interface NoteSelection {
   id: string;
   name: string;
   category: PoiCategory;
+  // The marker position, so the chart can ring it from a list selection without re-querying the
+  // rendered feature, and without moving the map.
+  position: { latitude: number; longitude: number };
   attribution?: string;
   url?: string;
 }

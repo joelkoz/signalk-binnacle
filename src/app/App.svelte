@@ -509,6 +509,14 @@ const poiInView = $derived.by<Poi[]>(() => {
     url: note.url,
   }));
 });
+
+// The result the POI search panel is pointing at, ringed on the chart. A hovered row (pointer or
+// keyboard) wins over the open selection, so moving down the list previews each marker; neither
+// moves the map.
+let hoveredPoi = $state<Poi | undefined>();
+$effect(() => {
+  mapCommands?.highlightPoi(hoveredPoi?.position ?? selectedNote?.position);
+});
 let updateReady = $state(false);
 const pwa = registerPwa(() => (updateReady = true));
 
@@ -1281,12 +1289,14 @@ function flyToPosition(position: LatLon): void {
   mapCommands?.flyTo(position.latitude, position.longitude);
 }
 
-function locatePoi(poi: Poi): void {
-  flyToPosition(poi.position);
+function selectPoi(poi: Poi): void {
+  // No fly: selecting a result rings its marker in place (the highlight effect above) and opens its
+  // detail in the panel, so the navigator keeps their chart view.
   selectNote({
     id: poi.id,
     name: poi.name,
     category: poi.category,
+    position: poi.position,
     attribution: poi.attribution,
     url: poi.url,
   });
@@ -2158,7 +2168,7 @@ onDestroy(() => {
       <DangerStrip {collision} muted={collisionMute.active} onToggleMute={toggleCollisionMute} />
       <MobStrip {mob} {units} onSteer={mobController.onSteer} onCancel={mobController.onCancel} />
     </div>
-    {#if selectedNote && noteLoader}
+    {#if selectedNote && noteLoader && activePanel !== 'poi-search'}
       <div class="note-panel-slot">
         <NoteDetailPanel selection={selectedNote} load={noteLoader.load} onClose={closeNote} />
       </div>
@@ -2285,15 +2295,27 @@ onDestroy(() => {
     {/if}
     {#if activePanel === 'poi-search'}
       <div class="panel-slot">
-        <PoiSearchPanel
-          pois={poiInView}
-          {vessel}
-          {units}
-          selectedId={selectedNote?.id}
-          onSelect={locatePoi}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
+        {#if selectedNote && noteLoader}
+          <!-- Master to detail: a chosen result shows its detail in the same pane, with Back to the
+               list. The list itself never moves the map; selecting just rings the marker. -->
+          <NoteDetailPanel
+            selection={selectedNote}
+            load={noteLoader.load}
+            dock="left"
+            onClose={closePanel}
+            onBack={() => selectNote(undefined)}
+          />
+        {:else}
+          <PoiSearchPanel
+            pois={poiInView}
+            {vessel}
+            {units}
+            onSelect={selectPoi}
+            onHover={(poi) => (hoveredPoi = poi)}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {/if}
       </div>
     {/if}
     {#if activePanel === 'anchor'}
