@@ -21,6 +21,10 @@ when this heading gets its date.
 - **POI search.** A themed panel lists the points of interest in the current map view as a sortable
   table (name, type, distance, and bearing). Tapping a row flies the chart to the point and opens its
   detail while the search panel stays open.
+- **Configurable bottom bar.** Choose which actions ride the bottom bar. A "Customize bar" mode in the
+  menu pins or unpins any action (Center, Follow, Charts, Forecast, Tides, Anchor, and the rest);
+  Center, Follow, and Charts are pinned by default. The choice is saved with your profile and follows
+  you across devices. Pin more than fit and the extras collapse into a "More" button.
 
 ### Security
 
