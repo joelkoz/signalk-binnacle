@@ -36,10 +36,10 @@
     "displayName": "Binnacle",
     "screenshots": [
       "./screenshots/01-chart.png",
-      "./screenshots/02-routes.png",
-      "./screenshots/03-anchorage.png",
-      "./screenshots/04-profiles.png",
-      "./screenshots/05-weather.png"
+      "./screenshots/02-points-of-interest.png",
+      "./screenshots/03-layers.png",
+      "./screenshots/04-weather.png",
+      "./screenshots/05-profiles.png"
     ],
     "recommends": [
       "signalk-crows-nest",
