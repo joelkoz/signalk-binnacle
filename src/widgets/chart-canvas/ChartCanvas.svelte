@@ -21,7 +21,12 @@ import { LayersView } from '$features/layers-panel';
 import { COLLISION_OVERLAY_ID } from '$features/lookout';
 import { MOB_OVERLAY_ID } from '$features/mob';
 import { createMpaOverlay, MPA_SOURCES } from '$features/mpa-overlays';
-import { createNotesOverlay, type NoteSelection, type NotesFilter } from '$features/notes';
+import {
+  createNotesOverlay,
+  type NotePoint,
+  type NoteSelection,
+  type NotesFilter,
+} from '$features/notes';
 import { buildOceanSources, createOceanOverlay } from '$features/ocean-conditions';
 import type { RouteEditor } from '$features/route-edit';
 import { createWorkingRouteOverlay, type WorkingRouteOverlay } from '$features/route-layer';
@@ -98,6 +103,8 @@ interface Props {
   onUserChartsReady?: (registrar: UserChartRegistrar) => void;
   onViewChange?: (view: MapView) => void;
   onNoteSelect?: (selection: NoteSelection | undefined) => void;
+  // The on-screen POI set, forwarded from the notes overlay to the POI search.
+  onNotes?: (notes: NotePoint[]) => void;
   // Fired when the user pans the map by hand (a drag), so a follow lock can release.
   onUserPan?: () => void;
   // Set a single "go to here" destination at a chart point the user long-pressed or right-clicked.
@@ -169,6 +176,7 @@ const {
   onUserChartsReady,
   onViewChange,
   onNoteSelect,
+  onNotes,
   onUserPan,
   onGoToHere,
   onStartRoute,
@@ -313,6 +321,7 @@ onMount(() => {
       const notesOverlay = createNotesOverlay(origin, chartsToken, onNoteSelect, symbols, {
         isOnline: isOnline ?? (() => true),
         filter: notesFilter,
+        onNotes,
       });
       // One list feeds both registration and the per-frame tick, so the two cannot drift. The order
       // sets z within each band (tides under the safety overlays, the own vessel on top).
