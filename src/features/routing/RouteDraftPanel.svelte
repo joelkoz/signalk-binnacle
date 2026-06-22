@@ -65,13 +65,13 @@ let hintOpen = $state(false);
 let optimizeHint = $state('');
 
 // Draft save name: seeded from the draft's name when the working route first becomes a draft, but not
-// overwritten while the user is typing. The wasDraft guard prevents the effect from fighting a user
+// overwritten while the user is typing. The prevWasDraft guard prevents the effect from fighting a user
 // edit on subsequent renders.
 let saveName = $state('');
-let wasDraft = false;
+let prevWasDraft = false;
 $effect(() => {
-  if (draft && !wasDraft) saveName = draft.name;
-  wasDraft = draft !== undefined;
+  if (draft && !prevWasDraft) saveName = draft.name;
+  prevWasDraft = draft !== undefined;
 });
 // When the caller clears the draft (after a save, cancel, or new route), collapse the disclosure and
 // clear the local draft state so re-opening starts clean.
@@ -174,12 +174,12 @@ $effect(() => {
       {/if}
       {#if draft.flags && draft.flags.length > 0}
         <ul class="draft-flags">
-          {#each draft.flags as flag}
+          {#each draft.flags as flag (flag.message)}
             <li class="alert-note">
               {flag.message}
               {#if flag.detail}
                 <ul class="draft-hazards">
-                  {#each flag.detail as hazard}
+                  {#each flag.detail as hazard (hazard)}
                     <li>{hazard}</li>
                   {/each}
                 </ul>
@@ -292,7 +292,6 @@ $effect(() => {
    block padding (.input is a single-line control with inline padding only), and disabled dimming are
    scoped here. */
 .draft-prompt {
-  box-sizing: border-box;
   resize: vertical;
   padding-block: var(--space-2);
 }

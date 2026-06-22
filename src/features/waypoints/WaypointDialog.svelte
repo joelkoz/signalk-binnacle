@@ -23,7 +23,7 @@ const WAYPOINT_DEFAULT: DefaultOption = {
   label: 'Default waypoint marker',
   fallbackSvg:
     '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">' +
-    '<circle cx="11" cy="11" r="8" fill="var(--accent)" stroke="white" stroke-width="1.5"/>' +
+    '<circle cx="11" cy="11" r="8" fill="var(--accent)" stroke="var(--accent-contrast)" stroke-width="1.5"/>' +
     '</svg>',
 };
 
@@ -65,7 +65,7 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
 
 <div class="modal-scrim">
   <div
-    class="wp-dialog"
+    class="modal-card wp-dialog"
     role="dialog"
     aria-modal="true"
     aria-label={title}
@@ -109,9 +109,6 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
 <style>
 .wp-dialog {
   inline-size: min(22rem, calc(100dvw - 2 * var(--space-4)));
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-lg);
 }
 .wp-dialog header {
   padding: var(--space-3) var(--space-4);
@@ -134,6 +131,8 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
 .wp-field input {
   inline-size: 100%;
   padding: var(--space-2);
+  /* One size above the global .input (--text-sm): the waypoint name is typed on a pitching deck,
+     often gloved, so this single field reads a notch larger on purpose. */
   font-size: var(--text-md);
   background: var(--surface);
 }

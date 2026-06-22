@@ -42,6 +42,9 @@ const {
   groupTitle,
 }: Props = $props();
 
+// A layer at zero opacity while its toggle stays checked is a silent failure for safety layers
+// (AIS, anchor ring), so the slider floor keeps them faintly visible.
+const MIN_LAYER_OPACITY = 0.15;
 const percent = $derived(Math.round(item.opacity * 100));
 // The drag handle moves the whole row, so for a facet group it names the group, otherwise the layer.
 // A normal row carries no group title, so this resolves to the layer title there.
@@ -73,12 +76,10 @@ const handleLabel = $derived(groupTitle ?? item.title);
   {#if item.supportsOpacity && item.visible}
     <div class="opacity-line">
       <span class="lbl">Opacity</span>
-      <!-- Floored at 0.15: a layer dimmed to zero while its toggle stays checked is a silent
-           failure for safety layers like AIS and the anchor ring, so it stays faintly visible. -->
       <input
         class="opacity range"
         type="range"
-        min="0.15"
+        min={MIN_LAYER_OPACITY}
         max="1"
         step="0.05"
         value={item.opacity}

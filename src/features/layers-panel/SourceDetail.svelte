@@ -80,13 +80,11 @@ function doDelete(): void {
   <ChartSpecList rows={specRows} />
 
   {#if confirming}
-    <div class="confirm">
-      <InlineConfirm
-        question="Delete this chart?"
-        onConfirm={doDelete}
-        onCancel={() => (confirming = false)}
-      />
-    </div>
+    <InlineConfirm
+      question="Delete this chart?"
+      onConfirm={doDelete}
+      onCancel={() => (confirming = false)}
+    />
   {:else}
     <button type="button" class="btn btn-danger" onclick={() => (confirming = true)}>
       <Trash2 size={16} aria-hidden="true" />
@@ -111,10 +109,5 @@ header {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-}
-.confirm {
-  padding: var(--space-2);
-  border: 1px solid var(--alarm);
-  border-radius: var(--radius-sm);
 }
 </style>

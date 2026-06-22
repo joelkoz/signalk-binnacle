@@ -109,10 +109,13 @@ function select(v: string): void {
 }
 
 function openAndFocus(): void {
+  // Drop stale element refs so a now-shorter option list cannot focus a removed node on reopen.
+  optionEls.length = 0;
   isOpen = true;
   const idx = options.findIndex((o) => o.value === value);
   const target = idx >= 0 ? idx : 0;
-  setTimeout(() => optionEls[target]?.focus(), 0);
+  // After the list paints (the bind:this refs repopulate on render), move focus to the active row.
+  requestAnimationFrame(() => optionEls[target]?.focus());
 }
 
 function handleTriggerKey(e: KeyboardEvent): void {
@@ -241,11 +244,6 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
-}
-
-.picker-trigger:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 
 .picker-icon {

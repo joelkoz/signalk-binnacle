@@ -26,10 +26,17 @@ function placementsIn(area: string): WidgetPlacement[] {
   return host.placements.filter((p) => p.area === area);
 }
 
-function widgetUrl(placement: WidgetPlacement): string | undefined {
-  const def = host.widgetDef(placement.extensionId, placement.widgetId);
-  return def ? resolveExtUrl(origin, def.url) : undefined;
-}
+// The widget iframe URL per placement, keyed by instance id and memoized so a re-render (for example
+// opening or closing the picker) does not re-resolve and re-construct URL objects for every placed
+// widget; it recomputes only when the placements change.
+const widgetUrls = $derived(
+  new Map(
+    host.placements.map((p) => {
+      const def = host.widgetDef(p.extensionId, p.widgetId);
+      return [p.instanceId, def ? resolveExtUrl(origin, def.url) : undefined] as const;
+    }),
+  ),
+);
 
 function cellStyle(cell: [number, number], size: WidgetPlacement['size']): string {
   const [cols, rows] = sizeToSpan(size);
@@ -37,8 +44,8 @@ function cellStyle(cell: [number, number], size: WidgetPlacement['size']): strin
 }
 
 // Per-area grid width (corners are wider than centers), plus the half-cell shift that recenters a
-// lone widget in a center area (mirrors Freeboard's --pe-center-shift).
-function areaStyle(area: string): string {
+// lone widget in a center area.
+function computeAreaStyle(area: string): string {
   let style = `grid-template-columns: repeat(${AREA_GRID[area].cols}, var(--pe-cell, 88px));`;
   if (isCenterArea(area)) {
     const used = usedColumns(host.placements, area);
@@ -52,6 +59,12 @@ function areaStyle(area: string): string {
   }
   return style;
 }
+
+// Memoized per area so the per-area column scan runs once per placements change, not once per area
+// on every render.
+const areaStyles = $derived(
+  new Map(WIDGET_AREAS.map((a) => [a.id, computeAreaStyle(a.id)] as const)),
+);
 
 function place(option: (typeof pickerOptions)[number]): void {
   const area = host.picker?.area;
@@ -74,10 +87,10 @@ function place(option: (typeof pickerOptions)[number]): void {
         data-area={area.id}
         role="group"
         aria-label={area.label}
-        style={areaStyle(area.id)}
+        style={areaStyles.get(area.id)}
       >
         {#each placed as placement (placement.instanceId)}
-          {@const url = widgetUrl(placement)}
+          {@const url = widgetUrls.get(placement.instanceId)}
           <div class="pe-widget" style={cellStyle(placement.cell, placement.size)}>
             {#if url}
               {#key placement.instanceId}
@@ -103,7 +116,7 @@ function place(option: (typeof pickerOptions)[number]): void {
 {#if host.picker}
   <div class="modal-scrim">
     <div
-      class="pe-picker"
+      class="modal-card pe-picker"
       role="dialog"
       aria-modal="true"
       aria-label="Choose a widget"
@@ -183,16 +196,13 @@ function place(option: (typeof pickerOptions)[number]): void {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-overlay);
 }
 .pe-picker {
   inline-size: min(22rem, calc(100dvw - 2 * var(--space-4)));
   max-block-size: 80dvh;
   overflow: auto;
   padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-lg);
 }
 .pe-picker h2 {
   margin: 0 0 var(--space-3);

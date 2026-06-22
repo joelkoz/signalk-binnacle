@@ -14,6 +14,7 @@ import {
   createWavesOverlay,
   createWindOverlay,
   GRID_SOURCE_LABEL,
+  type PointConditionsLoader,
   precipUnitLabel,
   RAIN_VISIBLE_MM_H,
   radarScrubbedAway,
@@ -73,6 +74,8 @@ interface Props {
   providerName?: string;
   // The vessel position, for the "Here" conditions panel.
   position?: { latitude: number; longitude: number };
+  // The shared point-conditions loader, constructed in App so the panel reuses one cache connection.
+  pointLoader?: PointConditionsLoader;
   // Connectivity, so cached radar is labeled rather than passing as live.
   online?: boolean;
   // When supplied, a leading back button returns to the menu, matching the slide-over convention.
@@ -92,6 +95,7 @@ const {
   token,
   providerName,
   position,
+  pointLoader,
   online = true,
   onBack,
   onClose,
@@ -104,6 +108,10 @@ const MAX_ZOOM = 7;
 const MIN_ZOOM = 1;
 const DEFAULT_ZOOM = 3;
 const STEP_MS = 3 * HOUR_MS;
+// Debounce the forecast refetch so a pan settles into one request, not one per moveend tick.
+const FETCH_DEBOUNCE_MS = 400;
+// How long the zoom-cap note stays up after a pinch into the resolution cap.
+const ZOOM_NOTE_DURATION_MS = 5000;
 
 // A bare Date.now() inside a $derived freezes for as long as its other dependencies hold still,
 // so during a long open the stale-age note, the Past/Forecast label, and the now tick would stop
@@ -255,7 +263,7 @@ function scheduleFetch(): void {
       waves: wavesActive,
       radar: radarActive,
     });
-  }, 400);
+  }, FETCH_DEBOUNCE_MS);
 }
 
 // In the readout, show a field when it came from the provider (which returns every point field) or
@@ -347,7 +355,7 @@ onMount(() => {
         if (zoomNoteShown || map.getZoom() < MAX_ZOOM - 0.05) return;
         zoomNoteShown = true;
         zoomNote = 'Zoom is capped at the weather data resolution';
-        zoomNoteTimer = setTimeout(() => (zoomNote = ''), 5000);
+        zoomNoteTimer = setTimeout(() => (zoomNote = ''), ZOOM_NOTE_DURATION_MS);
       });
       // The keyboard path to the point readout: Enter on the focused map canvas samples the center
       // (a tap needs a pointer; the canvas is focusable via MapLibre's keyboard support).
@@ -522,7 +530,15 @@ onDestroy(() => {
         role="region"
         aria-label="Conditions and forecast"
       >
-        <WeatherConditions {origin} {token} {providerName} {position} {store} {units} />
+        <WeatherConditions
+          {origin}
+          {token}
+          {providerName}
+          {position}
+          {store}
+          {units}
+          {pointLoader}
+        />
       </div>
     {/if}
     {#if activeCount === 0}
@@ -620,7 +636,7 @@ onDestroy(() => {
   padding: 0 0.2rem;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: var(--surface);
+  color: var(--accent-contrast);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   line-height: 1.05rem;

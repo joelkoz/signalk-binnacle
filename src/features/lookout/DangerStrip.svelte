@@ -63,7 +63,12 @@ const acknowledged = $derived(collision.suppressed && !collision.escalating);
     <ul class="list">
       {#each top as contact (contact.id)}
         <li class="row {contact.severity}">
-          <span class="name">{vesselLabel(contact.name, contact.id)}</span>
+          <span
+            class="name"
+            class:sev-danger={contact.severity === 'danger'}
+            class:sev-warning={contact.severity === 'warning'}
+            >{vesselLabel(contact.name, contact.id)}</span
+          >
           <span class="metric">CPA <b>{formatNm(contact.cpaMeters)}</b> nm</span>
           <span class="metric">TCPA <b>{formatTcpaMin(contact.tcpaSeconds, 1)}</b> min</span>
         </li>
@@ -91,13 +96,6 @@ const acknowledged = $derived(collision.suppressed && !collision.escalating);
 }
 .name {
   flex: 1;
-}
-.row.danger .name {
-  color: var(--alarm);
-  font-weight: 600;
-}
-.row.warning .name {
-  color: var(--warning);
   font-weight: 600;
 }
 .more {

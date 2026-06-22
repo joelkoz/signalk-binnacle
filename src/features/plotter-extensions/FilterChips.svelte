@@ -50,7 +50,7 @@ const chips = $derived(host.filters.chips);
   border-radius: var(--radius-pill);
   background: var(--surface-raised);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-overlay);
   font-size: var(--text-sm);
 }
 </style>

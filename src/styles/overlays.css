@@ -27,6 +27,16 @@
   background: var(--scrim);
 }
 
+/* The centered modal-dialog card frame shared by the app dialogs (the waypoint editor, the MOB
+   confirm, the extension config, and the widget picker), so the dialog frame cannot drift across
+   them: one radius, surface, and shadow. Each dialog keeps its own inline-size and any modifier (the
+   MOB alarm border) on top, the way .popover-card consumers keep their own position and padding. */
+.modal-card {
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+}
+
 /* The anchored floating-card frame shared by the map popovers and menus (the weather layer menu, the
    chart context menu, the plotter-extension overflow menu, and the map note): one border, radius,
    surface, and shadow so the floating-card look cannot drift across the six places that drew it by

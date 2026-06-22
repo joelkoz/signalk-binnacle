@@ -45,7 +45,7 @@ function confirm(): void {
   <!-- The host deliberately carries NO tabindex (unlike SlideOver): the dialog action's
        node.focus() then no-ops, so the confirm button's focusOnMount owns initial focus. -->
   <div
-    class="mob-dialog"
+    class="modal-card mob-dialog"
     role="alertdialog"
     aria-modal="true"
     aria-labelledby="mob-confirm-title"
@@ -84,10 +84,8 @@ function confirm(): void {
 <style>
 .mob-dialog {
   inline-size: min(22rem, calc(100dvw - 2 * var(--space-4)));
+  /* The alarm border is this dialog's modifier on top of the shared .modal-card frame. */
   border: 2px solid var(--alarm);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-lg);
   /* Clips the header band to the radius. */
   overflow: hidden;
   animation: mob-dialog-in 0.12s ease;

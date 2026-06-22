@@ -81,12 +81,11 @@ $effect(() => {
 });
 </script>
 
-<div class="trend-chart" bind:this={host}></div>
+<div class="trend-chart" bind:this={host} style:min-block-size="{CHART_HEIGHT}px"></div>
 
 <style>
 .trend-chart {
   inline-size: 100%;
-  min-block-size: 120px; /* must match CHART_HEIGHT in the script block */
 }
 /* The library positions its own DOM; only the text color rides the theme tokens. */
 .trend-chart :global(.u-wrap) {

@@ -258,6 +258,12 @@ const caution = $derived(thresholdsCaution(t));
      full text color; muted is reserved for cleared states. */
   color: var(--text);
 }
+.state-tag.normal,
+.state-tag.nominal {
+  /* The cleared and nominal zone states read muted, below every raised grade in the ladder, so a
+     notification arriving in either state still gets a defined tag rather than an uncolored one. */
+  color: var(--text-muted);
+}
 .alert-main {
   display: flex;
   flex: 1;

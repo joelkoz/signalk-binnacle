@@ -222,6 +222,6 @@ const eta = $derived.by(() => {
   background: var(--accent-tint);
 }
 .skip:disabled {
-  opacity: 0.4;
+  opacity: var(--disabled-opacity);
 }
 </style>

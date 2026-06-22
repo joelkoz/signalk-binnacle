@@ -43,6 +43,15 @@
   font-size: var(--text-sm);
 }
 
+/* Severity name coloring shared by the two collision surfaces (the danger strip and the AIS list),
+   so how a contact name reads by collision grade cannot drift between them. */
+.sev-danger {
+  color: var(--alarm);
+}
+.sev-warning {
+  color: var(--warning);
+}
+
 /* Monospaced tabular numerals for any inline number span that must align across rows, shared
    across the tides, nav-strip, and saved-card readouts. Font-size is left to the context. */
 .num {

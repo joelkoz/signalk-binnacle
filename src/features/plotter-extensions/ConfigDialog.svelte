@@ -31,7 +31,7 @@ function remove(): void {
     {#key cfg.targetInstance}
       {@const src = cfg.panelId && def ? resolveExtUrl(origin, def.url) : undefined}
       <div
-        class="pe-config"
+        class="modal-card pe-config"
         role="dialog"
         aria-modal="true"
         aria-label={def?.title ?? 'Configure widget'}
@@ -77,9 +77,6 @@ function remove(): void {
   flex-direction: column;
   inline-size: min(26rem, calc(100dvw - 2 * var(--space-4)));
   max-block-size: 85dvh;
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 .pe-config header {

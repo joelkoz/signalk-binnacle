@@ -35,9 +35,26 @@ const SORTS: { id: AisSort; label: string }[] = [
   { id: 'name', label: 'Name' },
 ];
 
-// list() reads aisVersion, so the rows re-derive as traffic moves; the own fix re-sorts by range.
+// The own fix is quantized to about 110 m before it reaches buildAisRows, so a 1 Hz GPS jitter does
+// not recompute the range and bearing of every target on every tick; the list does not need finer.
+// The key is a string so the derived halts when the rounded cell is unchanged, then parsedOwn (and
+// the rows below) only recompute when the cell, the traffic, the risks, or the sort actually change.
+const ownCellKey = $derived(
+  vessel.position
+    ? `${vessel.position.latitude.toFixed(3)},${vessel.position.longitude.toFixed(3)}`
+    : '',
+);
+const parsedOwn = $derived<LatLon | undefined>(
+  ownCellKey
+    ? (() => {
+        const [latitude, longitude] = ownCellKey.split(',').map(Number);
+        return { latitude, longitude };
+      })()
+    : undefined,
+);
+// list() reads aisVersion, so the rows re-derive as traffic moves; the own cell re-sorts by range.
 const rows = $derived(
-  buildAisRows(aisTargets.list(), vessel.position, collision.assessment.contacts, sort),
+  buildAisRows(aisTargets.list(), parsedOwn, collision.assessment.contacts, sort),
 );
 </script>
 
@@ -73,8 +90,8 @@ const rows = $derived(
             >
               <span
                 class="name"
-                class:danger={row.severity === 'danger'}
-                class:warning={row.severity === 'warning'}
+                class:sev-danger={row.severity === 'danger'}
+                class:sev-warning={row.severity === 'warning'}
               >
                 {row.label}
               </span>
@@ -148,12 +165,6 @@ const rows = $derived(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.name.danger {
-  color: var(--alarm);
-}
-.name.warning {
-  color: var(--warning);
 }
 .metrics {
   display: flex;

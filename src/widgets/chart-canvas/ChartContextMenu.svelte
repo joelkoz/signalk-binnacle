@@ -50,7 +50,10 @@ const MENU_WIDTH = 200;
 // Mirrors the .menu-item control height (--control-size, 2.75rem at the 16px base) for the
 // above-or-below clamp math; the layout arithmetic needs a pixel number, not a CSS token.
 const ITEM_HEIGHT = 44;
-const MENU_PADDING = 4;
+// The menu's top plus bottom padding, mirroring 2 * --space-1 (0.25rem each at the 16px base), so
+// the clamp height matches the rendered box; the CSS padding below uses the same token.
+const MENU_PADDING = 8;
+// The clear margin kept from each viewport edge, mirroring --space-2 (0.5rem at the 16px base).
 const EDGE = 8;
 
 // Clamp the anchor so the menu (centered on x) stays a margin clear of both side edges.
@@ -113,7 +116,7 @@ const top = $derived(above ? y - EDGE : y + EDGE);
 .menu {
   position: absolute;
   z-index: var(--z-menu);
-  padding: 0.2rem;
+  padding: var(--space-1);
 }
 .item {
   white-space: nowrap;

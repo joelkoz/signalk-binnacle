@@ -61,13 +61,15 @@ const currentRate = $derived.by(() => {
 
 const CURVE_W = 240;
 const CURVE_H = 60;
+const CURVE_PADDING = 4;
 
 // A smooth path through the day's high and low turning points: a quadratic that rounds each corner
 // so the rise and fall read as a tide curve rather than a sawtooth.
 function curvePath(points: Array<{ x: number; y: number }>): string {
   if (points.length === 0) return '';
   const px = (p: { x: number; y: number }) => p.x * CURVE_W;
-  const py = (p: { x: number; y: number }) => (1 - p.y) * (CURVE_H - 8) + 4;
+  const py = (p: { x: number; y: number }) =>
+    (1 - p.y) * (CURVE_H - 2 * CURVE_PADDING) + CURVE_PADDING;
   let d = `M ${px(points[0]).toFixed(1)} ${py(points[0]).toFixed(1)}`;
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
