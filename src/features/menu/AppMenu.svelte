@@ -10,9 +10,25 @@ interface Props {
   // menu after it closed on selection. The menu renders the current state and requests transitions.
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // The ids currently pinned to the bottom bar, and the edit-mode state, controlled by the parent.
+  pinnedIds?: string[];
+  editing?: boolean;
+  onEditingChange?: (next: boolean) => void;
+  onTogglePin?: (id: string) => void;
 }
 
-const { items = [], label = 'Menu', open, onOpenChange }: Props = $props();
+const {
+  items = [],
+  label = 'Menu',
+  open,
+  onOpenChange,
+  pinnedIds = [],
+  editing = false,
+  onEditingChange,
+  onTogglePin,
+}: Props = $props();
+
+const pinnedSet = $derived(new Set(pinnedIds));
 
 let trigger = $state<HTMLButtonElement>();
 let card = $state<HTMLElement>();
@@ -31,6 +47,7 @@ const groups = $derived.by(() => {
 });
 
 function closeMenu(restoreFocus = false): void {
+  if (editing) onEditingChange?.(false);
   onOpenChange(false);
   // Return focus to the trigger when the menu closes by keyboard or selection, so a keyboard
   // user lands back on the control that opened it rather than at the top of the document.
@@ -39,6 +56,10 @@ function closeMenu(restoreFocus = false): void {
 
 function select(item: MenuItem): void {
   if (item.disabled) return;
+  if (editing) {
+    onTogglePin?.(item.id);
+    return;
+  }
   item.onSelect();
   closeMenu(true);
 }
@@ -102,6 +123,19 @@ function onCardKeydown(event: KeyboardEvent): void {
   onKeydown={onCardKeydown}
 >
   {#snippet children()}
+    {#if items.length > 0}
+      <div class="menu-head">
+        <button
+          type="button"
+          class="btn btn-compact"
+          class:is-on={editing}
+          aria-pressed={editing}
+          onclick={() => onEditingChange?.(!editing)}
+        >
+          {editing ? 'Done' : 'Customize bar'}
+        </button>
+      </div>
+    {/if}
     {#if items.length === 0}
       <span class="muted-note">No options</span>
     {:else}
@@ -117,8 +151,12 @@ function onCardKeydown(event: KeyboardEvent): void {
               <button
                 type="button"
                 class="tile"
-                class:is-on={item.pressed === true}
-                aria-pressed={item.pressed === undefined ? undefined : item.pressed}
+                class:is-on={editing ? pinnedSet.has(item.id) : item.pressed === true}
+                aria-pressed={editing
+                  ? pinnedSet.has(item.id)
+                  : item.pressed === undefined
+                    ? undefined
+                    : item.pressed}
                 disabled={item.disabled}
                 onclick={() => select(item)}
               >
@@ -175,6 +213,10 @@ function onCardKeydown(event: KeyboardEvent): void {
     border-block-end: 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
+}
+.menu-head {
+  display: flex;
+  justify-content: flex-end;
 }
 .group {
   display: flex;
