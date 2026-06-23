@@ -39,6 +39,7 @@ export {
   deleteResource,
   fetchKeyedResource,
   putResource,
+  sendJson,
   str,
   strArray,
 } from './resource';
