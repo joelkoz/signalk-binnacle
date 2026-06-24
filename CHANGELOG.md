@@ -4,6 +4,29 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<a id="v0100"></a>
+
+## [0.10.0] - 2026-06-24
+
+### Added
+
+- **Marine radar overlay.** Binnacle draws the live radar picture from a Signal K radar provider
+  (mayara, with the older Radar SK as a fallback) on the chart: a polar sweep rendered with WebGL,
+  range rings, and a heading line, in the "Traffic and live data" layers. It discovers the radar
+  automatically and degrades cleanly on a server without one. Built to the Signal K radar spec and
+  verified against a synthetic radar; it has not yet been tested on real radar hardware, so feedback
+  through GitHub issues is welcome.
+- **Radar controls.** A panel opened from the radar's row in the Layers panel exposes the radar's own
+  controls (gain, sea clutter, rain clutter, range, transmit, and standby), built from whatever
+  controls the radar reports.
+- **Grayed-out unavailable layers.** A layer that needs a provider you do not have (the radar, AIS
+  trails, or track history) now shows grayed out in the Layers panel with a hover note explaining what
+  to install, instead of a switch that does nothing.
+
+### Changed
+
+- Updated Svelte, Vite, svelte-check, and Playwright to their latest releases.
+
 <a id="v090"></a>
 
 ## [0.9.0] - 2026-06-22

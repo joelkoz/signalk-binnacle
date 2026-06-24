@@ -15,26 +15,24 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.9.0
+## What's new in 0.10.0
 
-This release adds a bunch of new features for reading and arranging the picture, plus a
-codebase-wide polish pass:
+This release adds a marine radar overlay:
 
-- **Time travel.** Scrub the last 24 hours from a bottom strip. A marker walks the recorded track, a
-  four-metric readout (depth, wind, barometer, and speed over ground) snaps to the scrubbed time, and
-  the live vessel dims while you review. It reads the server history API and says plainly when no
-  history provider is installed.
-- **POI search.** A themed panel lists the points of interest in the current map view as a two-line
-  list, sortable by name, type, distance, or bearing. Hovering or focusing a row rings that point on
-  the chart without moving the map, and tapping a row opens its detail in the note popup, exactly as
-  tapping the marker on the chart does, so you can click through results while the list stays open.
-- **Configurable bottom bar.** Pin the actions you want on the bottom bar from a "Customize bottom
-  toolbar" mode in the menu. Center, Follow, and Charts are the default; your choice saves with your profile.
-- **Consistency and polish.** A whole-codebase pass put the dialogs, the collision strips, and the
-  overlays behind shared frames and helpers, corrected a theme token so the night-red markers render
-  right, and let the anchor controls pick up a freshly approved login without a page reload.
+- **Marine radar.** If your boat has a Signal K radar provider (mayara, or the older Radar SK),
+  Binnacle now draws the live radar picture on the chart, with range rings and a heading line, and
+  gives you the radar's own controls (gain, sea clutter, rain clutter, range, and transmit) in a panel
+  opened from the radar's row in the Layers panel. It finds the radar automatically and stays out of
+  the way when there is none: a layer that needs a provider you do not have shows up grayed out with a
+  note about what to install, rather than as a switch that does nothing.
+- **A note on radar, and a request.** I built the radar overlay to the Signal K radar spec, but I do
+  not have a radar on my own boat to test it against, so it is unverified on real hardware. If you
+  have a radar and try this, I would be very grateful for feedback: please open a
+  [GitHub issue](https://github.com/NearlCrews/signalk-binnacle/issues) with what you see (a screenshot
+  helps), whether the picture looks right, and how the controls behave. That is the fastest way to get
+  it dialed in for real boats.
 
-See the [changelog](CHANGELOG.md#v090) for the full list.
+See the [changelog](CHANGELOG.md#v0100) for the full list.
 
 ## What it does
 
