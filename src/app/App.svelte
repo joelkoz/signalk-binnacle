@@ -1123,6 +1123,7 @@ let radarControlsOpen = $state(false);
 
 // Re-list the layers when an availability-gating provider appears or disappears, so a degrade overlay
 // (radar, AIS trails, track history) flips between grayed-out and active without a manual panel reopen.
+// The void reads register each value as a reactive dependency so this effect re-runs when any changes.
 $effect(() => {
   void serverFeatures;
   void historyProviders;
@@ -2069,7 +2070,7 @@ onDestroy(() => {
   mobAlarm.stop();
   arrivalAlarm.stop();
   auth.stop();
-  marineRadar.dispose();
+  void marineRadar.dispose();
   net.dispose();
   clock.dispose();
   void client.disconnect();

@@ -24,6 +24,8 @@ const statusLabel = $derived.by(() => {
       return 'Standby';
     case 'error':
       return 'No signal from the radar';
+    case 'idle':
+      return '';
     default:
       return '';
   }
@@ -32,13 +34,23 @@ const statusLabel = $derived.by(() => {
 
 <div class="radar-controls">
   {#if statusLabel}
-    <p class="caps-label radar-status" class:is-error={store.status === 'error'}>{statusLabel}</p>
+    <p
+      class="caps-label radar-status"
+      class:is-error={store.status === 'error'}
+      role="status"
+      aria-live="polite"
+    >
+      {statusLabel}
+    </p>
+  {/if}
+  {#if store.radars.length === 0}
+    <p class="muted-note">No radar connected.</p>
   {/if}
   {#if store.radars.length > 1}
     <label class="caps-label" for="radar-select">Radar</label>
     <select
       id="radar-select"
-      class="segmented"
+      class="input"
       value={store.selectedId}
       onchange={(e) => onSelectRadar?.(e.currentTarget.value)}
     >
@@ -69,6 +81,8 @@ const statusLabel = $derived.by(() => {
         <button
           type="button"
           class="btn"
+          aria-label={def.name}
+          aria-pressed={Boolean(store.controlValues[def.id])}
           disabled={def.isReadOnly}
           onclick={() => onSetControl(def.id, store.controlValues[def.id] ? 0 : 1)}
         >
@@ -85,7 +99,7 @@ const statusLabel = $derived.by(() => {
         </button>
       {:else}
         <select
-          class="segmented"
+          class="input"
           aria-label={def.name}
           disabled={def.isReadOnly}
           value={String(store.controlValues[def.id] ?? '')}
@@ -104,18 +118,18 @@ const statusLabel = $derived.by(() => {
 .radar-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .radar-control {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .radar-status {
   margin: 0;
   color: var(--text-muted);
 }
 .radar-status.is-error {
-  color: var(--danger, #ff6b6b);
+  color: var(--alarm);
 }
 </style>

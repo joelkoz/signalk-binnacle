@@ -1,4 +1,5 @@
-import { asKeyedObject, authInit, sendJson } from '$shared/signalk';
+import { isRecord } from '$shared/lib';
+import { fetchKeyedResource, sendJson } from '$shared/signalk';
 import type { ControlDefinition, RadarInfo, RadarLegend, RadarProvider } from './radar-types';
 
 const MAYARA_PATH = '/signalk/v2/api/vessels/self/radars';
@@ -10,72 +11,79 @@ export interface DiscoveredRadars {
 }
 
 function toRadarInfo(id: string, raw: unknown): RadarInfo | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
-  const r = raw as Record<string, unknown>;
-  const legend = (r.legend as RadarLegend | undefined) ?? { pixels: [] };
+  if (!isRecord(raw)) return undefined;
+  const legend = (raw.legend as RadarLegend | undefined) ?? { pixels: [] };
   return {
-    id: typeof r.id === 'string' ? r.id : id,
-    name: typeof r.name === 'string' ? r.name : id,
-    spokes: typeof r.spokes === 'number' && r.spokes > 0 ? r.spokes : 2048,
-    maxSpokeLen: typeof r.maxSpokeLen === 'number' && r.maxSpokeLen > 0 ? r.maxSpokeLen : 1024,
-    spokeDataUrl: typeof r.spokeDataUrl === 'string' ? r.spokeDataUrl : undefined,
-    streamUrl: typeof r.streamUrl === 'string' ? r.streamUrl : undefined,
+    id: typeof raw.id === 'string' ? raw.id : id,
+    name: typeof raw.name === 'string' ? raw.name : id,
+    spokes: typeof raw.spokes === 'number' && raw.spokes > 0 ? raw.spokes : 2048,
+    maxSpokeLen:
+      typeof raw.maxSpokeLen === 'number' && raw.maxSpokeLen > 0 ? raw.maxSpokeLen : 1024,
+    spokeDataUrl: typeof raw.spokeDataUrl === 'string' ? raw.spokeDataUrl : undefined,
+    streamUrl: typeof raw.streamUrl === 'string' ? raw.streamUrl : undefined,
     legend,
-    controls: Array.isArray(r.controls) ? (r.controls as ControlDefinition[]) : undefined,
+    controls: Array.isArray(raw.controls) ? (raw.controls as ControlDefinition[]) : undefined,
   };
 }
 
-async function fetchRadars(
-  url: string,
-  token: string | undefined,
-): Promise<RadarInfo[] | undefined> {
-  try {
-    const response = await fetch(url, authInit(token));
-    if (!response.ok) {
-      // A 404 is the normal stock-server absence (no radar provider). A reachable-but-broken provider
-      // (auth refused, a 500) is worth a line so it is not silently read as "no radar".
-      if (response.status !== 404) {
-        console.warn(`[marine-radar] radar discovery at ${url} returned ${response.status}`);
-      }
-      return undefined;
-    }
-    const keyed = asKeyedObject(await response.json());
-    if (!keyed) return undefined;
-    const radars: RadarInfo[] = [];
-    for (const [id, raw] of Object.entries(keyed)) {
-      const info = toRadarInfo(id, raw);
-      if (info) radars.push(info);
-    }
-    return radars;
-  } catch {
-    return undefined;
-  }
+function onDiscoveryError(url: string, status: number): void {
+  // A 404 is the normal stock-server absence; a reachable-but-broken provider (auth refused, a 500) is
+  // worth a line so it is not silently read as "no radar".
+  if (status !== 404) console.warn(`[marine-radar] radar discovery at ${url} returned ${status}`);
 }
 
 export async function discoverRadars(
   origin: string,
   token: string | undefined,
 ): Promise<DiscoveredRadars | undefined> {
-  const mayara = await fetchRadars(`${origin}${MAYARA_PATH}`, token);
+  const mayara = await fetchKeyedResource(
+    origin,
+    [MAYARA_PATH],
+    token,
+    toRadarInfo,
+    onDiscoveryError,
+  );
   if (mayara && mayara.length > 0) return { provider: 'mayara', radars: mayara };
-  const wdantuma = await fetchRadars(`${origin}${WDANTUMA_PATH}`, token);
+  if (mayara && mayara.length === 0) {
+    console.info('[marine-radar] mayara provider present but no radars listed');
+  }
+  const wdantuma = await fetchKeyedResource(
+    origin,
+    [WDANTUMA_PATH],
+    token,
+    toRadarInfo,
+    onDiscoveryError,
+  );
   if (wdantuma && wdantuma.length > 0) return { provider: 'wdantuma', radars: wdantuma };
   return undefined;
 }
 
-export function spokesUrl(origin: string, _provider: RadarProvider, radar: RadarInfo): string {
-  const raw = radar.spokeDataUrl ?? radar.streamUrl ?? `${origin}${MAYARA_PATH}/${radar.id}/spokes`;
+export function spokesUrl(origin: string, provider: RadarProvider, radar: RadarInfo): string {
+  // The provider populates spokeDataUrl or streamUrl in practice; the constructed fallback is the
+  // mayara v2 path, so it is used only for mayara (a wdantuma stream lives on a separate origin we
+  // cannot synthesize).
+  const fallback = provider === 'mayara' ? `${origin}${MAYARA_PATH}/${radar.id}/spokes` : '';
+  const raw = radar.spokeDataUrl ?? radar.streamUrl ?? fallback;
   return raw.replace(/^http/, 'ws');
 }
 
 export async function writeControl(
   origin: string,
   token: string | undefined,
+  provider: RadarProvider,
   radarId: string,
   controlId: string,
   value: number,
   units: string | undefined,
 ): Promise<boolean> {
+  if (provider !== 'mayara') {
+    // wdantuma writes controls over the bidirectional stream WebSocket, not REST; that path is a v1
+    // follow-up, so a wdantuma control write is optimistic-only.
+    console.warn(
+      `[marine-radar] control write over the wdantuma stream is not wired in v1: ${controlId}`,
+    );
+    return false;
+  }
   const base = `${origin}${MAYARA_PATH}/${radarId}/controls`;
   const body = units !== undefined ? { value, units } : { value };
   const single = await sendJson(`${base}/${controlId}`, token, 'PUT', body);

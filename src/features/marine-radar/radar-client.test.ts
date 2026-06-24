@@ -103,7 +103,7 @@ describe('writeControl', () => {
         });
       }),
     );
-    const ok = await writeControl('', undefined, 'nav1034A', 'gain', 50, 'percent');
+    const ok = await writeControl('', undefined, 'mayara', 'nav1034A', 'gain', 50, 'percent');
     expect(ok).toBe(true);
     expect(calls[0]).toContain('/radars/nav1034A/controls/gain');
     expect(calls[1]).toContain('/radars/nav1034A/controls/nav1034A/gain');

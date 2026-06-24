@@ -1,18 +1,43 @@
-// position.xy is a mercator-coordinate quad corner; local.xy is the corner in [-1,1] for polar mapping.
-export function quadVertices(cx: number, cy: number, half: number): Float32Array {
+// 4 floats * 4 bytes per vertex: [posX, posY, localX, localY]. posX/posY are a mercator-coordinate
+// quad corner; localX/localY are the corner in [-1,1] for the polar mapping.
+const VERTEX_STRIDE = 16;
+const QUAD_FLOATS = 24;
+
+function fillQuad(out: Float32Array, cx: number, cy: number, half: number): void {
   const x0 = cx - half;
   const x1 = cx + half;
   const y0 = cy - half;
   const y1 = cy + half;
-  // biome-ignore format: one [posX, posY, localX, localY] vertex per line reads as the quad it is.
-  return new Float32Array([
-    x0, y0, -1, -1,
-    x1, y0, 1, -1,
-    x0, y1, -1, 1,
-    x1, y0, 1, -1,
-    x1, y1, 1, 1,
-    x0, y1, -1, 1,
-  ]);
+  out[0] = x0;
+  out[1] = y0;
+  out[2] = -1;
+  out[3] = -1;
+  out[4] = x1;
+  out[5] = y0;
+  out[6] = 1;
+  out[7] = -1;
+  out[8] = x0;
+  out[9] = y1;
+  out[10] = -1;
+  out[11] = 1;
+  out[12] = x1;
+  out[13] = y0;
+  out[14] = 1;
+  out[15] = -1;
+  out[16] = x1;
+  out[17] = y1;
+  out[18] = 1;
+  out[19] = 1;
+  out[20] = x0;
+  out[21] = y1;
+  out[22] = -1;
+  out[23] = 1;
+}
+
+export function quadVertices(cx: number, cy: number, half: number): Float32Array {
+  const out = new Float32Array(QUAD_FLOATS);
+  fillQuad(out, cx, cy, half);
+  return out;
 }
 
 const VERT = `#version 300 es
@@ -77,21 +102,34 @@ export class RadarGl {
   // Attribute and uniform locations are static after link, so they are looked up once here rather than
   // by string on every frame.
   readonly #loc: Locations;
+  // A reusable vertex buffer, re-uploaded only when the quad's center or extent changes.
+  readonly #quad = new Float32Array(QUAD_FLOATS);
   #spokes = 0;
   #texW = 0;
   #texH = 0;
   #opacity = 1;
   #heading = 0;
+  #lastCx = Number.NaN;
+  #lastCy = Number.NaN;
+  #lastHalf = Number.NaN;
 
   constructor(gl: WebGL2RenderingContext) {
     this.#gl = gl;
     const program = gl.createProgram() as WebGLProgram;
-    gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERT));
-    gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAG));
+    const vert = compile(gl, gl.VERTEX_SHADER, VERT);
+    const frag = compile(gl, gl.FRAGMENT_SHADER, FRAG);
+    gl.attachShader(program, vert);
+    gl.attachShader(program, frag);
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
       throw new Error(`radar program: ${gl.getProgramInfoLog(program)}`);
     }
+    // The linked program owns the compiled stages; detach and delete the shaders so the driver does
+    // not keep their source alive for the life of the page.
+    gl.detachShader(program, vert);
+    gl.detachShader(program, frag);
+    gl.deleteShader(vert);
+    gl.deleteShader(frag);
     this.#program = program;
     this.#buffer = gl.createBuffer() as WebGLBuffer;
     this.#dataTex = gl.createTexture() as WebGLTexture;
@@ -147,6 +185,8 @@ export class RadarGl {
         pixels,
       );
     }
+    // Restore the default unpack alignment so a later MapLibre glyph or sprite upload is not mis-strided.
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
   }
 
   setLegend(rgba: Uint8Array): void {
@@ -173,11 +213,17 @@ export class RadarGl {
     const loc = this.#loc;
     gl.useProgram(this.#program);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.#buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, quadVertices(cx, cy, half), gl.DYNAMIC_DRAW);
+    if (cx !== this.#lastCx || cy !== this.#lastCy || half !== this.#lastHalf) {
+      this.#lastCx = cx;
+      this.#lastCy = cy;
+      this.#lastHalf = half;
+      fillQuad(this.#quad, cx, cy, half);
+      gl.bufferData(gl.ARRAY_BUFFER, this.#quad, gl.DYNAMIC_DRAW);
+    }
     gl.enableVertexAttribArray(loc.pos);
-    gl.vertexAttribPointer(loc.pos, 2, gl.FLOAT, false, 16, 0);
+    gl.vertexAttribPointer(loc.pos, 2, gl.FLOAT, false, VERTEX_STRIDE, 0);
     gl.enableVertexAttribArray(loc.local);
-    gl.vertexAttribPointer(loc.local, 2, gl.FLOAT, false, 16, 8);
+    gl.vertexAttribPointer(loc.local, 2, gl.FLOAT, false, VERTEX_STRIDE, 8);
     gl.uniformMatrix4fv(loc.matrix, false, matrix);
     gl.uniform1f(loc.heading, this.#heading);
     gl.uniform1f(loc.opacity, this.#opacity);
@@ -198,6 +244,8 @@ export class RadarGl {
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.useProgram(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 
   dispose(): void {

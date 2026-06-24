@@ -11,9 +11,7 @@ export class MarineRadarStore {
   status = $state<RadarStatus>('idle');
   controlValues = $state<Record<string, number>>({});
 
-  get selected(): RadarInfo | undefined {
-    return this.radars.find((r) => r.id === this.selectedId);
-  }
+  selected = $derived(this.radars.find((r) => r.id === this.selectedId));
 
   setDiscovered(provider: RadarProvider, radars: RadarInfo[]): void {
     this.provider = radars.length > 0 ? provider : undefined;
@@ -38,6 +36,8 @@ export class MarineRadarStore {
   }
 
   setControlValue(id: string, value: number): void {
-    this.controlValues = { ...this.controlValues, [id]: value };
+    // controlValues is a $state object, so a direct property write is reactive and avoids allocating a
+    // fresh object on every slider move.
+    this.controlValues[id] = value;
   }
 }

@@ -3,9 +3,14 @@ import { type RadarFrame, RadarFrameCore } from './radar-frame-core';
 import type { RadarProvider } from './radar-types';
 import type { RadarStreamStatus } from './radar-worker-client';
 
+type Releasable = { [Comlink.releaseProxy]?: () => void };
+
 class RadarWorker {
   #socket: WebSocket | undefined;
   #timer = 0;
+  // The Comlink callback proxies for the current open(), released on the next open() or on close() so
+  // their MessagePorts do not accumulate across radar switches.
+  #callbacks: Releasable[] = [];
 
   #stopTimer(): void {
     if (this.#timer) {
@@ -16,8 +21,18 @@ class RadarWorker {
 
   #teardown(): void {
     this.#stopTimer();
-    this.#socket?.close();
-    this.#socket = undefined;
+    if (this.#socket) {
+      // Detach the handlers before closing so an intentional teardown (a new open() or a close()) does
+      // not fire onStatus('closed'), which the controller would map to an error and flash on the panel.
+      this.#socket.onopen = null;
+      this.#socket.onmessage = null;
+      this.#socket.onerror = null;
+      this.#socket.onclose = null;
+      this.#socket.close();
+      this.#socket = undefined;
+    }
+    for (const cb of this.#callbacks) cb[Comlink.releaseProxy]?.();
+    this.#callbacks = [];
   }
 
   async open(
@@ -30,6 +45,7 @@ class RadarWorker {
     onStatus: (status: RadarStreamStatus) => void,
   ): Promise<void> {
     this.#teardown();
+    this.#callbacks = [onFrame as Releasable, onStatus as Releasable];
     const core = new RadarFrameCore(provider, spokesPerRev, maxSpokeLen);
     let hasData = false;
     const socket = new WebSocket(url);
@@ -48,7 +64,10 @@ class RadarWorker {
         console.warn('[marine-radar] dropped a malformed radar frame', error);
       }
     };
-    socket.onerror = () => onStatus('error');
+    socket.onerror = (event) => {
+      console.warn('[marine-radar] spokes WebSocket error', event);
+      onStatus('error');
+    };
     socket.onclose = () => {
       this.#stopTimer();
       onStatus('closed');

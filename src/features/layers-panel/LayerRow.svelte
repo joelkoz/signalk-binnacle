@@ -101,6 +101,11 @@ const handleLabel = $derived(groupTitle ?? item.title);
   title={item.available ? undefined : item.unavailableHint}
   data-layer-row={item.id}
 >
+  {#if !item.available && item.unavailableHint}
+    <!-- The title attribute is mouse-only and not on a focusable element; this announces the reason a
+         row is grayed out to a screen reader. -->
+    <span class="visually-hidden">{item.unavailableHint}</span>
+  {/if}
   {#if subLayers.length > 0}
     <!-- A facet group: one handle moves the whole group, and the parent and child toggles share one
          aligned column so their checkboxes line up, with the opacity slider last. -->
@@ -158,9 +163,10 @@ const handleLabel = $derived(groupTitle ?? item.title);
   opacity: 0.9;
 }
 /* A detect-and-degrade layer whose provider is absent: grayed and non-interactive, with a hover
-   tooltip (the row's title attribute) explaining what to install or enable. */
+   tooltip (the row's title attribute) explaining what to install or enable. The disabled toggle inside
+   adds its own dim, so the row stays moderate (0.65) to keep the compounded result legible at night. */
 .row.unavailable {
-  opacity: 0.55;
+  opacity: 0.65;
 }
 /* A drop indicator line at the leading or trailing edge of the row the dragged item will land at. */
 .row.drop-before::before,

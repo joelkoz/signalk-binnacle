@@ -1,14 +1,6 @@
 import type { LatLon } from '$shared/geo';
 import { featureCollection } from '$shared/map';
-
-const M_PER_DEG_LAT = 111320;
-
-function offset(center: LatLon, east: number, north: number): [number, number] {
-  const lat = center.latitude + north / M_PER_DEG_LAT;
-  const lon =
-    center.longitude + east / (M_PER_DEG_LAT * Math.cos((center.latitude * Math.PI) / 180));
-  return [lon, lat];
-}
+import { geodesicCircleRing, geodesicDestination } from '$shared/nav';
 
 export function rangeRingFeatures(
   center: LatLon,
@@ -17,13 +9,13 @@ export function rangeRingFeatures(
 ): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
   for (let k = 1; k <= rings; k += 1) {
-    const radius = (rangeMeters * k) / rings;
-    const coordinates: [number, number][] = [];
-    for (let i = 0; i < 64; i += 1) {
-      const a = (i / 64) * 2 * Math.PI;
-      coordinates.push(offset(center, radius * Math.sin(a), radius * Math.cos(a)));
-    }
-    coordinates.push(coordinates[0]); // close the ring exactly, not via sin(2pi) rounding
+    const coordinates = geodesicCircleRing(
+      center.latitude,
+      center.longitude,
+      (rangeMeters * k) / rings,
+    );
+    // geodesicCircleRing's last point is sin(2pi)-rounded, not exactly the first; close it exactly.
+    coordinates[coordinates.length - 1] = coordinates[0];
     features.push({
       type: 'Feature',
       properties: { ring: k },
@@ -38,11 +30,7 @@ export function headingLineFeature(
   headingRad: number,
   rangeMeters: number,
 ): GeoJSON.Feature {
-  const tip = offset(
-    center,
-    rangeMeters * Math.sin(headingRad),
-    rangeMeters * Math.cos(headingRad),
-  );
+  const tip = geodesicDestination(center.latitude, center.longitude, headingRad, rangeMeters);
   return {
     type: 'Feature',
     properties: { heading: true },

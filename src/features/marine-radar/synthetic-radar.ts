@@ -2,7 +2,7 @@ import Pbf from 'pbf';
 
 export type Pathology = 'clean' | 'reduce' | 'fill' | 'double';
 
-interface Opts {
+export interface Opts {
   spokesPerRev: number;
   maxSpokeLen: number;
   pathology?: Pathology;
