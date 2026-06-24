@@ -15,24 +15,25 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.10.0
+## What's new in 0.10.1
 
-This release adds a marine radar overlay:
+This release fixes the marine radar to work against the real Signal K radar API:
 
-- **Marine radar.** If your boat has a Signal K radar provider (mayara, or the older Radar SK),
-  Binnacle now draws the live radar picture on the chart, with range rings and a heading line, and
-  gives you the radar's own controls (gain, sea clutter, rain clutter, range, and transmit) in a panel
-  opened from the radar's row in the Layers panel. It finds the radar automatically and stays out of
-  the way when there is none: a layer that needs a provider you do not have shows up grayed out with a
-  note about what to install, rather than as a switch that does nothing.
-- **A note on radar, and a request.** I built the radar overlay to the Signal K radar spec, but I do
-  not have a radar on my own boat to test it against, so it is unverified on real hardware. If you
-  have a radar and try this, I would be very grateful for feedback: please open a
+- **Marine radar, corrected.** The radar overlay in 0.10.0 read the wrong API shape and never found a
+  radar on a real server. It now consumes the standard Signal K v2 radar API, and I verified the whole
+  path (discovery, controls, and the live spoke picture) end to end against the mayara radar emulator. If
+  your boat has a Signal K radar provider (mayara), Binnacle draws the live picture on the chart with
+  range rings and a heading line, and gives you the radar's own controls from the radar's row in the
+  Layers panel.
+- **Radar controls need read-write access.** The picture works with read-only access; changing the
+  radar's controls needs read-write. The controls panel now says so when a change is refused, so you know
+  to approve Binnacle for read and write on the Signal K server.
+- **A request.** I still do not have a radar on my own boat, so it is unverified on real hardware. If you
+  have a radar and try this, please open a
   [GitHub issue](https://github.com/NearlCrews/signalk-binnacle/issues) with what you see (a screenshot
-  helps), whether the picture looks right, and how the controls behave. That is the fastest way to get
-  it dialed in for real boats.
+  helps), whether the picture looks right, and how the controls behave.
 
-See the [changelog](CHANGELOG.md#v0100) for the full list.
+See the [changelog](CHANGELOG.md#v0101) for the full list.
 
 ## What it does
 

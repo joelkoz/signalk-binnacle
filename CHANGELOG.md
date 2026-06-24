@@ -4,6 +4,25 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<a id="v0101"></a>
+
+## [0.10.1] - 2026-06-24
+
+### Fixed
+
+- **Marine radar now works against the Signal K v2 radar API.** The 0.10.0 radar read a
+  provider-specific shape and never detected a radar on a real server. It is rewritten to consume the
+  standard Signal K radar API at `/signalk/v2/api/vessels/self/radars`, with the controls and the
+  protobuf spoke stream the spec defines, and the whole path (discovery, controls, and the live picture)
+  is verified end to end against the mayara radar emulator. It still has not been tried on real radar
+  hardware, so feedback through GitHub issues is welcome.
+
+### Added
+
+- **Read-write access note for radar controls.** The radar picture works with read-only access; adjusting
+  the radar's controls needs read-write. The controls panel now says so when a change is refused, so you
+  know to approve Binnacle for read and write on the Signal K server.
+
 <a id="v0100"></a>
 
 ## [0.10.0] - 2026-06-23
