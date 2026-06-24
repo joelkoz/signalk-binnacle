@@ -44,8 +44,14 @@ export async function discoverRadars(
     onDiscoveryError,
   );
   if (mayara && mayara.length > 0) return { provider: 'mayara', radars: mayara };
-  if (mayara && mayara.length === 0) {
-    console.info('[marine-radar] mayara provider present but no radars listed');
+  if (mayara) {
+    // The mayara endpoint answered (HTTP 200) but lists no radars: the provider is present with no
+    // radar connected, which is the authoritative answer for this server. Stop here rather than
+    // probing the wdantuma fallback, whose /plugins/radar-sk path 404s on a mayara-only server and
+    // logs a noisy console error on every load. A 404 from mayara leaves it undefined, so the wdantuma
+    // probe below still runs for a server that has only Radar SK.
+    console.info('[marine-radar] mayara radar provider present but no radars listed');
+    return undefined;
   }
   const wdantuma = await fetchKeyedResource(
     origin,

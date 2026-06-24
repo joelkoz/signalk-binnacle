@@ -74,6 +74,23 @@ describe('discoverRadars', () => {
     );
     expect(await discoverRadars('', undefined)).toBeUndefined();
   });
+
+  it('does not probe the wdantuma fallback when mayara answers with no radars', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        urls.push(url);
+        // mayara present (HTTP 200) but lists no radars; wdantuma would 404 if probed.
+        if (url.includes('/signalk/v2/api/vessels/self/radars')) {
+          return new Response('{}', { status: 200 });
+        }
+        return new Response('', { status: 404 });
+      }),
+    );
+    expect(await discoverRadars('', undefined)).toBeUndefined();
+    expect(urls.some((u) => u.includes('/plugins/radar-sk/'))).toBe(false);
+  });
 });
 
 describe('spokesUrl', () => {
