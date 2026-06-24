@@ -25,8 +25,9 @@ export const RADAR_ECHO_LAYER_ID = 'marine-radar-echo';
 export const RADAR_RINGS_LAYER_ID = 'marine-radar-rings';
 const RINGS_SOURCE_ID = 'marine-radar-rings-src';
 const RANGE_RINGS = 3;
-// Cap the live-picture repaint at ~20 fps; the worker integrates spokes faster than the eye needs.
-const STEP_MS = 50;
+
+const RADAR_UNAVAILABLE_HINT =
+  'No radar detected. Install a Signal K radar provider (mayara or signalk-radar) to see the radar picture.';
 
 function matrixOf(args: unknown): number[] {
   if (Array.isArray(args)) return args;
@@ -41,46 +42,78 @@ export interface PpiLayer extends OverlayModule {
 }
 
 // The marine radar echo as a MapLibre custom WebGL layer (polar texture unwrapped in a shader,
-// positioned by the mercator helper, heading as a uniform), plus a range-ring and heading-line
-// GeoJSON layer above it. Modeled on features/weather/wind-overlay.ts. Off by default; in the traffic
-// band so it reads with the live overlays and lands in the "Traffic and live data" panel category.
+// positioned by the mercator helper, heading as a uniform), plus a range-ring and heading-line GeoJSON
+// layer above it. Modeled on features/weather/wind-overlay.ts. Off by default; in the traffic band so
+// it reads with the live overlays and lands in the "Traffic and live data" panel category.
 export function createPpiLayer(
   store: MarineRadarStore,
   getCenter: () => LatLon | undefined,
 ): PpiLayer {
   let gl: RadarGl | undefined;
+  let echoMap: MapLibreMap | undefined;
   let theme: MapThemePaint['theme'] = 'day';
   let opacity = 1;
   let visible = false;
   let frame: RadarFrame | undefined;
   let dirty = false;
   let legendVersion = '';
-  let lastRepaint = 0;
+  // The last ring geometry inputs, so sync rewrites the rings source only when they actually change.
+  let ringKey = '';
 
   function applyLegend(): void {
     const legend = store.selected?.legend;
     if (gl && legend) gl.setLegend(themedColorTable(legend, theme));
   }
 
-  function throttledRepaint(ctx: OverlayContext): void {
-    if (document.hidden) return;
-    const now = performance.now();
-    if (now - lastRepaint < STEP_MS) return;
-    lastRepaint = now;
-    ctx.map.triggerRepaint();
-  }
-
   function addEcho(ctx: OverlayContext): void {
-    const layer: CustomLayerInterface = {
-      id: RADAR_ECHO_LAYER_ID,
-      type: 'custom',
-      onAdd(_map: MapLibreMap, glCtx: WebGL2RenderingContext) {
+    const canvas = ctx.map.getCanvas();
+    let contextLost = false;
+    let glCtx: WebGL2RenderingContext | undefined;
+
+    function buildGl(): void {
+      if (!glCtx) return;
+      try {
         gl = new RadarGl(glCtx);
         applyLegend();
         gl.setOpacity(opacity);
+        dirty = true;
+      } catch (error) {
+        // A shader compile or link failure must not abort the whole overlay registration (it runs
+        // synchronously inside registerAll): degrade to an empty echo, which the render guard no-ops,
+        // and flag the radar status. This mirrors wind-overlay's degrade-on-GL-failure.
+        console.warn('[marine-radar] WebGL init failed; radar echo disabled', error);
+        gl = undefined;
+        store.setStatus('error');
+      }
+    }
+
+    const onLost = (event: Event) => {
+      event.preventDefault();
+      contextLost = true;
+    };
+    const onRestored = () => {
+      contextLost = false;
+      gl = undefined;
+      buildGl();
+      if (visible) ctx.map.triggerRepaint();
+    };
+    const onVisible = () => {
+      if (!document.hidden && visible && gl && !contextLost) ctx.map.triggerRepaint();
+    };
+
+    const layer: CustomLayerInterface = {
+      id: RADAR_ECHO_LAYER_ID,
+      type: 'custom',
+      onAdd(map: MapLibreMap, gc: WebGLRenderingContext | WebGL2RenderingContext) {
+        echoMap = map;
+        glCtx = gc as WebGL2RenderingContext;
+        canvas.addEventListener('webglcontextlost', onLost as EventListener);
+        canvas.addEventListener('webglcontextrestored', onRestored as EventListener);
+        document.addEventListener('visibilitychange', onVisible);
+        buildGl();
       },
-      render(_glCtx: WebGLRenderingContext | WebGL2RenderingContext, args: unknown) {
-        if (!gl || !visible) return;
+      render(_gc: WebGLRenderingContext | WebGL2RenderingContext, args: unknown) {
+        if (!gl || !visible || contextLost) return;
         const center = getCenter();
         if (!frame || !center) return;
         const matrix = matrixOf(args);
@@ -95,11 +128,14 @@ export function createPpiLayer(
           lat: center.latitude,
         });
         gl.render(matrix, mc.x, mc.y, rangeQuadHalfExtent(center.latitude, frame.range));
-        throttledRepaint(ctx);
       },
       onRemove() {
+        canvas.removeEventListener('webglcontextlost', onLost as EventListener);
+        canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
+        document.removeEventListener('visibilitychange', onVisible);
         gl?.dispose();
         gl = undefined;
+        echoMap = undefined;
       },
     };
     ctx.map.addLayer(layer, ctx.beforeIdFor('traffic'));
@@ -125,9 +161,15 @@ export function createPpiLayer(
   function syncRings(ctx: OverlayContext): void {
     const center = getCenter();
     if (!center || !frame) {
-      setSourceData(ctx.map, RINGS_SOURCE_ID, emptyFeatureCollection());
+      if (ringKey !== '') {
+        ringKey = '';
+        setSourceData(ctx.map, RINGS_SOURCE_ID, emptyFeatureCollection());
+      }
       return;
     }
+    const key = `${center.latitude.toFixed(6)},${center.longitude.toFixed(6)},${frame.range},${frame.heading ?? ''}`;
+    if (key === ringKey) return;
+    ringKey = key;
     const rings = rangeRingFeatures(center, frame.range, RANGE_RINGS);
     if (frame.heading !== undefined) {
       rings.features.push(headingLineFeature(center, frame.heading, frame.range));
@@ -142,8 +184,7 @@ export function createPpiLayer(
     supportsOpacity: true,
     defaultVisible: false,
     available: () => store.radars.length > 0,
-    unavailableHint:
-      'No radar detected. Install a Signal K radar provider (mayara or signalk-radar) to see the radar picture.',
+    unavailableHint: RADAR_UNAVAILABLE_HINT,
     manageable: true,
     layerIds: [RADAR_ECHO_LAYER_ID, RADAR_RINGS_LAYER_ID],
     add(ctx) {
@@ -153,10 +194,15 @@ export function createPpiLayer(
     pushFrame(next) {
       frame = next;
       dirty = true;
+      // The echo is data-driven: a new frame requests one repaint, which runs render(); MapLibre's own
+      // camera repaints cover pans and zooms, and the rings update (a GeoJSON setSourceData) repaints
+      // when the vessel moves. So there is a single repaint path, not a self-scheduling loop plus a tick.
+      if (visible) echoMap?.triggerRepaint();
     },
     reset() {
       dirty = true;
       legendVersion = '';
+      ringKey = '';
     },
     sync(ctx) {
       const version = store.selectedId ?? '';
@@ -165,7 +211,6 @@ export function createPpiLayer(
         applyLegend();
       }
       syncRings(ctx);
-      if (visible) ctx.map.triggerRepaint();
     },
     remove(ctx) {
       removeLayersAndSources(

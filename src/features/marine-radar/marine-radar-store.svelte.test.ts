@@ -32,4 +32,12 @@ describe('MarineRadarStore', () => {
     expect(store.selectedId).toBeUndefined();
     expect(store.selected).toBeUndefined();
   });
+
+  it('clears control values when the selected radar changes', () => {
+    const store = new MarineRadarStore();
+    store.setDiscovered('mayara', [radar, { ...radar, id: 'b', name: 'B' }]);
+    store.setControlValue('gain', 50);
+    store.select('b');
+    expect(store.controlValues.gain).toBeUndefined();
+  });
 });

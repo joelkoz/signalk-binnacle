@@ -20,11 +20,17 @@ export class MarineRadarStore {
     this.radars = radars;
     if (!radars.some((r) => r.id === this.selectedId)) {
       this.selectedId = radars[0]?.id;
+      // The control values belong to the previously selected radar; a new selection starts empty so
+      // the panel never shows another radar's gain, sea, or rain until the new radar reports them.
+      this.controlValues = {};
     }
   }
 
   select(id: string): void {
-    if (this.radars.some((r) => r.id === id)) this.selectedId = id;
+    if (this.radars.some((r) => r.id === id) && id !== this.selectedId) {
+      this.selectedId = id;
+      this.controlValues = {};
+    }
   }
 
   setStatus(status: RadarStatus): void {

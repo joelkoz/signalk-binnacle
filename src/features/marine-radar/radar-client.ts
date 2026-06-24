@@ -16,8 +16,8 @@ function toRadarInfo(id: string, raw: unknown): RadarInfo | undefined {
   return {
     id: typeof r.id === 'string' ? r.id : id,
     name: typeof r.name === 'string' ? r.name : id,
-    spokes: typeof r.spokes === 'number' ? r.spokes : 2048,
-    maxSpokeLen: typeof r.maxSpokeLen === 'number' ? r.maxSpokeLen : 1024,
+    spokes: typeof r.spokes === 'number' && r.spokes > 0 ? r.spokes : 2048,
+    maxSpokeLen: typeof r.maxSpokeLen === 'number' && r.maxSpokeLen > 0 ? r.maxSpokeLen : 1024,
     spokeDataUrl: typeof r.spokeDataUrl === 'string' ? r.spokeDataUrl : undefined,
     streamUrl: typeof r.streamUrl === 'string' ? r.streamUrl : undefined,
     legend,
@@ -31,7 +31,14 @@ async function fetchRadars(
 ): Promise<RadarInfo[] | undefined> {
   try {
     const response = await fetch(url, authInit(token));
-    if (!response.ok) return undefined;
+    if (!response.ok) {
+      // A 404 is the normal stock-server absence (no radar provider). A reachable-but-broken provider
+      // (auth refused, a 500) is worth a line so it is not silently read as "no radar".
+      if (response.status !== 404) {
+        console.warn(`[marine-radar] radar discovery at ${url} returned ${response.status}`);
+      }
+      return undefined;
+    }
     const keyed = asKeyedObject(await response.json());
     if (!keyed) return undefined;
     const radars: RadarInfo[] = [];
@@ -73,7 +80,16 @@ export async function writeControl(
   const body = units !== undefined ? { value, units } : { value };
   const single = await sendJson(`${base}/${controlId}`, token, 'PUT', body);
   if (single?.ok) return true;
-  if (single && single.status !== 404) return false;
+  if (single && single.status !== 404) {
+    console.warn(`[marine-radar] control ${controlId} write rejected: ${single.status}`);
+    return false;
+  }
   // Freeboard-SK uses a doubled-id control path; try it when the single-id form 404s.
-  return (await sendJson(`${base}/${radarId}/${controlId}`, token, 'PUT', body))?.ok ?? false;
+  const doubled = await sendJson(`${base}/${radarId}/${controlId}`, token, 'PUT', body);
+  if (!doubled?.ok) {
+    console.warn(
+      `[marine-radar] control ${controlId} write failed (single-id 404, doubled-id ${doubled?.status ?? 'network'})`,
+    );
+  }
+  return doubled?.ok ?? false;
 }

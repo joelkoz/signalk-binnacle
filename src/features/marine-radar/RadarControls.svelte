@@ -13,9 +13,27 @@ let {
 } = $props();
 
 const controls = $derived(store.selected?.controls ?? []);
+
+const statusLabel = $derived.by(() => {
+  switch (store.status) {
+    case 'connecting':
+      return 'Connecting to the radar';
+    case 'live':
+      return 'Live';
+    case 'standby':
+      return 'Standby';
+    case 'error':
+      return 'No signal from the radar';
+    default:
+      return '';
+  }
+});
 </script>
 
 <div class="radar-controls">
+  {#if statusLabel}
+    <p class="caps-label radar-status" class:is-error={store.status === 'error'}>{statusLabel}</p>
+  {/if}
   {#if store.radars.length > 1}
     <label class="caps-label" for="radar-select">Radar</label>
     <select
@@ -70,11 +88,11 @@ const controls = $derived(store.selected?.controls ?? []);
           class="segmented"
           aria-label={def.name}
           disabled={def.isReadOnly}
-          value={store.controlValues[def.id]}
+          value={String(store.controlValues[def.id] ?? '')}
           onchange={(e) => onSetControl(def.id, Number(e.currentTarget.value))}
         >
-          {#each Object.entries(def.descriptions ?? {}) as [ value, label ] (value)}
-            <option value={Number(value)}>{label}</option>
+          {#each Object.entries(def.descriptions ?? {}) as [ optionValue, label ] (optionValue)}
+            <option value={optionValue}>{label}</option>
           {/each}
         </select>
       {/if}
@@ -92,5 +110,12 @@ const controls = $derived(store.selected?.controls ?? []);
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+.radar-status {
+  margin: 0;
+  color: var(--text-muted);
+}
+.radar-status.is-error {
+  color: var(--danger, #ff6b6b);
 }
 </style>

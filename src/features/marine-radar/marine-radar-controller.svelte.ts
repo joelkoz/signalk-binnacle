@@ -29,10 +29,20 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
     if (!worker) worker = createRadarWorkerClient();
     store.setStatus('connecting');
     const url = spokesUrl(deps.origin, provider, radar);
-    await worker.open(url, provider, radar.spokes, radar.maxSpokeLen, FLUSH_HZ, (frame) => {
-      layer.pushFrame(frame);
-      store.setStatus('live');
-    });
+    await worker.open(
+      url,
+      provider,
+      radar.spokes,
+      radar.maxSpokeLen,
+      FLUSH_HZ,
+      (frame) => {
+        layer.pushFrame(frame);
+        store.setStatus('live');
+      },
+      (status) => {
+        store.setStatus(status === 'open' ? 'connecting' : 'error');
+      },
+    );
   }
 
   async function start(): Promise<void> {
@@ -48,16 +58,21 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
     void openSelected();
   }
 
-  // Write a control back to the radar, optimistic-first then reconciled by the streamed value.
+  // Write a control back to the radar and update the value optimistically. A failed write is logged,
+  // not silently dropped. v1 is optimistic-only: reconciling the displayed value from the radar's own
+  // reported control state is a follow-up (see applyControlDelta).
   async function setControl(controlId: string, value: number, units?: string): Promise<void> {
     store.setControlValue(controlId, value);
     const radar = store.selected;
     if (!radar) return;
-    await writeControl(deps.origin, deps.getToken(), radar.id, controlId, value, units);
+    const ok = await writeControl(deps.origin, deps.getToken(), radar.id, controlId, value, units);
+    if (!ok) console.warn(`[marine-radar] control write failed: ${controlId}`);
   }
 
-  // Reconcile a control value from a Signal K delta (mayara streams control state as deltas on
-  // radars.{id}.controls.{name}); the host forwards matching paths from the stream.
+  // Reconcile a control value from a Signal K delta on radars.{id}.controls.{name}. This is the ready
+  // seam for the stream reconcile, but it is NOT wired in v1: mayara streams control values on a
+  // separate channel that the core delta worker does not carry, so bridging it (a worker change) needs
+  // a live provider to verify. Until then the controls are optimistic. Covered by its own unit test.
   function applyControlDelta(path: string, value: number): void {
     const parsed = controlValueFromDelta(path, value);
     if (parsed && parsed.radarId === store.selectedId) {

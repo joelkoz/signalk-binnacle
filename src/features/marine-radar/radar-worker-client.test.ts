@@ -10,7 +10,15 @@ describe('wrapRadarWorker', () => {
     const release = vi.fn();
     const terminate = vi.fn();
     const client = wrapRadarWorker(api as never, release, terminate);
-    void client.open('ws://x/spokes', 'mayara', 2048, 1024, 15, () => {});
+    void client.open(
+      'ws://x/spokes',
+      'mayara',
+      2048,
+      1024,
+      15,
+      () => {},
+      () => {},
+    );
     expect(api.open).toHaveBeenCalledOnce();
     client.dispose();
     expect(release).toHaveBeenCalledOnce();

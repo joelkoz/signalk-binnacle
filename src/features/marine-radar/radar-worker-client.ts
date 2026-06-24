@@ -2,6 +2,11 @@ import * as Comlink from 'comlink';
 import type { RadarFrame } from './radar-frame-core';
 import type { RadarProvider } from './radar-types';
 
+// The radar stream's connection state, surfaced from the worker so the controller can reflect it in
+// the store: 'open' means the socket connected (awaiting the first spoke), 'closed' and 'error' mean
+// the stream dropped or failed.
+export type RadarStreamStatus = 'open' | 'error' | 'closed';
+
 export interface RadarWorkerApi {
   open(
     url: string,
@@ -10,6 +15,7 @@ export interface RadarWorkerApi {
     maxSpokeLen: number,
     flushHz: number,
     onFrame: (frame: RadarFrame) => void,
+    onStatus: (status: RadarStreamStatus) => void,
   ): Promise<void>;
   close(): Promise<void>;
 }
@@ -22,6 +28,7 @@ export interface RadarWorkerClient {
     maxSpokeLen: number,
     flushHz: number,
     onFrame: (frame: RadarFrame) => void,
+    onStatus: (status: RadarStreamStatus) => void,
   ): Promise<void>;
   close(): Promise<void>;
   dispose(): void;
@@ -33,8 +40,16 @@ export function wrapRadarWorker(
   terminate: () => void,
 ): RadarWorkerClient {
   return {
-    async open(url, provider, spokesPerRev, maxSpokeLen, flushHz, onFrame) {
-      await api.open(url, provider, spokesPerRev, maxSpokeLen, flushHz, Comlink.proxy(onFrame));
+    async open(url, provider, spokesPerRev, maxSpokeLen, flushHz, onFrame, onStatus) {
+      await api.open(
+        url,
+        provider,
+        spokesPerRev,
+        maxSpokeLen,
+        flushHz,
+        Comlink.proxy(onFrame),
+        Comlink.proxy(onStatus),
+      );
     },
     async close() {
       await api.close();
@@ -49,7 +64,12 @@ export function wrapRadarWorker(
 export function createRadarWorkerClient(): RadarWorkerClient {
   const worker = new Worker(new URL('./radar-worker.ts', import.meta.url), { type: 'module' });
   worker.onerror = (event) => {
-    console.error('Radar worker failed to load or threw', event.message ?? event);
+    // A worker that fails to load often has an empty message; the filename and line locate it.
+    console.error('Radar worker failed to load or threw', {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+    });
   };
   const api = Comlink.wrap<RadarWorkerApi>(worker);
   return wrapRadarWorker(
