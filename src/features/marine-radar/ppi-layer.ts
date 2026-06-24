@@ -141,6 +141,10 @@ export function createPpiLayer(
     band: 'traffic',
     supportsOpacity: true,
     defaultVisible: false,
+    available: () => store.radars.length > 0,
+    unavailableHint:
+      'No radar detected. Install a Signal K radar provider (mayara or signalk-radar) to see the radar picture.',
+    manageable: true,
     layerIds: [RADAR_ECHO_LAYER_ID, RADAR_RINGS_LAYER_ID],
     add(ctx) {
       addEcho(ctx);

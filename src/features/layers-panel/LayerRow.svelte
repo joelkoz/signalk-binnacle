@@ -96,7 +96,9 @@ const handleLabel = $derived(groupTitle ?? item.title);
   class:dragging
   class:drop-before={dropBefore}
   class:drop-after={dropAfter}
+  class:unavailable={!item.available}
   aria-label={groupTitle}
+  title={item.available ? undefined : item.unavailableHint}
   data-layer-row={item.id}
 >
   {#if subLayers.length > 0}
@@ -132,6 +134,7 @@ const handleLabel = $derived(groupTitle ?? item.title);
       <LayerToggle
         title={item.title}
         visible={item.visible}
+        disabled={!item.available}
         onToggle={(visible) => view.toggle(item.id, visible)}
       />
       {@render manageButton()}
@@ -153,6 +156,11 @@ const handleLabel = $derived(groupTitle ?? item.title);
   border-color: var(--accent);
   box-shadow: var(--shadow-overlay);
   opacity: 0.9;
+}
+/* A detect-and-degrade layer whose provider is absent: grayed and non-interactive, with a hover
+   tooltip (the row's title attribute) explaining what to install or enable. */
+.row.unavailable {
+  opacity: 0.55;
 }
 /* A drop indicator line at the leading or trailing edge of the row the dragged item will land at. */
 .row.drop-before::before,

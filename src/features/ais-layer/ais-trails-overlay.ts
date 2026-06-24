@@ -105,6 +105,8 @@ export function createAisTrailsOverlay(
     title: 'AIS trails',
     band: BAND,
     supportsOpacity: true,
+    available: isAvailable,
+    unavailableHint: 'AIS trails need the signalk-tracks history plugin running on the server.',
     layerIds: [LAYER_ID],
     add(ctx) {
       // Reset so a reattach (a base-style swap recreates the emptied source) refetches and

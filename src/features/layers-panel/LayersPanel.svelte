@@ -18,9 +18,13 @@ interface Props {
   categoriesOpen?: PersistedValue<Record<string, boolean>>;
   onClose: () => void;
   onBack?: () => void;
+  // A manageable overlay row (one declaring manageable on its module, like the marine radar) asks the
+  // host to open its own controls. The host owns the panel content, so this generic panel imports no
+  // feature; it just forwards the row id.
+  onManageLayer?: (id: string) => void;
 }
 
-const { view, userCharts, categoriesOpen, onClose, onBack }: Props = $props();
+const { view, userCharts, categoriesOpen, onClose, onBack, onManageLayer }: Props = $props();
 
 const pinned = $derived(view.items.filter((item) => item.pinned));
 // Sub-layers (a chart facet, for example the NOAA ENC data quality overlay) are not their own
@@ -162,7 +166,11 @@ const reorder = createLayerReorder(
                   dropAfter={indicator.after}
                   onHandlePointerDown={(e) => reorder.handlePointerDown(item.id, e)}
                   onHandleKeydown={(e) => reorder.handleKeydown(item.id, e)}
-                  onManage={removeId ? () => (manageId = removeId) : undefined}
+                  onManage={removeId
+                    ? () => (manageId = removeId)
+                    : item.manageable
+                      ? () => onManageLayer?.(item.id)
+                      : undefined}
                 />
               {/each}
             </ul>

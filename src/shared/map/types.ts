@@ -74,4 +74,15 @@ export interface OverlayModule {
   // instead of each one remembering to self-reset inside add().
   reset?(): void;
   applyTheme?(ctx: OverlayContext, paint: MapThemePaint): void;
+  // A detect-and-degrade overlay declares its availability. When this returns false the Layers panel
+  // shows the row grayed out, with unavailableHint as a hover tooltip, and disables its toggle, rather
+  // than hiding the capability: the navigator sees that it exists and why it is inactive. Absent means
+  // always available.
+  readonly available?: () => boolean;
+  // The tooltip shown on a grayed-out (unavailable) row, explaining what to install or enable.
+  readonly unavailableHint?: string;
+  // The row exposes a settings gear that asks the host to open this overlay's own controls, through
+  // the panel's onManageLayer callback. The host owns the panel content, so the generic Layers panel
+  // never imports a feature.
+  readonly manageable?: boolean;
 }

@@ -58,7 +58,7 @@ import {
   DangerStrip,
   LookoutAlarm,
 } from '$features/lookout';
-import { createMarineRadarController } from '$features/marine-radar';
+import { createMarineRadarController, RadarControls } from '$features/marine-radar';
 import { MeasureStrip } from '$features/measure';
 import {
   AppMenu,
@@ -191,7 +191,7 @@ import {
   updateNotification,
 } from '$shared/signalk';
 import { createTrackStore } from '$shared/storage';
-import { createThemeController, defaultSaveName, type Theme } from '$shared/ui';
+import { createThemeController, defaultSaveName, SlideOver, type Theme } from '$shared/ui';
 import { ChartCanvas, type MapCommands, type UserChartRegistrar } from '$widgets/chart-canvas';
 import { WeatherMap } from '$widgets/weather-map';
 import LiveRegions from './LiveRegions.svelte';
@@ -1117,6 +1117,17 @@ const marineRadar = createMarineRadarController({
   getToken: () => chartsToken,
   getCenter: () => vessel.position ?? undefined,
   radarAvailable: () => serverFeatures !== undefined,
+});
+// Whether the radar controls slide-over (opened from the radar layer row's gear) is showing.
+let radarControlsOpen = $state(false);
+
+// Re-list the layers when an availability-gating provider appears or disappears, so a degrade overlay
+// (radar, AIS trails, track history) flips between grayed-out and active without a manual panel reopen.
+$effect(() => {
+  void serverFeatures;
+  void historyProviders;
+  void marineRadar.store.radars.length;
+  layersView?.refresh();
 });
 
 // Record the track from the vessel position (about 1 Hz); the recorder thins by the
@@ -2203,7 +2214,25 @@ onDestroy(() => {
           categoriesOpen={layerCategoriesOpen}
           onClose={closePanel}
           onBack={backToMenu}
+          onManageLayer={(id) => {
+            if (id === 'marine-radar') radarControlsOpen = true;
+          }}
         />
+      </div>
+    {/if}
+    {#if radarControlsOpen}
+      <div class="panel-slot">
+        <SlideOver
+          title="Radar controls"
+          closeLabel="Close radar controls"
+          onClose={() => (radarControlsOpen = false)}
+        >
+          <RadarControls
+            store={marineRadar.store}
+            onSetControl={(id, value, units) => void marineRadar.setControl(id, value, units)}
+            onSelectRadar={(id) => marineRadar.selectRadar(id)}
+          />
+        </SlideOver>
       </div>
     {/if}
     {#if activePanel === 'routes'}

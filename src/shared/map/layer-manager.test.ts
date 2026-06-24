@@ -423,4 +423,25 @@ describe('LayerManager', () => {
     const moved = map.moveLayer.mock.calls.map((call) => call[0]);
     expect(moved).toEqual(expect.arrayContaining(['a-layer', 'b-layer']));
   });
+
+  it('surfaces availability, the unavailable hint, and the manageable flag into layers()', async () => {
+    const manager = new LayerManager(fakeCtx());
+    let present = false;
+    await manager.register({
+      ...fakeOverlay('radar'),
+      available: () => present,
+      unavailableHint: 'No radar detected.',
+      manageable: true,
+    });
+    await manager.register(fakeOverlay('plain'));
+    const byId = () => new Map(manager.layers().map((l) => [l.id, l]));
+    expect(byId().get('radar')?.available).toBe(false);
+    expect(byId().get('radar')?.unavailableHint).toBe('No radar detected.');
+    expect(byId().get('radar')?.manageable).toBe(true);
+    // A module that declares no availability defaults to available and is not manageable.
+    expect(byId().get('plain')?.available).toBe(true);
+    expect(byId().get('plain')?.manageable).toBeUndefined();
+    present = true;
+    expect(byId().get('radar')?.available).toBe(true);
+  });
 });

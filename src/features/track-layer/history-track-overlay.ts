@@ -113,6 +113,8 @@ export function createHistoryTrackOverlay(
     band: BAND,
     supportsOpacity: true,
     defaultVisible: false,
+    available: () => providers() !== undefined,
+    unavailableHint: 'Track history needs a Signal K history provider plugin on the server.',
     layerIds: [LAYER_ID],
     add(ctx) {
       nextFetchAt = 0;

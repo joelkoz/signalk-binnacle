@@ -10,6 +10,7 @@ const item = (overrides: Partial<LayerListItem>): LayerListItem => ({
   supportsOpacity: true,
   pinned: false,
   band: 'safety',
+  available: true,
   ...overrides,
 });
 

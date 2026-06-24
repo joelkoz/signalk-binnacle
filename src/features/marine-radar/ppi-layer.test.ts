@@ -18,4 +18,16 @@ describe('createPpiLayer', () => {
     expect(layer.id).not.toBe('weather-radar');
     expect(layer.layerIds).not.toContain('weather-radar');
   });
+
+  it('is unavailable with a hint until a radar is discovered, and is manageable', () => {
+    const store = new MarineRadarStore();
+    const layer = createPpiLayer(store, () => ({ latitude: 0, longitude: 0 }));
+    expect(layer.available?.()).toBe(false);
+    expect(layer.unavailableHint).toBeTruthy();
+    expect(layer.manageable).toBe(true);
+    store.setDiscovered('mayara', [
+      { id: 'a', name: 'A', spokes: 16, maxSpokeLen: 8, legend: { pixels: [] } },
+    ]);
+    expect(layer.available?.()).toBe(true);
+  });
 });

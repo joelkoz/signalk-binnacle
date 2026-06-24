@@ -31,6 +31,14 @@ export interface LayerListItem {
   group?: { id: string; title: string };
   // The Layers-panel category this layer declares. See OverlayModule.category.
   category?: string;
+  // False when the overlay's provider or data is absent: the panel grays the row and disables its
+  // toggle. See OverlayModule.available.
+  available: boolean;
+  // The hover tooltip for a grayed-out row. See OverlayModule.unavailableHint.
+  unavailableHint?: string;
+  // The row has a settings gear that asks the host to open this overlay's controls. See
+  // OverlayModule.manageable.
+  manageable?: boolean;
 }
 
 export interface LayerManagerOptions {
@@ -370,6 +378,9 @@ export class LayerManager {
             parent: module.parent,
             group: module.group,
             category: module.category,
+            available: module.available?.() ?? true,
+            unavailableHint: module.unavailableHint,
+            manageable: module.manageable,
           },
         ];
       });
