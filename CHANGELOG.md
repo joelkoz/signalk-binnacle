@@ -6,7 +6,7 @@ All notable changes to Binnacle are documented here. The format follows
 
 <a id="v0100"></a>
 
-## [0.10.0] - 2026-06-24
+## [0.10.0] - 2026-06-23
 
 ### Added
 
