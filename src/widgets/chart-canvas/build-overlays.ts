@@ -18,6 +18,7 @@ import {
 } from '$features/ais-layer';
 import { createAnchorOverlay } from '$features/anchor-watch';
 import { createCollisionOverlay } from '$features/lookout';
+import type { PpiLayer } from '$features/marine-radar';
 import { createMeasureOverlay } from '$features/measure';
 import { createMobOverlay } from '$features/mob';
 import type { NotesOverlay } from '$features/notes';
@@ -63,6 +64,10 @@ export interface DynamicOverlaysDeps {
   aisTrailsAvailable: () => boolean;
   historyProviders: () => HistoryProviders | undefined;
   timeTravel: TimeTravelStore;
+  // The marine radar echo layer, built by its controller (which owns the spokes worker) and woven in
+  // at its traffic-band position. Absent until the controller is wired; the layer itself stays inert
+  // until a radar provider is detected and streaming.
+  marineRadarLayer?: PpiLayer;
 }
 
 // The store-driven overlay stack, in z order within each band (tides under the safety overlays, the
@@ -94,6 +99,7 @@ export function buildDynamicOverlays(deps: DynamicOverlaysDeps) {
     aisTrailsAvailable,
     historyProviders,
     timeTravel,
+    marineRadarLayer,
   } = deps;
   return [
     createTidesOverlay(tides, units),
@@ -112,5 +118,6 @@ export function buildDynamicOverlays(deps: DynamicOverlaysDeps) {
     createTrackOverlay(recorder, trackSettings, savedTracks),
     createVesselOverlay(vessel),
     createTimeTravelOverlay(timeTravel),
+    ...(marineRadarLayer ? [marineRadarLayer] : []),
   ];
 }

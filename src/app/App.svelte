@@ -58,6 +58,7 @@ import {
   DangerStrip,
   LookoutAlarm,
 } from '$features/lookout';
+import { createMarineRadarController } from '$features/marine-radar';
 import { MeasureStrip } from '$features/measure';
 import {
   AppMenu,
@@ -1108,6 +1109,16 @@ const anchorController = createAnchorController({
   serverHasAnchorApi: () => serverFeatures?.apis.has('anchor') ?? false,
 });
 
+// The marine radar controller owns the spokes worker and the echo layer. Detection runs once server
+// features resolve; on a stock server discovery degrades and nothing streams. getCenter and getToken
+// are getters so the radar follows the live vessel position and a token that arrives mid-session.
+const marineRadar = createMarineRadarController({
+  origin,
+  getToken: () => chartsToken,
+  getCenter: () => vessel.position ?? undefined,
+  radarAvailable: () => serverFeatures !== undefined,
+});
+
 // Record the track from the vessel position (about 1 Hz); the recorder thins by the
 // configured interval and min-distance. SOG is stored raw in m/s (SI).
 $effect(() => {
@@ -1915,6 +1926,7 @@ $effect(() => {
   // until a reload, leaving the alarm path stuck on the v1 fallback. Re-probe both here.
   void fetchServerFeatures(origin, authToken).then((features) => {
     if (features) serverFeatures = features;
+    void marineRadar.start();
   });
   void fetchHistoryProviders(origin, authToken).then((providers) => {
     if (providers) historyProviders = providers;
@@ -1996,6 +2008,7 @@ $effect(() => {
   // drop the session back to v1 transports.
   void fetchServerFeatures(origin, authToken).then((features) => {
     if (features) serverFeatures = features;
+    void marineRadar.start();
   });
   // History provider discovery: the v2 features list reports the history API even with no
   // provider registered, so the providers route is the real signal.
@@ -2045,6 +2058,7 @@ onDestroy(() => {
   mobAlarm.stop();
   arrivalAlarm.stop();
   auth.stop();
+  marineRadar.dispose();
   net.dispose();
   clock.dispose();
   void client.disconnect();
@@ -2155,6 +2169,7 @@ onDestroy(() => {
         flagRouteError('Could not load the route editor. Check the connection and try again.')}
       {onRouteEdited}
       onAnchorMoved={(position) => void anchorController.onAnchorMoved(position)}
+      marineRadarLayer={marineRadar.layer}
     />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />

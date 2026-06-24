@@ -19,6 +19,7 @@ import { fetchCharts } from '$features/charts';
 import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
 import { LayersView } from '$features/layers-panel';
 import { COLLISION_OVERLAY_ID } from '$features/lookout';
+import type { PpiLayer } from '$features/marine-radar';
 import { MOB_OVERLAY_ID } from '$features/mob';
 import { createMpaOverlay, MPA_SOURCES } from '$features/mpa-overlays';
 import { createNotesOverlay, type NotePoint, type NoteSelection } from '$features/notes';
@@ -127,6 +128,8 @@ interface Props {
   timeTravel: TimeTravelStore;
   // Commit a drag-to-adjust of the anchor marker (the app PUTs it server-side or moves it locally).
   onAnchorMoved?: (position: LatLon) => void;
+  // The marine radar echo layer, built by its controller in the host and woven into the overlay stack.
+  marineRadarLayer?: PpiLayer;
 }
 
 const {
@@ -174,6 +177,7 @@ const {
   historyProviders,
   timeTravel,
   onAnchorMoved,
+  marineRadarLayer,
 }: Props = $props();
 
 let container: HTMLDivElement;
@@ -323,6 +327,7 @@ onMount(() => {
         aisTrailsAvailable: aisTrailsAvailable ?? (() => false),
         historyProviders: historyProviders ?? (() => undefined),
         timeTravel,
+        marineRadarLayer,
       });
       await mgr.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
