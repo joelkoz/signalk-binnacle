@@ -132,7 +132,7 @@ describe('createNoteDetailLoader', () => {
       .mockResolvedValueOnce(jsonResponse(500, {})) // load1 v1
       .mockResolvedValue(jsonResponse(200, structured)); // load2 v2
     vi.stubGlobal('fetch', fetchMock);
-    const loader = createNoteDetailLoader('http://pi', 'tok');
+    const loader = createNoteDetailLoader('http://pi', () => 'tok');
     expect(await loader.load('lll-1')).toBeUndefined();
     expect((await loader.load('lll-1'))?.name).toBe('Whipple Point Light');
     await loader.load('lll-1'); // cached, no fetch

@@ -169,8 +169,13 @@ export interface NoteDetailLoader {
 const MAX_DETAIL_ENTRIES = 64;
 
 // Memoizes detail by id so reopening a marker is instant; a failed fetch is not cached, so it
-// stays retryable. An in-flight load is shared rather than duplicated.
-export function createNoteDetailLoader(base: string, token: string | undefined): NoteDetailLoader {
+// stays retryable. An in-flight load is shared rather than duplicated. The token is read through a
+// getter at fetch time, not captured: the loader is built once at connect, so a token approved later
+// (from another tab) must reach the fetch rather than freeze at the connect-time value.
+export function createNoteDetailLoader(
+  base: string,
+  getToken: () => string | undefined,
+): NoteDetailLoader {
   const cache = new Map<string, NoteDetail>();
   const inflight = new Map<string, Promise<NoteDetail | undefined>>();
   return {
@@ -179,7 +184,7 @@ export function createNoteDetailLoader(base: string, token: string | undefined):
       if (cached) return Promise.resolve(cached);
       const pending = inflight.get(id);
       if (pending) return pending;
-      const promise = fetchNoteDetail(base, token, id)
+      const promise = fetchNoteDetail(base, getToken(), id)
         .then((detail) => {
           if (detail) {
             if (cache.size >= MAX_DETAIL_ENTRIES) {

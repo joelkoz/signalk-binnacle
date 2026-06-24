@@ -1,5 +1,6 @@
 <script lang="ts">
 import { Anchor, Crosshair } from '@lucide/svelte';
+import { untrack } from 'svelte';
 import {
   type AnchorMode,
   type AnchorWatch,
@@ -66,7 +67,9 @@ function commitRadius(entered: number): void {
 // armed-confirm protection: the first tap swaps the controls row for an inline confirm.
 let raiseArmed = $state(false);
 $effect(() => {
-  if (!watching && raiseArmed) raiseArmed = false;
+  // Reset the armed confirm when the watch ends. The write is untracked so the effect depends only on
+  // `watching`, never re-running on its own reset (no read-and-write of the same signal).
+  if (!watching) untrack(() => (raiseArmed = false));
 });
 
 // Capture the real swing: the live distance plus a safety margin becomes the new radius.

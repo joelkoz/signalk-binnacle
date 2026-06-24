@@ -5,19 +5,15 @@ export class LayersView {
   items = $state<LayerListItem[]>([]);
 
   #manager: LayerManager;
-  #byId = new Map<string, LayerListItem>();
 
   constructor(manager: LayerManager) {
     this.#manager = manager;
   }
 
+  // Never read `this.items` here: refresh() runs inside a $effect (the layers-availability refresh in
+  // App), and reading the freshly written `items` signal in that effect loops (effect_update_depth_exceeded).
   refresh(): void {
-    // Use a local, never `this.items` after the write: refresh() is called from a $effect (the layers
-    // availability refresh in App), and reading the freshly-written `items` signal inside that effect
-    // makes the effect depend on a value it just set, which loops (effect_update_depth_exceeded).
-    const items = this.#manager.layers();
-    this.items = items;
-    this.#byId = new Map(items.map((item) => [item.id, item]));
+    this.items = this.#manager.layers();
   }
 
   // A toggle can flip several rows at once (the weather fills are mutually exclusive), so rebuild
@@ -30,7 +26,11 @@ export class LayersView {
 
   setOpacity(id: string, opacity: number): void {
     this.#manager.setOpacity(id, opacity);
-    const item = this.#byId.get(id);
+    // Mutate the item inside `this.items` (the reactive $state array) in place, so the displayed
+    // percentage updates without rebuilding the whole list on every slider tick. `find` returns the
+    // reactive element; a plain-Map cache of raw objects would bypass reactivity and freeze the readout.
+    // Reading this.items here is safe: setOpacity runs from the slider event, not the availability effect.
+    const item = this.items.find((i) => i.id === id);
     if (item) item.opacity = opacity;
   }
 

@@ -1953,7 +1953,7 @@ $effect(() => {
 
 async function connectStream(token: string | undefined): Promise<void> {
   chartsToken = token;
-  noteLoader = createNoteDetailLoader(origin, token);
+  noteLoader = createNoteDetailLoader(origin, () => chartsToken);
   await client.connect(streamUrl(token), (frame) => store.applyFrame(frame));
   await client.raw.subscribe([
     { path: SK_PATHS.headingTrue, policy: 'instant', minPeriod: 200 },
