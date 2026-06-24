@@ -1,31 +1,96 @@
 import { describe, expect, it } from 'vitest';
 import { themedColorTable } from './legend-theme';
-import type { RadarLegend } from './radar-types';
+import type { LegendEntry } from './radar-types';
 
-const legend: RadarLegend = {
-  pixels: [
-    { type: 'Normal', color: '#000000' },
-    { type: 'Normal', color: '#10ff20' },
-    { type: 'DopplerApproaching', color: '#ff0000' },
-  ],
-};
+// A simple legend with one transparent empty bin, one normal return, and one Doppler accent.
+const legend: LegendEntry[] = [
+  { color: '#00000000', label: 'none' },
+  { color: '#10ff20ff', label: 'normal return' },
+  { color: '#ff0000ff', label: 'doppler approaching' },
+  { color: '#0000ffff', label: 'history trail' },
+];
 
 describe('themedColorTable', () => {
-  it('maps Normal returns onto a pure-red ramp at night with the green channel zeroed', () => {
-    const table = themedColorTable(legend, 'night-red');
-    expect(table[4 + 1]).toBe(0);
-    expect(table[4 + 2]).toBe(0);
-    expect(table[4]).toBeGreaterThan(0);
+  it('returns a 256-entry RGBA lookup table (1024 bytes)', () => {
+    expect(themedColorTable(legend, 'day')).toHaveLength(256 * 4);
   });
 
-  it('keeps a Doppler accent distinguishable from Normal at night (not zeroed away)', () => {
-    const table = themedColorTable(legend, 'night-red');
-    const dopplerRed = table[2 * 4];
-    expect(dopplerRed).toBeGreaterThan(0);
+  it('keeps value 0 fully transparent in every theme', () => {
+    for (const theme of ['day', 'dusk', 'night-red'] as const) {
+      const table = themedColorTable(legend, theme);
+      expect(table[3]).toBe(0);
+    }
   });
 
-  it('passes Normal colors through unchanged in day theme', () => {
-    const table = themedColorTable(legend, 'day');
-    expect(Array.from(table.slice(4, 7))).toEqual([0x10, 0xff, 0x20]);
+  describe('day theme', () => {
+    it('passes all channels through unchanged for normal returns', () => {
+      const table = themedColorTable(legend, 'day');
+      // Index 1: #10ff20ff
+      expect(Array.from(table.slice(1 * 4, 1 * 4 + 4))).toEqual([0x10, 0xff, 0x20, 0xff]);
+    });
+
+    it('passes accent entries through unchanged', () => {
+      const table = themedColorTable(legend, 'day');
+      expect(Array.from(table.slice(2 * 4, 2 * 4 + 4))).toEqual([0xff, 0x00, 0x00, 0xff]);
+    });
+  });
+
+  describe('night-red theme', () => {
+    it('collapses a normal return to a pure red channel (g and b zeroed)', () => {
+      const table = themedColorTable(legend, 'night-red');
+      // Index 1: #10ff20 -> r=max(0x10,0xff,0x20)=0xff, g=0, b=0
+      expect(table[1 * 4 + 1]).toBe(0); // green zeroed
+      expect(table[1 * 4 + 2]).toBe(0); // blue zeroed
+      expect(table[1 * 4]).toBe(0xff); // red = max(r,g,b)
+    });
+
+    it('preserves a Doppler accent entry (label contains "doppler") without modification', () => {
+      const table = themedColorTable(legend, 'night-red');
+      // Index 2: doppler approaching #ff0000 must remain [255, 0, 0, 255]
+      expect(Array.from(table.slice(2 * 4, 2 * 4 + 4))).toEqual([0xff, 0x00, 0x00, 0xff]);
+    });
+
+    it('preserves a history/trail accent entry without modification', () => {
+      const table = themedColorTable(legend, 'night-red');
+      // Index 3: history trail #0000ff must remain [0, 0, 255, 255] (accent keeps original color)
+      expect(Array.from(table.slice(3 * 4, 3 * 4 + 4))).toEqual([0x00, 0x00, 0xff, 0xff]);
+    });
+  });
+
+  describe('dusk theme', () => {
+    it('dims a normal return to 70% intensity', () => {
+      const table = themedColorTable(legend, 'dusk');
+      // Index 1: #10ff20 -> r=round(0x10*0.7)=11, g=round(0xff*0.7)=179, b=round(0x20*0.7)=22
+      expect(table[1 * 4]).toBe(Math.round(0x10 * 0.7));
+      expect(table[1 * 4 + 1]).toBe(Math.round(0xff * 0.7));
+      expect(table[1 * 4 + 2]).toBe(Math.round(0x20 * 0.7));
+    });
+
+    it('preserves an accent entry at full brightness in dusk', () => {
+      const table = themedColorTable(legend, 'dusk');
+      // Index 2: doppler approaching #ff0000 must remain [255, 0, 0, 255]
+      expect(Array.from(table.slice(2 * 4, 2 * 4 + 4))).toEqual([0xff, 0x00, 0x00, 0xff]);
+    });
+  });
+
+  describe('accent detection', () => {
+    it('treats a label containing "approach" as an accent', () => {
+      const accentLegend: LegendEntry[] = [
+        { color: '#00000000', label: 'none' },
+        { color: '#00ff00ff', label: 'approach target' },
+      ];
+      const table = themedColorTable(accentLegend, 'night-red');
+      // Accent: original green must survive night-red untouched
+      expect(Array.from(table.slice(1 * 4, 1 * 4 + 4))).toEqual([0x00, 0xff, 0x00, 0xff]);
+    });
+
+    it('treats a label containing "reced" as an accent', () => {
+      const recedLegend: LegendEntry[] = [
+        { color: '#00000000', label: 'none' },
+        { color: '#0000ffff', label: 'receding' },
+      ];
+      const table = themedColorTable(recedLegend, 'night-red');
+      expect(Array.from(table.slice(1 * 4, 1 * 4 + 4))).toEqual([0x00, 0x00, 0xff, 0xff]);
+    });
   });
 });

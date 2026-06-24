@@ -1,6 +1,5 @@
 import * as Comlink from 'comlink';
 import type { RadarFrame } from './radar-frame-core';
-import type { RadarProvider } from './radar-types';
 
 // The radar stream's connection state, surfaced from the worker so the controller can reflect it in
 // the store: 'open' means the socket connected (awaiting the first spoke), 'closed' and 'error' mean
@@ -10,7 +9,6 @@ export type RadarStreamStatus = 'open' | 'error' | 'closed';
 export interface RadarWorkerApi {
   open(
     url: string,
-    provider: RadarProvider,
     spokesPerRev: number,
     maxSpokeLen: number,
     flushHz: number,
@@ -23,7 +21,6 @@ export interface RadarWorkerApi {
 export interface RadarWorkerClient {
   open(
     url: string,
-    provider: RadarProvider,
     spokesPerRev: number,
     maxSpokeLen: number,
     flushHz: number,
@@ -40,10 +37,9 @@ export function wrapRadarWorker(
   terminate: () => void,
 ): RadarWorkerClient {
   return {
-    async open(url, provider, spokesPerRev, maxSpokeLen, flushHz, onFrame, onStatus) {
+    async open(url, spokesPerRev, maxSpokeLen, flushHz, onFrame, onStatus) {
       await api.open(
         url,
-        provider,
         spokesPerRev,
         maxSpokeLen,
         flushHz,

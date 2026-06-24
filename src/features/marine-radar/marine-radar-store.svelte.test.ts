@@ -5,18 +5,26 @@ import type { RadarInfo } from './radar-types';
 const radar: RadarInfo = {
   id: 'a',
   name: 'A',
-  spokes: 2048,
+  status: 'standby',
+  spokesPerRevolution: 2048,
   maxSpokeLen: 1024,
-  legend: { pixels: [] },
+  range: 1852,
+  controls: { gain: { value: 50 }, sea: { value: 20 } },
 };
 
 describe('MarineRadarStore', () => {
   it('selects the first radar on discovery and exposes it via selected', () => {
     const store = new MarineRadarStore();
-    store.setDiscovered('mayara', [radar]);
-    expect(store.provider).toBe('mayara');
+    store.setDiscovered([radar]);
     expect(store.selectedId).toBe('a');
     expect(store.selected?.name).toBe('A');
+  });
+
+  it('seeds controlValues from the discovered radar controls map', () => {
+    const store = new MarineRadarStore();
+    store.setDiscovered([radar]);
+    expect(store.controlValues.gain).toBe(50);
+    expect(store.controlValues.sea).toBe(20);
   });
 
   it('records control values by id', () => {
@@ -27,17 +35,31 @@ describe('MarineRadarStore', () => {
 
   it('clears selection and radars when discovery is empty', () => {
     const store = new MarineRadarStore();
-    store.setDiscovered('mayara', [radar]);
-    store.setDiscovered('mayara', []);
+    store.setDiscovered([radar]);
+    store.setDiscovered([]);
     expect(store.selectedId).toBeUndefined();
     expect(store.selected).toBeUndefined();
   });
 
-  it('clears control values when the selected radar changes', () => {
+  it('seeds control values from the newly selected radar when selection changes', () => {
+    const radarB: RadarInfo = {
+      ...radar,
+      id: 'b',
+      name: 'B',
+      controls: { gain: { value: 75 } },
+    };
     const store = new MarineRadarStore();
-    store.setDiscovered('mayara', [radar, { ...radar, id: 'b', name: 'B' }]);
-    store.setControlValue('gain', 50);
+    store.setDiscovered([radar, radarB]);
+    store.setControlValue('gain', 99);
     store.select('b');
-    expect(store.controlValues.gain).toBeUndefined();
+    expect(store.controlValues.gain).toBe(75);
+    expect(store.controlValues.sea).toBeUndefined();
+  });
+
+  it('clears a stale read-only warning on a fresh discovery', () => {
+    const store = new MarineRadarStore();
+    store.setControlsForbidden(true);
+    store.setDiscovered([radar]);
+    expect(store.controlsForbidden).toBe(false);
   });
 });

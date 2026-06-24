@@ -12,7 +12,6 @@ describe('wrapRadarWorker', () => {
     const client = wrapRadarWorker(api as never, release, terminate);
     void client.open(
       'ws://x/spokes',
-      'mayara',
       2048,
       1024,
       15,

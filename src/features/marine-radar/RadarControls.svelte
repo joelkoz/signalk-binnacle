@@ -8,11 +8,11 @@ let {
   onSelectRadar,
 }: {
   store: MarineRadarStore;
-  onSetControl: (controlId: string, value: number, units?: string) => void;
+  onSetControl: (controlId: string, value: number) => void;
   onSelectRadar?: (id: string) => void;
 } = $props();
 
-const controls = $derived(store.selected?.controls ?? []);
+const controls = $derived(store.capabilities);
 
 const statusLabel = $derived.by(() => {
   switch (store.status) {
@@ -20,12 +20,8 @@ const statusLabel = $derived.by(() => {
       return 'Connecting to the radar';
     case 'live':
       return 'Live';
-    case 'standby':
-      return 'Standby';
     case 'error':
       return 'No signal from the radar';
-    case 'idle':
-      return '';
     default:
       return '';
   }
@@ -45,6 +41,12 @@ const statusLabel = $derived.by(() => {
   {/if}
   {#if store.radars.length === 0}
     <p class="muted-note">No radar connected.</p>
+  {/if}
+  {#if store.controlsForbidden}
+    <p class="alert-note sev-warning" role="status">
+      Adjusting radar controls needs read-write access. Approve Binnacle for read and write in the
+      Signal K server's access requests, then reconnect.
+    </p>
   {/if}
   {#if store.radars.length > 1}
     <label class="caps-label" for="radar-select">Radar</label>
@@ -68,13 +70,13 @@ const statusLabel = $derived.by(() => {
         <input
           type="range"
           class="range"
-          min={def.minValue ?? 0}
-          max={def.maxValue ?? 100}
-          step={def.stepValue ?? 1}
-          disabled={def.isReadOnly}
-          value={store.controlValues[def.id] ?? def.minValue ?? 0}
-          aria-label={`${def.name}${def.units ? ` (${def.units})` : ''}`}
-          oninput={(e) => onSetControl(def.id, Number(e.currentTarget.value), def.units)}
+          min={def.range?.min ?? 0}
+          max={def.range?.max ?? 100}
+          step={def.range?.step ?? 1}
+          disabled={def.readOnly}
+          value={store.controlValues[def.id] ?? def.range?.min ?? 0}
+          aria-label={`${def.name}${def.range?.unit ? ` (${def.range.unit})` : ''}`}
+          oninput={(e) => onSetControl(def.id, Number(e.currentTarget.value))}
         >
         <span class="num">{store.controlValues[def.id] ?? '-'}</span>
       {:else if kind === 'toggle'}
@@ -83,30 +85,21 @@ const statusLabel = $derived.by(() => {
           class="btn"
           aria-label={def.name}
           aria-pressed={Boolean(store.controlValues[def.id])}
-          disabled={def.isReadOnly}
+          disabled={def.readOnly}
           onclick={() => onSetControl(def.id, store.controlValues[def.id] ? 0 : 1)}
         >
           {store.controlValues[def.id] ? 'On' : 'Off'}
-        </button>
-      {:else if kind === 'button'}
-        <button
-          type="button"
-          class="btn"
-          disabled={def.isReadOnly}
-          onclick={() => onSetControl(def.id, 1)}
-        >
-          {def.name}
         </button>
       {:else}
         <select
           class="input"
           aria-label={def.name}
-          disabled={def.isReadOnly}
+          disabled={def.readOnly}
           value={String(store.controlValues[def.id] ?? '')}
           onchange={(e) => onSetControl(def.id, Number(e.currentTarget.value))}
         >
-          {#each Object.entries(def.descriptions ?? {}) as [ optionValue, label ] (optionValue)}
-            <option value={optionValue}>{label}</option>
+          {#each def.values ?? [] as opt (opt.value)}
+            <option value={String(opt.value)}>{opt.label}</option>
           {/each}
         </select>
       {/if}

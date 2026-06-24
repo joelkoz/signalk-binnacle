@@ -1,6 +1,5 @@
 import { headingSpokes, spokesToRadians, writeSpoke } from './radar-math';
-import { decodeMayara, decodeWdantuma, type RadarMessage } from './radar-protocol';
-import type { RadarProvider } from './radar-types';
+import { decodeRadarMessage } from './radar-protocol';
 
 export interface RadarFrame {
   buffer: ArrayBuffer;
@@ -11,7 +10,6 @@ export interface RadarFrame {
 }
 
 export class RadarFrameCore {
-  readonly #decode: (bytes: Uint8Array) => RadarMessage;
   readonly #spokesPerRev: number;
   readonly #maxSpokeLen: number;
   // The live accumulator is retained across flushes (persistence is per-angle overwrite). flush()
@@ -20,15 +18,14 @@ export class RadarFrameCore {
   #range = 0;
   #heading: number | undefined;
 
-  constructor(provider: RadarProvider, spokesPerRev: number, maxSpokeLen: number) {
-    this.#decode = provider === 'wdantuma' ? decodeWdantuma : decodeMayara;
+  constructor(spokesPerRev: number, maxSpokeLen: number) {
     this.#spokesPerRev = spokesPerRev;
     this.#maxSpokeLen = maxSpokeLen;
     this.#accumulator = new Uint8Array(spokesPerRev * maxSpokeLen);
   }
 
   ingest(bytes: Uint8Array): void {
-    const message = this.#decode(bytes);
+    const message = decodeRadarMessage(bytes);
     for (const spoke of message.spokes) {
       writeSpoke(this.#accumulator, this.#spokesPerRev, this.#maxSpokeLen, spoke);
       this.#range = spoke.range;

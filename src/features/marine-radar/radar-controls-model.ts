@@ -1,11 +1,9 @@
 import type { ControlDefinition } from './radar-types';
 
-export function widgetKind(def: ControlDefinition): 'slider' | 'list' | 'button' | 'toggle' {
-  const dataKind = (def.dataType ?? '').toLowerCase();
-  if (dataKind === 'button') return 'button';
-  if (dataKind === 'boolean') return 'toggle';
-  const hasOptions =
-    (def.validValues?.length ?? 0) > 0 || Object.keys(def.descriptions ?? {}).length > 0;
-  if (hasOptions || dataKind === 'list' || dataKind === 'map') return 'list';
+// Map a Signal K radar control definition to the widget that edits it: a boolean is a toggle, an enum is
+// a select, and a number or compound control is a slider over its value.
+export function widgetKind(def: ControlDefinition): 'slider' | 'list' | 'toggle' {
+  if (def.type === 'boolean') return 'toggle';
+  if (def.type === 'enum') return 'list';
   return 'slider';
 }

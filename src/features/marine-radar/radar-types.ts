@@ -1,40 +1,58 @@
-export type PixelType =
-  | 'Normal'
-  | 'DopplerApproaching'
-  | 'DopplerReceding'
-  | 'DopplerRain'
-  | 'History';
+// The Signal K v2 radar API shapes Binnacle consumes, mirrored from `@signalk/server-api`'s radarapi
+// types. That package is never imported in browser or worker code (its barrel pulls in Node's
+// EventEmitter via FullSignalK), so the few wire types live here. The server serves these at
+// `/signalk/v2/api/vessels/self/radars`; a provider plugin (mayara) populates them.
 
-export interface RadarLegend {
-  pixels: Array<{ type: PixelType; color: string }>;
+export type RadarStatus = 'off' | 'standby' | 'transmit' | 'warming';
+
+// A live control value. `auto` is present on controls that support an automatic mode (gain, sea); a
+// value-only control (rain on some radars) omits it.
+export interface RadarControlEntry {
+  value: number;
+  auto?: boolean;
 }
 
+// Current control settings keyed by control id, as reported in RadarInfo.controls.
+export type RadarControls = Record<string, RadarControlEntry | undefined>;
+
+// One color stop in a radar's display legend. `minValue`/`maxValue` bound the raw spoke sample values
+// this color covers; when absent the entry index is the sample value.
+export interface LegendEntry {
+  color: string;
+  label: string;
+  minValue?: number;
+  maxValue?: number;
+}
+
+// A radar as listed by GET /signalk/v2/api/vessels/self/radars (the array elements).
+export interface RadarInfo {
+  id: string;
+  name: string;
+  brand?: string;
+  status: RadarStatus;
+  spokesPerRevolution: number;
+  maxSpokeLen: number;
+  range: number;
+  controls: RadarControls;
+  legend?: LegendEntry[];
+  // WebSocket URL for the protobuf spoke stream. When absent the built-in stream at
+  // `<radar>/stream` is used.
+  streamUrl?: string;
+}
+
+// A control definition from GET /radars/{id}/capabilities, used to render the controls UI.
 export interface ControlDefinition {
   id: string;
   name: string;
   description?: string;
-  category?: string;
-  dataType?: string;
-  minValue?: number;
-  maxValue?: number;
-  stepValue?: number;
-  units?: string;
-  descriptions?: Record<string, string>;
-  validValues?: number[];
-  isReadOnly?: boolean;
-  hasEnabled?: boolean;
-  automatic?: { hasAuto?: boolean };
+  type: 'boolean' | 'number' | 'enum' | 'compound';
+  range?: { min: number; max: number; step?: number; unit?: string };
+  values?: Array<{ value: string | number; label: string }>;
+  modes?: Array<'auto' | 'manual'>;
+  readOnly?: boolean;
 }
 
-export interface RadarInfo {
-  id: string;
-  name: string;
-  spokes: number;
-  maxSpokeLen: number;
-  spokeDataUrl?: string;
-  streamUrl?: string;
-  legend: RadarLegend;
-  controls?: ControlDefinition[];
+// The subset of GET /radars/{id}/capabilities Binnacle reads.
+export interface RadarCapabilities {
+  controls: ControlDefinition[];
 }
-
-export type RadarProvider = 'mayara' | 'wdantuma';

@@ -2230,7 +2230,7 @@ onDestroy(() => {
         >
           <RadarControls
             store={marineRadar.store}
-            onSetControl={(id, value, units) => void marineRadar.setControl(id, value, units)}
+            onSetControl={(id, value) => void marineRadar.setControl(id, value)}
             onSelectRadar={(id) => marineRadar.selectRadar(id)}
           />
         </SlideOver>

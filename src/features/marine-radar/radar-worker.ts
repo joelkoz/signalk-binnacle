@@ -1,6 +1,5 @@
 import * as Comlink from 'comlink';
 import { type RadarFrame, RadarFrameCore } from './radar-frame-core';
-import type { RadarProvider } from './radar-types';
 import type { RadarStreamStatus } from './radar-worker-client';
 
 type Releasable = { [Comlink.releaseProxy]?: () => void };
@@ -37,7 +36,6 @@ class RadarWorker {
 
   async open(
     url: string,
-    provider: RadarProvider,
     spokesPerRev: number,
     maxSpokeLen: number,
     flushHz: number,
@@ -46,7 +44,7 @@ class RadarWorker {
   ): Promise<void> {
     this.#teardown();
     this.#callbacks = [onFrame as Releasable, onStatus as Releasable];
-    const core = new RadarFrameCore(provider, spokesPerRev, maxSpokeLen);
+    const core = new RadarFrameCore(spokesPerRev, maxSpokeLen);
     let hasData = false;
     const socket = new WebSocket(url);
     socket.binaryType = 'arraybuffer';

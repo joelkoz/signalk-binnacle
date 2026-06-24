@@ -14,6 +14,7 @@ import {
   removeLayersAndSources,
   setSourceData,
 } from '$shared/map';
+import { DEFAULT_RADAR_LEGEND } from './legend';
 import { themedColorTable } from './legend-theme';
 import type { MarineRadarStore } from './marine-radar-store.svelte';
 import type { RadarFrame } from './radar-frame-core';
@@ -29,7 +30,7 @@ const RING_COLOR_DAY = '#33ff66';
 const RING_COLOR_NIGHT = '#ff3333';
 
 const RADAR_UNAVAILABLE_HINT =
-  'No radar detected. Install a Signal K radar provider (mayara or Radar SK) to see the radar picture.';
+  'No radar detected. Install a Signal K radar provider plugin (mayara) to see the radar picture.';
 
 function ringColor(theme: MapThemePaint['theme']): string {
   return theme === 'night-red' ? RING_COLOR_NIGHT : RING_COLOR_DAY;
@@ -72,8 +73,8 @@ export function createPpiLayer(
   let ringsDrawn = false;
 
   function applyLegend(): void {
-    const legend = store.selected?.legend;
-    if (gl && legend) gl.setLegend(themedColorTable(legend, theme));
+    const legend = store.selected?.legend ?? DEFAULT_RADAR_LEGEND;
+    if (gl) gl.setLegend(themedColorTable(legend, theme));
   }
 
   function addEcho(ctx: OverlayContext): void {
@@ -227,6 +228,9 @@ export function createPpiLayer(
       if (visible) echoMap?.triggerRepaint();
     },
     reset() {
+      // Drop the cached frame too: on a base-style swap or a radar switch the next render must wait for
+      // a fresh spoke frame rather than painting the previous radar's echo at the new geometry.
+      frame = undefined;
       dirty = true;
       legendVersion = '';
       ringsDrawn = false;

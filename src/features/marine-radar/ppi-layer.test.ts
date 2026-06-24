@@ -25,8 +25,16 @@ describe('createPpiLayer', () => {
     expect(layer.available?.()).toBe(false);
     expect(layer.unavailableHint).toBeTruthy();
     expect(layer.manageable).toBe(true);
-    store.setDiscovered('mayara', [
-      { id: 'a', name: 'A', spokes: 16, maxSpokeLen: 8, legend: { pixels: [] } },
+    store.setDiscovered([
+      {
+        id: 'a',
+        name: 'A',
+        status: 'standby',
+        spokesPerRevolution: 16,
+        maxSpokeLen: 8,
+        range: 100,
+        controls: {},
+      },
     ]);
     expect(layer.available?.()).toBe(true);
   });

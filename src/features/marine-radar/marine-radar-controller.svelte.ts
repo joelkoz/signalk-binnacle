@@ -1,7 +1,7 @@
 import type { LatLon } from '$shared/geo';
 import { MarineRadarStore } from './marine-radar-store.svelte';
 import { createPpiLayer, type PpiLayer } from './ppi-layer';
-import { discoverRadars, spokesUrl, writeControl } from './radar-client';
+import { discoverRadars, fetchCapabilities, spokesUrl, writeControl } from './radar-client';
 import { createRadarWorkerClient, type RadarWorkerClient } from './radar-worker-client';
 
 export interface MarineRadarDeps {
@@ -15,9 +15,9 @@ export interface MarineRadarDeps {
 // backgrounded tab keeps sweeping). Faster than the eye needs; the spokes integrate continuously between.
 const FLUSH_HZ = 15;
 
-// Orchestrates the marine radar: detects a provider, opens the selected radar's spokes worker, and
-// feeds frames to the ppi layer. Owns the worker lifecycle (a new pattern: no other controller owns a
-// worker), so dispose() must tear it down, mirroring the Signal K client's dispose().
+// Orchestrates the marine radar: discovers radars on the Signal K v2 radar API, opens the selected
+// radar's spoke worker, and feeds frames to the ppi layer. Owns the worker lifecycle (a new pattern: no
+// other controller owns a worker), so dispose() must tear it down, mirroring the Signal K client's dispose().
 export function createMarineRadarController(deps: MarineRadarDeps) {
   const store = new MarineRadarStore();
   const layer: PpiLayer = createPpiLayer(store, deps.getCenter);
@@ -25,16 +25,17 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
   let starting = false;
 
   async function openSelected(): Promise<void> {
-    const provider = store.provider;
     const radar = store.selected;
-    if (!provider || !radar) return;
+    if (!radar) return;
+    // The control definitions ride alongside the picture; a failure leaves the panel value-only.
+    void fetchCapabilities(deps.origin, deps.getToken(), radar.id).then((caps) => {
+      if (caps) store.setCapabilities(caps.controls);
+    });
     if (!worker) worker = createRadarWorkerClient();
     store.setStatus('connecting');
-    const url = spokesUrl(deps.origin, provider, radar);
     await worker.open(
-      url,
-      provider,
-      radar.spokes,
+      spokesUrl(deps.origin, radar),
+      radar.spokesPerRevolution,
       radar.maxSpokeLen,
       FLUSH_HZ,
       (frame) => {
@@ -49,14 +50,14 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
 
   async function start(): Promise<void> {
     // Two reactive effects (connect and reconnect) call start(); the guard makes concurrent calls a
-    // no-op. The radar spokes stream is a separate WebSocket independent of the Signal K stream, so
-    // once a radar is discovered a Signal K reconnect must not re-probe and re-open it (a needless flap).
+    // no-op. The radar spoke stream is a separate WebSocket independent of the Signal K stream, so once
+    // a radar is discovered a Signal K reconnect must not re-probe and re-open it (a needless flap).
     if (starting || store.radars.length > 0 || !deps.radarAvailable()) return;
     starting = true;
     try {
-      const discovered = await discoverRadars(deps.origin, deps.getToken());
-      if (!discovered) return;
-      store.setDiscovered(discovered.provider, discovered.radars);
+      const radars = await discoverRadars(deps.origin, deps.getToken());
+      if (radars.length === 0) return;
+      store.setDiscovered(radars);
       await openSelected();
     } finally {
       starting = false;
@@ -68,15 +69,22 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
     void openSelected();
   }
 
-  // Write a control back to the radar and update the value optimistically. writeControl logs a failed
-  // write. v1 is optimistic-only: reconciling the displayed value from the radar's own reported control
-  // state is a follow-up (mayara streams it on a separate channel the core delta worker does not carry).
-  async function setControl(controlId: string, value: number, units?: string): Promise<void> {
+  // Write a control back to the radar and update the value optimistically. A 401/403 means the session
+  // token is read-only, which the panel surfaces; the displayed value is reconciled from the radar's
+  // own reported control state on the next discovery (a stream reconcile is a follow-up).
+  async function setControl(controlId: string, value: number): Promise<void> {
     store.setControlValue(controlId, value);
     const radar = store.selected;
-    const provider = store.provider;
-    if (!radar || !provider) return;
-    await writeControl(deps.origin, deps.getToken(), provider, radar.id, controlId, value, units);
+    if (!radar) return;
+    const { ok, status } = await writeControl(
+      deps.origin,
+      deps.getToken(),
+      radar.id,
+      controlId,
+      value,
+    );
+    if (ok) store.setControlsForbidden(false);
+    else if (status === 401 || status === 403) store.setControlsForbidden(true);
   }
 
   async function dispose(): Promise<void> {
