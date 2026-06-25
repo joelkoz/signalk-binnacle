@@ -15,26 +15,25 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.10.2
+## What's new in 0.10.3
 
-This release makes the marine radar easier to see and reach, and redesigns the Layers and radar panels:
+This release fixes Signal K access permissions, adds Auto modes to the radar, and tightens how
+Binnacle talks to the Signal K APIs:
 
-- **The radar is easier to read.** A sweep wedge marks where the radar is currently scanning, with a
-  short afterglow trail, so the picture reads as actively sweeping. Faint or small returns are now drawn
-  at a minimum on-screen size, so a sparse echo stays visible whether you are zoomed in or out. The
-  range rings are bolder and labeled with their range in nautical miles.
-- **The radar is in the menu.** When a radar is detected, a Radar tile opens its controls straight from
-  the menu, not only from the radar's row in the Layers panel.
-- **Redesigned panels.** The Layers and charts panel uses flat rows with the opacity slider in a per-row
-  popover and clearer category groups, the regional chart sources carry a region tag, and the radar
-  controls panel is rebuilt to match the rest of the app. AIS targets uses a ship icon and the radar
-  uses the sweep icon, so each reads true.
+- **Read and write access is requested up front.** Binnacle now asks the server for read/write so the
+  approval defaults to it. A read-only grant had silently blocked saving routes, waypoints, and tracks,
+  starting and clearing a course, acknowledging alarms, and adjusting radar controls.
+- **Radar Auto modes.** Gain, sea clutter, and rain clutter can switch to Auto and hand the level to the
+  radar; moving the slider returns the control to manual.
+- **Steadier Signal K integration.** Stream subscriptions send only the policies the server supports, and
+  chart, note, and symbol data from other plugins is validated before it draws, so a malformed response
+  cannot turn into a broken layer or a stray marker.
 - **A request.** I still do not have a radar on my own boat, so it is unverified on real hardware. If you
   have a radar and try this, please open a
   [GitHub issue](https://github.com/NearlCrews/signalk-binnacle/issues) with what you see (a screenshot
   helps), whether the picture looks right, and how the controls behave.
 
-See the [changelog](CHANGELOG.md#v0102) for the full list.
+See the [changelog](CHANGELOG.md#v0103) for the full list.
 
 ## What it does
 

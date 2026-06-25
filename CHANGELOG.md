@@ -8,6 +8,10 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v0103"></a>
+
+## [0.10.3] - 2026-06-25
+
 ### Added
 
 - Radar gain, sea clutter, and rain clutter can be switched to Auto, handing the level to the radar;
@@ -26,6 +30,13 @@ All notable changes to Binnacle are documented here. The format follows
 - Binnacle now asks the Signal K server for read and write access, so the access-request approval
   defaults to read/write. A read-only grant silently blocked saving routes, waypoints, and tracks,
   starting and clearing a course, acknowledging alarms, and adjusting radar controls.
+- Signal K stream subscriptions now send only the policies the server supports (instant and fixed)
+  and no longer attach a fixed-rate period to an instant subscription, so the server stops logging
+  policy warnings for Binnacle's stream.
+- Chart, note, and symbol resources served by Signal K providers are validated before they render: a
+  chart needs a name and type, a note needs finite coordinates, and a symbol needs a finite scale and
+  anchor. A malformed entry or an error response is skipped instead of becoming a broken layer or a
+  stray marker.
 
 <a id="v0102"></a>
 
