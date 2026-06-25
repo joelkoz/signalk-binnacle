@@ -17,6 +17,12 @@ of redoing work live here.
 The authoritative design is `docs/superpowers/specs/2026-05-31-binnacle-foundation-design.md`.
 Read it before doing architectural work.
 
+The committed `docs/design-system.md` is the authoritative design and front-end build standard: the
+tokens, themes, modular CSS, global utility classes, shared UI primitives, panel anatomy and field
+idioms, menus, interaction and a11y conventions, coding standards, and a recipe for adding a panel
+consistently. Read it before designing or building any UI, so a new panel or menu is indistinguishable
+from the shipped ones.
+
 ## Locked product and stack decisions
 
 - Framework: Svelte 5 (runes), Vite, TypeScript. This was a deliberate clean break from the
