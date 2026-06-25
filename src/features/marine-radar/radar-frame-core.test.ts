@@ -1,6 +1,21 @@
+import Pbf from 'pbf';
 import { describe, expect, it } from 'vitest';
 import { RadarFrameCore } from './radar-frame-core';
 import { syntheticFrames } from './synthetic-radar';
+
+function encodeSpoke(angle: number, range: number, data: Uint8Array): Uint8Array {
+  const pbf = new Pbf();
+  pbf.writeMessage(
+    2,
+    (_obj, w) => {
+      w.writeVarintField(1, angle);
+      w.writeVarintField(3, range);
+      w.writeBytesField(5, data);
+    },
+    0,
+  );
+  return pbf.finish();
+}
 
 describe('RadarFrameCore', () => {
   it('integrates synthetic spokes into a flushed buffer of spokesPerRev x maxSpokeLen', () => {
@@ -23,6 +38,13 @@ describe('RadarFrameCore', () => {
     }
     // syntheticFrames walks angles 0..15, so the last integrated spoke is column 15 of 16.
     expect(core.flush().sweep).toBeCloseTo(15 / 16, 6);
+  });
+
+  it('wraps an out-of-range spoke angle into the sweep fraction', () => {
+    const core = new RadarFrameCore(16, 8);
+    core.ingest(encodeSpoke(16 + 2, 1852, new Uint8Array(8)));
+    // angle 18 mod 16 = 2, so the sweep parks at column 2 of 16.
+    expect(core.flush().sweep).toBeCloseTo(2 / 16, 6);
   });
 
   it('flush returns a copy, so the live accumulator survives a transfer of the flushed buffer', () => {

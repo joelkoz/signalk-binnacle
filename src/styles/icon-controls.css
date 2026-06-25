@@ -45,7 +45,7 @@
 .icon-btn--accent {
   color: var(--accent);
 }
-.icon-btn--danger:hover {
+.icon-btn--danger:hover:not(:disabled) {
   color: var(--alarm);
 }
 /* Minimizing collapses the bottom sheet to its header, which only frees space on a phone, so the

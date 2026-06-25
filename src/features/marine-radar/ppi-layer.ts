@@ -307,7 +307,9 @@ export function createPpiLayer(
         ctx.map.setPaintProperty(RADAR_RINGS_LAYER_ID, 'line-opacity', Math.min(0.85, value));
       }
       if (ctx.map.getLayer(RADAR_RING_LABELS_LAYER_ID)) {
-        ctx.map.setPaintProperty(RADAR_RING_LABELS_LAYER_ID, 'text-opacity', value);
+        // Cap with the rings so the whole rings layer fades as one: a label never reads brighter than
+        // the ring it annotates.
+        ctx.map.setPaintProperty(RADAR_RING_LABELS_LAYER_ID, 'text-opacity', Math.min(0.85, value));
       }
     },
     applyTheme(ctx, paint) {

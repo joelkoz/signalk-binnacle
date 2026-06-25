@@ -60,7 +60,7 @@ function toggleSort(key: PoiSort): void {
 }
 </script>
 
-<SlideOver title="POI search" {subtitle} {onClose} {onBack} bodyFlex>
+<SlideOver title="POI search" {subtitle} {onClose} {onBack} closeLabel="Close POI search" bodyFlex>
   <input
     class="input search-input"
     type="search"
