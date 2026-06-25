@@ -1,4 +1,5 @@
 <script lang="ts">
+import { Radar } from '@lucide/svelte';
 import type { MarineRadarStore } from './marine-radar-store.svelte';
 import { widgetKind } from './radar-controls-model';
 
@@ -30,13 +31,16 @@ const statusLabel = $derived.by(() => {
 
 <div class="radar-controls">
   {#if statusLabel}
-    <p
-      class="caps-label radar-status"
-      class:is-error={store.status === 'error'}
-      role="status"
-      aria-live="polite"
-    >
-      {statusLabel}
+    <p class="radar-head">
+      <Radar size={18} aria-hidden="true" />
+      <span
+        class="caps-label radar-status"
+        class:is-error={store.status === 'error'}
+        role="status"
+        aria-live="polite"
+      >
+        {statusLabel}
+      </span>
     </p>
   {/if}
   {#if store.radars.length === 0}
@@ -118,8 +122,19 @@ const statusLabel = $derived.by(() => {
   align-items: center;
   gap: var(--space-2);
 }
-.radar-status {
+/* The radar's identity row: the sweep glyph in the accent color paired with the live status. The
+   glyph stays branded; the status text carries the muted or alarm state. */
+.radar-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
+}
+.radar-head :global(svg) {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.radar-status {
   color: var(--text-muted);
 }
 .radar-status.is-error {
