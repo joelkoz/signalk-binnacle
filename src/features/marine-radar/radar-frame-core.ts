@@ -7,6 +7,9 @@ export interface RadarFrame {
   maxSpokeLen: number;
   range: number;
   heading?: number;
+  // The freshest spoke's column position in the texture, normalized to [0, 1), so the renderer can draw
+  // a sweep wedge at the current scan angle. Undefined until the first spoke integrates.
+  sweep?: number;
 }
 
 export class RadarFrameCore {
@@ -17,6 +20,7 @@ export class RadarFrameCore {
   readonly #accumulator: Uint8Array;
   #range = 0;
   #heading: number | undefined;
+  #sweep: number | undefined;
 
   constructor(spokesPerRev: number, maxSpokeLen: number) {
     this.#spokesPerRev = spokesPerRev;
@@ -29,6 +33,7 @@ export class RadarFrameCore {
     for (const spoke of message.spokes) {
       writeSpoke(this.#accumulator, this.#spokesPerRev, this.#maxSpokeLen, spoke);
       this.#range = spoke.range;
+      this.#sweep = (spoke.angle % this.#spokesPerRev) / this.#spokesPerRev;
       if (spoke.bearing !== undefined) {
         this.#heading = spokesToRadians(
           headingSpokes(spoke.angle, spoke.bearing, this.#spokesPerRev),
@@ -46,6 +51,7 @@ export class RadarFrameCore {
       maxSpokeLen: this.#maxSpokeLen,
       range: this.#range,
       heading: this.#heading,
+      sweep: this.#sweep,
     };
   }
 }

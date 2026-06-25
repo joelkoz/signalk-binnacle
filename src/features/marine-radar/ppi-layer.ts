@@ -45,6 +45,12 @@ function ringColor(theme: MapThemePaint['theme']): string {
   return theme === 'night-red' ? RING_COLOR_NIGHT : RING_COLOR_DAY;
 }
 
+// The sweep wedge color as shader RGB floats: red on night-red (no green at night), classic bright radar
+// green otherwise, brighter than the rings so the scanning edge stands out over the echo.
+function sweepColor(theme: MapThemePaint['theme']): [number, number, number] {
+  return theme === 'night-red' ? [1, 0.2, 0.2] : [0.4, 1, 0.55];
+}
+
 function matrixOf(args: unknown): number[] {
   if (Array.isArray(args)) return args;
   const data = (args as { defaultProjectionData?: { mainMatrix?: number[] } })
@@ -98,6 +104,7 @@ export function createPpiLayer(
         gl = new RadarGl(glCtx);
         applyLegend();
         gl.setOpacity(opacity);
+        gl.setSweepColor(sweepColor(theme));
         dirty = true;
       } catch (error) {
         // A shader compile or link failure must not abort the whole overlay registration (it runs
@@ -144,6 +151,7 @@ export function createPpiLayer(
         if (dirty) {
           gl.setData(frame.buffer, frame.spokesPerRev, frame.maxSpokeLen);
           if (frame.heading !== undefined) gl.setHeading(frame.heading);
+          gl.setSweep(frame.sweep);
           dirty = false;
         }
         const mc = maplibregl.MercatorCoordinate.fromLngLat({
@@ -305,6 +313,7 @@ export function createPpiLayer(
     applyTheme(ctx, paint) {
       theme = paint.theme;
       applyLegend();
+      gl?.setSweepColor(sweepColor(theme));
       if (ctx.map.getLayer(RADAR_RINGS_LAYER_ID)) {
         ctx.map.setPaintProperty(RADAR_RINGS_LAYER_ID, 'line-color', ringColor(paint.theme));
       }

@@ -57,20 +57,75 @@ uniform sampler2D u_data;
 uniform sampler2D u_legend;
 uniform float u_heading;
 uniform float u_opacity;
+uniform float u_blip;        // blip dilation radius in screen pixels; 0 disables it
+uniform float u_sweep;       // current scan angle in a-units [0,1); negative disables the sweep
+uniform vec3 u_sweepColor;   // themed sweep wedge color
 in vec2 v_local;
 out vec4 fragColor;
 const float PI = 3.141592653589793;
+
+// The data texel is a legend INDEX. Recover the integer 0..255 index from the R8-normalized value and
+// look up its RGBA, sampling level 0 explicitly so no implicit-derivative LOD is needed inside the loop.
+vec4 echoColor(vec2 uv) {
+  float idx = floor(textureLod(u_data, uv, 0.0).r * 255.0 + 0.5);
+  return textureLod(u_legend, vec2((idx + 0.5) / 256.0, 0.5), 0.0);
+}
+
 void main() {
   float r = length(v_local);
   if (r > 1.0) discard;
   float theta = atan(v_local.x, v_local.y) - u_heading;
   float a = mod(theta / (2.0 * PI), 1.0);
-  // The data texel is a legend INDEX, sampled NEAREST so it is never interpolated. Recover the
-  // integer 0..255 index from the R8-normalized value before looking it up in the 256-wide legend,
-  // so a high-end code (Doppler, History) lands on its own legend entry, not a neighbor.
-  float idx = floor(texture(u_data, vec2(a, r)).r * 255.0 + 0.5);
-  vec4 color = texture(u_legend, vec2((idx + 0.5) / 256.0, 0.5));
-  fragColor = vec4(color.rgb, color.a * u_opacity);
+
+  vec4 echo;
+  if (u_blip > 0.0) {
+    // Dilate each return to a minimum SCREEN size so a sparse, sub-pixel echo still paints a visible
+    // blip. The per-pixel texel size comes from the screen-space derivatives of the smooth v_local
+    // coordinate (continuous across the 0/2pi seam), decomposed into radial and tangential parts, so the
+    // dilation is a constant pixel radius at any zoom: large when zoomed out (where returns would alias
+    // away), negligible when zoomed in. A 3x3 max-weighted kernel keeps the strongest nearby return,
+    // brightest at the center and fading at the rim, which reads as a soft glow on dense radars too.
+    vec2 dvx = dFdx(v_local);
+    vec2 dvy = dFdy(v_local);
+    float rr = max(r, 1e-4);
+    vec2 rhat = v_local / rr;
+    vec2 that = vec2(-rhat.y, rhat.x);
+    float rPerPx = length(vec2(dot(dvx, rhat), dot(dvy, rhat)));
+    float tPerPx = length(vec2(dot(dvx, that), dot(dvy, that)));
+    float aPerPx = tPerPx / (rr * 2.0 * PI);
+    float sa = u_blip * aPerPx;
+    float sr = u_blip * rPerPx;
+    echo = vec4(0.0);
+    for (int dy = -1; dy <= 1; dy++) {
+      for (int dx = -1; dx <= 1; dx++) {
+        vec4 c = echoColor(vec2(a + float(dx) * sa, r + float(dy) * sr));
+        float w = max(0.0, 1.0 - 0.5 * length(vec2(float(dx), float(dy))));
+        float contrib = c.a * w;
+        if (contrib > echo.a) echo = vec4(c.rgb, contrib);
+      }
+    }
+  } else {
+    echo = echoColor(vec2(a, r));
+  }
+
+  vec3 rgb = echo.rgb;
+  float alpha = echo.a;
+
+  if (u_sweep >= 0.0) {
+    // A bright leading edge at the current scan angle with an afterglow trail behind it, so the radar
+    // reads as actively scanning even when returns are sparse.
+    float behind = mod(u_sweep - a, 1.0);
+    float trail = 0.14;
+    if (behind < trail) {
+      float g = 1.0 - behind / trail;
+      float sweepA = g * g * 0.55;
+      rgb = mix(rgb, u_sweepColor, sweepA);
+      alpha = max(alpha, sweepA);
+    }
+  }
+
+  if (alpha <= 0.0) discard;
+  fragColor = vec4(rgb, alpha * u_opacity);
 }`;
 
 function compile(gl: WebGL2RenderingContext, type: number, src: string): WebGLShader {
@@ -89,9 +144,16 @@ interface Locations {
   matrix: WebGLUniformLocation | null;
   heading: WebGLUniformLocation | null;
   opacity: WebGLUniformLocation | null;
+  blip: WebGLUniformLocation | null;
+  sweep: WebGLUniformLocation | null;
+  sweepColor: WebGLUniformLocation | null;
   data: WebGLUniformLocation | null;
   legend: WebGLUniformLocation | null;
 }
+
+// Each return dilates to roughly this screen-pixel radius, so a sparse sub-pixel echo still paints a
+// blip the eye can find.
+const DEFAULT_BLIP_PX = 2.5;
 
 export class RadarGl {
   readonly #gl: WebGL2RenderingContext;
@@ -109,6 +171,9 @@ export class RadarGl {
   #texH = 0;
   #opacity = 1;
   #heading = 0;
+  #blip = DEFAULT_BLIP_PX;
+  #sweep = -1;
+  #sweepColor: [number, number, number] = [0.3, 1, 0.5];
   #lastCx = Number.NaN;
   #lastCy = Number.NaN;
   #lastHalf = Number.NaN;
@@ -140,6 +205,9 @@ export class RadarGl {
       matrix: gl.getUniformLocation(program, 'u_matrix'),
       heading: gl.getUniformLocation(program, 'u_heading'),
       opacity: gl.getUniformLocation(program, 'u_opacity'),
+      blip: gl.getUniformLocation(program, 'u_blip'),
+      sweep: gl.getUniformLocation(program, 'u_sweep'),
+      sweepColor: gl.getUniformLocation(program, 'u_sweepColor'),
       data: gl.getUniformLocation(program, 'u_data'),
       legend: gl.getUniformLocation(program, 'u_legend'),
     };
@@ -207,6 +275,16 @@ export class RadarGl {
     this.#heading = rad;
   }
 
+  // The current scan angle as a texture column fraction [0, 1); undefined parks the sweep off-screen so
+  // no wedge draws until the first spoke arrives.
+  setSweep(a: number | undefined): void {
+    this.#sweep = a === undefined ? -1 : a;
+  }
+
+  setSweepColor(rgb: [number, number, number]): void {
+    this.#sweepColor = rgb;
+  }
+
   render(matrix: number[], cx: number, cy: number, half: number): void {
     const gl = this.#gl;
     if (this.#spokes === 0) return;
@@ -227,6 +305,9 @@ export class RadarGl {
     gl.uniformMatrix4fv(loc.matrix, false, matrix);
     gl.uniform1f(loc.heading, this.#heading);
     gl.uniform1f(loc.opacity, this.#opacity);
+    gl.uniform1f(loc.blip, this.#blip);
+    gl.uniform1f(loc.sweep, this.#sweep);
+    gl.uniform3fv(loc.sweepColor, this.#sweepColor);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.#dataTex);
     gl.uniform1i(loc.data, 0);

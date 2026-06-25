@@ -15,6 +15,16 @@ describe('RadarFrameCore', () => {
     expect(new Uint8Array(out.buffer).some((b) => b !== 0)).toBe(true);
   });
 
+  it('tracks the freshest spoke as the normalized sweep angle, undefined before any spoke', () => {
+    const core = new RadarFrameCore(16, 8);
+    expect(core.flush().sweep).toBeUndefined();
+    for (const frame of syntheticFrames({ spokesPerRev: 16, maxSpokeLen: 8 })) {
+      core.ingest(new Uint8Array(frame));
+    }
+    // syntheticFrames walks angles 0..15, so the last integrated spoke is column 15 of 16.
+    expect(core.flush().sweep).toBeCloseTo(15 / 16, 6);
+  });
+
   it('flush returns a copy, so the live accumulator survives a transfer of the flushed buffer', () => {
     const core = new RadarFrameCore(4, 4);
     for (const frame of syntheticFrames({ spokesPerRev: 4, maxSpokeLen: 4 })) {
