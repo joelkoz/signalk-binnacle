@@ -79,7 +79,7 @@ function captureFromDistance(): void {
 }
 </script>
 
-<SlideOver title="Anchor watch" {onClose} {onBack}>
+<SlideOver title="Anchor watch" closeLabel="Close anchor watch" {onClose} {onBack}>
   <section class="anchor-watch">
     <p class="muted-note status" class:status--alarm={anchor.dragging} role="status">
       {statusLine}

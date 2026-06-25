@@ -624,7 +624,7 @@ onDestroy(() => {
   position: absolute;
   inset-block-start: var(--space-2);
   inset-inline-start: var(--space-2);
-  z-index: 2;
+  z-index: var(--z-overlay);
 }
 /* A small active-layer count tucked on the pill, so the glance answers "how many" as well as the
    lit "anything on" state. */

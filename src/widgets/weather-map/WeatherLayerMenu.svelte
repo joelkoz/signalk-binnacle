@@ -110,7 +110,7 @@ const groups = $derived(
   cursor: pointer;
 }
 .menu-row:hover {
-  background: var(--surface-raised);
+  background: var(--accent-tint);
 }
 /* The lit on-state reads accent-on-near-black by brightness, so it holds in night-red where hue
    barely separates; the trailing check is the redundant shape cue. */

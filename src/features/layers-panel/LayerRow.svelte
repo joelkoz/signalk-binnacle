@@ -84,7 +84,7 @@ $effect(() => {
           class="icon-btn"
           class:icon-btn--accent={dimmed}
           aria-label={`Adjust ${item.title} opacity`}
-          aria-haspopup="dialog"
+          aria-haspopup="true"
           aria-expanded={tuneOpen}
           onclick={() => (tuneOpen = !tuneOpen)}
         >

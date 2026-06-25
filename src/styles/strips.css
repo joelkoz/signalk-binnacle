@@ -70,12 +70,18 @@
     border-color var(--transition-fast),
     background-color var(--transition-fast);
 }
-.bottom-strip .ack:hover {
+.bottom-strip .ack:hover:not(:disabled) {
   border-color: var(--accent);
   background: var(--accent-tint);
 }
-.bottom-strip .ack:active {
+.bottom-strip .ack:active:not(:disabled) {
   filter: brightness(var(--brightness-press));
+}
+/* A disabled strip action (Steer to MOB with no fix, an empty Undo or Clear) dims through the shared
+   token rather than the browser default, so it reads as inert in every theme and gives no hover lift. */
+.bottom-strip .ack:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: default;
 }
 /* A caution variant of the strip action (the collision Mute), warning-colored so the two safety
    buttons (Mute and the accent Acknowledge) do not read as twins. The pressed state tints with the

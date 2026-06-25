@@ -30,13 +30,17 @@ function tapCancel(): void {
 
 {#if mob.active}
   <!-- No aria-live here: App owns the assertive MOB channel, mirroring the collision split. -->
-  <aside class="bottom-strip bottom-strip--alarm" aria-label="Man overboard">
+  <aside
+    class="bottom-strip bottom-strip--alarm"
+    class:is-ack={mob.acknowledged}
+    aria-label="Man overboard"
+  >
     <div class="head">
       <span class="title">Man overboard</span>
       {#if mob.acknowledged}
         <span class="note ack-tag">Acknowledged</span>
       {/if}
-      <div class="actions">
+      <div class="actions actions--safety">
         <button type="button" class="ack" disabled={!mob.position} onclick={onSteer}>
           Steer to MOB
         </button>

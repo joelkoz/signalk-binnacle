@@ -88,7 +88,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
 }
 </script>
 
-<SlideOver title="Tracks" bodyFlex {onClose} {onBack}>
+<SlideOver title="Tracks" closeLabel="Close tracks" bodyFlex {onClose} {onBack}>
   {#if error}
     <p class="alert-note" role="alert">{error}</p>
   {/if}

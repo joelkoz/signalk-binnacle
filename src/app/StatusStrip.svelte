@@ -128,7 +128,7 @@ const closeMore = (): void => {
           type="button"
           class="btn btn-pill"
           class:is-on={moreActive || moreOpen}
-          aria-haspopup="dialog"
+          aria-haspopup="true"
           aria-expanded={moreOpen}
           aria-controls={moreOpen ? 'bar-more-menu' : undefined}
           aria-label="More actions"

@@ -1049,7 +1049,10 @@ $effect(() => aisTargets.startPruning());
 // and contacts[0] is the worst since the list is severity-then-time sorted.
 const collisionAlert = $derived.by(() => {
   const { contacts } = collision.assessment;
-  if (collision.suppressed || contacts.length === 0) return '';
+  // Mirror the danger strip's own visibility: it un-dims and re-arms on an inner-ring escalation
+  // (acknowledged = suppressed and not escalating), so the assertive announcement must return on
+  // escalation too, not stay silenced. Suppressed-and-not-escalating, or no contacts, says nothing.
+  if ((collision.suppressed && !collision.escalating) || contacts.length === 0) return '';
   const nearest = contacts[0];
   const who = vesselLabel(nearest.name, nearest.id);
   const count = contacts.length;

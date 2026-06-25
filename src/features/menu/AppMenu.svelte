@@ -106,7 +106,7 @@ function onCardKeydown(event: KeyboardEvent): void {
   class="icon-pill"
   class:is-on={open}
   bind:this={trigger}
-  aria-haspopup="dialog"
+  aria-haspopup="true"
   aria-expanded={open}
   aria-controls={open ? 'app-menu-launcher' : undefined}
   aria-label={label}

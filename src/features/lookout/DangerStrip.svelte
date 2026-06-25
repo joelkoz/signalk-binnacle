@@ -102,6 +102,6 @@ const acknowledged = $derived(collision.suppressed && !collision.escalating);
   margin: 0;
   margin-block-start: 0.3rem;
   font-size: var(--text-xs);
-  color: var(--text);
+  color: var(--text-muted);
 }
 </style>

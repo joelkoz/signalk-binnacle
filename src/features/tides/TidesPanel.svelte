@@ -84,7 +84,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
 }
 </script>
 
-<SlideOver title="Tides" {onClose} {onBack}>
+<SlideOver title="Tides" closeLabel="Close tides" {onClose} {onBack}>
   {#if onToggleStations}
     <button
       type="button"

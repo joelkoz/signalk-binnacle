@@ -132,14 +132,14 @@ const totalTime = $derived.by(() => {
   cursor: pointer;
 }
 .leg-row:hover {
-  background: var(--surface-raised);
+  background: var(--accent-tint);
 }
 /* The lit leg is set here, not via the global .is-on utility, because the scoped .leg-row base
    outweighs it; the data columns keep their own colors and only the row box changes. */
 .leg-row.is-on {
   background: var(--accent-tint);
   border-color: var(--accent);
-  border-inline-start-width: 3px;
+  border-inline-start-width: var(--active-bar-width);
 }
 .leg-no {
   color: var(--text-muted);

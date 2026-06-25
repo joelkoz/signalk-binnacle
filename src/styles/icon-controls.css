@@ -26,9 +26,9 @@
     background-color var(--transition-fast),
     color var(--transition-fast);
 }
-.icon-btn:hover,
-.panel-close:hover,
-.panel-minimize:hover {
+.icon-btn:hover:not(:disabled),
+.panel-close:hover:not(:disabled),
+.panel-minimize:hover:not(:disabled) {
   background: var(--surface);
   color: var(--text);
 }

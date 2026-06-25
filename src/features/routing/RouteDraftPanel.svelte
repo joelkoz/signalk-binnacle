@@ -272,7 +272,7 @@ $effect(() => {
   gap: 0.45rem;
   padding: 0.6rem;
   border: 1px solid var(--accent);
-  border-inline-start-width: 3px;
+  border-inline-start-width: var(--active-bar-width);
   border-radius: var(--radius-sm);
   background: var(--accent-tint);
   box-shadow: var(--shadow-overlay);

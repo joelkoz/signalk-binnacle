@@ -54,7 +54,13 @@ const rows = $derived(
 );
 </script>
 
-<SlideOver title="AIS targets" subtitle="{rows.length} tracked" {onClose} {onBack}>
+<SlideOver
+  title="AIS targets"
+  subtitle="{rows.length} tracked"
+  closeLabel="Close AIS targets"
+  {onClose}
+  {onBack}
+>
   <section class="ais-list">
     <div class="nav-sort">
       <span class="caps-label">Sort by</span>
