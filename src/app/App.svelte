@@ -2253,6 +2253,7 @@ onDestroy(() => {
         <SlideOver
           title="Radar controls"
           closeLabel="Close radar controls"
+          bodyFlex
           onClose={() => (radarControlsOpen = false)}
           onBack={radarOpenedFrom === 'menu'
             ? () => {

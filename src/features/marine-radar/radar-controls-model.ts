@@ -7,3 +7,12 @@ export function widgetKind(def: ControlDefinition): 'slider' | 'list' | 'toggle'
   if (def.type === 'enum') return 'list';
   return 'slider';
 }
+
+// The everyday controls a helmsman reaches for underway, shown in their own section above the advanced
+// rest. Data-driven: a radar that reports none of these collapses to a single Controls section, so the
+// split never invents an empty group.
+const PRIMARY_CONTROL_IDS: ReadonlySet<string> = new Set(['gain', 'sea', 'rain', 'range']);
+
+export function isPrimaryControl(def: ControlDefinition): boolean {
+  return PRIMARY_CONTROL_IDS.has(def.id);
+}
