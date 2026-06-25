@@ -9,8 +9,11 @@ import type {
   RadarStatus,
 } from './radar-types';
 
-// The Signal K v2 radar API. The server serves a JSON array of radars here; a provider plugin (mayara)
-// populates it, and a stock server with no provider returns `[]`.
+// The Signal K v2 radar API. The server serves a JSON ARRAY of RadarInfo objects here (each with its
+// own `id`); a provider plugin (mayara) populates it, and a stock server with no provider returns `[]`.
+// Note: the server's published OpenAPI doc models this as an id-keyed map, but the implementation and
+// the @signalk/server-api RadarInfo type return an array, which is what is verified against here. Do
+// not "correct" this to a map from the OpenAPI doc.
 const RADARS_PATH = '/signalk/v2/api/vessels/self/radars';
 
 const RADAR_STATUSES: ReadonlySet<string> = new Set(['off', 'standby', 'transmit', 'warming']);
@@ -159,18 +162,24 @@ export function spokesUrl(origin: string, radar: RadarInfo): string {
   return raw.replace(/^http/, 'ws');
 }
 
-// Set a single control. PUT /radars/{id}/controls/{controlId} with the new value. Returns the outcome
-// so the caller can tell an auth refusal (401/403, a read-only token) from any other failure; logs a
-// rejected write. The caller updates the displayed value optimistically.
+// One control write: a manual value, or an auto-mode toggle. The v2 control PUT reads `body.value`
+// when present and otherwise the whole body, so a manual write sends `{ value }` (which also takes the
+// control out of auto) and an auto write sends `{ auto }` with no value (sending both would let the
+// server's value-first extraction drop the auto flag).
+export type ControlWrite = { value: number } | { auto: boolean };
+
+// Set a single control. PUT /radars/{id}/controls/{controlId} with the value or the auto flag. Returns
+// the outcome so the caller can tell an auth refusal (401/403, a read-only token) from any other
+// failure; logs a rejected write. The caller updates the displayed state optimistically.
 export async function writeControl(
   origin: string,
   token: string | undefined,
   radarId: string,
   controlId: string,
-  value: number,
+  write: ControlWrite,
 ): Promise<{ ok: boolean; status: number }> {
   const url = `${origin}${RADARS_PATH}/${encodeURIComponent(radarId)}/controls/${encodeURIComponent(controlId)}`;
-  const result = await sendJson(url, token, 'PUT', { value });
+  const result = await sendJson(url, token, 'PUT', write);
   const status = result?.status ?? 0;
   if (!result?.ok) {
     console.warn(`[marine-radar] control ${controlId} write rejected: ${status || 'network'}`);

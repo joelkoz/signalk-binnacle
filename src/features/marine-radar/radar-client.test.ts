@@ -256,11 +256,26 @@ describe('writeControl', () => {
         return new Response('', { status: 200 });
       }),
     );
-    const result = await writeControl('http://boat.local', undefined, 'nav1034A', 'gain', 50);
+    const result = await writeControl('http://boat.local', undefined, 'nav1034A', 'gain', {
+      value: 50,
+    });
     expect(result.ok).toBe(true);
     expect(result.status).toBe(200);
     expect(capturedUrl).toBe(`http://boat.local${RADARS_PATH}/nav1034A/controls/gain`);
     expect(capturedBody).toEqual({ value: 50 });
+  });
+
+  it('PUTs { auto } with no value so the server does not drop the auto flag', async () => {
+    let capturedBody: unknown;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        capturedBody = JSON.parse(init.body as string);
+        return new Response('', { status: 200 });
+      }),
+    );
+    await writeControl('http://boat.local', undefined, 'nav1034A', 'gain', { auto: true });
+    expect(capturedBody).toEqual({ auto: true });
   });
 
   it('returns ok false and the status code on a 403', async () => {
@@ -268,7 +283,9 @@ describe('writeControl', () => {
       'fetch',
       vi.fn(async () => new Response('', { status: 403 })),
     );
-    const result = await writeControl('http://boat.local', 'tok', 'nav1034A', 'gain', 50);
+    const result = await writeControl('http://boat.local', 'tok', 'nav1034A', 'gain', {
+      value: 50,
+    });
     expect(result.ok).toBe(false);
     expect(result.status).toBe(403);
   });
@@ -280,7 +297,9 @@ describe('writeControl', () => {
         throw new TypeError('network failure');
       }),
     );
-    const result = await writeControl('http://boat.local', undefined, 'nav1034A', 'gain', 50);
+    const result = await writeControl('http://boat.local', undefined, 'nav1034A', 'gain', {
+      value: 50,
+    });
     expect(result.ok).toBe(false);
     expect(result.status).toBe(0);
   });
@@ -294,7 +313,7 @@ describe('writeControl', () => {
         return new Response('', { status: 200 });
       }),
     );
-    await writeControl('http://boat.local', undefined, 'nav1034A', 'sector/blank', 10);
+    await writeControl('http://boat.local', undefined, 'nav1034A', 'sector/blank', { value: 10 });
     expect(capturedUrl).toContain('sector%2Fblank');
   });
 });

@@ -13,6 +13,16 @@ function controlValuesOf(radar: RadarInfo): Record<string, number> {
   return out;
 }
 
+// Seed which controls are in auto from the radar's reported control state, so an auto-capable control
+// shows its Auto toggle lit immediately, before any user change.
+function controlAutoOf(radar: RadarInfo): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const [id, entry] of Object.entries(radar.controls)) {
+    if (entry?.auto) out[id] = true;
+  }
+  return out;
+}
+
 // The marine radar state: the discovered radars, the selected radar, its control definitions and live
 // values, the connection status, and whether a control write was refused for lack of write access. The
 // controller orchestrates; this only holds state.
@@ -22,6 +32,9 @@ export class MarineRadarStore {
   status = $state<RadarConnectionStatus>('idle');
   capabilities = $state<ControlDefinition[]>([]);
   controlValues = $state<Record<string, number>>({});
+  // Which controls are currently in auto mode, keyed by control id, for the controls that report an
+  // auto/manual capability. A direct property write stays reactive without reallocating the object.
+  controlAuto = $state<Record<string, boolean>>({});
   // True once a control write was refused for lack of write access: the controls need a read-write token.
   controlsForbidden = $state(false);
 
@@ -42,6 +55,7 @@ export class MarineRadarStore {
       // A new selection starts with that radar's own controls, never another radar's gain, sea, or rain.
       this.capabilities = [];
       this.controlValues = first ? controlValuesOf(first) : {};
+      this.controlAuto = first ? controlAutoOf(first) : {};
     }
   }
 
@@ -51,6 +65,7 @@ export class MarineRadarStore {
       this.selectedId = id;
       this.capabilities = [];
       this.controlValues = controlValuesOf(radar);
+      this.controlAuto = controlAutoOf(radar);
     }
   }
 
@@ -66,6 +81,10 @@ export class MarineRadarStore {
     // controlValues is a $state object, so a direct property write is reactive and avoids allocating a
     // fresh object on every slider move.
     this.controlValues[id] = value;
+  }
+
+  setControlAuto(id: string, auto: boolean): void {
+    this.controlAuto[id] = auto;
   }
 
   setControlsForbidden(forbidden: boolean): void {

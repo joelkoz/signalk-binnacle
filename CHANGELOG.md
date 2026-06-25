@@ -8,6 +8,25 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Radar gain, sea clutter, and rain clutter can be switched to Auto, handing the level to the radar;
+  moving the slider returns the control to manual. Each control that reports an auto capability shows
+  an Auto toggle on its row.
+
+### Changed
+
+- The Radar menu tile now stays visible and grays out, with a hover tooltip, when no radar is
+  detected, rather than disappearing from the menu. This matches the radar layer row and the other
+  detect-and-degrade overlays (track history and AIS trails), so a capability never silently vanishes,
+  and the tooltip points to installing a Signal K radar provider plugin.
+
+### Fixed
+
+- Binnacle now asks the Signal K server for read and write access, so the access-request approval
+  defaults to read/write. A read-only grant silently blocked saving routes, waypoints, and tracks,
+  starting and clearing a course, acknowledging alarms, and adjusting radar controls.
+
 <a id="v0102"></a>
 
 ## [0.10.2] - 2026-06-25

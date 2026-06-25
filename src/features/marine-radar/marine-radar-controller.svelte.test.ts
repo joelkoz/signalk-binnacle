@@ -96,9 +96,14 @@ describe('createMarineRadarController', () => {
       radarAvailable: () => true,
     });
     await controller.start();
-    await controller.setControl('gain', 55);
+    await controller.setControl('gain', { value: 55 });
     expect(controller.store.controlValues.gain).toBe(55);
+    // A manual value also takes the control out of auto.
+    expect(controller.store.controlAuto.gain).toBe(false);
     expect(urls.some((u) => u.includes('/controls/gain'))).toBe(true);
+
+    await controller.setControl('gain', { auto: true });
+    expect(controller.store.controlAuto.gain).toBe(true);
     controller.dispose();
   });
 });

@@ -59,7 +59,11 @@ import {
   DangerStrip,
   LookoutAlarm,
 } from '$features/lookout';
-import { createMarineRadarController, RadarControls } from '$features/marine-radar';
+import {
+  createMarineRadarController,
+  RADAR_UNAVAILABLE_HINT,
+  RadarControls,
+} from '$features/marine-radar';
 import { MeasureStrip } from '$features/measure';
 import {
   AppMenu,
@@ -1011,23 +1015,23 @@ const menuItems = $derived<MenuItem[]>([
     pressed: activePanel === 'ais',
     onSelect: () => togglePanel('ais'),
   },
-  // The radar tile appears only when a radar is discovered, so a server without one shows no
-  // grayed-out tile; it opens the same controls panel reached from the radar layer row's gear.
-  ...(marineRadar.store.hasRadar
-    ? [
-        {
-          id: 'radar',
-          label: 'Radar',
-          icon: Radar,
-          group: 'Safety',
-          pressed: radarControlsOpen,
-          onSelect: () => {
-            radarOpenedFrom = 'menu';
-            radarControlsOpen = !radarControlsOpen;
-          },
-        } satisfies MenuItem,
-      ]
-    : []),
+  // The radar tile is always present: when no radar is discovered it grays out with a hover hint
+  // rather than vanishing, matching the radar layer row and the other detect-and-degrade overlays
+  // (track history, AIS trails) so a capability never silently disappears. It opens the same controls
+  // panel reached from the radar layer row's gear.
+  {
+    id: 'radar',
+    label: 'Radar',
+    icon: Radar,
+    group: 'Safety',
+    available: marineRadar.store.hasRadar,
+    unavailableHint: RADAR_UNAVAILABLE_HINT,
+    pressed: radarControlsOpen,
+    onSelect: () => {
+      radarOpenedFrom = 'menu';
+      radarControlsOpen = !radarControlsOpen;
+    },
+  },
   {
     id: 'anchor',
     label: 'Anchor watch',
@@ -2264,7 +2268,8 @@ onDestroy(() => {
         >
           <RadarControls
             store={marineRadar.store}
-            onSetControl={(id, value) => void marineRadar.setControl(id, value)}
+            onSetControl={(id, value) => void marineRadar.setControl(id, { value })}
+            onSetAuto={(id, auto) => void marineRadar.setControl(id, { auto })}
             onSelectRadar={(id) => marineRadar.selectRadar(id)}
           />
         </SlideOver>

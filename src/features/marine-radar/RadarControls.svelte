@@ -8,10 +8,12 @@ import type { ControlDefinition } from './radar-types';
 let {
   store,
   onSetControl,
+  onSetAuto,
   onSelectRadar,
 }: {
   store: MarineRadarStore;
   onSetControl: (controlId: string, value: number) => void;
+  onSetAuto: (controlId: string, auto: boolean) => void;
   onSelectRadar?: (id: string) => void;
 } = $props();
 
@@ -43,6 +45,11 @@ function readout(def: ControlDefinition): string {
   if (value === undefined) return PLACEHOLDER;
   return def.range?.unit ? `${value} ${def.range.unit}` : String(value);
 }
+
+// Whether a control reports an auto/manual capability, so it gets an Auto toggle, and whether that
+// control is currently in auto, so its manual widget is disabled while the radar drives the value.
+const hasAuto = (def: ControlDefinition): boolean => def.modes?.includes('auto') === true;
+const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] === true;
 </script>
 
 <!-- One labeled control: the name (and, for a slider, the live value) on a head row, then a full-width
@@ -54,9 +61,25 @@ function readout(def: ControlDefinition): string {
   <div class="radar-field">
     <div class="field-head">
       <span class="field-name" id={labelId}>{def.name}</span>
-      {#if kind === 'slider'}
-        <span class="num field-value">{readout(def)}</span>
-      {/if}
+      <div class="field-head-end">
+        {#if kind === 'slider'}
+          <span class="num field-value">{readout(def)}</span>
+        {/if}
+        {#if hasAuto(def)}
+          <!-- An auto-capable control (gain, sea, rain): Auto hands the value to the radar and
+               disables the manual widget; touching the widget returns it to manual. -->
+          <button
+            type="button"
+            class="btn btn-compact auto-toggle"
+            class:is-on={isAuto(def)}
+            aria-pressed={isAuto(def)}
+            disabled={def.readOnly}
+            onclick={() => onSetAuto(def.id, !isAuto(def))}
+          >
+            Auto
+          </button>
+        {/if}
+      </div>
     </div>
     {#if kind === 'slider'}
       <input
@@ -65,7 +88,7 @@ function readout(def: ControlDefinition): string {
         min={def.range?.min ?? 0}
         max={def.range?.max ?? 100}
         step={def.range?.step ?? 1}
-        disabled={def.readOnly}
+        disabled={def.readOnly || isAuto(def)}
         value={store.controlValues[def.id] ?? def.range?.min ?? 0}
         aria-labelledby={labelId}
         oninput={(e) => onSetControl(def.id, Number(e.currentTarget.value))}
@@ -77,7 +100,7 @@ function readout(def: ControlDefinition): string {
           class="btn"
           class:is-on={!store.controlValues[def.id]}
           aria-pressed={!store.controlValues[def.id]}
-          disabled={def.readOnly}
+          disabled={def.readOnly || isAuto(def)}
           onclick={() => onSetControl(def.id, 0)}
         >
           Off
@@ -87,7 +110,7 @@ function readout(def: ControlDefinition): string {
           class="btn"
           class:is-on={Boolean(store.controlValues[def.id])}
           aria-pressed={Boolean(store.controlValues[def.id])}
-          disabled={def.readOnly}
+          disabled={def.readOnly || isAuto(def)}
           onclick={() => onSetControl(def.id, 1)}
         >
           On
@@ -97,7 +120,7 @@ function readout(def: ControlDefinition): string {
       <select
         class="input"
         aria-labelledby={labelId}
-        disabled={def.readOnly}
+        disabled={def.readOnly || isAuto(def)}
         value={String(store.controlValues[def.id] ?? '')}
         onchange={(e) => onSetControl(def.id, Number(e.currentTarget.value))}
       >
@@ -182,8 +205,15 @@ function readout(def: ControlDefinition): string {
 }
 .field-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  gap: var(--space-2);
+}
+/* The live value and the Auto toggle share the trailing end of the head row, so an auto-capable
+   control reads as one labeled line: name on the left, value and Auto on the right. */
+.field-head-end {
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
 }
 /* The per-field label uses the sentence-case muted field style (like UnitField), not the .caps-label

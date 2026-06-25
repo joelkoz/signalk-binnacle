@@ -1,7 +1,13 @@
 import type { LatLon } from '$shared/geo';
 import { MarineRadarStore } from './marine-radar-store.svelte';
 import { createPpiLayer, type PpiLayer } from './ppi-layer';
-import { discoverRadars, fetchCapabilities, spokesUrl, writeControl } from './radar-client';
+import {
+  type ControlWrite,
+  discoverRadars,
+  fetchCapabilities,
+  spokesUrl,
+  writeControl,
+} from './radar-client';
 import { createRadarWorkerClient, type RadarWorkerClient } from './radar-worker-client';
 
 export interface MarineRadarDeps {
@@ -72,8 +78,15 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
   // Write a control back to the radar and update the value optimistically. A 401/403 means the session
   // token is read-only, which the panel surfaces; the displayed value is reconciled from the radar's
   // own reported control state on the next discovery (a stream reconcile is a follow-up).
-  async function setControl(controlId: string, value: number): Promise<void> {
-    store.setControlValue(controlId, value);
+  async function setControl(controlId: string, write: ControlWrite): Promise<void> {
+    // Optimistic update: a manual value also takes the control out of auto; an auto write just flips
+    // the auto flag and leaves the last value showing until the radar reports a new one.
+    if ('value' in write) {
+      store.setControlValue(controlId, write.value);
+      store.setControlAuto(controlId, false);
+    } else {
+      store.setControlAuto(controlId, write.auto);
+    }
     const radar = store.selected;
     if (!radar) return;
     const { ok, status } = await writeControl(
@@ -81,7 +94,7 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
       deps.getToken(),
       radar.id,
       controlId,
-      value,
+      write,
     );
     if (ok) store.setControlsForbidden(false);
     else if (status === 401 || status === 403) store.setControlsForbidden(true);

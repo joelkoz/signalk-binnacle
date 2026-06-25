@@ -33,6 +33,23 @@ describe('MarineRadarStore', () => {
     expect(store.controlValues.gain).toBe(42);
   });
 
+  it('seeds controlAuto from the discovered radar, only for controls reporting auto', () => {
+    const autoRadar: RadarInfo = {
+      ...radar,
+      controls: { gain: { value: 50, auto: true }, sea: { value: 20, auto: false } },
+    };
+    const store = new MarineRadarStore();
+    store.setDiscovered([autoRadar]);
+    expect(store.controlAuto.gain).toBe(true);
+    expect(store.controlAuto.sea).toBeUndefined();
+  });
+
+  it('records control auto state by id', () => {
+    const store = new MarineRadarStore();
+    store.setControlAuto('gain', true);
+    expect(store.controlAuto.gain).toBe(true);
+  });
+
   it('clears selection and radars when discovery is empty', () => {
     const store = new MarineRadarStore();
     store.setDiscovered([radar]);
