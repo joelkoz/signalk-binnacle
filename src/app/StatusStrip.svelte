@@ -3,7 +3,13 @@ import { Ellipsis } from '@lucide/svelte';
 import type { AnchorWatch } from '$entities/anchor';
 import type { UnitsStore } from '$entities/units';
 import type { OwnVessel } from '$entities/vessel';
-import { MAX_BAR_PILLS, type MenuItem, splitBarActions } from '$features/menu';
+import {
+  blockedReason,
+  itemBlocked,
+  MAX_BAR_PILLS,
+  type MenuItem,
+  splitBarActions,
+} from '$features/menu';
 import {
   formatBearingOr,
   formatFixed,
@@ -15,7 +21,7 @@ import {
 } from '$shared/lib';
 import type { MapView } from '$shared/settings';
 import type { ConnectionPhase } from '$shared/signalk';
-import { AnchoredMenu } from '$shared/ui';
+import { AnchoredMenu, UnavailableHint } from '$shared/ui';
 
 let {
   connectionLabel,
@@ -111,10 +117,14 @@ const closeMore = (): void => {
         class="btn btn-pill"
         class:is-on={action.pressed === true}
         aria-pressed={action.pressed === undefined ? undefined : action.pressed}
-        disabled={action.disabled}
-        title={action.disabled ? (action.disabledLabel ?? action.label) : action.label}
-        onclick={action.onSelect}
+        disabled={action.disabled === true}
+        aria-disabled={action.available === false ? true : undefined}
+        title={blockedReason(action) ?? action.label}
+        onclick={() => {
+          if (!itemBlocked(action)) action.onSelect();
+        }}
       >
+        <UnavailableHint hint={action.available === false ? action.unavailableHint : undefined} />
         {#if action.icon}
           {@const Icon = action.icon}
           <Icon size={16} aria-hidden="true" />
@@ -153,8 +163,11 @@ const closeMore = (): void => {
                 class="menu-item"
                 class:is-on={action.pressed === true}
                 aria-pressed={action.pressed === undefined ? undefined : action.pressed}
-                disabled={action.disabled}
+                disabled={action.disabled === true}
+                aria-disabled={action.available === false ? true : undefined}
+                title={blockedReason(action) ?? action.label}
                 onclick={() => {
+                  if (itemBlocked(action)) return;
                   try {
                     action.onSelect();
                   } finally {
@@ -162,6 +175,9 @@ const closeMore = (): void => {
                   }
                 }}
               >
+                <UnavailableHint
+                  hint={action.available === false ? action.unavailableHint : undefined}
+                />
                 {#if action.icon}
                   {@const Icon = action.icon}
                   <Icon size={16} aria-hidden="true" />
@@ -212,6 +228,22 @@ const closeMore = (): void => {
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--space-2);
+}
+/* A pinned action whose provider is absent grays out but stays focusable and hoverable
+   (aria-disabled, not the disabled attribute) so its tooltip shows and a screen reader reaches the
+   reason, matching the menu tiles and the layer rows. The click is guarded in script. The hover
+   resets undo the shared .btn and .menu-item hover affordance so a grayed control does not light up. */
+.btn-pill[aria-disabled="true"],
+.menu-item[aria-disabled="true"] {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+}
+.btn-pill[aria-disabled="true"]:hover {
+  border-color: var(--border);
+  background: var(--surface-raised);
+}
+.menu-item[aria-disabled="true"]:hover {
+  background: transparent;
 }
 /* The center lat, lon, and zoom readout reads as one group at the trailing edge, and is the first
    thing dropped on a phone, where the chart and the panels still report position. */

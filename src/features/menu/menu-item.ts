@@ -15,6 +15,15 @@ export interface MenuItem {
   // Optional leading icon (a lucide-svelte component).
   icon?: LucideIcon;
   disabled?: boolean;
+  // A capability whose provider is absent. When false, the launcher and bar render the item grayed and
+  // non-interactive with `unavailableHint` as a hover tooltip and screen-reader text, mirroring the
+  // layers panel's detect-and-degrade rows, rather than dropping it from the menu. Distinct from
+  // `disabled`, which is a transient block (a chart still loading); an absent provider is the steady
+  // state until a plugin is installed. Defaults to available when unset.
+  available?: boolean;
+  // The reason an unavailable item is grayed, shown on hover and to a screen reader (for example
+  // "No radar detected. Install a Signal K radar provider plugin..."). Pairs with `available: false`.
+  unavailableHint?: string;
   // For a toggle surface (Measure armed, Forecast open), the current on state. When set, the
   // launcher renders the tile with aria-pressed and the accent on-state; when undefined, the item
   // is a plain action and carries no pressed semantics.
@@ -23,4 +32,20 @@ export interface MenuItem {
   // so the menu groups itself from data without the menu component knowing the sections.
   group?: string;
   onSelect: () => void;
+}
+
+// True when an item cannot be invoked: a transient block (`disabled`, e.g. a chart still loading) or a
+// capability whose provider is absent (`available === false`). One predicate so the tile, the bar pill,
+// and the overflow row gate interaction identically.
+export function itemBlocked(item: MenuItem): boolean {
+  return item.disabled === true || item.available === false;
+}
+
+// The reason a blocked item is grayed, for its hover tooltip and screen-reader text: the provider-absent
+// hint wins, then the transient disabled reason. undefined when the item is interactive or carries no
+// reason; a caller that always wants a tooltip (the bar pills) falls back to the label.
+export function blockedReason(item: MenuItem): string | undefined {
+  if (item.available === false) return item.unavailableHint;
+  if (item.disabled) return item.disabledLabel;
+  return undefined;
 }

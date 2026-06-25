@@ -1,7 +1,7 @@
 <script lang="ts">
 import { GripVertical, RotateCcw, Settings2, SlidersHorizontal } from '@lucide/svelte';
 import type { LayerListItem } from '$shared/map';
-import { AnchoredMenu } from '$shared/ui';
+import { AnchoredMenu, UnavailableHint } from '$shared/ui';
 import LayerToggle from './LayerToggle.svelte';
 import type { LayersView } from './layers-view.svelte';
 
@@ -145,11 +145,7 @@ $effect(() => {
   title={item.available ? undefined : item.unavailableHint}
   data-layer-row={item.id}
 >
-  {#if !item.available && item.unavailableHint}
-    <!-- The title attribute is mouse-only and not on a focusable element; this announces the reason a
-         row is grayed out to a screen reader. -->
-    <span class="visually-hidden">{item.unavailableHint}</span>
-  {/if}
+  <UnavailableHint hint={item.available ? undefined : item.unavailableHint} />
   {#if subLayers.length > 0}
     <!-- A facet group: one handle moves the whole group, the parent and child toggles share one
          aligned column, and the tune control sits on the parent line. -->

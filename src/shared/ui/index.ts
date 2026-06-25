@@ -10,5 +10,6 @@ export { default as SavedList } from './SavedList.svelte';
 export { default as SlideOver } from './SlideOver.svelte';
 export type { Theme } from './theme.svelte';
 export { createThemeController, THEMES, ThemeController } from './theme.svelte';
+export { default as UnavailableHint } from './UnavailableHint.svelte';
 export { default as UnitField } from './UnitField.svelte';
 export { default as VisibilityToggle } from './VisibilityToggle.svelte';

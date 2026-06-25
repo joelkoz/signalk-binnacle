@@ -38,7 +38,9 @@ const RING_LABEL_HALO = 'rgba(0, 0, 0, 0.75)';
 // The range label for a ring's radius: nautical miles, the universal radar range unit.
 const ringLabel = (meters: number): string => `${formatNm(meters, meters < 1852 ? 2 : 1)} nm`;
 
-const RADAR_UNAVAILABLE_HINT =
+// Shared by the radar layer row and the app-menu radar tile so both grayed surfaces explain the
+// same thing when no radar is discovered. One source of truth keeps the wording from drifting.
+export const RADAR_UNAVAILABLE_HINT =
   'No radar detected. Install a Signal K radar provider plugin (mayara) to see the radar picture.';
 
 function ringColor(theme: MapThemePaint['theme']): string {

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Menu } from '@lucide/svelte';
-import { AnchoredMenu, isTabKey } from '$shared/ui';
-import type { MenuItem } from './menu-item';
+import { AnchoredMenu, isTabKey, UnavailableHint } from '$shared/ui';
+import { itemBlocked, type MenuItem } from './menu-item';
 
 interface Props {
   items?: MenuItem[];
@@ -62,7 +62,7 @@ function select(item: MenuItem): void {
     onTogglePin?.(item.id);
     return;
   }
-  if (item.disabled) return;
+  if (itemBlocked(item)) return;
   item.onSelect();
   closeMenu(true);
 }
@@ -160,9 +160,14 @@ function onCardKeydown(event: KeyboardEvent): void {
                 class="tile"
                 class:is-on={editing ? pinnedSet.has(item.id) : item.pressed === true}
                 aria-pressed={editing ? pinnedSet.has(item.id) : item.pressed}
-                disabled={editing ? false : item.disabled}
+                disabled={editing ? false : item.disabled === true}
+                aria-disabled={!editing && item.available === false ? true : undefined}
+                title={item.available === false ? item.unavailableHint : undefined}
                 onclick={() => select(item)}
               >
+                <UnavailableHint
+                  hint={item.available === false ? item.unavailableHint : undefined}
+                />
                 {#if item.icon}
                   {@const Icon = item.icon}
                   <Icon size={22} aria-hidden="true" />
@@ -266,14 +271,14 @@ function onCardKeydown(event: KeyboardEvent): void {
   color: var(--text-muted);
   transition: color var(--transition-fast);
 }
-.tile:hover:not(:disabled) {
+.tile:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--accent-tint);
 }
-.tile:hover:not(:disabled) :global(svg),
-.tile:focus-visible :global(svg) {
+.tile:hover:not(:disabled):not([aria-disabled="true"]) :global(svg),
+.tile:focus-visible:not([aria-disabled="true"]) :global(svg) {
   color: var(--accent);
 }
-.tile:active:not(:disabled) {
+.tile:active:not(:disabled):not([aria-disabled="true"]) {
   filter: brightness(var(--brightness-press));
 }
 /* Scoped on-state: the global .is-on cannot override .tile because Svelte's hash class raises
@@ -288,7 +293,12 @@ function onCardKeydown(event: KeyboardEvent): void {
 .tile.is-on :global(svg) {
   color: var(--accent);
 }
-.tile:disabled {
+/* An unavailable tile (aria-disabled) is grayed like a disabled one, but stays focusable and
+   hoverable so its title tooltip shows and a screen reader reaches the reason it is grayed; a real
+   disabled button suppresses both. The click is guarded in select(). This mirrors the detect-and-
+   degrade layer rows, which also gray and explain rather than vanish. */
+.tile:disabled,
+.tile[aria-disabled="true"] {
   color: var(--text-muted);
   opacity: var(--disabled-opacity);
   cursor: default;
