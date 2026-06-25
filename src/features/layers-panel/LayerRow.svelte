@@ -1,6 +1,7 @@
 <script lang="ts">
-import { GripVertical, Settings2 } from '@lucide/svelte';
+import { GripVertical, RotateCcw, Settings2, SlidersHorizontal } from '@lucide/svelte';
 import type { LayerListItem } from '$shared/map';
+import { AnchoredMenu } from '$shared/ui';
 import LayerToggle from './LayerToggle.svelte';
 import type { LayersView } from './layers-view.svelte';
 
@@ -17,9 +18,9 @@ interface Props {
   // Present only on a user-imported chart row, which opens a detail (rename, info, delete).
   onManage?: () => void;
   // Sub-layers of this row (a chart facet, for example NOAA ENC data quality). When present, the row
-  // renders as a facet group: the drag handle becomes a left gutter and the parent and child toggles
-  // stack in one aligned column with the opacity slider last. Each child is a toggle only, disabled
-  // while this row is off, so a facet never renders without the chart it annotates.
+  // renders as a facet group: one handle moves the group, the parent and child toggles share one
+  // aligned column, and the tune control adjusts the whole group's opacity. Each child is a toggle
+  // only, disabled while this row is off, so a facet never renders without the chart it annotates.
   subLayers?: LayerListItem[];
   // Set when this row is the top-level facet of a named group (NOAA ENC). The visible group title is
   // drawn by the panel above the card; here it names the listitem so a screen reader speaks the group
@@ -46,9 +47,14 @@ const {
 // (AIS, anchor ring), so the slider floor keeps them faintly visible.
 const MIN_LAYER_OPACITY = 0.15;
 const percent = $derived(Math.round(item.opacity * 100));
+// The opacity control shows only when the layer is on and can be dimmed, and it lights when the layer
+// is below full so a faded layer is visible at a glance without opening the popover.
+const canTune = $derived(item.supportsOpacity && item.visible);
+const dimmed = $derived(item.opacity < 0.999);
 // The drag handle moves the whole row, so for a facet group it names the group, otherwise the layer.
-// A normal row carries no group title, so this resolves to the layer title there.
 const handleLabel = $derived(groupTitle ?? item.title);
+
+let tuneOpen = $state(false);
 </script>
 
 {#snippet dragHandle()}
@@ -64,31 +70,58 @@ const handleLabel = $derived(groupTitle ?? item.title);
   </button>
 {/snippet}
 
-{#snippet manageButton()}
-  {#if onManage}
-    <button type="button" class="icon-btn" aria-label={`Manage ${item.title}`} onclick={onManage}>
-      <Settings2 size={18} aria-hidden="true" />
-    </button>
-  {/if}
-{/snippet}
-
-{#snippet opacityLine()}
-  {#if item.supportsOpacity && item.visible}
-    <div class="opacity-line">
-      <span class="lbl">Opacity</span>
-      <input
-        class="opacity range"
-        type="range"
-        min={MIN_LAYER_OPACITY}
-        max="1"
-        step="0.05"
-        value={item.opacity}
-        aria-label={`${item.title} opacity`}
-        oninput={(e) => view.setOpacity(item.id, Number(e.currentTarget.value))}
-      >
-      <span class="opacity-val">{percent}%</span>
-    </div>
-  {/if}
+{#snippet trailing()}
+  <div class="trail">
+    {#if canTune}
+      <div class="tune-anchor">
+        <button
+          type="button"
+          class="icon-btn tune"
+          class:dimmed
+          aria-label={`Adjust ${item.title} opacity`}
+          aria-haspopup="dialog"
+          aria-expanded={tuneOpen}
+          onclick={() => (tuneOpen = !tuneOpen)}
+        >
+          <SlidersHorizontal size={18} aria-hidden="true" />
+        </button>
+        <AnchoredMenu
+          open={tuneOpen}
+          onClose={() => (tuneOpen = false)}
+          backdropLabel={`Close ${item.title} opacity`}
+          ariaLabel={`${item.title} opacity`}
+          surfaceClass="tune-pop"
+        >
+          <div class="tune-body">
+            <input
+              class="range"
+              type="range"
+              min={MIN_LAYER_OPACITY}
+              max="1"
+              step="0.05"
+              value={item.opacity}
+              aria-label={`${item.title} opacity`}
+              oninput={(e) => view.setOpacity(item.id, Number(e.currentTarget.value))}
+            >
+            <span class="num tune-val">{percent}%</span>
+            <button
+              type="button"
+              class="icon-btn"
+              aria-label="Reset opacity"
+              onclick={() => view.setOpacity(item.id, 1)}
+            >
+              <RotateCcw size={16} aria-hidden="true" />
+            </button>
+          </div>
+        </AnchoredMenu>
+      </div>
+    {/if}
+    {#if onManage}
+      <button type="button" class="icon-btn" aria-label={`Manage ${item.title}`} onclick={onManage}>
+        <Settings2 size={18} aria-hidden="true" />
+      </button>
+    {/if}
+  </div>
 {/snippet}
 
 <li
@@ -107,10 +140,10 @@ const handleLabel = $derived(groupTitle ?? item.title);
     <span class="visually-hidden">{item.unavailableHint}</span>
   {/if}
   {#if subLayers.length > 0}
-    <!-- A facet group: one handle moves the whole group, and the parent and child toggles share one
-         aligned column so their checkboxes line up, with the opacity slider last. -->
+    <!-- A facet group: one handle moves the whole group, the parent and child toggles share one
+         aligned column, and the tune control sits on the parent line. -->
     <div class="facet-row">
-      {@render dragHandle()}
+      <span class="lead">{@render dragHandle()}</span>
       <div class="facet-stack">
         <div class="facet-line">
           <LayerToggle
@@ -118,10 +151,10 @@ const handleLabel = $derived(groupTitle ?? item.title);
             visible={item.visible}
             onToggle={(visible) => view.toggle(item.id, visible)}
           />
-          {@render manageButton()}
+          {@render trailing()}
         </div>
         {#each subLayers as sub (sub.id)}
-          <div class="facet-line">
+          <div class="facet-line facet-child">
             <LayerToggle
               title={sub.title}
               visible={sub.visible}
@@ -130,41 +163,43 @@ const handleLabel = $derived(groupTitle ?? item.title);
             />
           </div>
         {/each}
-        {@render opacityLine()}
       </div>
     </div>
   {:else}
     <div class="row-main">
-      {@render dragHandle()}
+      <span class="lead">{@render dragHandle()}</span>
       <LayerToggle
         title={item.title}
         visible={item.visible}
         disabled={!item.available}
         onToggle={(visible) => view.toggle(item.id, visible)}
       />
-      {@render manageButton()}
+      {@render trailing()}
     </div>
-    {@render opacityLine()}
   {/if}
 </li>
 
 <style>
+/* Flat list row: no card border or fill, a hairline divider draws between rows in the panel. The whole
+   row is one module, a lead rail (drag handle), the toggle and title in the flexible center, and a
+   trailing rail (tune, manage), so every row reads on the same two rails down the panel. */
 .row {
   position: relative;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  padding: 0.1rem var(--space-2);
+  min-block-size: var(--control-size);
+  padding-inline: var(--space-1);
+  border-block-end: 1px solid var(--border);
 }
+/* The carried row is the one place a card frame appears: it lifts off the flat list while dragging. */
 .row.dragging {
-  background: var(--surface);
-  border-color: var(--accent);
+  background: var(--surface-raised);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow-overlay);
   opacity: 0.9;
 }
 /* A detect-and-degrade layer whose provider is absent: grayed and non-interactive, with a hover
-   tooltip (the row's title attribute) explaining what to install or enable. The disabled toggle inside
-   adds its own dim, so the row stays moderate (0.65) to keep the compounded result legible at night. */
+   tooltip explaining what to install. The disabled toggle inside adds its own dim, so the row stays
+   moderate to keep the compounded result legible at night. */
 .row.unavailable {
   opacity: 0.65;
 }
@@ -178,34 +213,92 @@ const handleLabel = $derived(groupTitle ?? item.title);
   background: var(--accent);
 }
 .row.drop-before::before {
-  inset-block-start: -3px;
+  inset-block-start: -1px;
 }
 .row.drop-after::after {
-  inset-block-end: -3px;
+  inset-block-end: -1px;
 }
-.row-main {
+.row-main,
+.facet-line {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
+  min-block-size: var(--control-size);
 }
-/* The row icon buttons (drag handle, manage) take the denser list-row size so the row tracks the
-   toggle height rather than the taller action-control size. */
-.row :global(.icon-btn) {
-  min-block-size: var(--row-size);
-  min-inline-size: var(--row-size);
+/* The lead rail reserves the handle's width so rows never reflow when the quiet handle lifts on hover.
+   The handle is muted at rest and lifts to full on row hover or keyboard focus, so 25 grips do not
+   shout, while staying faintly present (and tappable) for touch. */
+.lead {
+  display: inline-flex;
+  flex-shrink: 0;
 }
-/* The drag handle is an .icon-btn that keeps the grab cursor and suppresses touch scrolling so a
-   drag starts cleanly on a touchscreen. */
-.handle {
+.row :global(.handle) {
+  opacity: 0.4;
+  color: var(--text-muted);
   cursor: grab;
   touch-action: none;
+  transition: opacity var(--transition-fast);
 }
-/* A facet group: the handle is a left gutter top-aligned with the first facet, and the facets stack
-   to its right in one column so every toggle's checkbox shares the same left edge. */
+.row:hover :global(.handle),
+.row:focus-within :global(.handle) {
+  opacity: 1;
+}
+.trail {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+.tune-anchor {
+  position: relative;
+  display: inline-flex;
+}
+/* The tune button lights accent when the layer is below full opacity, so a dimmed layer is visible at
+   a glance without opening the popover. */
+.tune.dimmed {
+  color: var(--accent);
+}
+/* The opacity popover, anchored under the tune pill at the row's trailing edge. */
+.tune-anchor :global(.tune-pop) {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline-end: 0;
+  z-index: var(--z-menu);
+  inline-size: 14rem;
+  max-inline-size: min(14rem, 70vw);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+  transform-origin: top right;
+}
+.tune-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tune-body .range {
+  flex: 1;
+  min-inline-size: 0;
+}
+.tune-val {
+  min-inline-size: 2.6rem;
+  text-align: end;
+  color: var(--text-muted);
+}
+/* A facet group: the handle is a left gutter top-aligned with the first facet, the facets stack to its
+   right so every toggle's checkbox shares one left edge, and a child facet is inset under its parent. */
 .facet-row {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-1);
+  gap: var(--space-2);
+  min-block-size: var(--control-size);
+}
+.facet-row .lead {
+  min-block-size: var(--control-size);
+  align-items: center;
 }
 .facet-stack {
   flex: 1;
@@ -213,29 +306,7 @@ const handleLabel = $derived(groupTitle ?? item.title);
   display: flex;
   flex-direction: column;
 }
-.facet-line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-.opacity-line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.opacity-line .lbl {
-  min-inline-size: 3.2rem;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.opacity-val {
-  min-inline-size: 2.4rem;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  text-align: end;
-  color: var(--text-muted);
-}
-.opacity {
-  flex: 1;
+.facet-child {
+  padding-inline-start: var(--space-3);
 }
 </style>

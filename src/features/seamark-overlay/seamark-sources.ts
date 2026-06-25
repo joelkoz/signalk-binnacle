@@ -16,7 +16,7 @@ export const SEAMARK_SOURCES: RasterOverlaySource[] = [
     minzoom: 0,
     maxzoom: 18,
     attribution: '© OpenSeaMap contributors, ODbL',
-    category: 'nav-aids',
+    category: 'reference',
   },
 ];
 

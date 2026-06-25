@@ -39,6 +39,7 @@ export function createTimeTravelOverlay(store: TimeTravelStore): TimeTravelOverl
     id: 'time-travel-marker',
     title: 'Time travel',
     band: BAND,
+    listed: false,
     supportsOpacity: false,
     defaultVisible: true,
     layerIds: [LAYER_ID],

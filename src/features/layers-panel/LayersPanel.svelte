@@ -1,5 +1,5 @@
 <script lang="ts">
-import { ChevronRight, Pin, Plus } from '@lucide/svelte';
+import { ChevronRight, Lock, Plus } from '@lucide/svelte';
 import type { UserCharts } from '$entities/user-charts';
 import { chartSourceId, type LayerListItem } from '$shared/map';
 import type { PersistedValue } from '$shared/settings';
@@ -110,15 +110,19 @@ const reorder = createLayerReorder(
       <p class="muted-note">No layers</p>
     {:else}
       {#if pinned.length > 0}
-        <ul class="pinned-list">
-          {#each pinned as item (item.id)}
-            <li class="pinned-row">
-              <span class="pin" aria-hidden="true"><Pin size={16} /></span>
-              <span class="title" title={item.title}>{item.title}</span>
-              <span class="caps-label">On top</span>
-            </li>
-          {/each}
-        </ul>
+        <section class="category">
+          <h3 class="category-head pinned-head">
+            <span class="category-title caps-label">Always on top</span>
+          </h3>
+          <ul class="category-rows">
+            {#each pinned as item (item.id)}
+              <li class="pinned-row">
+                <span class="lead"><Lock class="pin-glyph" size={18} aria-hidden="true" /></span>
+                <span class="title" title={item.title}>{item.title}</span>
+              </li>
+            {/each}
+          </ul>
+        </section>
       {/if}
 
       <ul class="rows" bind:this={listEl}>
@@ -194,30 +198,37 @@ const reorder = createLayerReorder(
 </SlideOver>
 
 <style>
-.pinned-list,
 .rows {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
-.pinned-list {
-  margin-block-end: var(--space-1);
-}
+/* A pinned, always-on layer (own vessel, MOB, active collision): the same flat row module as a normal
+   layer, with a lock glyph in the lead rail instead of a drag handle (it cannot move or be hidden) and
+   no toggle or opacity control. The lead reserves the same width as a layer row's handle so the titles
+   share one column. */
 .pinned-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-block-size: var(--row-size);
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+  min-block-size: var(--control-size);
+  padding-inline: var(--space-1);
+  border-block-end: 1px solid var(--border);
 }
-.pin {
+.pinned-row:last-child {
+  border-block-end: none;
+}
+.pinned-row .lead {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--control-size);
+  flex-shrink: 0;
+}
+.pinned-row :global(.pin-glyph) {
   color: var(--text-muted);
 }
 .pinned-row .title {
@@ -283,18 +294,32 @@ const reorder = createLayerReorder(
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 0;
 }
 .category-rows[hidden] {
   display: none;
+}
+/* The last row in a category drops its hairline divider, so the divider reads as an inter-row
+   separator within the list, not a closing line under the category. */
+.category-rows :global(.row:last-child) {
+  border-block-end: none;
+}
+/* The pinned section header is not collapsible, so it carries no chevron and no count, just the label
+   at the same height and inset as the collapsible category headers. */
+.pinned-head {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  min-block-size: var(--control-size);
+  padding-inline: var(--space-1);
 }
 /* A named-group title (a multi-facet chart) sits directly above its facet card and binds to it: the
    negative end margin cancels the .category-rows gap so the card hugs its title, while the gap to the
    card above stays. The leading indent aligns it over the card. */
 .facet-group-label {
   margin-block-start: var(--space-1);
-  margin-block-end: calc(-1 * var(--space-1));
-  padding-inline: 0.2rem;
+  margin-block-end: 0;
+  padding-inline: var(--space-1);
 }
 .facet-group-label:first-child {
   margin-block-start: 0;

@@ -17,8 +17,13 @@ const item = (overrides: Partial<LayerListItem>): LayerListItem => ({
 describe('layerCategory', () => {
   it('uses an overlay-declared category', () => {
     expect(layerCategory(item({ category: 'live' })).id).toBe('live');
-    expect(layerCategory(item({ category: 'nav-aids' })).id).toBe('nav-aids');
-    expect(layerCategory(item({ category: 'areas' })).id).toBe('areas');
+    expect(layerCategory(item({ category: 'reference' })).id).toBe('reference');
+  });
+
+  it('falls back by band when a formerly-known category id is no longer declared', () => {
+    // 'nav-aids' and 'areas' are removed from CATEGORIES; they are now unknown and fall back.
+    expect(layerCategory(item({ category: 'nav-aids', band: 'safety' })).id).toBe('mine');
+    expect(layerCategory(item({ category: 'areas', band: 'safety' })).id).toBe('mine');
   });
 
   it('falls back to a band-derived category when none is declared', () => {

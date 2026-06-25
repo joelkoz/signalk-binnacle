@@ -366,6 +366,7 @@ export class LayerManager {
       .flatMap((id) => {
         const module = this.#modules.get(id);
         if (!module) return [];
+        if (module.listed === false) return [];
         const state = this.#state.get(id) ?? { visible: true, opacity: 1 };
         return [
           {

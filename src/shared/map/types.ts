@@ -53,6 +53,10 @@ export interface OverlayModule {
   // feature id. When absent the panel derives a category from the band. The category vocabulary and
   // its order live in the panel; an overlay just declares which one it joins.
   readonly category?: string;
+  // When false the overlay is not shown as a Layers-panel row: it is a tool (Measure, Time travel)
+  // controlled from the menu, not a layer the navigator toggles or reorders. It is still registered
+  // and rendered. Absent means listed.
+  readonly listed?: boolean;
   readonly supportsOpacity: boolean;
   // Initial visibility when there is no saved state. Defaults to visible; the reference and depth
   // overlays set this false so they start off until the navigator enables one for their area.

@@ -93,7 +93,7 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
     id: 'tides',
     title: 'Tide stations',
     band: 'safety',
-    category: 'live',
+    category: 'reference',
     supportsOpacity: true,
     defaultVisible: false,
     layerIds: LAYERS,

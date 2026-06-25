@@ -67,6 +67,7 @@ export function createMeasureOverlay(
     id: 'measure',
     title: 'Measure',
     band: 'routes',
+    listed: false,
     supportsOpacity: true,
     layerIds: LAYERS,
     add(ctx) {
