@@ -67,20 +67,9 @@ const sourceNote = $derived.by(() => {
 });
 </script>
 
-<SlideOver title="Trends" closeLabel="Close trends panel" {onClose} {onBack}>
-  <div class="trends">
-    <p class="muted-note" role="status">{sourceNote}</p>
-    {#await import('./TrendCharts.svelte') then charts}
-      <charts.default history={history?.series} {sessionSeries} {mode} {theme} />
-    {/await}
-  </div>
+<SlideOver title="Trends" closeLabel="Close trends panel" {onClose} {onBack} bodyFlex>
+  <p class="muted-note" role="status">{sourceNote}</p>
+  {#await import('./TrendCharts.svelte') then charts}
+    <charts.default history={history?.series} {sessionSeries} {mode} {theme} />
+  {/await}
 </SlideOver>
-
-<style>
-.trends {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  font-size: var(--text-base);
-}
-</style>

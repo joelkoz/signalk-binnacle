@@ -4,6 +4,16 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<a id="unreleased"></a>
+
+## [Unreleased]
+
+### Changed
+
+- AIS targets now uses a ship icon, and the marine radar shows the radar sweep icon on its controls
+  panel, so each reads true. AIS previously borrowed the radar glyph while the radar had none.
+- Unified and tightened the side-panel section spacing so every panel uses the same rhythm.
+
 <a id="v0101"></a>
 
 ## [0.10.1] - 2026-06-24

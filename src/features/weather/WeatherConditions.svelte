@@ -258,10 +258,9 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
   flex-direction: column;
   gap: 0.3rem;
 }
-/* Warning text holds the small-panel body size, never the smallest tier: a gale advisory is the
-   highest-stakes content here and must stay readable on a pitching deck. */
-/* The alarm border, radius, alarm-tint fill, text color, and type come from the shared
-   .alert-note .alert-note--filled utilities; only the icon-and-text row layout and its tighter
+/* The warning banner reuses .alert-note .alert-note--filled for the alarm border, radius, alarm-tint
+   fill, text color, and the small-panel body size (text-sm, never the smallest tier, since a gale
+   advisory must stay readable on a pitching deck); only the icon-and-text row layout and its tighter
    padding are scoped here. */
 .warning {
   display: flex;

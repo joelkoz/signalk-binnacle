@@ -120,9 +120,3 @@ const rows = $derived(
     </ul>
   {/if}
 </SlideOver>
-
-<style>
-/* No scoped styles: the list rows, the readout line, and the sort header come from the shared .nav-*
-   family in cards.css (shared with the POI search panel), and the body's gapped column comes from
-   SlideOver's bodyFlex. */
-</style>

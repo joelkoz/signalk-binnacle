@@ -234,9 +234,8 @@ const reorder = createLayerReorder(
   margin: 0;
 }
 /* The whole header is the disclosure control: a chevron that rotates open, the category title, and a
-   count of the rows it holds, sized to a full touch target. */
-/* The control-height row chrome, hover tint, and transparent background come from the shared
-   .row-interactive base in overlays.css; only this disclosure's content layout is scoped here. */
+   count of the rows it holds. Its control-height chrome, hover tint, and transparent background come
+   from the shared .row-interactive base in overlays.css; only the content layout is scoped here. */
 .category-toggle {
   display: flex;
   align-items: center;

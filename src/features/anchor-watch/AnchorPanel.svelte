@@ -79,97 +79,84 @@ function captureFromDistance(): void {
 }
 </script>
 
-<SlideOver title="Anchor watch" closeLabel="Close anchor watch" {onClose} {onBack}>
-  <section class="anchor-watch">
-    <p class="muted-note status" class:status--alarm={anchor.dragging} role="status">
-      {statusLine}
-    </p>
-    <dl class="stat-grid">
-      <dt>Distance</dt>
-      <dd><span class="num">{distanceText}</span><span class="unit">{unit}</span></dd>
-      <dt>Radius</dt>
-      <dd><span class="num">{radiusText}</span><span class="unit">{unit}</span></dd>
-      {#if vessel.depthMeters !== undefined}
-        <dt>Depth</dt>
-        <dd><span class="num">{depthText}</span><span class="unit">{unit}</span></dd>
-      {/if}
-    </dl>
-    <UnitField
-      label="Watch radius"
-      {unit}
-      min={minRadiusDisplay}
-      step={1}
-      ariaLabel="Watch radius in {mode === 'imperial' ? 'feet' : 'meters'}"
-      value={radiusDisplay}
-      onCommit={commitRadius}
+<SlideOver title="Anchor watch" closeLabel="Close anchor watch" {onClose} {onBack} bodyFlex>
+  <p class="muted-note status" class:status--alarm={anchor.dragging} role="status">
+    {statusLine}
+  </p>
+  <dl class="stat-grid">
+    <dt>Distance</dt>
+    <dd><span class="num">{distanceText}</span><span class="unit">{unit}</span></dd>
+    <dt>Radius</dt>
+    <dd><span class="num">{radiusText}</span><span class="unit">{unit}</span></dd>
+    {#if vessel.depthMeters !== undefined}
+      <dt>Depth</dt>
+      <dd><span class="num">{depthText}</span><span class="unit">{unit}</span></dd>
+    {/if}
+  </dl>
+  <UnitField
+    label="Watch radius"
+    {unit}
+    min={minRadiusDisplay}
+    step={1}
+    ariaLabel="Watch radius in {mode === 'imperial' ? 'feet' : 'meters'}"
+    value={radiusDisplay}
+    onCommit={commitRadius}
+  />
+  <button
+    type="button"
+    class="btn btn-ghost"
+    disabled={!watching || distance == null}
+    title={captureTitle}
+    onclick={captureFromDistance}
+  >
+    <Crosshair size={16} aria-hidden="true" />
+    Set from current distance
+  </button>
+  {#if watching && raiseArmed}
+    <InlineConfirm
+      question="Raise the anchor and end the watch?"
+      confirmLabel="Raise"
+      onConfirm={() => {
+        raiseArmed = false;
+        onRaise();
+      }}
+      onCancel={() => {
+        raiseArmed = false;
+      }}
     />
-    <button
-      type="button"
-      class="btn btn-ghost"
-      disabled={!watching || distance == null}
-      title={captureTitle}
-      onclick={captureFromDistance}
-    >
-      <Crosshair size={16} aria-hidden="true" />
-      Set from current distance
-    </button>
-    {#if watching && raiseArmed}
-      <InlineConfirm
-        question="Raise the anchor and end the watch?"
-        confirmLabel="Raise"
-        onConfirm={() => {
-          raiseArmed = false;
-          onRaise();
-        }}
-        onCancel={() => {
-          raiseArmed = false;
-        }}
-      />
-    {:else}
-      <div class="panel-controls">
-        {#if watching}
-          <button
-            type="button"
-            class="btn btn-danger"
-            onclick={() => {
-              raiseArmed = true;
-            }}
-          >
-            <Anchor size={16} aria-hidden="true" />
-            Raise anchor
-          </button>
-        {:else}
-          <button
-            type="button"
-            class="btn btn-primary"
-            disabled={!vessel.position}
-            onclick={onDrop}
-          >
-            <Anchor size={16} aria-hidden="true" />
-            Drop anchor here
-          </button>
-        {/if}
-      </div>
-    {/if}
-    {#if !watching && !vessel.position}
-      <p class="muted-note">Waiting for a GPS fix to drop the anchor at.</p>
-    {/if}
-    {#if watching}
-      <p class="muted-note">Drag the anchor marker on the chart to correct the drop point.</p>
-    {/if}
-    {#if error}
-      <p class="alert-note" role="alert">{error}</p>
-    {/if}
-  </section>
+  {:else}
+    <div class="panel-controls">
+      {#if watching}
+        <button
+          type="button"
+          class="btn btn-danger"
+          onclick={() => {
+            raiseArmed = true;
+          }}
+        >
+          <Anchor size={16} aria-hidden="true" />
+          Raise anchor
+        </button>
+      {:else}
+        <button type="button" class="btn btn-primary" disabled={!vessel.position} onclick={onDrop}>
+          <Anchor size={16} aria-hidden="true" />
+          Drop anchor here
+        </button>
+      {/if}
+    </div>
+  {/if}
+  {#if !watching && !vessel.position}
+    <p class="muted-note">Waiting for a GPS fix to drop the anchor at.</p>
+  {/if}
+  {#if watching}
+    <p class="muted-note">Drag the anchor marker on the chart to correct the drop point.</p>
+  {/if}
+  {#if error}
+    <p class="alert-note" role="alert">{error}</p>
+  {/if}
 </SlideOver>
 
 <style>
-.anchor-watch {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  font-size: var(--text-base);
-}
 .status {
   font-size: var(--text-base);
 }

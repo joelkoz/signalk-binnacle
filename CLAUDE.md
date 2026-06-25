@@ -150,13 +150,19 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   VisibilityToggle, the dialog dismiss stack, the rovingFocus, focusTrap, focusOnMount, and
   onKeydownAction focus actions, the isTabKey helper, the pickTextFile importer, and the promptRename
   and promptSaveName dialogs) and the
-  global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.popover-card`, `.modal-card`,
-  `.menu-item`, `.overlay-backdrop`, `.modal-scrim`, `.alert-note`, `.muted-note`, `.sev-danger` and
-  `.sev-warning`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`, `.stat-grid`, `.num`, and the
-  `.nav-*` family (`.nav-sort`, `.nav-list`, `.nav-row`, `.nav-name`, `.nav-metrics`, `.nav-metric`)
-  shared by the AIS targets and POI search panels)
-  before any panel grows a scoped duplicate. When the same markup or CSS appears in a second place,
-  hoist it; a third copy is a review failure.
+  global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.popover-card`, the
+  `.surface-elevated` floating-panel frame, `.modal-card`, `.menu-item`, the `.row-interactive`
+  control-height interactive-row base composed by the weather, route, and layers-category rows (it
+  carries the hover tint and the lit `.is-on` body at a high enough specificity to beat a scoped
+  background, with border longhands so a row can reserve its lit border), `.card-frame` (the raised
+  bordered card surface shared by the saved-list cards and the alarm rows), `.overlay-backdrop`,
+  `.modal-scrim`, `.alert-note` and its `.alert-note--filled` tinted-banner modifier, `.muted-note`,
+  `.sev-danger` and `.sev-warning`, `.segmented`, `.caps-label`, `.panel-*`, `.saved`, `.stat-grid`,
+  `.num`, and the `.nav-*` family (`.nav-sort`, `.nav-list`, `.nav-row`, `.nav-name`, `.nav-metrics`,
+  `.nav-metric`) shared by the AIS targets and POI search panels)
+  before any panel grows a scoped duplicate. Lay a panel's body out with SlideOver's `bodyFlex` prop
+  rather than a hand-rolled flex column, so the section rhythm matches across panels. When the same
+  markup or CSS appears in a second place, hoist it; a third copy is a review failure.
 - Reuse the shared non-UI helpers before re-implementing them: `$shared/lib` (isRecord, formatPercent,
   formatFixed and the unit formatters, the SI converters, uuidv4), `$shared/map` (featureCollection,
   emptyFeatureCollection, setSourceData, iconOffsetExpression with CENTERED_OFFSET, removeLayersAndSources,
