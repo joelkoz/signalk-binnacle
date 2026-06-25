@@ -62,7 +62,7 @@ describe('AuthController', () => {
   });
 
   it('requests access when secured with no usable token', async () => {
-    const fetchFn = vi.fn(async (url: string) => {
+    const fetchFn = vi.fn(async (url: string, _init?: RequestInit) => {
       if (url.endsWith('/access/requests')) return res(true, { href: '/signalk/v1/requests/r1' });
       return res(false, {});
     });
@@ -77,6 +77,11 @@ describe('AuthController', () => {
       `${BASE}/signalk/v1/access/requests`,
       expect.objectContaining({ method: 'POST' }),
     );
+    // The body must request readwrite, or the server defaults the grant to readonly and every
+    // write (routes, course, alarms, radar controls) 401s.
+    const postInit = fetchFn.mock.calls.find(([url]) => url.endsWith('/access/requests'))?.[1];
+    const body = typeof postInit?.body === 'string' ? postInit.body : '{}';
+    expect(JSON.parse(body)).toMatchObject({ permissions: 'readwrite' });
   });
 
   it('stores the token and authenticates when the request is approved', async () => {

@@ -121,7 +121,14 @@ export class AuthController {
       // session cookie, so omit credentials to keep the choice deliberate and consistent.
       credentials: 'omit',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientId: this.clientId, description: 'Binnacle chart plotter' }),
+      // Request readwrite up front so the admin's approval UI defaults to it, not the server's
+      // readonly fallback for an omitted permission. Binnacle writes routes, waypoints, tracks,
+      // course, alarms, and radar controls; a readonly grant 401s every one of those.
+      body: JSON.stringify({
+        clientId: this.clientId,
+        description: 'Binnacle chart plotter',
+        permissions: 'readwrite',
+      }),
     });
     if (!res) {
       // A failed POST (offline at startup) must not strand the request: with no #href,
