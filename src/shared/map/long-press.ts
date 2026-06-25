@@ -15,8 +15,9 @@ export interface ContextMenuPoint {
 export interface ContextMenuHandle {
   // Cancel any in-flight long-press timer, so a single press cannot emit twice.
   cancel: () => void;
-  // Detach the canvas pointer listeners on destroy; mapInstance.remove() does not detach them, so
-  // their closures would otherwise keep the map instance alive after teardown.
+  // Detach the map contextmenu handler and the canvas pointer listeners on destroy, so a re-install on
+  // the same map (a base-style swap keeps the map) cannot stack a second contextmenu handler and
+  // double-emit, and the closures do not keep the map instance alive after teardown.
   remove: () => void;
 }
 
@@ -36,12 +37,13 @@ export function installContextMenu(
     clearTimeout(pressTimer);
     pressTimer = 0;
   };
-  map.on('contextmenu', (e) => {
+  const onContextMenu = (e: maplibregl.MapMouseEvent) => {
     // Android Chrome fires the native contextmenu for a long press too; cancel the synthesized
     // timer so a single press cannot emit twice.
     cancel();
     emit({ lng: e.lngLat.lng, lat: e.lngLat.lat, x: e.point.x, y: e.point.y });
-  });
+  };
+  map.on('contextmenu', onContextMenu);
   const onPointerDown = (e: PointerEvent) => {
     if (e.pointerType !== 'touch') return;
     cancel();
@@ -66,6 +68,7 @@ export function installContextMenu(
   canvas.addEventListener('pointerup', cancel);
   canvas.addEventListener('pointercancel', cancel);
   const remove = () => {
+    map.off('contextmenu', onContextMenu);
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointermove', onPointerMove);
     canvas.removeEventListener('pointerup', cancel);
