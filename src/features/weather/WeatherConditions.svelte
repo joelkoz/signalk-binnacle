@@ -193,7 +193,7 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
       <ul class="warnings" role="alert">
         {#each sortedWarnings as w (w.startTime + w.type)}
           {@const until = untilLabel(w.endTime)}
-          <li class="warning">
+          <li class="alert-note alert-note--filled warning">
             <TriangleAlert size={14} aria-hidden="true" />
             <span>
               <b>{w.type}</b>
@@ -260,16 +260,14 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
 }
 /* Warning text holds the small-panel body size, never the smallest tier: a gale advisory is the
    highest-stakes content here and must stay readable on a pitching deck. */
+/* The alarm border, radius, alarm-tint fill, text color, and type come from the shared
+   .alert-note .alert-note--filled utilities; only the icon-and-text row layout and its tighter
+   padding are scoped here. */
 .warning {
   display: flex;
   align-items: start;
   gap: 0.35rem;
   padding: 0.35rem 0.45rem;
-  border: 1px solid var(--alarm);
-  border-radius: var(--radius-sm);
-  background: var(--alarm-tint);
-  color: var(--text);
-  font-size: var(--text-sm);
 }
 .warning :global(svg) {
   color: var(--alarm);

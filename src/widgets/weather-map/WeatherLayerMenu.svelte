@@ -45,7 +45,7 @@ const groups = $derived(
         {#each group.items as item (item.id)}
           <button
             type="button"
-            class="menu-row"
+            class="menu-row row-interactive"
             class:is-on={item.visible}
             aria-pressed={item.visible}
             onclick={() => onToggle(item.id, !item.visible)}
@@ -92,32 +92,21 @@ const groups = $derived(
 :global(.weather-menu) .caps-label:first-child {
   margin-block-start: 0;
 }
+/* The row chrome, hover tint, and lit (.is-on) body come from the shared .row-interactive base in
+   overlays.css: the lit on-state reads accent-on-near-black by brightness, so it holds in night-red
+   where hue barely separates, and the trailing check is the redundant shape cue. The 1px border-width
+   reserves space for the lit accent border (whose color the base owns); only the content layout and
+   the smaller type are scoped here. */
 .menu-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  inline-size: 100%;
-  min-block-size: var(--control-size);
   padding: 0 0.6rem;
-  border: 1px solid transparent;
+  border-width: 1px;
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
   font-size: var(--text-sm);
   text-align: start;
-  cursor: pointer;
-}
-.menu-row:hover {
-  background: var(--accent-tint);
-}
-/* The lit on-state reads accent-on-near-black by brightness, so it holds in night-red where hue
-   barely separates; the trailing check is the redundant shape cue. */
-.menu-row.is-on {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-tint);
 }
 .provenance {
   margin: var(--space-1) 0 0;

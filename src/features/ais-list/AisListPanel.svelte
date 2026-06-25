@@ -60,78 +60,69 @@ const rows = $derived(
   closeLabel="Close AIS targets"
   {onClose}
   {onBack}
+  bodyFlex
 >
-  <section class="ais-list">
-    <div class="nav-sort">
-      <span class="caps-label">Sort by</span>
-      <div class="segmented" role="group" aria-label="Sort targets by">
-        {#each SORTS as option (option.id)}
+  <div class="nav-sort">
+    <span class="caps-label">Sort by</span>
+    <div class="segmented" role="group" aria-label="Sort targets by">
+      {#each SORTS as option (option.id)}
+        <button
+          type="button"
+          class="btn"
+          class:is-on={sort === option.id}
+          aria-pressed={sort === option.id}
+          onclick={() => (sort = option.id)}
+        >
+          {option.label}
+        </button>
+      {/each}
+    </div>
+  </div>
+  {#if rows.length === 0}
+    <p class="muted-note">No AIS targets.</p>
+  {:else}
+    <ul class="nav-list">
+      {#each rows as row (row.id)}
+        <li>
           <button
             type="button"
-            class="btn"
-            class:is-on={sort === option.id}
-            aria-pressed={sort === option.id}
-            onclick={() => (sort = option.id)}
+            class="nav-row"
+            title="Show {row.label} on the chart"
+            onclick={() => onLocate(row.position)}
           >
-            {option.label}
-          </button>
-        {/each}
-      </div>
-    </div>
-    {#if rows.length === 0}
-      <p class="muted-note">No AIS targets.</p>
-    {:else}
-      <ul class="nav-list">
-        {#each rows as row (row.id)}
-          <li>
-            <button
-              type="button"
-              class="nav-row"
-              title="Show {row.label} on the chart"
-              onclick={() => onLocate(row.position)}
+            <span
+              class="nav-name"
+              class:sev-danger={row.severity === 'danger'}
+              class:sev-warning={row.severity === 'warning'}
             >
-              <span
-                class="nav-name"
-                class:sev-danger={row.severity === 'danger'}
-                class:sev-warning={row.severity === 'warning'}
+              {row.label}
+            </span>
+            <span class="nav-metrics">
+              <span class="nav-metric">
+                Range <b class="num">{formatMetersOrNm(row.rangeMeters, units.mode)}</b>
+              </span>
+              <span class="nav-metric"
+                >Brg <b class="num">{formatBearingOr(row.bearingRad)}</b>&deg;T</span
               >
-                {row.label}
-              </span>
-              <span class="nav-metrics">
-                <span class="nav-metric">
-                  Range <b class="num">{formatMetersOrNm(row.rangeMeters, units.mode)}</b>
-                </span>
+              <span class="nav-metric">SOG <b class="num">{formatKnotsOr(row.sogMps)}</b> kn</span>
+              {#if row.cpaMeters !== undefined}
+                <span class="nav-metric">CPA <b class="num">{formatNm(row.cpaMeters)}</b> nm</span>
+              {/if}
+              {#if row.tcpaSeconds !== undefined}
                 <span class="nav-metric"
-                  >Brg <b class="num">{formatBearingOr(row.bearingRad)}</b>&deg;T</span
+                  >TCPA <b class="num">{formatTcpaMin(row.tcpaSeconds, 1)}</b> min</span
                 >
-                <span class="nav-metric"
-                  >SOG <b class="num">{formatKnotsOr(row.sogMps)}</b> kn</span
-                >
-                {#if row.cpaMeters !== undefined}
-                  <span class="nav-metric"
-                    >CPA <b class="num">{formatNm(row.cpaMeters)}</b> nm</span
-                  >
-                {/if}
-                {#if row.tcpaSeconds !== undefined}
-                  <span class="nav-metric"
-                    >TCPA <b class="num">{formatTcpaMin(row.tcpaSeconds, 1)}</b> min</span
-                  >
-                {/if}
-              </span>
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
+              {/if}
+            </span>
+          </button>
+        </li>
+      {/each}
+    </ul>
+  {/if}
 </SlideOver>
 
 <style>
-/* The list rows, the readout line, and the sort header come from the shared .nav-* family in
-   cards.css, shared with the POI search panel; only the panel section gap is local. */
-.ais-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
+/* No scoped styles: the list rows, the readout line, and the sort header come from the shared .nav-*
+   family in cards.css (shared with the POI search panel), and the body's gapped column comes from
+   SlideOver's bodyFlex. */
 </style>

@@ -119,7 +119,7 @@ function onCardKeydown(event: KeyboardEvent): void {
   {open}
   onClose={() => closeMenu(true)}
   backdropLabel="Close menu"
-  surfaceClass="launcher"
+  surfaceClass="launcher surface-elevated"
   ariaLabel={label}
   id="app-menu-launcher"
   bind:surfaceRef={card}
@@ -196,10 +196,7 @@ function onCardKeydown(event: KeyboardEvent): void {
   max-block-size: calc(100dvh - var(--control-size) - var(--space-6));
   overflow-y: auto;
   padding: var(--space-3);
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg), var(--edge-light);
+  /* The surface, border, radius, and shadow come from the shared .surface-elevated frame. */
 }
 @media (max-width: 600px) {
   :global(.launcher) {

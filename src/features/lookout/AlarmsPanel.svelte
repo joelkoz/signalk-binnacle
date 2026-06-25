@@ -81,143 +81,135 @@ const tcpaMin = (seconds: number): number => Number(formatTcpaMin(seconds));
 const caution = $derived(thresholdsCaution(t));
 </script>
 
-<SlideOver title="Alarms" closeLabel="Close alarms panel" {onClose} {onBack}>
-  <div class="alarms">
-    {#if error}
-      <p class="alert-note" role="alert">{error}</p>
-    {/if}
-    <section class="alerts" aria-label="Active alerts">
-      <span class="caps-label">Active alerts</span>
-      {#each alerts as n (n.path)}
-        {@const time = alertTime(n)}
-        <div class="alert-row">
-          <span class="state-tag {n.state}">{n.state}</span>
-          <div class="alert-main">
-            <span class="alert-message">{alertLabel(n)}</span>
-            {#if time}
-              <span class="alert-time">{time}</span>
-            {/if}
-          </div>
-          <div class="alert-actions">
-            {#if n.silenced}
-              <span class="flag-tag">Silenced</span>
-            {:else if onSilence && canSilence(n)}
-              <button type="button" class="btn btn-ghost" onclick={() => onSilence(n)}>
-                Silence
-              </button>
-            {/if}
-            {#if n.acknowledged}
-              <span class="flag-tag">Acknowledged</span>
-            {:else if onAcknowledge && canAcknowledge(n)}
-              <button type="button" class="btn btn-ghost" onclick={() => onAcknowledge(n)}>
-                Acknowledge
-              </button>
-            {/if}
-          </div>
+<SlideOver title="Alarms" closeLabel="Close alarms panel" {onClose} {onBack} bodyFlex>
+  {#if error}
+    <p class="alert-note" role="alert">{error}</p>
+  {/if}
+  <section class="alerts" aria-label="Active alerts">
+    <span class="caps-label">Active alerts</span>
+    {#each alerts as n (n.path)}
+      {@const time = alertTime(n)}
+      <div class="alert-row">
+        <span class="state-tag {n.state}">{n.state}</span>
+        <div class="alert-main">
+          <span class="alert-message">{alertLabel(n)}</span>
+          {#if time}
+            <span class="alert-time">{time}</span>
+          {/if}
         </div>
+        <div class="alert-actions">
+          {#if n.silenced}
+            <span class="flag-tag">Silenced</span>
+          {:else if onSilence && canSilence(n)}
+            <button type="button" class="btn btn-ghost" onclick={() => onSilence(n)}>
+              Silence
+            </button>
+          {/if}
+          {#if n.acknowledged}
+            <span class="flag-tag">Acknowledged</span>
+          {:else if onAcknowledge && canAcknowledge(n)}
+            <button type="button" class="btn btn-ghost" onclick={() => onAcknowledge(n)}>
+              Acknowledge
+            </button>
+          {/if}
+        </div>
+      </div>
+    {:else}
+      <p class="muted-note">No active alerts.</p>
+    {/each}
+  </section>
+  <section class="mutes" aria-label="Mutes">
+    <span class="caps-label">Mutes</span>
+    <button
+      type="button"
+      class="btn mute-row"
+      class:is-on={collisionMuted}
+      aria-pressed={collisionMuted}
+      onclick={onToggleCollisionMute}
+    >
+      {#if collisionMuted}
+        <BellOff size={18} aria-hidden="true" />
       {:else}
-        <p class="muted-note">No active alerts.</p>
-      {/each}
-    </section>
-    <section class="mutes" aria-label="Mutes">
-      <span class="caps-label">Mutes</span>
-      <button
-        type="button"
-        class="btn mute-row"
-        class:is-on={collisionMuted}
-        aria-pressed={collisionMuted}
-        onclick={onToggleCollisionMute}
-      >
-        {#if collisionMuted}
-          <BellOff size={18} aria-hidden="true" />
-        {:else}
-          <Bell size={18} aria-hidden="true" />
-        {/if}
-        <span>Mute collision alarm</span>
-      </button>
-      {#if collisionMuted && collisionMuteRemainingMin !== undefined}
-        <p class="muted-note">Auto re-arms in {collisionMuteRemainingMin} min</p>
+        <Bell size={18} aria-hidden="true" />
       {/if}
-      <button
-        type="button"
-        class="btn mute-row"
-        class:is-on={arrivalMuted}
-        aria-pressed={arrivalMuted}
-        onclick={onToggleArrivalMute}
-      >
-        {#if arrivalMuted}
-          <BellOff size={18} aria-hidden="true" />
-        {:else}
-          <Bell size={18} aria-hidden="true" />
-        {/if}
-        <span>Mute arrival alarm</span>
-      </button>
-    </section>
-    <section class="thresholds" aria-label="Collision thresholds">
-      <span class="caps-label">Collision thresholds</span>
-      <div class="group">
-        <span class="group-title caps-label danger">Danger</span>
-        <UnitField
-          label="CPA"
-          unit="nm"
-          min={0}
-          step={0.05}
-          ariaLabel="Danger CPA"
-          value={cpaNm(t.dangerCpaMeters)}
-          onCommit={(nm) => setMeters('dangerCpaMeters', nm)}
-        />
-        <UnitField
-          label="TCPA"
-          unit="min"
-          min={0}
-          step={1}
-          ariaLabel="Danger TCPA"
-          value={tcpaMin(t.dangerTcpaSeconds)}
-          onCommit={(minutes) => setSeconds('dangerTcpaSeconds', minutes)}
-        />
-      </div>
-      <div class="group">
-        <span class="group-title caps-label warning">Warning</span>
-        <UnitField
-          label="CPA"
-          unit="nm"
-          min={0}
-          step={0.05}
-          ariaLabel="Warning CPA"
-          value={cpaNm(t.warningCpaMeters)}
-          onCommit={(nm) => setMeters('warningCpaMeters', nm)}
-        />
-        <UnitField
-          label="TCPA"
-          unit="min"
-          min={0}
-          step={1}
-          ariaLabel="Warning TCPA"
-          value={tcpaMin(t.warningTcpaSeconds)}
-          onCommit={(minutes) => setSeconds('warningTcpaSeconds', minutes)}
-        />
-      </div>
-      {#if caution}
-        <p class="muted-note caution-note" role="status">{caution}</p>
+      <span>Mute collision alarm</span>
+    </button>
+    {#if collisionMuted && collisionMuteRemainingMin !== undefined}
+      <p class="muted-note">Auto re-arms in {collisionMuteRemainingMin} min</p>
+    {/if}
+    <button
+      type="button"
+      class="btn mute-row"
+      class:is-on={arrivalMuted}
+      aria-pressed={arrivalMuted}
+      onclick={onToggleArrivalMute}
+    >
+      {#if arrivalMuted}
+        <BellOff size={18} aria-hidden="true" />
+      {:else}
+        <Bell size={18} aria-hidden="true" />
       {/if}
-      <button
-        type="button"
-        class="btn btn-ghost reset"
-        onclick={() => thresholds.set({ ...DEFAULT_THRESHOLDS })}
-      >
-        Reset to defaults
-      </button>
-    </section>
-  </div>
+      <span>Mute arrival alarm</span>
+    </button>
+  </section>
+  <section class="thresholds" aria-label="Collision thresholds">
+    <span class="caps-label">Collision thresholds</span>
+    <div class="group">
+      <span class="group-title caps-label danger">Danger</span>
+      <UnitField
+        label="CPA"
+        unit="nm"
+        min={0}
+        step={0.05}
+        ariaLabel="Danger CPA"
+        value={cpaNm(t.dangerCpaMeters)}
+        onCommit={(nm) => setMeters('dangerCpaMeters', nm)}
+      />
+      <UnitField
+        label="TCPA"
+        unit="min"
+        min={0}
+        step={1}
+        ariaLabel="Danger TCPA"
+        value={tcpaMin(t.dangerTcpaSeconds)}
+        onCommit={(minutes) => setSeconds('dangerTcpaSeconds', minutes)}
+      />
+    </div>
+    <div class="group">
+      <span class="group-title caps-label warning">Warning</span>
+      <UnitField
+        label="CPA"
+        unit="nm"
+        min={0}
+        step={0.05}
+        ariaLabel="Warning CPA"
+        value={cpaNm(t.warningCpaMeters)}
+        onCommit={(nm) => setMeters('warningCpaMeters', nm)}
+      />
+      <UnitField
+        label="TCPA"
+        unit="min"
+        min={0}
+        step={1}
+        ariaLabel="Warning TCPA"
+        value={tcpaMin(t.warningTcpaSeconds)}
+        onCommit={(minutes) => setSeconds('warningTcpaSeconds', minutes)}
+      />
+    </div>
+    {#if caution}
+      <p class="muted-note sev-warning" role="status">{caution}</p>
+    {/if}
+    <button
+      type="button"
+      class="btn btn-ghost reset"
+      onclick={() => thresholds.set({ ...DEFAULT_THRESHOLDS })}
+    >
+      Reset to defaults
+    </button>
+  </section>
 </SlideOver>
 
 <style>
-.alarms {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  font-size: var(--text-base);
-}
 .alerts,
 .mutes,
 .thresholds {
@@ -304,10 +296,6 @@ const caution = $derived(thresholdsCaution(t));
   color: var(--alarm);
 }
 .group-title.warning {
-  color: var(--warning);
-}
-/* The caution line is the shared .muted-note with the warning color in place of the muted gray. */
-.caution-note {
   color: var(--warning);
 }
 .reset {

@@ -34,6 +34,12 @@
   color: var(--alarm);
   font-size: var(--text-sm);
 }
+/* The filled variant: a solid alarm-tint fill with normal text, for the live-warning banners (weather
+   warnings, a note's hazard-danger banner) that read as a panel rather than an outline note. */
+.alert-note--filled {
+  background: var(--alarm-tint);
+  color: var(--text);
+}
 
 /* The quiet muted hint the panels show for empty states and inline guidance, one rule so the
    muted-note shape cannot drift (the .saved .empty rule in cards.css carries its own list margins). */

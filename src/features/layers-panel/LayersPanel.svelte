@@ -133,7 +133,7 @@ const reorder = createLayerReorder(
             <h3 class="category-head">
               <button
                 type="button"
-                class="category-toggle"
+                class="category-toggle row-interactive"
                 aria-expanded={expanded}
                 aria-controls={panelId}
                 onclick={() => toggleCategory(cat.id)}
@@ -235,23 +235,14 @@ const reorder = createLayerReorder(
 }
 /* The whole header is the disclosure control: a chevron that rotates open, the category title, and a
    count of the rows it holds, sized to a full touch target. */
+/* The control-height row chrome, hover tint, and transparent background come from the shared
+   .row-interactive base in overlays.css; only this disclosure's content layout is scoped here. */
 .category-toggle {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  inline-size: 100%;
-  min-block-size: var(--control-size);
   padding-inline: var(--space-1);
-  border: none;
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-}
-.category-toggle:hover {
-  background: var(--accent-tint);
 }
 .category-toggle :global(.chev) {
   flex-shrink: 0;

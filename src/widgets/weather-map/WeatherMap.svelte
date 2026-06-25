@@ -386,7 +386,7 @@ onDestroy(() => {
 </script>
 
 <section
-  class="weather-panel"
+  class="weather-panel surface-elevated"
   id="weather-panel"
   aria-label="Weather"
   tabindex="-1"
@@ -586,10 +586,7 @@ onDestroy(() => {
   block-size: var(--weather-panel-height);
   display: flex;
   flex-direction: column;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg), var(--edge-light);
+  /* The surface, border, radius, and shadow come from the shared .surface-elevated frame. */
   color: var(--text);
   /* One above the edge-docked panels so the weather panel, which can be opened while a panel is up,
      sits cleanly on top instead of relying on DOM order against an equal z-index. */

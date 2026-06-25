@@ -160,7 +160,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
     {/if}
 
     {#if store.status === 'error'}
-      <p class="muted-note stale" role="status">
+      <p class="muted-note sev-warning" role="status">
         Showing the last update; the latest refresh did not reach NOAA.
       </p>
     {/if}
@@ -170,7 +170,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
     {/if}
     <p class="footnote">Heights above MLLW, times in the device's local time.</p>
   {:else if store.status === 'error'}
-    <p class="muted-note stale" role="status">
+    <p class="muted-note sev-warning" role="status">
       Could not load tide predictions. Check the connection.
     </p>
   {:else}
@@ -245,9 +245,6 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
   gap: var(--space-1);
   padding-block-start: var(--space-2);
   border-block-start: 1px solid var(--border);
-}
-.stale {
-  color: var(--warning);
 }
 /* The provenance note sits with the footnote, so it drops to the same fine-print scale. */
 .source-note {

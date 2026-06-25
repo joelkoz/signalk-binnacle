@@ -85,7 +85,11 @@ function measure(item: NormalizedItem): string {
           <!-- The danger status always leads its section, rendered before the dl: a div between
                dt/dd pairs is non-conforming HTML. -->
           {#if danger}
-            <div class="alert-note alert" data-danger={danger.value === true}>
+            <div
+              class="alert-note alert"
+              class:alert-note--filled={danger.value === true}
+              data-danger={danger.value === true}
+            >
               {danger.value === true ? 'Dangerous to navigation' : 'Not a danger to navigation'}
             </div>
           {/if}
@@ -206,17 +210,13 @@ dd {
   line-height: 1.4;
 }
 /* The hazard danger status leads its section as a full-width banner on the global .alert-note
-   frame: a bordered, tinted caution when the feature is dangerous to navigation (a fill rather
-   than the brightest-pixel --alarm text, matching the weather warning treatment), and a quiet
-   outline when it is explicitly not. */
+   frame: when dangerous to navigation it adds the shared .alert-note--filled tint (matching the
+   weather warning treatment), and when explicitly not a danger it drops to a quiet outline. */
 .alert {
   margin-block: 0.2rem;
   padding: 0.4rem 0.55rem;
   color: var(--text);
   font-weight: 600;
-}
-.alert[data-danger="true"] {
-  background: var(--alarm-tint);
 }
 .alert[data-danger="false"] {
   border-color: var(--border);

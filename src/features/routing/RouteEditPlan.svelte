@@ -83,7 +83,7 @@ const totalTime = $derived.by(() => {
       <li>
         <button
           type="button"
-          class="leg-row"
+          class="leg-row row-interactive"
           class:is-on={litLegs.has(leg.fromIndex)}
           aria-pressed={litLegs.has(leg.fromIndex)}
           aria-label={`Highlight leg ${leg.fromIndex + 1}`}
@@ -115,30 +115,20 @@ const totalTime = $derived.by(() => {
   overflow-y: auto;
   font-size: var(--text-sm);
 }
+/* The row chrome, hover tint, and lit accent fill and border come from the shared .row-interactive
+   base in overlays.css; the 1px border-width reserves space for the lit accent border (whose color
+   the base owns), and only the leg grid and the lit leg's thick inline-start bar are scoped here. */
 .leg-row {
   display: grid;
   grid-template-columns: 1.5rem 1fr auto auto;
   gap: var(--space-2);
   align-items: center;
-  inline-size: 100%;
-  min-block-size: var(--control-size);
   padding: 0 var(--space-2);
-  border: 1px solid transparent;
+  border-width: 1px;
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: inherit;
-  font: inherit;
   text-align: start;
-  cursor: pointer;
 }
-.leg-row:hover {
-  background: var(--accent-tint);
-}
-/* The lit leg is set here, not via the global .is-on utility, because the scoped .leg-row base
-   outweighs it; the data columns keep their own colors and only the row box changes. */
 .leg-row.is-on {
-  background: var(--accent-tint);
-  border-color: var(--accent);
   border-inline-start-width: var(--active-bar-width);
 }
 .leg-no {

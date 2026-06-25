@@ -60,88 +60,81 @@ function toggleSort(key: PoiSort): void {
 }
 </script>
 
-<SlideOver title="POI search" {subtitle} {onClose} {onBack}>
-  <section class="poi-search">
-    <input
-      class="input search-input"
-      type="search"
-      placeholder="Filter by name"
-      aria-label="Filter POIs by name"
-      bind:value={query}
-    >
-    <div class="nav-sort">
-      <span class="caps-label">Sort by</span>
-      <div class="segmented" role="group" aria-label="Sort POIs by">
-        {#each SORTS as option (option.key)}
+<SlideOver title="POI search" {subtitle} {onClose} {onBack} bodyFlex>
+  <input
+    class="input search-input"
+    type="search"
+    placeholder="Filter by name"
+    aria-label="Filter POIs by name"
+    bind:value={query}
+  >
+  <div class="nav-sort">
+    <span class="caps-label">Sort by</span>
+    <div class="segmented" role="group" aria-label="Sort POIs by">
+      {#each SORTS as option (option.key)}
+        <button
+          type="button"
+          class="btn"
+          class:is-on={sortState.key === option.key}
+          aria-pressed={sortState.key === option.key}
+          onclick={() => toggleSort(option.key)}
+        >
+          {option.label}
+          {#if sortState.key === option.key}
+            <span aria-hidden="true">{sortState.dir === 'asc' ? '▲' : '▼'}</span>
+            <span class="visually-hidden">
+              {sortState.dir === 'asc' ? 'ascending' : 'descending'}
+            </span>
+          {/if}
+        </button>
+      {/each}
+    </div>
+  </div>
+  {#if rows.length === 0}
+    <p class="muted-note" role="status">
+      {pois.length === 0 ? 'No POIs in this view. Pan or zoom the chart.' : 'No matches.'}
+    </p>
+  {:else}
+    <ul class="nav-list">
+      {#each rows as row (row.poi.id)}
+        <li>
           <button
             type="button"
-            class="btn"
-            class:is-on={sortState.key === option.key}
-            aria-pressed={sortState.key === option.key}
-            onclick={() => toggleSort(option.key)}
+            class="nav-row"
+            title="Open the detail for {row.poi.name}"
+            onclick={() => onSelect(row.poi)}
+            onmouseenter={() => onHover(row.poi)}
+            onmouseleave={() => onHover(undefined)}
+            onfocus={() => onHover(row.poi)}
+            onblur={() => onHover(undefined)}
           >
-            {option.label}
-            {#if sortState.key === option.key}
-              <span aria-hidden="true">{sortState.dir === 'asc' ? '▲' : '▼'}</span>
-              <span class="visually-hidden">
-                {sortState.dir === 'asc' ? 'ascending' : 'descending'}
+            <span class="poi-head">
+              <span class="poi-cat">
+                <!-- The category SVG is a static literal from a fixed enum, never external input. -->
+                {@html poiInlineIconSvg(row.poi.category)}
+                <span class="visually-hidden">{categoryLabel(row.poi.category)}</span>
               </span>
-            {/if}
+              <span class="nav-name">{row.poi.name}</span>
+            </span>
+            <span class="nav-metrics">
+              <span class="nav-metric">
+                Dist <b class="num">{formatMetersOrNm(row.distanceMeters, units.mode)}</b>
+              </span>
+              <span class="nav-metric">
+                Brg <b class="num">{formatBearingOr(row.bearingRad)}</b>&deg;T
+              </span>
+            </span>
           </button>
-        {/each}
-      </div>
-    </div>
-    {#if rows.length === 0}
-      <p class="muted-note" role="status">
-        {pois.length === 0 ? 'No POIs in this view. Pan or zoom the chart.' : 'No matches.'}
-      </p>
-    {:else}
-      <ul class="nav-list">
-        {#each rows as row (row.poi.id)}
-          <li>
-            <button
-              type="button"
-              class="nav-row"
-              title="Open the detail for {row.poi.name}"
-              onclick={() => onSelect(row.poi)}
-              onmouseenter={() => onHover(row.poi)}
-              onmouseleave={() => onHover(undefined)}
-              onfocus={() => onHover(row.poi)}
-              onblur={() => onHover(undefined)}
-            >
-              <span class="poi-head">
-                <span class="poi-cat">
-                  <!-- The category SVG is a static literal from a fixed enum, never external input. -->
-                  {@html poiInlineIconSvg(row.poi.category)}
-                  <span class="visually-hidden">{categoryLabel(row.poi.category)}</span>
-                </span>
-                <span class="nav-name">{row.poi.name}</span>
-              </span>
-              <span class="nav-metrics">
-                <span class="nav-metric">
-                  Dist <b class="num">{formatMetersOrNm(row.distanceMeters, units.mode)}</b>
-                </span>
-                <span class="nav-metric">
-                  Brg <b class="num">{formatBearingOr(row.bearingRad)}</b>&deg;T
-                </span>
-              </span>
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
+        </li>
+      {/each}
+    </ul>
+  {/if}
 </SlideOver>
 
 <style>
 /* The sort header, the result rows, and the readout line come from the shared .nav-* family in
    cards.css, shared with the AIS targets panel; only the panel section and the leading category icon
    are local. */
-.poi-search {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
 /* Composes the shared .input primitive; only the full-panel width is local. */
 .search-input {
   inline-size: 100%;

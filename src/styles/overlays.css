@@ -48,6 +48,18 @@
   box-shadow: var(--shadow-overlay);
 }
 
+/* The larger elevated-panel frame shared by the full app-menu launcher and the floating weather panel:
+   the same surface, hairline border, large radius, and lifted shadow so those big floating surfaces
+   cannot drift apart. Consumers keep their own position, sizing, padding, and z-index. The slide-over
+   dock is deliberately not part of this: it is full-height with no radius and only shares the surface
+   and shadow, not the border and radius. */
+.surface-elevated {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), var(--edge-light);
+}
+
 /* The full-width interactive menu row shared by the chart context menu and the bottom-bar More menu:
    a control-height flex row that fills with the accent tint on hover. */
 .menu-item {
@@ -68,4 +80,34 @@
 .menu-item:hover {
   background: var(--accent-tint);
   color: var(--accent);
+}
+
+/* The shared interactive-row primitive: a full-width, control-height, transparent control that tints to
+   the accent on hover and lights via .is-on. The layers category header and the weather and route menu
+   rows compose this and add only their own content layout, so the row chrome and the lit state live in
+   one place rather than each row re-declaring them. The .is-on body must sit at this 0,2,0 specificity
+   (not the bare global .is-on at 0,1,0) because a component-scoped background outranks the bare utility
+   (Svelte's scope hash raises its specificity), which is why each row used to re-declare the lit body.
+   Border is split into longhands so a composing row can reserve a 1px border via border-width while the
+   transparent/accent border-color is hoisted here; composing rows must not set their own background or
+   border-color, or they would defeat the hover and lit states. */
+.row-interactive {
+  inline-size: 100%;
+  min-block-size: var(--control-size);
+  border-style: solid;
+  border-width: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+.row-interactive:hover {
+  background: var(--accent-tint);
+}
+.row-interactive.is-on {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-tint);
 }
