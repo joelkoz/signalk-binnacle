@@ -12,7 +12,8 @@ const CPA_BUCKET_METERS = 100;
 const TCPA_BUCKET_SECONDS = 60;
 
 // A deliberately narrow three-state subset, named so it does not shadow the canonical six-state
-// NotificationState in $shared/signalk.
+// NotificationState in $shared/signalk. 'emergency' is intentionally excluded: collision risk tops
+// out at 'alarm' (visual plus sound), and emergency is reserved for life-safety alerts (MOB).
 export type CollisionNotificationState = 'normal' | 'warn' | 'alarm';
 
 export interface SkNotification {
