@@ -116,7 +116,7 @@ const reorder = createLayerReorder(
           </h3>
           <ul class="category-rows">
             {#each pinned as item (item.id)}
-              <li class="pinned-row">
+              <li class="list-row pinned-row">
                 <span class="lead"><Lock class="pin-glyph" size={18} aria-hidden="true" /></span>
                 <span class="title" title={item.title}>{item.title}</span>
               </li>
@@ -148,16 +148,9 @@ const reorder = createLayerReorder(
               </button>
             </h3>
             <ul class="category-rows" id={panelId} hidden={!expanded}>
-              {#each cat.rows as { item, i }, j (item.id)}
+              {#each cat.rows as { item, i } (item.id)}
                 {@const indicator = reorder.indicatorFor(item.id)}
                 {@const removeId = userChartIds.get(item.id)}
-                {@const prev = cat.rows[j - 1]?.item}
-                <!-- Emit a named group's title once, on its first facet within the category. -->
-                {#if item.group && item.group.id !== prev?.group?.id}
-                  <li class="facet-group-label caps-label" aria-hidden="true">
-                    {item.group.title}
-                  </li>
-                {/if}
                 <LayerRow
                   {item}
                   {view}
@@ -214,12 +207,6 @@ const reorder = createLayerReorder(
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-block-size: var(--control-size);
-  padding-inline: var(--space-1);
-  border-block-end: 1px solid var(--border);
-}
-.pinned-row:last-child {
-  border-block-end: none;
 }
 .pinned-row .lead {
   display: inline-flex;
@@ -299,11 +286,6 @@ const reorder = createLayerReorder(
 .category-rows[hidden] {
   display: none;
 }
-/* The last row in a category drops its hairline divider, so the divider reads as an inter-row
-   separator within the list, not a closing line under the category. */
-.category-rows :global(.row:last-child) {
-  border-block-end: none;
-}
 /* The pinned section header is not collapsible, so it carries no chevron and no count, just the label
    at the same height and inset as the collapsible category headers. */
 .pinned-head {
@@ -312,17 +294,6 @@ const reorder = createLayerReorder(
   align-items: center;
   min-block-size: var(--control-size);
   padding-inline: var(--space-1);
-}
-/* A named-group title (a multi-facet chart) sits directly above its facet card and binds to it: the
-   negative end margin cancels the .category-rows gap so the card hugs its title, while the gap to the
-   card above stays. The leading indent aligns it over the card. */
-.facet-group-label {
-  margin-block-start: var(--space-1);
-  margin-block-end: 0;
-  padding-inline: var(--space-1);
-}
-.facet-group-label:first-child {
-  margin-block-start: 0;
 }
 .add-chart-area {
   margin-block-start: var(--space-2);

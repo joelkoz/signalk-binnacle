@@ -18,6 +18,7 @@ export const BOUNDARY_SOURCES: RasterOverlaySource[] = [
   {
     id: 'bound-eez',
     title: 'Maritime boundaries',
+    region: 'Global',
     tiles: [wmsTiles(MARINE_REGIONS_WMS, 'eez_boundaries')],
     attribution: VLIZ_ATTRIBUTION,
     category: 'reference',
@@ -25,6 +26,7 @@ export const BOUNDARY_SOURCES: RasterOverlaySource[] = [
   {
     id: 'bound-12nm',
     title: 'Territorial sea (12 nm)',
+    region: 'Global',
     tiles: [wmsTiles(MARINE_REGIONS_WMS, 'eez_12nm')],
     attribution: VLIZ_ATTRIBUTION,
     category: 'reference',

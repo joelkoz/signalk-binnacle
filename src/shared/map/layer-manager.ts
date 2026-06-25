@@ -31,6 +31,8 @@ export interface LayerListItem {
   group?: { id: string; title: string };
   // The Layers-panel category this layer declares. See OverlayModule.category.
   category?: string;
+  // The region tag (US, EU, Global) shown on the row. See OverlayModule.region.
+  region?: string;
   // False when the overlay's provider or data is absent: the panel grays the row and disables its
   // toggle. See OverlayModule.available. A snapshot taken at layers() time, so the host calls
   // LayersView.refresh() when an availability-gating value changes (App.svelte does this in an effect).
@@ -380,6 +382,7 @@ export class LayerManager {
             parent: module.parent,
             group: module.group,
             category: module.category,
+            region: module.region,
             available: module.available?.() ?? true,
             unavailableHint: module.unavailableHint,
             manageable: module.manageable,

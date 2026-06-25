@@ -230,3 +230,16 @@
 .nav-metric .num {
   color: var(--text);
 }
+
+/* A flat list row: the uniform, control-height, hairline-divided row the Layers panel's layer rows and
+   pinned rows share. Unlike .nav-row (an elevated card), this is a flat list line with no border or
+   fill, just a divider between rows that the last row drops. The two row components compose this so the
+   flat-row look cannot drift between them. */
+.list-row {
+  min-block-size: var(--control-size);
+  padding-inline: var(--space-1);
+  border-block-end: 1px solid var(--border);
+}
+.list-row:last-child {
+  border-block-end: none;
+}

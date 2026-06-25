@@ -33,6 +33,8 @@ export interface RasterOverlaySource {
   group?: { id: string; title: string };
   // The Layers-panel category this source declares. See OverlayModule.category.
   category?: string;
+  // The region tag (US, EU, Global) shown on the row. See OverlayModule.region.
+  region?: string;
   // Initial visibility when there is no saved state. Defaults to hidden so an overlay starts off
   // until the user enables it for their area.
   defaultVisible?: boolean;
@@ -74,6 +76,7 @@ export function createRasterOverlay(source: RasterOverlaySource, band: ZBand): O
     parent: source.parent,
     group: source.group,
     category: source.category,
+    region: source.region,
     supportsOpacity: true,
     defaultVisible: source.defaultVisible ?? false,
     defaultOpacity: source.defaultOpacity ?? 1,

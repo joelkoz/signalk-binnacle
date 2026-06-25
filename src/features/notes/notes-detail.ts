@@ -170,8 +170,10 @@ const MAX_DETAIL_ENTRIES = 64;
 
 // Memoizes detail by id so reopening a marker is instant; a failed fetch is not cached, so it
 // stays retryable. An in-flight load is shared rather than duplicated. The token is read through a
-// getter at fetch time, not captured: the loader is built once at connect, so a token approved later
-// (from another tab) must reach the fetch rather than freeze at the connect-time value.
+// getter when a load starts, not captured at construction: the loader is built once at connect, so a
+// token approved later (from another tab) reaches the next load rather than freezing at the
+// connect-time value. A token that rotates mid-flight is not re-read; the shared in-flight load keeps
+// the token it began with.
 export function createNoteDetailLoader(
   base: string,
   getToken: () => string | undefined,

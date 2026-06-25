@@ -25,7 +25,7 @@ const noaaEncSource = (
   id: string,
   title: string,
   layers: string,
-  opts: { parent?: string; group?: { id: string; title: string } } = {},
+  opts: { parent?: string; group?: { id: string; title: string }; region?: string } = {},
 ): StreamingChartSource => ({
   id,
   title,
@@ -36,6 +36,7 @@ const noaaEncSource = (
   attribution: 'NOAA Office of Coast Survey, Electronic Navigational Charts (ENC)',
   parent: opts.parent,
   group: opts.group,
+  region: opts.region,
 });
 
 // The two NOAA ENC facets (the chart and its data-quality overlay) share this group, so the Layers
@@ -68,7 +69,8 @@ const BLUETOPO_ATTRIBUTION = 'NOAA Office of Coast Survey, BlueTopo / National B
 export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-gebco',
-    title: 'GEBCO bathymetry (global)',
+    title: 'GEBCO bathymetry',
+    region: 'Global',
     tiles: [wmsTiles('https://wms.gebco.net/mapserv', 'GEBCO_LATEST')],
     minzoom: 0,
     // GEBCO is a coarse ~450 m global grid; this cap keeps the WMS rendering crisp rather than
@@ -79,7 +81,8 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   // Registration order is z-order, so each base sits below its quality facet.
   {
     id: 'depth-emodnet',
-    title: 'Bathymetry',
+    title: 'EMODnet bathymetry',
+    region: 'EU',
     tiles: [wmsTiles(EMODNET_WMS, 'emodnet:mean_multicolour')],
     minzoom: 0,
     maxzoom: 12,
@@ -101,7 +104,8 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   },
   {
     id: 'depth-bluetopo',
-    title: 'Bathymetry',
+    title: 'BlueTopo bathymetry',
+    region: 'US',
     tiles: [
       'https://nowcoast.noaa.gov/geoserver/gwc/service/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=bluetopo:bathymetry&STYLE=&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:{z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png8',
     ],
@@ -128,7 +132,10 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   // Registered last so the US nautical chart sits on top of the bathymetry when several are enabled,
   // and leads the Charts and depth section. The chart sits below its own data-quality overlay, and
   // both facets share the "NOAA ENC (US)" group.
-  noaaEncSource('depth-noaa-enc', 'Base chart', '0,1,2,3,4,5,6,7,10', { group: NOAA_ENC_GROUP }),
+  noaaEncSource('depth-noaa-enc', 'NOAA ENC', '0,1,2,3,4,5,6,7,10', {
+    group: NOAA_ENC_GROUP,
+    region: 'US',
+  }),
   noaaEncSource('depth-noaa-enc-quality', 'Data quality (ZOC)', '8,9', {
     parent: 'depth-noaa-enc',
     group: NOAA_ENC_GROUP,

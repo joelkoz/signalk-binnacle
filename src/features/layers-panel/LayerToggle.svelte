@@ -30,6 +30,9 @@ const { title, visible, onToggle, disabled = false }: Props = $props();
   min-inline-size: 0;
   align-items: center;
   gap: var(--space-2);
+  /* The toggle runs at the dense list-row line; a primary row's full control-size height comes from the
+     row container (.list-row, .row-main), so the toggle centers within it, and a nested facet child can
+     run tighter still without the toggle forcing it back up to control-size. */
   min-block-size: var(--row-size);
   font-size: var(--text-md);
   cursor: pointer;

@@ -13,7 +13,7 @@ export interface LayerCategory {
 const CATEGORIES = [
   { id: 'mine', title: 'My navigation', defaultOpen: true },
   { id: 'live', title: 'Traffic', defaultOpen: true },
-  { id: 'reference', title: 'Charts overlays and aids', defaultOpen: false },
+  { id: 'reference', title: 'Chart overlays and aids', defaultOpen: false },
   { id: 'ocean', title: 'Ocean conditions', defaultOpen: false },
   { id: 'charts', title: 'Base charts and depth', defaultOpen: false },
 ] as const;

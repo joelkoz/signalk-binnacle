@@ -53,6 +53,10 @@ export interface OverlayModule {
   // feature id. When absent the panel derives a category from the band. The category vocabulary and
   // its order live in the panel; an overlay just declares which one it joins.
   readonly category?: string;
+  // The geographic region a regional provider covers (US, EU, Global, and so on), shown as a small tag
+  // on the Layers-panel row so a navigator sees at a glance which overlays apply to their waters. Absent
+  // for the navigator's own data and live overlays, which are not region-specific.
+  readonly region?: string;
   // When false the overlay is not shown as a Layers-panel row: it is a tool (Measure, Time travel)
   // controlled from the menu, not a layer the navigator toggles or reorders. It is still registered
   // and rendered. Absent means listed.

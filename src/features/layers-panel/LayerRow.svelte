@@ -50,11 +50,16 @@ const percent = $derived(Math.round(item.opacity * 100));
 // The opacity control shows only when the layer is on and can be dimmed, and it lights when the layer
 // is below full so a faded layer is visible at a glance without opening the popover.
 const canTune = $derived(item.supportsOpacity && item.visible);
-const dimmed = $derived(item.opacity < 0.999);
+const dimmed = $derived(item.opacity < 1);
 // The drag handle moves the whole row, so for a facet group it names the group, otherwise the layer.
 const handleLabel = $derived(groupTitle ?? item.title);
 
 let tuneOpen = $state(false);
+// Close the popover if the layer is hidden while it is open: the popover lives inside the canTune
+// block, so without this re-showing the layer would pop it back open unprompted.
+$effect(() => {
+  if (!canTune) tuneOpen = false;
+});
 </script>
 
 {#snippet dragHandle()}
@@ -76,8 +81,8 @@ let tuneOpen = $state(false);
       <div class="tune-anchor">
         <button
           type="button"
-          class="icon-btn tune"
-          class:dimmed
+          class="icon-btn"
+          class:icon-btn--accent={dimmed}
           aria-label={`Adjust ${item.title} opacity`}
           aria-haspopup="dialog"
           aria-expanded={tuneOpen}
@@ -90,7 +95,7 @@ let tuneOpen = $state(false);
           onClose={() => (tuneOpen = false)}
           backdropLabel={`Close ${item.title} opacity`}
           ariaLabel={`${item.title} opacity`}
-          surfaceClass="tune-pop"
+          surfaceClass="popover-card tune-pop"
         >
           <div class="tune-body">
             <input
@@ -124,8 +129,14 @@ let tuneOpen = $state(false);
   </div>
 {/snippet}
 
+{#snippet regionTag()}
+  {#if item.region}
+    <span class="region-tag">{item.region}</span>
+  {/if}
+{/snippet}
+
 <li
-  class="row"
+  class="list-row row"
   class:dragging
   class:drop-before={dropBefore}
   class:drop-after={dropAfter}
@@ -151,6 +162,7 @@ let tuneOpen = $state(false);
             visible={item.visible}
             onToggle={(visible) => view.toggle(item.id, visible)}
           />
+          {@render regionTag()}
           {@render trailing()}
         </div>
         {#each subLayers as sub (sub.id)}
@@ -174,6 +186,7 @@ let tuneOpen = $state(false);
         disabled={!item.available}
         onToggle={(visible) => view.toggle(item.id, visible)}
       />
+      {@render regionTag()}
       {@render trailing()}
     </div>
   {/if}
@@ -183,11 +196,10 @@ let tuneOpen = $state(false);
 /* Flat list row: no card border or fill, a hairline divider draws between rows in the panel. The whole
    row is one module, a lead rail (drag handle), the toggle and title in the flexible center, and a
    trailing rail (tune, manage), so every row reads on the same two rails down the panel. */
+/* The flat-row skeleton (height, padding, divider) comes from the shared .list-row; this adds the
+   row's own positioning context (for the drop indicators) and state styles. */
 .row {
   position: relative;
-  min-block-size: var(--control-size);
-  padding-inline: var(--space-1);
-  border-block-end: 1px solid var(--border);
 }
 /* The carried row is the one place a card frame appears: it lifts off the flat list while dragging. */
 .row.dragging {
@@ -254,12 +266,8 @@ let tuneOpen = $state(false);
   position: relative;
   display: inline-flex;
 }
-/* The tune button lights accent when the layer is below full opacity, so a dimmed layer is visible at
-   a glance without opening the popover. */
-.tune.dimmed {
-  color: var(--accent);
-}
-/* The opacity popover, anchored under the tune pill at the row's trailing edge. */
+/* The opacity popover, anchored under the tune button at the row's trailing edge. The floating-card
+   frame comes from the shared .popover-card; this only positions and sizes it. */
 .tune-anchor :global(.tune-pop) {
   position: absolute;
   inset-block-start: calc(100% + var(--space-1));
@@ -268,10 +276,6 @@ let tuneOpen = $state(false);
   inline-size: 14rem;
   max-inline-size: min(14rem, 70vw);
   padding: var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-overlay);
-  box-shadow: var(--shadow-overlay);
   transform-origin: top right;
 }
 .tune-body {
@@ -307,6 +311,22 @@ let tuneOpen = $state(false);
   flex-direction: column;
 }
 .facet-child {
+  /* A nested child toggle is secondary, so it runs at the denser row-size line rather than the full
+     control-size of a primary row, indented under the parent's title column. */
+  min-block-size: var(--row-size);
   padding-inline-start: var(--space-3);
+}
+/* The region tag: a quiet bordered pill (US, EU, Global) so a navigator sees at a glance which waters an
+   overlay covers. It is metadata, not a control, so it stays muted and sits before the action rail. */
+.region-tag {
+  flex-shrink: 0;
+  align-self: center;
+  padding-inline: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.7;
 }
 </style>

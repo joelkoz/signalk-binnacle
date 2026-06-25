@@ -20,6 +20,7 @@ export const MPA_SOURCES: RasterOverlaySource[] = [
   {
     id: 'mpa-emodnet',
     title: 'Marine protected areas',
+    region: 'EU',
     tiles: [wmsTiles(EMODNET_HA_WMS, 'marineprotectedareas')],
     attribution: 'EMODnet Human Activities',
     group: EMODNET_MPA_GROUP,
@@ -28,6 +29,7 @@ export const MPA_SOURCES: RasterOverlaySource[] = [
   {
     id: 'mpa-natura2000',
     title: 'Natura 2000',
+    region: 'EU',
     tiles: [wmsTiles(EMODNET_HA_WMS, 'natura2000areas')],
     attribution: 'EMODnet Human Activities',
     parent: 'mpa-emodnet',
@@ -35,7 +37,8 @@ export const MPA_SOURCES: RasterOverlaySource[] = [
   },
   {
     id: 'mpa-noaa',
-    title: 'NOAA MPA inventory (US)',
+    title: 'NOAA MPA inventory',
+    region: 'US',
     tiles: [arcgisExportTiles(NOAA_MPA_SERVER)],
     bounds: [-180, 15, -60, 75],
     attribution: 'NOAA National Marine Protected Areas Center',
