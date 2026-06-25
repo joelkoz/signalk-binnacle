@@ -43,8 +43,6 @@
     ],
     "recommends": [
       "signalk-crows-nest",
-      "signalk-ssl",
-      "signalk-symbol-manager",
       "signalk-virtual-weather-sensors"
     ]
   },
