@@ -56,7 +56,10 @@ export interface ConnectionState {
 // initial literal lives in one place.
 export const INITIAL_CONNECTION_STATE: ConnectionState = { phase: 'connecting', attempt: 0 };
 
-export type SubscribePolicy = 'instant' | 'ideal' | 'fixed';
+// signalk-server's subscription manager honors only 'instant' and 'fixed'; any other policy
+// (the spec's 'ideal') is rejected with an error and ignored (subscriptionmanager.ts), so the
+// client never sends it.
+export type SubscribePolicy = 'instant' | 'fixed';
 
 export interface SubscribeEntry {
   path: Path;

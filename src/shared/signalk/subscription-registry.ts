@@ -7,7 +7,9 @@ import {
 } from './types';
 
 const DEFAULT_PERIOD = 1000;
-const DEFAULT_POLICY: SubscribePolicy = 'ideal';
+// signalk-server supports only 'instant' and 'fixed' (it warns and ignores anything else), so the
+// default is a supported value. Every production subscription sets policy explicitly regardless.
+const DEFAULT_POLICY: SubscribePolicy = 'instant';
 
 interface Resolved {
   context: Context;
@@ -24,8 +26,8 @@ interface Demand {
 
 interface SubscribeMessage {
   path: string;
-  period: number;
   policy: SubscribePolicy;
+  period?: number;
   minPeriod?: number;
 }
 
@@ -114,13 +116,13 @@ export class SubscriptionRegistry {
     };
   }
 
+  // Build the wire message to match what the server's subscription manager accepts: 'fixed' is
+  // driven by period, 'instant' by minPeriod. Sending period with an 'instant' policy makes the
+  // server log "period assumes policy 'fixed'", so each policy carries only its own throttle field.
   #subscription(entry: Resolved): SubscribeMessage {
-    const msg: SubscribeMessage = {
-      path: entry.path,
-      period: entry.period,
-      policy: entry.policy,
-    };
-    if (entry.minPeriod !== undefined) msg.minPeriod = entry.minPeriod;
+    const msg: SubscribeMessage = { path: entry.path, policy: entry.policy };
+    if (entry.policy === 'fixed') msg.period = entry.period;
+    else if (entry.minPeriod !== undefined) msg.minPeriod = entry.minPeriod;
     return msg;
   }
 
