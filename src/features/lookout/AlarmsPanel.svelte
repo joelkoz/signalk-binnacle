@@ -89,7 +89,7 @@ const caution = $derived(thresholdsCaution(t));
     <span class="caps-label">Active alerts</span>
     {#each alerts as n (n.path)}
       {@const time = alertTime(n)}
-      <div class="alert-row">
+      <div class="alert-row card-frame">
         <span class="state-tag {n.state}">{n.state}</span>
         <div class="alert-main">
           <span class="alert-message">{alertLabel(n)}</span>
@@ -217,15 +217,13 @@ const caution = $derived(thresholdsCaution(t));
   flex-direction: column;
   gap: var(--space-2);
 }
+/* The border, radius, and raised fill come from the shared .card-frame; only the row layout is here. */
 .alert-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
 }
 .state-tag {
   padding: 0.1rem var(--space-2);

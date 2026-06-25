@@ -23,15 +23,22 @@
   flex-direction: column;
   gap: 0.35rem;
 }
+/* The raised bordered card surface shared by the saved-list cards and the alarms alert rows: a
+   hairline border, small radius, and raised fill. Consumers add their own layout, padding, shadow,
+   and any active-state accent (which outranks this base). */
+.card-frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+/* The border, radius, and raised fill come from the shared .card-frame (set on the li in SavedList);
+   the shadow, layout, and the active-state accent stay here. */
 .saved li {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.45rem 0.55rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
   box-shadow: var(--shadow-overlay);
   transition:
     border-color var(--transition-fast),
