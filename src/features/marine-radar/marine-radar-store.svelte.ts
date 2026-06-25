@@ -26,6 +26,9 @@ export class MarineRadarStore {
   controlsForbidden = $state(false);
 
   selected = $derived(this.radars.find((r) => r.id === this.selectedId));
+  // A radar is detected once discovery returns at least one. Shared by the layer row's availability
+  // gate and the menu tile so the two cannot drift on what "has a radar" means.
+  hasRadar = $derived(this.radars.length > 0);
 
   setDiscovered(radars: RadarInfo[]): void {
     this.radars = radars;

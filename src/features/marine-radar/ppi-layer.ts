@@ -211,7 +211,7 @@ export function createPpiLayer(
     band: 'traffic',
     supportsOpacity: true,
     defaultVisible: false,
-    available: () => store.radars.length > 0,
+    available: () => store.hasRadar,
     unavailableHint: RADAR_UNAVAILABLE_HINT,
     manageable: true,
     layerIds: [RADAR_ECHO_LAYER_ID, RADAR_RINGS_LAYER_ID],

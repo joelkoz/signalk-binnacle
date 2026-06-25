@@ -878,9 +878,6 @@ function armMeasure(): void {
   measure.start();
 }
 
-// The app menu's options, grouped into five intent groups: Map (center/follow), Navigate (plan and
-// chart), Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings.
-// Adding an option is a single entry; the launcher renders and groups whatever it is given.
 // The marine radar controller owns the spokes worker and the echo layer. Detection runs once server
 // features resolve; on a stock server discovery degrades and nothing streams. getCenter and getToken
 // are getters so the radar follows the live vessel position and a token that arrives mid-session.
@@ -890,10 +887,15 @@ const marineRadar = createMarineRadarController({
   getCenter: () => vessel.position ?? undefined,
   radarAvailable: () => serverFeatures !== undefined,
 });
-// Whether the radar controls slide-over (opened from the radar tile or the radar layer row's gear)
-// is showing.
+// The radar controls slide-over opens from the radar menu tile or the radar layer row's gear;
+// radarOpenedFrom records which, so its back arrow returns to the menu only when the menu opened it
+// (from the gear the layers panel is still behind it, so going to the menu would strand the navigator).
 let radarControlsOpen = $state(false);
+let radarOpenedFrom = $state<'menu' | 'layers'>('menu');
 
+// The app menu's options, grouped into five intent groups: Map (center/follow), Navigate (plan and
+// chart), Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings.
+// Adding an option is a single entry; the launcher renders and groups whatever it is given.
 const menuItems = $derived<MenuItem[]>([
   {
     id: 'center',
@@ -1011,7 +1013,7 @@ const menuItems = $derived<MenuItem[]>([
   },
   // The radar tile appears only when a radar is discovered, so a server without one shows no
   // grayed-out tile; it opens the same controls panel reached from the radar layer row's gear.
-  ...(marineRadar.store.radars.length > 0
+  ...(marineRadar.store.hasRadar
     ? [
         {
           id: 'radar',
@@ -1019,7 +1021,10 @@ const menuItems = $derived<MenuItem[]>([
           icon: Radar,
           group: 'Safety',
           pressed: radarControlsOpen,
-          onSelect: () => (radarControlsOpen = !radarControlsOpen),
+          onSelect: () => {
+            radarOpenedFrom = 'menu';
+            radarControlsOpen = !radarControlsOpen;
+          },
         } satisfies MenuItem,
       ]
     : []),
@@ -2235,7 +2240,10 @@ onDestroy(() => {
           onClose={closePanel}
           onBack={backToMenu}
           onManageLayer={(id) => {
-            if (id === 'marine-radar') radarControlsOpen = true;
+            if (id === 'marine-radar') {
+              radarOpenedFrom = 'layers';
+              radarControlsOpen = true;
+            }
           }}
         />
       </div>
@@ -2246,10 +2254,12 @@ onDestroy(() => {
           title="Radar controls"
           closeLabel="Close radar controls"
           onClose={() => (radarControlsOpen = false)}
-          onBack={() => {
-            radarControlsOpen = false;
-            backToMenu();
-          }}
+          onBack={radarOpenedFrom === 'menu'
+            ? () => {
+                radarControlsOpen = false;
+                backToMenu();
+              }
+            : undefined}
         >
           <RadarControls
             store={marineRadar.store}
