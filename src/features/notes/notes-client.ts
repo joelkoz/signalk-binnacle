@@ -5,6 +5,7 @@ import {
   poiCategoryForType,
 } from '$entities/poi-icons';
 import type { Bbox4 } from '$shared/geo';
+import { isFiniteNumber } from '$shared/lib';
 import { fetchKeyedResource, str } from '$shared/signalk';
 
 // A point-of-interest note from the Signal K resources API. Providers like
@@ -58,7 +59,7 @@ function noteFromEntry(id: string, raw: unknown): NotePoint | undefined {
   };
   const lat = note.position?.latitude;
   const lon = note.position?.longitude;
-  if (typeof lat !== 'number' || typeof lon !== 'number') return undefined;
+  if (!isFiniteNumber(lat) || !isFiniteNumber(lon)) return undefined;
   const props = note.properties ?? {};
   return {
     id,

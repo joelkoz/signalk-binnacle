@@ -1,3 +1,4 @@
+import { isFiniteNumber } from '$shared/lib';
 import { fetchKeyedResource, str, strArray } from './resource';
 
 // A symbol provided by a symbols resource provider (signalk-symbol-manager). The provider API
@@ -30,7 +31,7 @@ function aliasesFromEntry(value: unknown): string[] | undefined {
 function anchorFromEntry(value: unknown): [number, number] | undefined {
   if (!Array.isArray(value) || value.length !== 2) return undefined;
   const [x, y] = value;
-  return typeof x === 'number' && typeof y === 'number' ? [x, y] : undefined;
+  return isFiniteNumber(x) && isFiniteNumber(y) ? [x, y] : undefined;
 }
 
 function symbolFromEntry(id: string, raw: unknown): SkSymbol | undefined {
@@ -56,7 +57,7 @@ function symbolFromEntry(id: string, raw: unknown): SkSymbol | undefined {
     name: str(entry.name) ?? id,
     url,
     roles: strArray(entry.roles) ?? [],
-    scale: typeof entry.scale === 'number' && entry.scale > 0 ? entry.scale : undefined,
+    scale: isFiniteNumber(entry.scale) && entry.scale > 0 ? entry.scale : undefined,
     anchor: anchorFromEntry(entry.anchor),
   };
 }

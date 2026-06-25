@@ -4,6 +4,17 @@ import { deleteResource, fetchKeyedResource, putResource } from '$shared/signalk
 const V2 = '/signalk/v2/api/resources/charts';
 const V1 = '/signalk/v1/api/resources/charts';
 
+// Validate a keyed chart entry before it becomes a layer, the way notes and symbols are validated:
+// an error envelope ({state, statusCode, message}) or a record missing name or type has no business
+// rendering, so it falls through here. The key stands in as identifier when the entry omits one.
+function chartFromEntry(id: string, raw: unknown): SignalKChart | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const chart = raw as Partial<SignalKChart>;
+  if (typeof chart.name !== 'string' || typeof chart.type !== 'string') return undefined;
+  const identifier = typeof chart.identifier === 'string' ? chart.identifier : id;
+  return { ...(chart as SignalKChart), identifier };
+}
+
 // Returns undefined when every endpoint is unreachable (so a caller can keep an existing list rather
 // than blank it on a transient failure, matching fetchRoutes and fetchNotes), and [] for a reachable
 // server with no charts. A reachable error status is surfaced via onError rather than swallowed.
@@ -15,7 +26,7 @@ export function fetchCharts(
     serverBase,
     [V2, V1],
     token,
-    (_id, raw) => raw as SignalKChart,
+    chartFromEntry,
     (url, status) => console.warn(`[charts] ${url} returned ${status}`),
   );
 }
