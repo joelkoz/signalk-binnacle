@@ -38,8 +38,12 @@ All notable changes to Binnacle are documented here. The format follows
 ### Fixed
 
 - Several reactivity correctness issues found in a codebase sweep.
-- Accessibility and consistency fixes across the menu system, and the radar controls back arrow is
-  scoped to its own entry.
+- The "Go to here" point no longer fires twice after a base-map style change: the long-press handler
+  is now detached on teardown so a re-install cannot stack a second one.
+- A disabled danger button (for example a delete control) no longer changes color on hover.
+- Accessibility and consistency fixes across the menu system, the radar controls back arrow is scoped
+  to its own entry, the radar range labels no longer read brighter than their ring, and the POI search
+  close button has a descriptive label.
 
 ### Internal
 
