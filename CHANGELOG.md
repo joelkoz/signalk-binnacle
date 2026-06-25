@@ -8,16 +8,44 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v0102"></a>
+
+## [0.10.2] - 2026-06-25
+
 ### Added
 
 - A Radar menu tile that opens the radar controls, shown only when a radar is detected, so the radar
   is reachable from the menu and not only from its layer row in Layers and charts.
+- **The radar is easier to read.** A sweep wedge marks where the radar is currently scanning, with a
+  short afterglow trail, so the picture reads as actively sweeping. Faint or small returns are now
+  drawn at a minimum on-screen size, so a sparse echo stays visible whether you are zoomed in or out.
+- The radar range rings are labeled with their range in nautical miles, so the rings read as a
+  distance scale.
+- Region tags on the regional chart sources in the Layers panel, so it is clear at a glance which
+  area each survey-quality source covers.
 
 ### Changed
 
 - AIS targets now uses a ship icon, and the marine radar shows the radar sweep icon on its controls
   panel, so each reads true. AIS previously borrowed the radar glyph while the radar had none.
-- Unified and tightened the side-panel section spacing so every panel uses the same rhythm.
+- The Layers and charts panel is redesigned: flat rows, the opacity slider moved into a per-row
+  popover, and the sources grouped into clearer categories.
+- The radar controls panel is rebuilt to match the other side panels: one consistent field layout for
+  its sliders and selects, with the range offered as a list of standard nautical-mile steps.
+- The range rings are drawn bolder so they stand out over the chart, and the side-panel section
+  spacing is unified so every panel shares the same rhythm.
+
+### Fixed
+
+- Several reactivity correctness issues found in a codebase sweep.
+- Accessibility and consistency fixes across the menu system, and the radar controls back arrow is
+  scoped to its own entry.
+
+### Internal
+
+- Added `docs/design-system.md`, the authoritative design and front-end build standard, and hoisted
+  the shared row, card, panel-frame, note, and banner styles into global utility classes so panels
+  stop re-implementing them.
 
 <a id="v0101"></a>
 

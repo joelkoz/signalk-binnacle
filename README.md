@@ -15,25 +15,26 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.10.1
+## What's new in 0.10.2
 
-This release fixes the marine radar to work against the real Signal K radar API:
+This release makes the marine radar easier to see and reach, and redesigns the Layers and radar panels:
 
-- **Marine radar, corrected.** The radar overlay in 0.10.0 read the wrong API shape and never found a
-  radar on a real server. It now consumes the standard Signal K v2 radar API, and I verified the whole
-  path (discovery, controls, and the live spoke picture) end to end against the mayara radar emulator. If
-  your boat has a Signal K radar provider (mayara), Binnacle draws the live picture on the chart with
-  range rings and a heading line, and gives you the radar's own controls from the radar's row in the
-  Layers panel.
-- **Radar controls need read-write access.** The picture works with read-only access; changing the
-  radar's controls needs read-write. The controls panel now says so when a change is refused, so you know
-  to approve Binnacle for read and write on the Signal K server.
+- **The radar is easier to read.** A sweep wedge marks where the radar is currently scanning, with a
+  short afterglow trail, so the picture reads as actively sweeping. Faint or small returns are now drawn
+  at a minimum on-screen size, so a sparse echo stays visible whether you are zoomed in or out. The
+  range rings are bolder and labeled with their range in nautical miles.
+- **The radar is in the menu.** When a radar is detected, a Radar tile opens its controls straight from
+  the menu, not only from the radar's row in the Layers panel.
+- **Redesigned panels.** The Layers and charts panel uses flat rows with the opacity slider in a per-row
+  popover and clearer category groups, the regional chart sources carry a region tag, and the radar
+  controls panel is rebuilt to match the rest of the app. AIS targets uses a ship icon and the radar
+  uses the sweep icon, so each reads true.
 - **A request.** I still do not have a radar on my own boat, so it is unverified on real hardware. If you
   have a radar and try this, please open a
   [GitHub issue](https://github.com/NearlCrews/signalk-binnacle/issues) with what you see (a screenshot
   helps), whether the picture looks right, and how the controls behave.
 
-See the [changelog](CHANGELOG.md#v0101) for the full list.
+See the [changelog](CHANGELOG.md#v0102) for the full list.
 
 ## What it does
 
