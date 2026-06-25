@@ -8,6 +8,11 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A Radar menu tile that opens the radar controls, shown only when a radar is detected, so the radar
+  is reachable from the menu and not only from its layer row in Layers and charts.
+
 ### Changed
 
 - AIS targets now uses a ship icon, and the marine radar shows the radar sweep icon on its controls

@@ -9,6 +9,7 @@ import {
   LocateFixed,
   MapPin,
   Navigation,
+  Radar,
   Route,
   Ruler,
   Search,
@@ -880,6 +881,19 @@ function armMeasure(): void {
 // The app menu's options, grouped into five intent groups: Map (center/follow), Navigate (plan and
 // chart), Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings.
 // Adding an option is a single entry; the launcher renders and groups whatever it is given.
+// The marine radar controller owns the spokes worker and the echo layer. Detection runs once server
+// features resolve; on a stock server discovery degrades and nothing streams. getCenter and getToken
+// are getters so the radar follows the live vessel position and a token that arrives mid-session.
+const marineRadar = createMarineRadarController({
+  origin,
+  getToken: () => chartsToken,
+  getCenter: () => vessel.position ?? undefined,
+  radarAvailable: () => serverFeatures !== undefined,
+});
+// Whether the radar controls slide-over (opened from the radar tile or the radar layer row's gear)
+// is showing.
+let radarControlsOpen = $state(false);
+
 const menuItems = $derived<MenuItem[]>([
   {
     id: 'center',
@@ -995,6 +1009,20 @@ const menuItems = $derived<MenuItem[]>([
     pressed: activePanel === 'ais',
     onSelect: () => togglePanel('ais'),
   },
+  // The radar tile appears only when a radar is discovered, so a server without one shows no
+  // grayed-out tile; it opens the same controls panel reached from the radar layer row's gear.
+  ...(marineRadar.store.radars.length > 0
+    ? [
+        {
+          id: 'radar',
+          label: 'Radar',
+          icon: Radar,
+          group: 'Safety',
+          pressed: radarControlsOpen,
+          onSelect: () => (radarControlsOpen = !radarControlsOpen),
+        } satisfies MenuItem,
+      ]
+    : []),
   {
     id: 'anchor',
     label: 'Anchor watch',
@@ -1111,18 +1139,6 @@ const anchorController = createAnchorController({
   anchorAlarm,
   serverHasAnchorApi: () => serverFeatures?.apis.has('anchor') ?? false,
 });
-
-// The marine radar controller owns the spokes worker and the echo layer. Detection runs once server
-// features resolve; on a stock server discovery degrades and nothing streams. getCenter and getToken
-// are getters so the radar follows the live vessel position and a token that arrives mid-session.
-const marineRadar = createMarineRadarController({
-  origin,
-  getToken: () => chartsToken,
-  getCenter: () => vessel.position ?? undefined,
-  radarAvailable: () => serverFeatures !== undefined,
-});
-// Whether the radar controls slide-over (opened from the radar layer row's gear) is showing.
-let radarControlsOpen = $state(false);
 
 // Re-list the layers when an availability-gating provider appears or disappears, so a degrade overlay
 // (radar, AIS trails, track history) flips between grayed-out and active without a manual panel reopen.
@@ -2230,6 +2246,10 @@ onDestroy(() => {
           title="Radar controls"
           closeLabel="Close radar controls"
           onClose={() => (radarControlsOpen = false)}
+          onBack={() => {
+            radarControlsOpen = false;
+            backToMenu();
+          }}
         >
           <RadarControls
             store={marineRadar.store}
