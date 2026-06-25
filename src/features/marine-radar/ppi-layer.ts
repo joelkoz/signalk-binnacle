@@ -3,9 +3,11 @@ import type {
   GeoJSONSourceSpecification,
   LineLayerSpecification,
   Map as MapLibreMap,
+  SymbolLayerSpecification,
 } from 'maplibre-gl';
 import maplibregl from 'maplibre-gl';
 import type { LatLon } from '$shared/geo';
+import { formatNm } from '$shared/lib';
 import {
   emptyFeatureCollection,
   type MapThemePaint,
@@ -24,10 +26,17 @@ import { headingLineFeature, rangeRingFeatures } from './radar-vectors';
 
 export const RADAR_ECHO_LAYER_ID = 'marine-radar-echo';
 export const RADAR_RINGS_LAYER_ID = 'marine-radar-rings';
+export const RADAR_RING_LABELS_LAYER_ID = 'marine-radar-ring-labels';
 const RINGS_SOURCE_ID = 'marine-radar-rings-src';
 const RANGE_RINGS = 3;
 const RING_COLOR_DAY = '#33ff66';
 const RING_COLOR_NIGHT = '#ff3333';
+// A dark halo behind the ring labels so the bright ring-colored text stays readable over any chart
+// feature, in day and dusk; on night-red's true black the halo is invisible and the red text already
+// carries its own contrast.
+const RING_LABEL_HALO = 'rgba(0, 0, 0, 0.75)';
+// The range label for a ring's radius: nautical miles, the universal radar range unit.
+const ringLabel = (meters: number): string => `${formatNm(meters, meters < 1852 ? 2 : 1)} nm`;
 
 const RADAR_UNAVAILABLE_HINT =
   'No radar detected. Install a Signal K radar provider plugin (mayara) to see the radar picture.';
@@ -167,9 +176,33 @@ export function createPpiLayer(
         type: 'line',
         source: RINGS_SOURCE_ID,
         layout: { visibility: visible ? 'visible' : 'none' },
-        paint: { 'line-color': ringColor(theme), 'line-width': 1, 'line-opacity': 0.5 },
+        paint: { 'line-color': ringColor(theme), 'line-width': 1.5, 'line-opacity': 0.85 },
       };
       ctx.map.addLayer(layer, ctx.beforeIdFor('traffic'));
+    }
+    // The per-ring range labels sit above the rings and the echo (added last, before the same band id),
+    // each annotating its ring with the range, so the rings read as a labeled distance scale.
+    if (!ctx.map.getLayer(RADAR_RING_LABELS_LAYER_ID)) {
+      const labels: SymbolLayerSpecification = {
+        id: RADAR_RING_LABELS_LAYER_ID,
+        type: 'symbol',
+        source: RINGS_SOURCE_ID,
+        filter: ['has', 'label'],
+        layout: {
+          visibility: visible ? 'visible' : 'none',
+          'text-field': ['get', 'label'],
+          'text-font': ['Noto Sans Regular'],
+          'text-size': 11,
+          'text-offset': [0, -0.7],
+          'text-allow-overlap': true,
+        },
+        paint: {
+          'text-color': ringColor(theme),
+          'text-halo-color': RING_LABEL_HALO,
+          'text-halo-width': 1.5,
+        },
+      };
+      ctx.map.addLayer(labels, ctx.beforeIdFor('traffic'));
     }
   }
 
@@ -198,7 +231,7 @@ export function createPpiLayer(
     lastRingRange = frame.range;
     lastRingHeading = heading;
     ringsDrawn = true;
-    const rings = rangeRingFeatures(center, frame.range, RANGE_RINGS);
+    const rings = rangeRingFeatures(center, frame.range, RANGE_RINGS, ringLabel);
     if (frame.heading !== undefined) {
       rings.features.push(headingLineFeature(center, frame.heading, frame.range));
     }
@@ -214,7 +247,7 @@ export function createPpiLayer(
     available: () => store.hasRadar,
     unavailableHint: RADAR_UNAVAILABLE_HINT,
     manageable: true,
-    layerIds: [RADAR_ECHO_LAYER_ID, RADAR_RINGS_LAYER_ID],
+    layerIds: [RADAR_ECHO_LAYER_ID, RADAR_RINGS_LAYER_ID, RADAR_RING_LABELS_LAYER_ID],
     add(ctx) {
       addEcho(ctx);
       addRings(ctx);
@@ -246,14 +279,16 @@ export function createPpiLayer(
     remove(ctx) {
       removeLayersAndSources(
         ctx.map,
-        [RADAR_ECHO_LAYER_ID, RADAR_RINGS_LAYER_ID],
+        [RADAR_ECHO_LAYER_ID, RADAR_RINGS_LAYER_ID, RADAR_RING_LABELS_LAYER_ID],
         [RINGS_SOURCE_ID],
       );
     },
     setVisible(ctx, value) {
       visible = value;
-      if (ctx.map.getLayer(RADAR_RINGS_LAYER_ID)) {
-        ctx.map.setLayoutProperty(RADAR_RINGS_LAYER_ID, 'visibility', value ? 'visible' : 'none');
+      for (const id of [RADAR_RINGS_LAYER_ID, RADAR_RING_LABELS_LAYER_ID]) {
+        if (ctx.map.getLayer(id)) {
+          ctx.map.setLayoutProperty(id, 'visibility', value ? 'visible' : 'none');
+        }
       }
       if (value) ctx.map.triggerRepaint();
     },
@@ -261,7 +296,10 @@ export function createPpiLayer(
       opacity = value;
       gl?.setOpacity(value);
       if (ctx.map.getLayer(RADAR_RINGS_LAYER_ID)) {
-        ctx.map.setPaintProperty(RADAR_RINGS_LAYER_ID, 'line-opacity', Math.min(0.5, value));
+        ctx.map.setPaintProperty(RADAR_RINGS_LAYER_ID, 'line-opacity', Math.min(0.85, value));
+      }
+      if (ctx.map.getLayer(RADAR_RING_LABELS_LAYER_ID)) {
+        ctx.map.setPaintProperty(RADAR_RING_LABELS_LAYER_ID, 'text-opacity', value);
       }
     },
     applyTheme(ctx, paint) {
@@ -269,6 +307,9 @@ export function createPpiLayer(
       applyLegend();
       if (ctx.map.getLayer(RADAR_RINGS_LAYER_ID)) {
         ctx.map.setPaintProperty(RADAR_RINGS_LAYER_ID, 'line-color', ringColor(paint.theme));
+      }
+      if (ctx.map.getLayer(RADAR_RING_LABELS_LAYER_ID)) {
+        ctx.map.setPaintProperty(RADAR_RING_LABELS_LAYER_ID, 'text-color', ringColor(paint.theme));
       }
     },
   };

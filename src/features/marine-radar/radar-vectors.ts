@@ -6,14 +6,14 @@ export function rangeRingFeatures(
   center: LatLon,
   rangeMeters: number,
   rings: number,
+  // Formats a ring's radius (meters) into its label, supplied by the caller so this geometry module
+  // stays free of unit-formatting. When omitted, no label points are emitted.
+  labelFor?: (meters: number) => string,
 ): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
   for (let k = 1; k <= rings; k += 1) {
-    const coordinates = geodesicCircleRing(
-      center.latitude,
-      center.longitude,
-      (rangeMeters * k) / rings,
-    );
+    const ringMeters = (rangeMeters * k) / rings;
+    const coordinates = geodesicCircleRing(center.latitude, center.longitude, ringMeters);
     // geodesicCircleRing's last point is sin(2pi)-rounded, not exactly the first; close it exactly.
     coordinates[coordinates.length - 1] = coordinates[0];
     features.push({
@@ -21,6 +21,18 @@ export function rangeRingFeatures(
       properties: { ring: k },
       geometry: { type: 'LineString', coordinates },
     });
+    if (labelFor) {
+      // The range label sits at the ring's north point (the chart is north-up), so the rings read as a
+      // top-up range scale; a symbol layer renders the `label` property.
+      features.push({
+        type: 'Feature',
+        properties: { label: labelFor(ringMeters) },
+        geometry: {
+          type: 'Point',
+          coordinates: geodesicDestination(center.latitude, center.longitude, 0, ringMeters),
+        },
+      });
+    }
   }
   return featureCollection(features);
 }
