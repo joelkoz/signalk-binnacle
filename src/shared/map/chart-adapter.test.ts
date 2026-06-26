@@ -39,6 +39,26 @@ describe('chartToSpecs', () => {
     );
   });
 
+  it('builds a vector source with a tiles array for an xyz template endpoint', () => {
+    // A vector tile chart served as a {z}/{x}/{y} template, not a TileJSON document. The
+    // template must go in tiles[] so MapLibre substitutes z/x/y per tile; placed in url it
+    // would be fetched verbatim and 404 with percent-encoded braces.
+    const chart: SignalKChart = {
+      identifier: 'depth',
+      name: 'Depth',
+      type: 'tilelayer',
+      format: 'pbf',
+      tilemapUrl: '/signalk/v1/api/resources/charts/depth/{z}/{x}/{y}',
+    };
+    const { sources } = chartToSpecs(chart, base);
+    const sourceId = Object.keys(sources)[0];
+    expect(sources[sourceId].type).toBe('vector');
+    expect((sources[sourceId] as { tiles?: string[] }).tiles).toEqual([
+      'http://pi.local/signalk/v1/api/resources/charts/depth/{z}/{x}/{y}',
+    ]);
+    expect((sources[sourceId] as { url?: string }).url).toBeUndefined();
+  });
+
   it('resolves a pmtiles url to the pmtiles protocol', () => {
     const chart: SignalKChart = {
       identifier: 'region',

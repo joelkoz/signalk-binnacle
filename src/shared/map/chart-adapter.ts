@@ -167,22 +167,33 @@ function vectorDrawLayers(sourceId: string, available: string[]): LayerSpecifica
   return layers;
 }
 
+// True for an XYZ tile template (it carries the {z} placeholder) rather than a TileJSON or
+// .pmtiles document URL. MapLibre substitutes the placeholders only for a `tiles` entry.
+function isTileTemplate(url: string): boolean {
+  return url.includes('{z}');
+}
+
 function vectorSpecs(chart: SignalKChart, base: string): ChartSpecs {
   const sourceId = chartSourceId(chart.identifier);
   // A vector chart's `url` is its TileJSON or .pmtiles document, preferred over the
   // `{z}/{x}/{y}` template in `tilemapUrl`; the raster path prefers them the other way.
   const raw = chart.url ?? chart.tilemapUrl ?? '';
   const resolved = absolute(raw, base);
-  const url = pmtilesUrl(resolved) ?? resolved;
-  const source: SourceSpecification = {
-    type: 'vector',
-    url,
+  const pmtiles = pmtilesUrl(resolved);
+  // Honor a declared coverage extent so MapLibre suppresses tile requests outside it; a
+  // regional vector chart would otherwise fetch and 404 tiles across the whole world.
+  const extent = {
     ...(chart.minzoom !== undefined ? { minzoom: chart.minzoom } : {}),
     ...(chart.maxzoom !== undefined ? { maxzoom: chart.maxzoom } : {}),
-    // Honor a declared coverage extent so MapLibre suppresses tile requests outside it; a
-    // regional vector chart would otherwise fetch and 404 tiles across the whole world.
     ...(chart.bounds ? { bounds: chart.bounds } : {}),
   };
+  // A {z}/{x}/{y} template must go in `tiles` so MapLibre substitutes the placeholders per
+  // request; in `url` MapLibre would fetch it verbatim, percent-encoding the braces into a 404. A
+  // .pmtiles archive and a TileJSON document are documents referenced by `url` (a pmtiles URL never
+  // carries a template, so it takes this branch).
+  const source: SourceSpecification = isTileTemplate(resolved)
+    ? { type: 'vector', tiles: [resolved], ...extent }
+    : { type: 'vector', url: pmtiles ?? resolved, ...extent };
   return {
     sources: { [sourceId]: source },
     layers: vectorDrawLayers(sourceId, chart.layers ?? []),
