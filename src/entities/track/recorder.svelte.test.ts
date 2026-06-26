@@ -144,6 +144,22 @@ describe('TrackRecorder', () => {
     expect(r.points).toEqual(seeded);
   });
 
+  it('coerces a restored point with no sog to zero so every reader sees a number', async () => {
+    // A point persisted by an older build can lack sog; TrackPoint.sog is typed number, and the
+    // speed-colored track line and the stats both read it as one.
+    const legacy = [{ lat: 36.8, lon: -121.7, t: 0 } as unknown as TrackPoint];
+    const store = {
+      all: async () => legacy,
+      append: async () => {},
+      clear: async () => {},
+    };
+    const r = new TrackRecorder(createTrackSettings(createFakeStorage()), store);
+    // #restore runs asynchronously in the constructor; let its microtasks settle.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(r.points[0].sog).toBe(0);
+  });
+
   it('keeps fixes recorded before the restore resolves', async () => {
     let resolveAll!: (points: TrackPoint[]) => void;
     const store = {

@@ -79,9 +79,13 @@ export class TrackRecorder {
 
   async #restore(): Promise<void> {
     const saved = await this.#store.all();
+    if (saved.length === 0) return;
+    // Coerce sog at the storage boundary: a point persisted by an older build can lack it, but
+    // TrackPoint.sog is a number that every reader (the speed-colored line, the stats) trusts.
+    const restored = saved.map((p) => ({ ...p, sog: p.sog ?? 0 }));
     // Prepend rather than assign: fixes recorded between construction and the store read must
     // not be clobbered by the restore.
-    if (saved.length > 0) this.points = [...saved, ...this.points];
+    this.points = [...restored, ...this.points];
   }
 
   consider(lat: number, lon: number, sog: number, now: number = Date.now()): void {
