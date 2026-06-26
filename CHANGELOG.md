@@ -8,6 +8,23 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v0104"></a>
+
+## [0.10.4] - 2026-06-26
+
+### Fixed
+
+- **Radar controls render again.** A provider's capabilities are read as the object-keyed map the
+  Signal K radar API actually returns, so the gain, sea clutter, rain, and mode controls appear. The
+  panel had shown nothing because the response shape was misread. When a provider serves no
+  capabilities, the controls the radar reports at discovery are shown instead.
+- **Vector charts served as `{z}/{x}/{y}` tile templates load.** Such a chart was requested with the
+  placeholders unfilled and returned a 404; the template is now used as a tile source so the z, x, and
+  y coordinates are filled in per tile.
+- **Older recorded tracks draw correctly.** A track point saved by an earlier build without a speed
+  value is normalized on load, so the speed-colored track line and the track statistics both read a
+  number rather than breaking on a missing value.
+
 <a id="v0103"></a>
 
 ## [0.10.3] - 2026-06-25

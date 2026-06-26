@@ -15,25 +15,25 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.10.3
+## What's new in 0.10.4
 
-This release fixes Signal K access permissions, adds Auto modes to the radar, and tightens how
-Binnacle talks to the Signal K APIs:
+This release fixes three display problems:
 
-- **Read and write access is requested up front.** Binnacle now asks the server for read/write so the
-  approval defaults to it. A read-only grant had silently blocked saving routes, waypoints, and tracks,
-  starting and clearing a course, acknowledging alarms, and adjusting radar controls.
-- **Radar Auto modes.** Gain, sea clutter, and rain clutter can switch to Auto and hand the level to the
-  radar; moving the slider returns the control to manual.
-- **Steadier Signal K integration.** Stream subscriptions send only the policies the server supports, and
-  chart, note, and symbol data from other plugins is validated before it draws, so a malformed response
-  cannot turn into a broken layer or a stray marker.
-- **A request.** I still do not have a radar on my own boat, so it is unverified on real hardware. If you
-  have a radar and try this, please open a
-  [GitHub issue](https://github.com/NearlCrews/signalk-binnacle/issues) with what you see (a screenshot
-  helps), whether the picture looks right, and how the controls behave.
+- **Radar controls show up again.** The control panel reads a provider's capabilities in the shape the
+  Signal K radar API actually returns, so the gain, sea clutter, rain, and mode controls render. It had
+  shown nothing because the response was misread. If a provider reports no capabilities, the controls the
+  radar advertises at discovery are shown instead.
+- **Vector charts served as `{z}/{x}/{y}` tile templates load.** Such a chart was requested with the
+  placeholders unfilled and returned a 404; the tiles now resolve correctly.
+- **Older recorded tracks draw correctly.** A track point saved by an earlier build without a speed value
+  no longer breaks the speed-colored track line or the track statistics.
 
-See the [changelog](CHANGELOG.md#v0103) for the full list.
+I still do not have a radar on my own boat, so the radar fix is verified against the Signal K radar API
+spec and the test suite, not real hardware. If you have a radar, please open a
+[GitHub issue](https://github.com/NearlCrews/signalk-binnacle/issues) with what you see (a screenshot
+helps) and whether the controls behave.
+
+See the [changelog](CHANGELOG.md#v0104) for the full list.
 
 ## What it does
 
