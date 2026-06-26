@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { discoverRadars, fetchCapabilities, spokesUrl, writeControl } from './radar-client';
+import {
+  capabilitiesFromControls,
+  discoverRadars,
+  fetchCapabilities,
+  spokesUrl,
+  writeControl,
+} from './radar-client';
 import type { RadarInfo } from './radar-types';
 
 afterEach(() => vi.restoreAllMocks());
@@ -185,27 +191,104 @@ describe('spokesUrl', () => {
   });
 });
 
+function capabilitiesResponse(controls: Record<string, unknown>): () => Promise<Response> {
+  return async () => new Response(JSON.stringify({ controls }), { status: 200 });
+}
+
 describe('fetchCapabilities', () => {
-  it('returns parsed controls on a 200 response', async () => {
+  it('parses the object-keyed capabilities map into control definitions', async () => {
+    // The radar API serves `controls` as an object keyed by control id, each carrying a `dataType`
+    // and flat minValue/maxValue/stepValue/units, with `hasAuto` for an automatic mode.
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              controls: [
-                { id: 'gain', name: 'Gain', type: 'number', range: { min: 0, max: 100 } },
-                { id: 'rain', name: 'Rain Clutter', type: 'number', range: { min: 0, max: 100 } },
-              ],
-            }),
-            { status: 200 },
-          ),
+        capabilitiesResponse({
+          gain: {
+            id: 4,
+            name: 'Gain',
+            dataType: 'number',
+            minValue: 0,
+            maxValue: 100,
+            stepValue: 1,
+            hasAuto: true,
+          },
+          rain: { id: 6, name: 'Rain Clutter', dataType: 'number', minValue: 0, maxValue: 100 },
+        }),
       ),
     );
     const caps = await fetchCapabilities('http://boat.local', undefined, 'nav1034A');
-    expect(caps?.controls).toHaveLength(2);
-    expect(caps?.controls[0].id).toBe('gain');
-    expect(caps?.controls[0].type).toBe('number');
+    expect(caps?.controls.map((c) => c.id)).toEqual(['gain', 'rain']);
+    const gain = caps?.controls.find((c) => c.id === 'gain');
+    expect(gain?.type).toBe('number');
+    expect(gain?.range).toEqual({ min: 0, max: 100, step: 1 });
+    expect(gain?.modes).toEqual(['auto', 'manual']);
+    expect(caps?.controls.find((c) => c.id === 'rain')?.modes).toBeUndefined();
+  });
+
+  it('parses an enum control from descriptions, restricted to validValues', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        capabilitiesResponse({
+          mode: {
+            id: 1,
+            name: 'Mode',
+            dataType: 'enum',
+            descriptions: { '0': 'Harbor', '1': 'Offshore', '2': 'Bird' },
+            validValues: [0, 1],
+          },
+        }),
+      ),
+    );
+    const caps = await fetchCapabilities('http://boat.local', undefined, 'nav1034A');
+    const mode = caps?.controls.find((c) => c.id === 'mode');
+    expect(mode?.type).toBe('enum');
+    expect(mode?.values).toEqual([
+      { value: 0, label: 'Harbor' },
+      { value: 1, label: 'Offshore' },
+    ]);
+  });
+
+  it('skips controls whose dataType has no widget (sector, button, string)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        capabilitiesResponse({
+          gain: { id: 4, name: 'Gain', dataType: 'number', minValue: 0, maxValue: 100 },
+          noTransmit: {
+            id: 35,
+            name: 'No Transmit',
+            dataType: 'sector',
+            minValue: -3.14,
+            maxValue: 3.14,
+          },
+          clear: { id: 15, name: 'Clear trails', dataType: 'button' },
+          label: { id: 53, name: 'Custom name', dataType: 'string' },
+        }),
+      ),
+    );
+    const caps = await fetchCapabilities('http://boat.local', undefined, 'nav1034A');
+    expect(caps?.controls.map((c) => c.id)).toEqual(['gain']);
+  });
+
+  it('marks an isReadOnly control read-only', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        capabilitiesResponse({
+          txTime: {
+            id: 47,
+            name: 'Transmit time',
+            dataType: 'number',
+            minValue: 0,
+            maxValue: 100,
+            isReadOnly: true,
+          },
+        }),
+      ),
+    );
+    const caps = await fetchCapabilities('http://boat.local', undefined, 'nav1034A');
+    expect(caps?.controls[0].readOnly).toBe(true);
   });
 
   it('returns undefined on a 404', async () => {
@@ -230,17 +313,26 @@ describe('fetchCapabilities', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              controls: [{ id: 'gain', name: 'Gain', type: 'number', range: { min: 'x' } }],
-            }),
-            { status: 200 },
-          ),
+        capabilitiesResponse({
+          gain: { id: 4, name: 'Gain', dataType: 'number', minValue: 'x', maxValue: 100 },
+        }),
       ),
     );
     const caps = await fetchCapabilities('http://boat.local', undefined, 'nav1034A');
     expect(caps?.controls[0].range).toBeUndefined();
+  });
+});
+
+describe('capabilitiesFromControls', () => {
+  it('synthesizes numeric control definitions from a discovery, with auto where reported', () => {
+    const defs = capabilitiesFromControls({
+      ...radar,
+      controls: { gain: { value: 28, auto: true }, sea: { value: 10 } },
+    });
+    expect(defs.map((d) => d.id)).toEqual(['gain', 'sea']);
+    expect(defs.every((d) => d.type === 'number')).toBe(true);
+    expect(defs.find((d) => d.id === 'gain')?.modes).toEqual(['auto', 'manual']);
+    expect(defs.find((d) => d.id === 'sea')?.modes).toBeUndefined();
   });
 });
 

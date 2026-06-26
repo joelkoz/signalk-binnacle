@@ -71,46 +71,59 @@ function toRadarInfo(raw: unknown): RadarInfo | undefined {
   };
 }
 
-// A control's value range, only when min and max are both real numbers: the slider binds them as
-// numbers, so an undefined min or max from a malformed capability must collapse the whole range to
+// A control's value range, only when minValue and maxValue are both real numbers: the slider binds
+// them as numbers, so an undefined bound from a malformed capability must collapse the whole range to
 // undefined (the slider then falls back to 0..100) rather than producing a NaN-bounded slider.
-function parseRange(raw: unknown): ControlDefinition['range'] {
-  if (!isRecord(raw) || typeof raw.min !== 'number' || typeof raw.max !== 'number')
-    return undefined;
+function parseRange(raw: Record<string, unknown>): ControlDefinition['range'] {
+  if (typeof raw.minValue !== 'number' || typeof raw.maxValue !== 'number') return undefined;
   return {
-    min: raw.min,
-    max: raw.max,
-    step: typeof raw.step === 'number' ? raw.step : undefined,
-    unit: typeof raw.unit === 'string' ? raw.unit : undefined,
+    min: raw.minValue,
+    max: raw.maxValue,
+    step: typeof raw.stepValue === 'number' ? raw.stepValue : undefined,
+    unit: typeof raw.units === 'string' ? raw.units : undefined,
   };
 }
 
-function parseEnumValues(raw: unknown): ControlDefinition['values'] {
-  if (!Array.isArray(raw)) return undefined;
-  const out: NonNullable<ControlDefinition['values']> = [];
-  for (const v of raw) {
-    if (isRecord(v) && (typeof v.value === 'string' || typeof v.value === 'number')) {
-      out.push({ value: v.value, label: typeof v.label === 'string' ? v.label : String(v.value) });
-    }
-  }
-  return out.length > 0 ? out : undefined;
+// Enum choices from the spec's `descriptions` map (value to label). When the control declares
+// `validValues`, restrict the choices to the values the radar will accept; otherwise offer every
+// described state. Enum values are numeric on the wire.
+function parseEnumValues(descriptions: unknown, validValues: unknown): ControlDefinition['values'] {
+  if (!isRecord(descriptions)) return undefined;
+  const wanted = Array.isArray(validValues)
+    ? validValues.filter((v): v is number => typeof v === 'number')
+    : Object.keys(descriptions).map(Number).filter(Number.isFinite);
+  const values = wanted.map((value) => {
+    const label = descriptions[String(value)];
+    return { value, label: typeof label === 'string' ? label : String(value) };
+  });
+  return values.length > 0 ? values : undefined;
 }
 
-function toControlDefinition(raw: unknown): ControlDefinition | undefined {
-  if (!isRecord(raw) || typeof raw.id !== 'string') return undefined;
-  const type = raw.type;
-  const modes = Array.isArray(raw.modes)
-    ? raw.modes.filter((m): m is 'auto' | 'manual' => m === 'auto' || m === 'manual')
-    : undefined;
+// The control dataTypes Binnacle renders with its slider and select widgets. The radar API also
+// defines string, button, sector, zone, and rect controls; each needs a dedicated widget, so they are
+// skipped rather than mis-rendered as a plain slider. The everyday gain, sea, rain, range, and mode
+// controls are number or enum, so the panel still shows what a helmsman reaches for.
+const RENDERABLE_DATATYPES: ReadonlySet<string> = new Set(['number', 'enum']);
+
+// The modes for a control that reports an automatic mode: it can be set to auto or driven manually.
+const AUTO_MANUAL_MODES: Array<'auto' | 'manual'> = ['auto', 'manual'];
+
+// Map one capability schema, keyed by its control id, to a control definition. The id is the object
+// key (used in the control write path), not the numeric `id` field.
+function toControlDefinition(id: string, raw: unknown): ControlDefinition | undefined {
+  if (!isRecord(raw) || typeof raw.dataType !== 'string') return undefined;
+  if (!RENDERABLE_DATATYPES.has(raw.dataType)) return undefined;
+  const type = raw.dataType === 'enum' ? 'enum' : 'number';
   return {
-    id: raw.id,
-    name: typeof raw.name === 'string' ? raw.name : raw.id,
+    id,
+    name: typeof raw.name === 'string' ? raw.name : id,
     description: typeof raw.description === 'string' ? raw.description : undefined,
-    type: type === 'boolean' || type === 'enum' || type === 'compound' ? type : 'number',
-    range: parseRange(raw.range),
-    values: parseEnumValues(raw.values),
-    modes: modes && modes.length > 0 ? modes : undefined,
-    readOnly: raw.readOnly === true,
+    type,
+    range: parseRange(raw),
+    values: type === 'enum' ? parseEnumValues(raw.descriptions, raw.validValues) : undefined,
+    // hasAuto declares an automatic mode; the panel offers an Auto toggle beside the manual value.
+    modes: raw.hasAuto === true ? AUTO_MANUAL_MODES : undefined,
+    readOnly: raw.isReadOnly === true,
   };
 }
 
@@ -146,11 +159,32 @@ export async function fetchCapabilities(
 ): Promise<RadarCapabilities | undefined> {
   const url = `${origin}${RADARS_PATH}/${encodeURIComponent(radarId)}/capabilities`;
   const body = await fetchJsonOrUndefined<unknown>(url, authInit(token));
-  if (!isRecord(body) || !Array.isArray(body.controls)) return undefined;
-  const controls = body.controls
-    .map(toControlDefinition)
+  // The radar API serves `controls` as an object keyed by control id, not an array.
+  if (!isRecord(body) || !isRecord(body.controls)) return undefined;
+  const controls = Object.entries(body.controls)
+    .map(([id, raw]) => toControlDefinition(id, raw))
     .filter((c): c is ControlDefinition => c !== undefined);
   return { controls };
+}
+
+// Fallback control definitions built from the controls a radar reported at discovery, for a provider
+// that does not serve /capabilities (fetchCapabilities then returns undefined). The real dataType and
+// range are unknown, so each becomes a plain numeric slider (the slider uses its 0..100 default), with
+// an Auto toggle when the reported control carried an auto flag. The panel then shows the controls the
+// radar reports rather than nothing.
+export function capabilitiesFromControls(radar: RadarInfo): ControlDefinition[] {
+  const out: ControlDefinition[] = [];
+  for (const [id, entry] of Object.entries(radar.controls)) {
+    if (!entry) continue;
+    out.push({
+      id,
+      name: id,
+      type: 'number',
+      modes: entry.auto !== undefined ? AUTO_MANUAL_MODES : undefined,
+      readOnly: false,
+    });
+  }
+  return out;
 }
 
 // The radar's protobuf spoke stream URL. A provider populates streamUrl in practice; the fallback is

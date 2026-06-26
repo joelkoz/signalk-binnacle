@@ -3,6 +3,7 @@ import { MarineRadarStore } from './marine-radar-store.svelte';
 import { createPpiLayer, type PpiLayer } from './ppi-layer';
 import {
   type ControlWrite,
+  capabilitiesFromControls,
   discoverRadars,
   fetchCapabilities,
   spokesUrl,
@@ -33,9 +34,11 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
   async function openSelected(): Promise<void> {
     const radar = store.selected;
     if (!radar) return;
-    // The control definitions ride alongside the picture; a failure leaves the panel value-only.
+    // The control definitions ride alongside the picture. When a provider does not serve
+    // /capabilities, fall back to the controls the radar reported at discovery so the panel still
+    // shows them rather than collapsing to value-only.
     void fetchCapabilities(deps.origin, deps.getToken(), radar.id).then((caps) => {
-      if (caps) store.setCapabilities(caps.controls);
+      store.setCapabilities(caps?.controls ?? capabilitiesFromControls(radar));
     });
     if (!worker) worker = createRadarWorkerClient();
     store.setStatus('connecting');
