@@ -102,14 +102,16 @@ Reach for these before writing scoped CSS. Each lives in the named module.
   `.btn-danger`, `.btn-ghost`, `.btn--grow` (flex-fill), `.segmented` (a joined row of `.btn` for a
   binary or small-enum choice; the active segment carries `.is-on`).
 - Icon controls (`icon-controls.css`): `.icon-btn` (square icon button), `.icon-btn--accent`,
-  `.icon-btn--danger`, `.icon-pill` (a pill-shaped icon toggle), and the shared `.is-on` lit state
-  (accent color, accent border, accent-tint fill) that lights any composing control.
+  `.icon-btn--danger`, `.icon-pill` (a pill-shaped icon toggle), the `.panel-close` and
+  `.panel-minimize` panel header controls, and the shared `.is-on` lit state (accent color, accent
+  border, accent-tint fill) that lights any composing control.
 - Forms (`forms.css`): `.input` (text inputs and selects, 44px, raised fill), `.range` (the live
   slider, paired with a `.num` readout), `.panel-controls` (a row of action buttons under a header).
 - Text (`text.css`): `.caps-label` (the uppercase, tracked, muted SECTION heading), `.muted-note` (a
   quiet hint for empty states and inline guidance), `.alert-note` (an outline alarm banner) and its
   `.alert-note--filled` tinted variant, `.sev-danger` and `.sev-warning` (severity text coloring),
-  `.num` (mono tabular numerals for any aligned readout).
+  `.panel-title` and `.panel-title--sub` (the panel header title and subtitle), `.num` (mono tabular
+  numerals for any aligned readout).
 - Cards (`cards.css`): `.card-frame` (the raised bordered card surface, border + radius-sm +
   surface-raised), `.saved` plus its card list (used through the SavedList primitive), `.stat-grid`
   (the label/value stat readout), the `.nav-*` family (`.nav-sort`, `.nav-list`, `.nav-row`,
@@ -118,11 +120,10 @@ Reach for these before writing scoped CSS. Each lives in the named module.
   (the larger floating-panel frame: surface + border + radius-lg + shadow-lg + edge-light, used by the
   app-menu launcher and the weather panel), `.menu-item` (the flat control-height interactive menu row),
   `.row-interactive` (the shared control-height transparent interactive row that tints on hover and
-  lights via `.is-on`; composed by the weather and route menu rows and the layers category header),
-  `.overlay-backdrop` (the transparent dismiss backdrop).
+  lights via `.is-on`; composed by the weather and route menu rows, the icon picker, and the layers
+  category header), `.overlay-backdrop` (the transparent dismiss backdrop).
 - Panels (`panels.css`): `.slide-over` and `.slide-over--dock-{left,right}` (the docked panel frame),
-  `.panel-header`, `.panel-body`, `.panel-body--flex` (the bodyFlex column), `.panel-footer`,
-  `.panel-title`, and the `.panel-close` and `.panel-minimize` controls.
+  `.panel-header`, `.panel-body`, `.panel-body--flex` (the bodyFlex column), and `.panel-footer`.
 - Overlays, modals: `.modal-scrim`, `.modal-card`.
 
 ## 6. Shared UI primitives (`$shared/ui`)
@@ -145,6 +146,13 @@ Shared behavior lives here. Compose these; do not re-implement them.
 - `SavedList`: the saved-item card list (used by routes, tracks, waypoints, profiles). Renders the
   `.saved` card frame and the actions row; the panel supplies the card body.
 - `VisibilityToggle`: the show/hide eye toggle for a saved overlay item.
+- `ShowOnChartToggle`: the full-width "Show X on chart" `.btn` toggle in a panel body that mirrors a
+  layer's visibility, with the Layers eye as the source of truth.
+- `UnavailableHint`: the grayed hover tooltip and screen-reader text for a capability whose provider
+  is absent (used by the app menu, the status strip, and the layer rows).
+- `PANEL_TRANSITION_MS`: the shared panel fly and slide duration in milliseconds, used by SlideOver
+  and the weather panel so the two transitions stay in sync. JS transition timings sit outside the
+  CSS token contract.
 - Focus and dialog helpers: `rovingFocus`, `focusTrap`, `focusOnMount`, `onKeydownAction`, `isTabKey`,
   `dialog`, and `registerDismiss` (the Escape dismiss stack that peels the topmost surface first).
 - `pickTextFile` and `readErrorMessage` for file import; `promptSaveName`, `promptRename`, and
@@ -188,16 +196,20 @@ every shipped panel (alarms, anchor, tracks, weather, routes, the radar controls
   provider already sends in display units (a radar capability range) is rendered as given, not
   re-converted.
 - Empty and degraded states are first-class: a `.muted-note` for "none yet", an `.alert-note` for an
-  error, a grayed unavailable row with a tooltip when a provider is absent. Never a blank panel.
+  error, a grayed unavailable row with a tooltip (via `UnavailableHint`) when a provider is absent.
+  Never a blank panel.
 
 ## 8. Menus
 
 - The app menu is the `AppMenu` launcher: a `.surface-elevated` frame holding a grid of tiles grouped by
   intent. A menu entry is a `MenuItem` (`id`, `label`, `shortLabel` for the bottom-bar pill, `icon` a
   lucide component, `group` a section heading, `pressed` for a toggle's lit state, `disabled` plus
-  `disabledLabel`, `onSelect`). Groups today: Map, Navigate, Conditions, Safety, Settings. Adding a menu
-  option is one more `MenuItem`, never a change to the menu component. A gated item (shown only when a
-  provider is detected) is spread into the derived `menuItems` array conditionally.
+  `disabledLabel`, `available` plus `unavailableHint`, `onSelect`). Groups today: Map, Navigate,
+  Conditions, Safety, Settings. Adding a menu option is one more `MenuItem`, never a change to the menu
+  component. A capability whose provider is absent sets `available: false` with an `unavailableHint`:
+  the launcher and bottom bar render it grayed and non-interactive with the hint as a tooltip and
+  screen-reader text, rather than dropping it from the menu. (`disabled` plus `disabledLabel` is the
+  transient block for an action that is momentarily unavailable, such as a chart still loading.)
 - An anchored menu (a popover hung off a control) is `AnchoredMenu`. A modal is the rare exception
   (`.modal-card` over `.modal-scrim`), reserved for the MOB confirm.
 - The bottom bar renders the pinned `MenuItem`s (using `shortLabel`) plus a More overflow.
@@ -221,7 +233,7 @@ every shipped panel (alarms, anchor, tracks, weather, routes, the radar controls
 
 ## 10. Icons
 
-- App chrome uses `lucide-svelte` components, sized in px (`size={18}` for inline, `size={20}` for a
+- App chrome uses `@lucide/svelte` components, sized in px (`size={18}` for inline, `size={20}` for a
   control), always `aria-hidden="true"` when a text label is present. Pick an icon that reads true:
   AIS targets is a ship, the radar is the radar sweep glyph, an anchor is an anchor.
 - Chart symbols are a separate system: they derive from the S-52 Presentation Library and OpenBridge,

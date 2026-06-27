@@ -36,7 +36,7 @@ from the shipped ones.
   a hidden tab suspends, so data and alarms keep flowing in a backgrounded tab), feeding a
   path-keyed fine-grained runes store.
 - Fonts: Inter (UI) and JetBrains Mono (numeric readouts), self-hosted.
-- Icons: lucide-svelte for app chrome. Chart symbols derive from the S-52 Presentation
+- Icons: @lucide/svelte for app chrome. Chart symbols derive from the S-52 Presentation
   Library and OpenBridge, not from a UI icon set.
 - Themes: day, dusk, and night-red. Night-red is pure red on true black. No blue at night,
   alarms always distinguishable, brightest pixel low.
@@ -58,12 +58,12 @@ from the shipped ones.
   Biome and rely on `svelte-check` for correctness. Because Biome cannot see a `{#snippet}`
   parameter used in the template body, `noUnusedFunctionParameters` is turned off for `.svelte`
   files in `biome.json`; the real backstop is `noUnusedLocals` and `noUnusedParameters` in
-  `tsconfig.app.json`, which svelte-check enforces (it does see template usage). On Biome 2.5.0 the
+  `tsconfig.app.json`, which svelte-check enforces (it does see template usage). On Biome 2.5.1 the
   same experimental support reports false positives on valid Svelte for three new a11y rules
   (`useValidAriaValues` on dynamic ARIA bindings, `useSemanticElements` on `role="group"` toolbars,
   and `noLabelWithoutControl` on a label wrapping a child-component control), so those three are
   turned off for `.svelte` in `biome.json`; Svelte's own compiler a11y warnings, surfaced by
-  svelte-check, are the Svelte-aware backstop. SVG assets are excluded from Biome (2.5.0 began
+  svelte-check, are the Svelte-aware backstop. SVG assets are excluded from Biome (2.5.1 began
   parsing `.svg` and chokes on the XML prolog). Config uses the `linter.rules.preset` form
   (`recommended`), not the deprecated `recommended` boolean.
 - Type-check: `svelte-check --tsconfig ./tsconfig.app.json` (the leaf app config, not the
@@ -75,8 +75,9 @@ from the shipped ones.
   record the comparison in the commit or PR description. Never adopt the first search hit; never
   add a dependency a few dozen lines of owned code would cover better.
 - Keep every dependency at its latest compatible version. The stack is on Vite 8, TypeScript 6,
-  Svelte 5, MapLibre GL JS 5.24 (used directly, not svelte-maplibre-gl), pmtiles 4, Comlink 4,
-  and `@signalk/server-api` 2.
+  Svelte 5, MapLibre GL JS 5.24 (used directly, not svelte-maplibre-gl), pmtiles 4, and Comlink 4.
+  `@signalk/server-api` is never a dependency: the few wire types are mirrored from its 2.x shapes in
+  `src/shared/signalk/types.ts`, since importing the package crashes the worker (see the worker note below).
 
 ## Verify before commit and push (hard rule, mechanically enforced)
 
@@ -154,8 +155,8 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   goes into the right module, never back into one monolith; new shared UI behavior goes through
   the `$shared/ui` primitives (SlideOver, AnchoredMenu, InlineConfirm, UnitField, ConfirmArm, SavedList,
   VisibilityToggle, the dialog dismiss stack, the rovingFocus, focusTrap, focusOnMount, and
-  onKeydownAction focus actions, the isTabKey helper, the pickTextFile importer, and the promptRename
-  and promptSaveName dialogs) and the
+  onKeydownAction focus actions, the isTabKey helper, the pickTextFile importer, the promptRename
+  and promptSaveName dialogs, and the PANEL_TRANSITION_MS shared panel-transition-duration constant) and the
   global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.popover-card`, the
   `.surface-elevated` floating-panel frame, `.modal-card`, `.menu-item`, the `.row-interactive`
   control-height interactive-row base composed by the weather, route, and layers-category rows (it
@@ -174,7 +175,7 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   emptyFeatureCollection, setSourceData, iconOffsetExpression with CENTERED_OFFSET, removeLayersAndSources,
   setLayersVisibility, createSafetyOverlay for safety-band rasters, rgbaCss), `$shared/geo`
   (latLonToLonLat and the single lat/lon-to-GeoJSON-order crossing, the Bbox4 bounding-box tuple,
-  quantizeLatLonKey for a position-keyed reactive cell, VIEWPORT_FETCH_PAD_FRACTION), `$shared/signalk` resource.ts (jsonOr, sendJson, fetchKeyedResource), and `$entities/symbols`
+  quantizeLatLonKey for a position-keyed reactive cell, VIEWPORT_FETCH_PAD_FRACTION), `$shared/signalk` resource.ts (jsonOr, sendJson, fetchKeyedResource, the authed fetchAuthedJson, fetchAuthedText, and postResource), and `$entities/symbols`
   (createOverlayIconResolver, the provided-symbol overlay glue). An overlay that hand-rolls a
   `getSource(...) as { setData }` cast or a `{ type: 'FeatureCollection', features }` literal should use
   setSourceData and featureCollection instead.
@@ -310,7 +311,7 @@ last year, and a stable API surface.
 ## Release policy: patches only, minor bumps are the owner's call (user rule, 2026-06-12, until revoked)
 
 Binnacle is in beta and the owner is not concerned about breaking changes yet. Every release is
-a PATCH against the current minor (0.6.1, 0.6.2, ...) until the owner explicitly says otherwise,
+a PATCH against the current minor (0.10.5, 0.10.6, ...) until the owner explicitly says otherwise,
 regardless of how large the changes are or whether they remove features. Do not bump the minor
 or major on semver instinct; the version line is the owner's call (the owner called 0.6.0
 explicitly on 2026-06-12). The pre-push release checklist in the global rules still applies in

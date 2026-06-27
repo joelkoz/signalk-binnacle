@@ -8,6 +8,23 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Course readouts stay live during navigation.** Cross-track error, velocity made good, distance and
+  bearing to the waypoint, and ETA had frozen at the value read when the page first loaded. The course
+  calculations stream one field at a time, and Binnacle had been listening for them as a single bundle
+  that never arrives, so the numbers never refreshed. Each field is now followed as it streams, so the
+  active-leg readouts update continuously while you navigate.
+- **Anchor controls report a read-only token.** Dropping the anchor, raising it, or changing the swing
+  radius on a read-only grant now raises the read-and-write request banner, the same as routes,
+  waypoints, tracks, course, and alarms, instead of appearing to do nothing.
+- **A tide forecast survives a current-station error.** When the station serving tidal currents fails,
+  Binnacle keeps the tide forecast it already fetched rather than discarding both.
+- **Weather readouts no longer show NaN.** The weather grid is guarded against an empty or single-point
+  data axis that previously produced not-a-number readings at the cursor.
+- **A mid-session data drop shows as a disconnect.** If the background Signal K connection crashes while
+  running, the status now reads as a closed connection instead of going silently stale.
+
 <a id="v0105"></a>
 
 ## [0.10.5] - 2026-06-27
