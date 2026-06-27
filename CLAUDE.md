@@ -107,18 +107,16 @@ gitignored `tmp/` directory at the repo root, never loose at the root or inside 
 The working rhythm: write every file, run the gate capturing each result to a file and reading it
 back (shell output on this Pi intermittently truncates, so trust the file, not a glanced line),
 confirm all green, and only then commit and push. Swap covers concurrent heavy commands now, so
-running several gate steps at once is fine (see "Pi memory" below). Prefer lead-driven
-implementation over agent teams on this Pi; `TeamCreate` teams have dropped lane files silently
-("Lock file is already being held" on spawn), which is how broken trees reached commits.
+running several gate steps at once is fine (see "Pi memory" below).
 
-When a team IS explicitly requested for implementation, use parallel **Agent-tool subagents scoped
-to disjoint files, not `TeamCreate`** (the Agent tool has no lane-lock plumbing, so it avoids that
-failure; it is also what `/cleanup` uses for read-only audits). Each implementer subagent edits a
-non-overlapping file set, is forbidden from running heavy commands and git, and reports back; the
-lead integrates the shared and wiring files itself, runs the gate, commits in logical chunks, and
-only then optionally runs review subagents (code-reviewer,
-silent-failure-hunter) on the integrated diff and fixes every finding. No tmux panes or
-`shutdown_request` to manage because there is no `TeamCreate`.
+Agent teams are allowed for Binnacle work, including `TeamCreate` (per the global rules), as are
+parallel Agent-tool subagents scoped to disjoint files. Whatever the mechanism, the lead (main
+thread) owns `package.json`, all git commits, and all heavy commands, and teammates are laned to
+non-overlapping files so a shared file never has two editors. The lead integrates the shared and
+wiring files itself, runs the gate, commits in logical chunks, and runs review subagents
+(code-reviewer, silent-failure-hunter) on the integrated diff, fixing every finding. When using
+`TeamCreate`, follow the global rules for the structured `shutdown_request` and verifying the tmux
+panes actually closed before `TeamDelete`.
 
 ## Modularity is a first-class rule
 
