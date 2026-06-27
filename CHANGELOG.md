@@ -8,6 +8,10 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v0106"></a>
+
+## [0.10.6] - 2026-06-27
+
 ### Fixed
 
 - **Course readouts stay live during navigation.** Cross-track error, velocity made good, distance and

@@ -15,26 +15,24 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.10.5
+## What's new in 0.10.6
 
-The radar picture works on real hardware now, with help from a tester running a live radar:
+A round of fixes that keep the live readouts honest:
 
-- **The radar echo renders correctly.** It had been blank with the stream live for three reasons, all
-  fixed: the echo layer was off and nothing turned it on, the fallback color ramp left strong returns
-  transparent, and the spoke image was drawn transposed and swept the wrong way. The echo now draws in
-  the right orientation and sweeps clockwise from dead ahead, and it turns on automatically the first
-  time a radar is detected.
-- **Transmit and standby control.** Key the radar between transmit and standby from the radar panel,
-  with a live status reading transmitting, standby, warming up, or off, plus a "Show echo on chart"
-  toggle synced with the Layers eye.
-- **Read and write access prompt.** If the server granted Binnacle a read-only token, a banner now
-  offers a one-click request for read and write so routes, waypoints, tracks, course, alarms, and radar
-  controls can save. The chart keeps updating while the new grant is approved.
+- **Course readouts stay live during navigation.** Cross-track error, velocity made good, distance and
+  bearing to the waypoint, and ETA had frozen at the value shown when the page loaded. Each course
+  calculation now updates continuously as it streams, so the nav strip keeps pace with the passage.
+- **Anchor controls report a read-only token.** Dropping the anchor, raising it, or changing the swing
+  radius on a read-only grant now raises the read-and-write request banner, the same as routes,
+  waypoints, tracks, course, and alarms, rather than appearing to do nothing.
+- **A tide forecast survives a current-station error.** A failing tidal-current station no longer
+  discards the tide forecast Binnacle already fetched.
+- **Weather readouts no longer show NaN.** The weather grid is guarded against a sparse data axis that
+  could otherwise produce not-a-number readings at the cursor.
+- **A mid-session data drop shows as a disconnect.** If the background connection crashes while running,
+  the status now reads as a closed connection instead of going silently stale.
 
-The radar spoke stream also reconnects automatically after a drop and carries the auth token, and the
-controls parse whichever capability shape a provider serves.
-
-See the [changelog](CHANGELOG.md#v0105) for the full list.
+See the [changelog](CHANGELOG.md#v0106) for the full list.
 
 ## What it does
 
