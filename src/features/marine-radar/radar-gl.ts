@@ -64,17 +64,23 @@ in vec2 v_local;
 out vec4 fragColor;
 const float PI = 3.141592653589793;
 
-// The data texel is a legend INDEX. Recover the integer 0..255 index from the R8-normalized value and
-// look up its RGBA, sampling level 0 explicitly so no implicit-derivative LOD is needed inside the loop.
+// uv.x is the angle fraction [0,1), uv.y the range fraction [0,1). The data texture is laid out
+// range-across-width and angle-down-height (matching mayara's renderer and the angle-major accumulator
+// writeSpoke fills), so the texel lookup swaps to (range, angle). The data texel is a legend INDEX:
+// recover the integer 0..255 index from the R8-normalized value and look up its RGBA, sampling level 0
+// explicitly so no implicit-derivative LOD is needed inside the loop.
 vec4 echoColor(vec2 uv) {
-  float idx = floor(textureLod(u_data, uv, 0.0).r * 255.0 + 0.5);
+  float idx = floor(textureLod(u_data, vec2(uv.y, uv.x), 0.0).r * 255.0 + 0.5);
   return textureLod(u_legend, vec2((idx + 0.5) / 256.0, 0.5), 0.0);
 }
 
 void main() {
   float r = length(v_local);
   if (r > 1.0) discard;
-  float theta = atan(v_local.x, v_local.y) - u_heading;
+  // atan(x, -y): the quad's local +y is mercator south (down on a north-up screen), so negating it puts
+  // angle 0 at the top (dead ahead) and makes the angle increase clockwise, matching the radar's
+  // rotation and mayara's renderer. Using +y here drew the sweep counter-clockwise.
+  float theta = atan(v_local.x, -v_local.y) - u_heading;
   float a = mod(theta / (2.0 * PI), 1.0);
 
   vec4 echo;
@@ -220,17 +226,20 @@ export class RadarGl {
     const pixels = new Uint8Array(buffer);
     gl.bindTexture(gl.TEXTURE_2D, this.#dataTex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    if (spokesPerRev !== this.#texW || maxSpokeLen !== this.#texH) {
-      // First upload or a size change: allocate and set the filters. The data texel is a palette
-      // index, so it is sampled NEAREST (interpolating indices would blend to unrelated colors).
-      this.#texW = spokesPerRev;
-      this.#texH = maxSpokeLen;
+    if (maxSpokeLen !== this.#texW || spokesPerRev !== this.#texH) {
+      // First upload or a size change: allocate and set the filters. The accumulator is angle-major
+      // (each spoke's range bins are contiguous), so the texture is range-across-width and
+      // angle-down-height, matching mayara's renderer; the shader samples (range, angle). The data
+      // texel is a palette index, so it is sampled NEAREST (interpolating indices would blend to
+      // unrelated colors). Width is range (CLAMP) and height is angle (REPEAT, so the 0/2pi seam wraps).
+      this.#texW = maxSpokeLen;
+      this.#texH = spokesPerRev;
       gl.texImage2D(
         gl.TEXTURE_2D,
         0,
         gl.R8,
-        spokesPerRev,
         maxSpokeLen,
+        spokesPerRev,
         0,
         gl.RED,
         gl.UNSIGNED_BYTE,
@@ -238,16 +247,16 @@ export class RadarGl {
       );
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     } else {
       gl.texSubImage2D(
         gl.TEXTURE_2D,
         0,
         0,
         0,
-        spokesPerRev,
         maxSpokeLen,
+        spokesPerRev,
         gl.RED,
         gl.UNSIGNED_BYTE,
         pixels,

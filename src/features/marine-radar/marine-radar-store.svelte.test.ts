@@ -79,4 +79,31 @@ describe('MarineRadarStore', () => {
     store.setDiscovered([radar]);
     expect(store.controlsForbidden).toBe(false);
   });
+
+  it('seeds the operational status from the discovered radar', () => {
+    const store = new MarineRadarStore();
+    store.setDiscovered([{ ...radar, status: 'transmit' }]);
+    expect(store.operationalStatus).toBe('transmit');
+  });
+
+  it('reconciles status and control values from a state snapshot', () => {
+    const store = new MarineRadarStore();
+    store.setDiscovered([radar]);
+    store.reconcile(
+      { status: 'transmit', controls: { gain: { value: 80, auto: true }, sea: { value: 30 } } },
+      new Set(),
+    );
+    expect(store.operationalStatus).toBe('transmit');
+    expect(store.controlValues.gain).toBe(80);
+    expect(store.controlAuto.gain).toBe(true);
+    expect(store.controlValues.sea).toBe(30);
+  });
+
+  it('reconcile does not clobber an in-flight optimistic write (a pending control)', () => {
+    const store = new MarineRadarStore();
+    store.setDiscovered([radar]);
+    store.setControlValue('gain', 99);
+    store.reconcile({ controls: { gain: { value: 50 } } }, new Set(['gain']));
+    expect(store.controlValues.gain).toBe(99);
+  });
 });

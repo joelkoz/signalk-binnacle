@@ -58,6 +58,32 @@ describe('RadarFrameCore', () => {
     expect(() => core.flush()).not.toThrow();
   });
 
+  it('ingest returns the count of decoded spokes, and flush reports the count since the last flush', () => {
+    const core = new RadarFrameCore(16, 8);
+    let total = 0;
+    for (const frame of syntheticFrames({ spokesPerRev: 16, maxSpokeLen: 8 })) {
+      total += core.ingest(new Uint8Array(frame));
+    }
+    expect(total).toBe(16);
+    expect(core.flush().spokeCount).toBe(16);
+    // The count resets each flush.
+    expect(core.flush().spokeCount).toBe(0);
+  });
+
+  it('keeps the last positive range, so a spoke reporting range 0 does not collapse the display', () => {
+    const core = new RadarFrameCore(16, 8);
+    core.ingest(encodeSpoke(0, 1852, new Uint8Array(8)));
+    expect(core.flush().range).toBe(1852);
+    // A later spoke with range 0 (proto3 default for an omitted field) must not overwrite the good range.
+    core.ingest(encodeSpoke(1, 0, new Uint8Array(8)));
+    expect(core.flush().range).toBe(1852);
+  });
+
+  it('seeds the initial range from discovery so the first frame has a usable extent', () => {
+    const core = new RadarFrameCore(16, 8, 926);
+    expect(core.flush().range).toBe(926);
+  });
+
   it('a truncated frame does not corrupt the accumulator: later valid frames still integrate', () => {
     const core = new RadarFrameCore(4, 4);
     const good = syntheticFrames({ spokesPerRev: 4, maxSpokeLen: 4 });

@@ -3,7 +3,7 @@ import { onDestroy } from 'svelte';
 import type { TidesStore } from '$entities/tides';
 import type { UnitsStore } from '$entities/units';
 import { Clock, formatBearingOr, formatClockTime, MINUTE_MS } from '$shared/lib';
-import { SlideOver } from '$shared/ui';
+import { ShowOnChartToggle, SlideOver } from '$shared/ui';
 import {
   formatCurrentRate,
   formatStationDistance,
@@ -86,15 +86,11 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
 
 <SlideOver title="Tides" closeLabel="Close tides" {onClose} {onBack}>
   {#if onToggleStations}
-    <button
-      type="button"
-      class="btn stations"
-      class:is-on={stationsShown}
-      aria-pressed={stationsShown}
-      onclick={() => onToggleStations(!stationsShown)}
-    >
-      Show stations on chart
-    </button>
+    <ShowOnChartToggle
+      shown={stationsShown}
+      label="Show stations on chart"
+      onToggle={onToggleStations}
+    />
   {/if}
   {#if !tide && store.status === 'loading'}
     <p class="muted-note" role="status">Finding nearby tide stations...</p>
@@ -179,11 +175,6 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
 </SlideOver>
 
 <style>
-/* The box, the 44px touch height, and the lit .is-on state come from the global .btn vocabulary;
-   only the full-width row is local. */
-.stations {
-  inline-size: 100%;
-}
 .station {
   display: flex;
   align-items: baseline;

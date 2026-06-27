@@ -11,6 +11,7 @@ export interface RadarWorkerApi {
     url: string,
     spokesPerRev: number,
     maxSpokeLen: number,
+    initialRange: number,
     flushHz: number,
     onFrame: (frame: RadarFrame) => void,
     onStatus: (status: RadarStreamStatus) => void,
@@ -23,6 +24,7 @@ export interface RadarWorkerClient {
     url: string,
     spokesPerRev: number,
     maxSpokeLen: number,
+    initialRange: number,
     flushHz: number,
     onFrame: (frame: RadarFrame) => void,
     onStatus: (status: RadarStreamStatus) => void,
@@ -37,11 +39,12 @@ export function wrapRadarWorker(
   terminate: () => void,
 ): RadarWorkerClient {
   return {
-    async open(url, spokesPerRev, maxSpokeLen, flushHz, onFrame, onStatus) {
+    async open(url, spokesPerRev, maxSpokeLen, initialRange, flushHz, onFrame, onStatus) {
       await api.open(
         url,
         spokesPerRev,
         maxSpokeLen,
+        initialRange,
         flushHz,
         Comlink.proxy(onFrame),
         Comlink.proxy(onStatus),

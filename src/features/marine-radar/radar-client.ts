@@ -1,5 +1,5 @@
 import { fetchJsonOrUndefined, isRecord, withTimeout } from '$shared/lib';
-import { authInit, sendJson } from '$shared/signalk';
+import { appendToken, authInit, sendJson, str } from '$shared/signalk';
 import type {
   ControlDefinition,
   LegendEntry,
@@ -57,6 +57,18 @@ function parseLegend(raw: unknown): LegendEntry[] | undefined {
 function toRadarInfo(raw: unknown): RadarInfo | undefined {
   if (!isRecord(raw) || typeof raw.id !== 'string') return undefined;
   const id = raw.id;
+  // spokesPerRevolution and maxSpokeLen size the spoke accumulator, so a missing or non-positive value
+  // falling back to a default would render a distorted sweep. Warn before falling back so a misbehaving
+  // provider is diagnosable rather than silently wrong.
+  const goodGeometry = (v: unknown): boolean => typeof v === 'number' && v > 0;
+  if (!goodGeometry(raw.spokesPerRevolution) || !goodGeometry(raw.maxSpokeLen)) {
+    console.warn(
+      `[marine-radar] radar ${id} reported invalid geometry (spokesPerRevolution=${String(raw.spokesPerRevolution)}, maxSpokeLen=${String(raw.maxSpokeLen)}), using defaults`,
+    );
+  }
+  // A blank or whitespace streamUrl is treated as absent so the built-in stream fallback engages rather
+  // than `new WebSocket('')` throwing.
+  const streamUrl = typeof raw.streamUrl === 'string' ? raw.streamUrl.trim() : '';
   return {
     id,
     name: typeof raw.name === 'string' ? raw.name : id,
@@ -67,7 +79,7 @@ function toRadarInfo(raw: unknown): RadarInfo | undefined {
     range: typeof raw.range === 'number' ? raw.range : 0,
     controls: parseControls(raw.controls),
     legend: parseLegend(raw.legend),
-    streamUrl: typeof raw.streamUrl === 'string' ? raw.streamUrl : undefined,
+    streamUrl: streamUrl.length > 0 ? streamUrl : undefined,
   };
 }
 
@@ -99,25 +111,29 @@ function parseEnumValues(descriptions: unknown, validValues: unknown): ControlDe
   return values.length > 0 ? values : undefined;
 }
 
-// The control dataTypes Binnacle renders with its slider and select widgets. The radar API also
-// defines string, button, sector, zone, and rect controls; each needs a dedicated widget, so they are
-// skipped rather than mis-rendered as a plain slider. The everyday gain, sea, rain, range, and mode
-// controls are number or enum, so the panel still shows what a helmsman reaches for.
-const RENDERABLE_DATATYPES: ReadonlySet<string> = new Set(['number', 'enum']);
+// The control types Binnacle renders with its slider, select, and toggle widgets. The radar API also
+// defines string, button, sector, zone, rect, and compound controls; each needs a dedicated widget, so
+// they are skipped rather than mis-rendered as a plain slider. The everyday power, gain, sea, rain,
+// range, and mode controls are number, enum, or boolean, so the panel still shows what a helmsman
+// reaches for. The set is shared by both capability dialects (mayara `dataType`, server-api `type`).
+const RENDERABLE_DATATYPES: ReadonlySet<string> = new Set(['number', 'enum', 'boolean']);
 
 // The modes for a control that reports an automatic mode: it can be set to auto or driven manually.
 const AUTO_MANUAL_MODES: Array<'auto' | 'manual'> = ['auto', 'manual'];
 
-// Map one capability schema, keyed by its control id, to a control definition. The id is the object
-// key (used in the control write path), not the numeric `id` field.
+// Map one mayara-native capability schema, keyed by its control id, to a control definition. The id is
+// the object key (used in the control write path), not the numeric `id` field. This is the dialect the
+// mayara provider plugin serves: flat dataType/minValue/maxValue/stepValue/units, descriptions, and a
+// flattened hasAuto/isReadOnly.
 function toControlDefinition(id: string, raw: unknown): ControlDefinition | undefined {
   if (!isRecord(raw) || typeof raw.dataType !== 'string') return undefined;
   if (!RENDERABLE_DATATYPES.has(raw.dataType)) return undefined;
-  const type = raw.dataType === 'enum' ? 'enum' : 'number';
+  // The RENDERABLE guard above leaves only number, enum, or boolean, all members of the type union.
+  const type = raw.dataType as ControlDefinition['type'];
   return {
     id,
-    name: typeof raw.name === 'string' ? raw.name : id,
-    description: typeof raw.description === 'string' ? raw.description : undefined,
+    name: str(raw.name) ?? id,
+    description: str(raw.description),
     type,
     range: parseRange(raw),
     values: type === 'enum' ? parseEnumValues(raw.descriptions, raw.validValues) : undefined,
@@ -127,31 +143,95 @@ function toControlDefinition(id: string, raw: unknown): ControlDefinition | unde
   };
 }
 
-// Discover the radars the Signal K server exposes. Returns the parsed array, or `[]` for a stock
-// server with no provider (a 404), an auth refusal, or any transport failure: the radar layer simply
-// degrades to "no radar". A non-404 error status is logged so a reachable-but-broken provider is not
-// silently read as absent.
+// The nested range of a ControlDefinitionV5 (the @signalk/server-api shape), only when min and max are
+// both real numbers, mirroring parseRange's NaN guard.
+function parseRangeV5(raw: Record<string, unknown>): ControlDefinition['range'] {
+  const r = raw.range;
+  if (!isRecord(r) || typeof r.min !== 'number' || typeof r.max !== 'number') return undefined;
+  return {
+    min: r.min,
+    max: r.max,
+    step: typeof r.step === 'number' ? r.step : undefined,
+    unit: typeof r.unit === 'string' ? r.unit : undefined,
+  };
+}
+
+// The enum choices of a ControlDefinitionV5: an array of {value,label}. The internal model is numeric,
+// so a string-valued choice (legal in the type but not used by radar enums) is dropped.
+function parseValuesV5(values: unknown): ControlDefinition['values'] {
+  if (!Array.isArray(values)) return undefined;
+  const out: NonNullable<ControlDefinition['values']> = [];
+  for (const v of values) {
+    if (isRecord(v) && typeof v.value === 'number') {
+      out.push({ value: v.value, label: typeof v.label === 'string' ? v.label : String(v.value) });
+    }
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+// Map one ControlDefinitionV5 (the @signalk/server-api CapabilityManifest.controls array element) to a
+// control definition: id, name, type, nested range, values, modes, and readOnly. A conformant server
+// serves this dialect; the object-keyed mayara dialect is handled above. Both feed the same widgets.
+function toControlDefinitionV5(raw: unknown): ControlDefinition | undefined {
+  if (!isRecord(raw) || typeof raw.id !== 'string' || typeof raw.type !== 'string')
+    return undefined;
+  if (!RENDERABLE_DATATYPES.has(raw.type)) return undefined;
+  const modes = Array.isArray(raw.modes)
+    ? raw.modes.filter((m): m is 'auto' | 'manual' => m === 'auto' || m === 'manual')
+    : undefined;
+  // The RENDERABLE guard above leaves only number, enum, or boolean, all members of the type union.
+  const type = raw.type as ControlDefinition['type'];
+  return {
+    id: raw.id,
+    name: str(raw.name) ?? raw.id,
+    description: str(raw.description),
+    type,
+    range: parseRangeV5(raw),
+    values: type === 'enum' ? parseValuesV5(raw.values) : undefined,
+    modes: modes && modes.length > 0 ? modes : undefined,
+    readOnly: raw.readOnly === true,
+  };
+}
+
+// The outcome of discovery: the parsed radars, plus authRequired when the server refused for lack of
+// authorization (401/403). The controller surfaces authRequired so an access refusal is not reported to
+// the navigator as "no radar."
+export interface RadarDiscovery {
+  radars: RadarInfo[];
+  authRequired: boolean;
+}
+
+// Discover the radars the Signal K server exposes. Returns no radars for a stock server with no provider
+// (a 404), an auth refusal, or any transport failure: the radar layer simply degrades to "no radar". A
+// non-404 error status is logged so a reachable-but-broken provider is not silently read as absent, and
+// a 401/403 sets authRequired so the panel can ask for access rather than reporting absence.
 export async function discoverRadars(
   origin: string,
   token: string | undefined,
-): Promise<RadarInfo[]> {
+): Promise<RadarDiscovery> {
   try {
     const response = await fetch(`${origin}${RADARS_PATH}`, withTimeout(authInit(token)));
     if (!response.ok) {
       if (response.status !== 404) {
         console.warn(`[marine-radar] radar discovery returned ${response.status}`);
       }
-      return [];
+      return { radars: [], authRequired: response.status === 401 || response.status === 403 };
     }
     const body = await response.json();
-    if (!Array.isArray(body)) return [];
-    return body.map(toRadarInfo).filter((r): r is RadarInfo => r !== undefined);
+    if (!Array.isArray(body)) return { radars: [], authRequired: false };
+    return {
+      radars: body.map(toRadarInfo).filter((r): r is RadarInfo => r !== undefined),
+      authRequired: false,
+    };
   } catch {
-    return [];
+    return { radars: [], authRequired: false };
   }
 }
 
 // The control definitions for a radar (ranges, types, enum values), used to render the controls UI.
+// Two dialects exist in the wild: the @signalk/server-api CapabilityManifest serves `controls` as an
+// ARRAY of ControlDefinitionV5, while the mayara provider plugin serves an OBJECT keyed by control id
+// with native dataType/minValue fields. Parse whichever arrived so the controls render either way.
 export async function fetchCapabilities(
   origin: string,
   token: string | undefined,
@@ -159,12 +239,20 @@ export async function fetchCapabilities(
 ): Promise<RadarCapabilities | undefined> {
   const url = `${origin}${RADARS_PATH}/${encodeURIComponent(radarId)}/capabilities`;
   const body = await fetchJsonOrUndefined<unknown>(url, authInit(token));
-  // The radar API serves `controls` as an object keyed by control id, not an array.
-  if (!isRecord(body) || !isRecord(body.controls)) return undefined;
-  const controls = Object.entries(body.controls)
-    .map(([id, raw]) => toControlDefinition(id, raw))
-    .filter((c): c is ControlDefinition => c !== undefined);
-  return { controls };
+  if (!isRecord(body)) return undefined;
+  if (Array.isArray(body.controls)) {
+    const controls = body.controls
+      .map(toControlDefinitionV5)
+      .filter((c): c is ControlDefinition => c !== undefined);
+    return { controls };
+  }
+  if (isRecord(body.controls)) {
+    const controls = Object.entries(body.controls)
+      .map(([id, raw]) => toControlDefinition(id, raw))
+      .filter((c): c is ControlDefinition => c !== undefined);
+    return { controls };
+  }
+  return undefined;
 }
 
 // Fallback control definitions built from the controls a radar reported at discovery, for a provider
@@ -187,13 +275,51 @@ export function capabilitiesFromControls(radar: RadarInfo): ControlDefinition[] 
   return out;
 }
 
-// The radar's protobuf spoke stream URL. A provider populates streamUrl in practice; the fallback is
-// the built-in per-radar stream endpoint. The radar API documents two built-in shapes, `<radar>/stream`
-// and `/streams/radars/{id}`; the per-radar form is used here, so a provider that serves only the other
-// form must populate streamUrl. http(s) is rewritten to ws(s) for the WebSocket connect.
-export function spokesUrl(origin: string, radar: RadarInfo): string {
+// A snapshot of the radar's live state from GET /radars/{id}/state.
+export interface RadarStateSnapshot {
+  status?: RadarStatus;
+  controls: RadarControls;
+}
+
+// Poll the live radar state: GET /radars/{id}/state returns { status, controls } so the panel can
+// reconcile the operational status (transmit/standby/warming) and control values that change out of band
+// (another station, or the radar warming up). Returns undefined on any failure so the caller keeps the
+// last known state.
+export async function fetchRadarState(
+  origin: string,
+  token: string | undefined,
+  radarId: string,
+): Promise<RadarStateSnapshot | undefined> {
+  const url = `${origin}${RADARS_PATH}/${encodeURIComponent(radarId)}/state`;
+  const body = await fetchJsonOrUndefined<unknown>(url, authInit(token));
+  if (!isRecord(body)) return undefined;
+  return {
+    status: RADAR_STATUSES.has(body.status as string) ? (body.status as RadarStatus) : undefined,
+    controls: parseControls(body.controls),
+  };
+}
+
+// Whether a provider-supplied streamUrl is on the server origin, by parsed-origin comparison (not a
+// string prefix, which would match a suffix-extension host like `boat.local.evil.com` and leak the
+// token). A streamUrl that fails to parse is treated as cross-origin.
+function isSameOrigin(streamUrl: string, origin: string): boolean {
+  try {
+    return new URL(streamUrl).origin === new URL(origin).origin;
+  } catch {
+    return false;
+  }
+}
+
+// The radar's protobuf spoke stream URL. A provider populates streamUrl in practice; the fallback is the
+// built-in per-radar stream endpoint (which the mayara plugin reverse-proxies same-origin). http(s) is
+// rewritten to ws(s) for the WebSocket connect. The token is appended only for a same-origin stream (the
+// built-in endpoint, or a provider streamUrl on this origin); a cross-host provider URL is left untouched
+// so the device token is never leaked to another host.
+export function spokesUrl(origin: string, radar: RadarInfo, token?: string): string {
+  const sameOrigin = radar.streamUrl ? isSameOrigin(radar.streamUrl, origin) : true;
   const raw = radar.streamUrl ?? `${origin}${RADARS_PATH}/${encodeURIComponent(radar.id)}/stream`;
-  return raw.replace(/^http/, 'ws');
+  const ws = raw.replace(/^http/, 'ws');
+  return token && sameOrigin ? appendToken(ws, token) : ws;
 }
 
 // One control write: a manual value, or an auto-mode toggle. The v2 control PUT reads `body.value`
@@ -219,4 +345,43 @@ export async function writeControl(
     console.warn(`[marine-radar] control ${controlId} write rejected: ${status || 'network'}`);
   }
   return { ok: result?.ok ?? false, status };
+}
+
+// The mayara power enum value for each operational status, for the generic-control fallback below.
+const POWER_INDEX: Record<RadarStatus, number> = { off: 0, standby: 1, transmit: 2, warming: 3 };
+
+// The statuses for which the dedicated /power endpoint is absent and we retry via the generic control:
+// a 404/405 (no typed endpoint) or a 501 (provider implements no setPower).
+const POWER_FALLBACK_STATUS: ReadonlySet<number> = new Set([404, 405, 501]);
+
+function powerOutcome(
+  status: RadarStatus,
+  res: Response | undefined,
+): { ok: boolean; status: number } {
+  const code = res?.status ?? 0;
+  if (!res?.ok) {
+    console.warn(`[marine-radar] power ${status} write rejected: ${code || 'network'}`);
+  }
+  return { ok: res?.ok ?? false, status: code };
+}
+
+// Set the radar's operational state (transmit/standby). The dedicated PUT /radars/{id}/power takes the
+// status STRING and validates it server-side. A provider that exposes power only through the generic
+// control map is retried through PUT /controls/power with the numeric enum index, so keying the radar up
+// works either way. The auth/outcome contract matches writeControl so the caller handles 401/403 the same.
+export async function setPower(
+  origin: string,
+  token: string | undefined,
+  radarId: string,
+  status: RadarStatus,
+): Promise<{ ok: boolean; status: number }> {
+  const base = `${origin}${RADARS_PATH}/${encodeURIComponent(radarId)}`;
+  const primary = await sendJson(`${base}/power`, token, 'PUT', { value: status });
+  if (primary && POWER_FALLBACK_STATUS.has(primary.status)) {
+    return powerOutcome(
+      status,
+      await sendJson(`${base}/controls/power`, token, 'PUT', { value: POWER_INDEX[status] }),
+    );
+  }
+  return powerOutcome(status, primary);
 }

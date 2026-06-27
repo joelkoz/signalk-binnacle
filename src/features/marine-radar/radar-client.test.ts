@@ -3,6 +3,8 @@ import {
   capabilitiesFromControls,
   discoverRadars,
   fetchCapabilities,
+  fetchRadarState,
+  setPower,
   spokesUrl,
   writeControl,
 } from './radar-client';
@@ -49,49 +51,59 @@ describe('discoverRadars', () => {
       ),
     );
     const result = await discoverRadars('http://boat.local', undefined);
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('nav1034A');
-    expect(result[0].name).toBe('Halo');
-    expect(result[0].status).toBe('transmit');
-    expect(result[0].spokesPerRevolution).toBe(2048);
-    expect(result[0].maxSpokeLen).toBe(1024);
-    expect(result[0].controls.gain?.value).toBe(50);
+    expect(result.radars).toHaveLength(1);
+    expect(result.authRequired).toBe(false);
+    expect(result.radars[0].id).toBe('nav1034A');
+    expect(result.radars[0].name).toBe('Halo');
+    expect(result.radars[0].status).toBe('transmit');
+    expect(result.radars[0].spokesPerRevolution).toBe(2048);
+    expect(result.radars[0].maxSpokeLen).toBe(1024);
+    expect(result.radars[0].controls.gain?.value).toBe(50);
   });
 
-  it('returns [] on a 404 (no provider installed)', async () => {
+  it('returns no radars on a 404 (no provider installed), authRequired false', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response('', { status: 404 })),
     );
-    expect(await discoverRadars('http://boat.local', undefined)).toEqual([]);
+    expect(await discoverRadars('http://boat.local', undefined)).toEqual({
+      radars: [],
+      authRequired: false,
+    });
   });
 
-  it('returns [] on a 403 auth refusal', async () => {
+  it('flags authRequired on a 403 auth refusal', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response('', { status: 403 })),
     );
-    expect(await discoverRadars('http://boat.local', undefined)).toEqual([]);
+    expect(await discoverRadars('http://boat.local', undefined)).toEqual({
+      radars: [],
+      authRequired: true,
+    });
   });
 
-  it('returns [] when fetch throws (network error)', async () => {
+  it('returns no radars when fetch throws (network error)', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
         throw new TypeError('network failure');
       }),
     );
-    expect(await discoverRadars('http://boat.local', undefined)).toEqual([]);
+    expect(await discoverRadars('http://boat.local', undefined)).toEqual({
+      radars: [],
+      authRequired: false,
+    });
   });
 
-  it('returns [] when the body is not an array', async () => {
+  it('returns no radars when the body is not an array', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
         async () => new Response(JSON.stringify({ nav1034A: { id: 'nav1034A' } }), { status: 200 }),
       ),
     );
-    expect(await discoverRadars('http://boat.local', undefined)).toEqual([]);
+    expect((await discoverRadars('http://boat.local', undefined)).radars).toEqual([]);
   });
 
   it('skips entries that have no id field', async () => {
@@ -117,8 +129,8 @@ describe('discoverRadars', () => {
       ),
     );
     const result = await discoverRadars('http://boat.local', undefined);
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('good');
+    expect(result.radars).toHaveLength(1);
+    expect(result.radars[0].id).toBe('good');
   });
 
   it('hits the v2 radars path', async () => {
@@ -157,9 +169,35 @@ describe('discoverRadars', () => {
       ),
     );
     const result = await discoverRadars('http://boat.local', undefined);
-    expect(result[0].legend).toEqual([
+    expect(result.radars[0].legend).toEqual([
       { color: '#00ff00', label: 'weak', minValue: undefined, maxValue: undefined },
     ]);
+  });
+
+  it('treats a blank streamUrl as absent', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify([
+              {
+                id: 'r',
+                name: 'R',
+                status: 'transmit',
+                spokesPerRevolution: 2048,
+                maxSpokeLen: 1024,
+                range: 0,
+                controls: {},
+                streamUrl: '   ',
+              },
+            ]),
+            { status: 200 },
+          ),
+      ),
+    );
+    const result = await discoverRadars('http://boat.local', undefined);
+    expect(result.radars[0].streamUrl).toBeUndefined();
   });
 });
 
@@ -188,6 +226,28 @@ describe('spokesUrl', () => {
     // origin uses http, so the built-in path starts with http before replacement
     const url = spokesUrl('http://boat.local', r);
     expect(url.startsWith('ws://')).toBe(true);
+  });
+
+  it('appends the token as a query param on the built-in same-origin path', () => {
+    const r: RadarInfo = { ...radar, streamUrl: undefined };
+    expect(spokesUrl('http://boat.local', r, 'tok 1')).toBe(
+      `ws://boat.local${RADARS_PATH}/nav1034A/stream?token=tok%201`,
+    );
+  });
+
+  it('appends the token to a same-origin provider streamUrl', () => {
+    const r: RadarInfo = {
+      ...radar,
+      streamUrl: 'http://boat.local/signalk/v2/api/vessels/self/radars/nav1034A/stream',
+    };
+    expect(spokesUrl('http://boat.local', r, 'tok')).toBe(
+      'ws://boat.local/signalk/v2/api/vessels/self/radars/nav1034A/stream?token=tok',
+    );
+  });
+
+  it('never leaks the token to a cross-origin provider streamUrl', () => {
+    const r: RadarInfo = { ...radar, streamUrl: 'ws://other.host:6502/stream' };
+    expect(spokesUrl('http://boat.local', r, 'tok')).toBe('ws://other.host:6502/stream');
   });
 });
 
@@ -320,6 +380,122 @@ describe('fetchCapabilities', () => {
     );
     const caps = await fetchCapabilities('http://boat.local', undefined, 'nav1034A');
     expect(caps?.controls[0].range).toBeUndefined();
+  });
+
+  it('parses the ControlDefinitionV5 array shape (server-api dialect)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              controls: [
+                {
+                  id: 'gain',
+                  name: 'Gain',
+                  type: 'number',
+                  range: { min: 0, max: 100, step: 1, unit: '%' },
+                  modes: ['auto', 'manual'],
+                },
+                {
+                  id: 'power',
+                  name: 'Power',
+                  type: 'enum',
+                  values: [
+                    { value: 1, label: 'Standby' },
+                    { value: 2, label: 'Transmit' },
+                  ],
+                },
+                { id: 'zone', name: 'Guard zone', type: 'compound' },
+              ],
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const caps = await fetchCapabilities('http://boat.local', undefined, 'r');
+    expect(caps?.controls.map((c) => c.id)).toEqual(['gain', 'power']);
+    const gain = caps?.controls.find((c) => c.id === 'gain');
+    expect(gain?.range).toEqual({ min: 0, max: 100, step: 1, unit: '%' });
+    expect(gain?.modes).toEqual(['auto', 'manual']);
+    expect(caps?.controls.find((c) => c.id === 'power')?.values).toEqual([
+      { value: 1, label: 'Standby' },
+      { value: 2, label: 'Transmit' },
+    ]);
+  });
+});
+
+describe('setPower', () => {
+  it('PUTs the status string to the dedicated /power endpoint', async () => {
+    let url = '';
+    let body: unknown;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (u: string, init: RequestInit) => {
+        url = u;
+        body = JSON.parse(init.body as string);
+        return new Response('', { status: 200 });
+      }),
+    );
+    const result = await setPower('http://boat.local', 'tok', 'nav1034A', 'transmit');
+    expect(result.ok).toBe(true);
+    expect(url).toBe(`http://boat.local${RADARS_PATH}/nav1034A/power`);
+    expect(body).toEqual({ value: 'transmit' });
+  });
+
+  it('falls back to the generic control path with the numeric index on a 404', async () => {
+    const calls: Array<{ url: string; body: unknown }> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (u: string, init: RequestInit) => {
+        calls.push({ url: u, body: JSON.parse(init.body as string) });
+        return new Response('', { status: u.includes('/controls/') ? 200 : 404 });
+      }),
+    );
+    const result = await setPower('http://boat.local', 'tok', 'nav1034A', 'standby');
+    expect(result.ok).toBe(true);
+    expect(calls[0].url).toBe(`http://boat.local${RADARS_PATH}/nav1034A/power`);
+    expect(calls[1].url).toBe(`http://boat.local${RADARS_PATH}/nav1034A/controls/power`);
+    expect(calls[1].body).toEqual({ value: 1 });
+  });
+
+  it('returns ok false and the status on a 403 from the dedicated endpoint', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('', { status: 403 })),
+    );
+    const result = await setPower('http://boat.local', 'tok', 'nav1034A', 'transmit');
+    expect(result).toEqual({ ok: false, status: 403 });
+  });
+});
+
+describe('fetchRadarState', () => {
+  it('parses status and control values', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              status: 'transmit',
+              controls: { gain: { value: 42, auto: true }, range: { value: 1852 } },
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const snap = await fetchRadarState('http://boat.local', undefined, 'nav1034A');
+    expect(snap?.status).toBe('transmit');
+    expect(snap?.controls.gain).toEqual({ value: 42, auto: true });
+    expect(snap?.controls.range?.value).toBe(1852);
+  });
+
+  it('returns undefined on a non-object body', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('null', { status: 200 })),
+    );
+    expect(await fetchRadarState('http://boat.local', undefined, 'r')).toBeUndefined();
   });
 });
 

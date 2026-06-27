@@ -63,6 +63,7 @@ import {
   createMarineRadarController,
   RADAR_UNAVAILABLE_HINT,
   RadarControls,
+  type RadarStatus,
 } from '$features/marine-radar';
 import { MeasureStrip } from '$features/measure';
 import {
@@ -191,6 +192,7 @@ import {
   SignalKStore,
   SK_PATHS,
   serverOrigin,
+  setWriteOutcomeListener,
   silenceNotification,
   streamUrl,
   updateNotification,
@@ -536,6 +538,10 @@ const savedView = isMapView(mapViewStore.value) ? mapViewStore.value : undefined
 const currentView = $derived(mapView ?? savedView);
 const layerSettings = new PersistedValue<LayerSettings>('binnacle:layers', {});
 const layerOrder = new PersistedValue<string[]>('binnacle:layer-order', []);
+// A one-shot, device-local latch: the first time a radar is discovered, the echo layer is turned on so
+// "if they have radar, the radar layer is enabled". Latched so a later explicit toggle-off is never
+// overridden. Not part of a profile: it is local device state, not portable layer configuration.
+const radarAutoEnabled = new PersistedValue<boolean>('binnacle:radar-autoenabled', false);
 const pinnedActions = new PersistedValue<string[]>('binnacle:pinned-actions', [...DEFAULT_PINNED]);
 // PersistedValue parses localStorage without a schema guard, so a corrupt or hand-edited value could
 // be a non-array. Heal it to the default once at startup, so the menu's Set and the pin toggle never
@@ -695,6 +701,11 @@ function applyProfileSettings(s: ProfileSettings): void {
   profileBindings.apply(s);
   mapCommands?.applyLayers(s.layers, s.layerOrder);
   applyWeatherLayers?.(s.weatherLayers);
+  // A profile that actually configures the radar layer is an explicit choice, so latch radar
+  // auto-enable to it (a profile that deliberately keeps the echo off must win). A profile saved before
+  // radar existed carries no marine-radar entry, so it must NOT latch, or it would permanently suppress
+  // first-discovery auto-enable on this device.
+  if (s.layers['marine-radar']) radarAutoEnabled.set(true);
   void tick().then(() => {
     applying = false;
   });
@@ -897,6 +908,33 @@ const marineRadar = createMarineRadarController({
 let radarControlsOpen = $state(false);
 let radarOpenedFrom = $state<'menu' | 'layers'>('menu');
 
+// Auto-enable the radar echo the first time a radar is discovered, then latch so a later manual
+// toggle-off in the Layers panel is never overridden. The radar layer row's toggle is disabled until a
+// radar is available, so there is no pre-availability "off" to preserve, which makes a one-shot correct.
+$effect(() => {
+  if (!marineRadar.store.hasRadar || radarAutoEnabled.value) return;
+  radarAutoEnabled.set(true);
+  setLayerVisible('marine-radar', true);
+});
+
+// The current echo-layer visibility, mirrored into the Radar panel so its in-panel toggle and the
+// Layers eye stay one synced value (the layer-manager state is the single source of truth).
+const radarEchoShown = $derived(layerSettings.value['marine-radar']?.visible ?? false);
+
+// The /state poll only feeds the radar panel (operational status and control values), so run it only
+// while the panel is open; the echo render is driven by the spoke stream, not this poll.
+$effect(() => {
+  marineRadar.setPolling(radarControlsOpen);
+});
+
+// Set the radar's transmit/standby state; when transmit is keyed up, reveal the echo so powering on
+// shows the picture in one action.
+function onSetRadarPower(status: RadarStatus): void {
+  void marineRadar.setPower(status).then((ok) => {
+    if (ok && status === 'transmit') setLayerVisible('marine-radar', true);
+  });
+}
+
 // The app menu's options, grouped into five intent groups: Map (center/follow), Navigate (plan and
 // chart), Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings.
 // Adding an option is a single entry; the launcher renders and groups whatever it is given.
@@ -1029,6 +1067,8 @@ const menuItems = $derived<MenuItem[]>([
     pressed: radarControlsOpen,
     onSelect: () => {
       radarOpenedFrom = 'menu';
+      // The echo reveals on first radar discovery (the latched effect) and when transmit is keyed up, so
+      // opening the panel must not force the layer back on: that would override an explicit toggle-off.
       radarControlsOpen = !radarControlsOpen;
     },
   },
@@ -2074,6 +2114,9 @@ onMount(() => {
   // The auth controller owns the focus and cross-tab listeners that pick up an approval.
   auth.watch();
   void auth.probe();
+  // Every write flows through sendJson, so this one hook lets a refused write (read-only token) raise
+  // the read-only banner app-wide, and a later successful write clears it.
+  setWriteOutcomeListener((ok, status) => auth.reportWriteOutcome(ok, status));
   // Track the phone breakpoint so the note detail and a leading panel can be made mutually exclusive
   // at narrow widths, where they would otherwise both bottom-dock and overlap. The scoped CSS media
   // queries hardcode the same value, since a media query cannot reference a JS constant or CSS var.
@@ -2097,6 +2140,7 @@ onDestroy(() => {
   anchorAlarm.stop();
   mobAlarm.stop();
   arrivalAlarm.stop();
+  setWriteOutcomeListener(undefined);
   auth.stop();
   void marineRadar.dispose();
   net.dispose();
@@ -2271,6 +2315,9 @@ onDestroy(() => {
             onSetControl={(id, value) => void marineRadar.setControl(id, { value })}
             onSetAuto={(id, auto) => void marineRadar.setControl(id, { auto })}
             onSelectRadar={(id) => marineRadar.selectRadar(id)}
+            onSetPower={onSetRadarPower}
+            echoShown={radarEchoShown}
+            onToggleEcho={(shown) => setLayerVisible('marine-radar', shown)}
           />
         </SlideOver>
       </div>

@@ -40,14 +40,16 @@ export interface RadarInfo {
   streamUrl?: string;
 }
 
-// A control definition from GET /radars/{id}/capabilities, used to render the controls UI.
+// A control definition from GET /radars/{id}/capabilities, used to render the controls UI. Enum values
+// are numeric on the wire (the spoke control domain is integer indices), so the internal type pins
+// `value` to number; both capability dialects coerce to it.
 export interface ControlDefinition {
   id: string;
   name: string;
   description?: string;
   type: 'boolean' | 'number' | 'enum' | 'compound';
   range?: { min: number; max: number; step?: number; unit?: string };
-  values?: Array<{ value: string | number; label: string }>;
+  values?: Array<{ value: number; label: string }>;
   modes?: Array<'auto' | 'manual'>;
   readOnly?: boolean;
 }

@@ -1,41 +1,74 @@
 <script lang="ts">
 import { Radar } from '@lucide/svelte';
 import { PLACEHOLDER } from '$shared/lib';
+import { ShowOnChartToggle } from '$shared/ui';
 import type { MarineRadarStore } from './marine-radar-store.svelte';
-import { isPrimaryControl, widgetKind } from './radar-controls-model';
-import type { ControlDefinition } from './radar-types';
+import { isPowerControl, isPrimaryControl, widgetKind } from './radar-controls-model';
+import type { ControlDefinition, RadarStatus } from './radar-types';
 
 let {
   store,
   onSetControl,
   onSetAuto,
   onSelectRadar,
+  onSetPower,
+  echoShown,
+  onToggleEcho,
 }: {
   store: MarineRadarStore;
   onSetControl: (controlId: string, value: number) => void;
   onSetAuto: (controlId: string, auto: boolean) => void;
   onSelectRadar?: (id: string) => void;
+  onSetPower: (status: RadarStatus) => void;
+  echoShown: boolean;
+  onToggleEcho: (shown: boolean) => void;
 } = $props();
 
 const controls = $derived(store.capabilities);
-// The everyday controls lead in their own section; everything else falls under Advanced. When the radar
-// reports none of the primary ids the primary list is empty and the advanced section becomes the lone
-// Controls section, so the panel never shows an empty heading.
-const primary = $derived(controls.filter(isPrimaryControl));
-const advanced = $derived(controls.filter((def) => !isPrimaryControl(def)));
+// The everyday controls lead in their own section; everything else falls under Advanced. The power
+// control is pulled out entirely: it drives the dedicated TX/Standby section below, never a generic
+// widget. When the radar reports none of the primary ids the primary list is empty and the advanced
+// section becomes the lone Controls section, so the panel never shows an empty heading.
+const primary = $derived(controls.filter((def) => isPrimaryControl(def) && !isPowerControl(def)));
+const advanced = $derived(controls.filter((def) => !isPrimaryControl(def) && !isPowerControl(def)));
 
+// The stream connection state, deliberately worded as a LINK state ("Connected") so it is not confused
+// with the radar's operational transmit state shown in the Power section below.
 const statusLabel = $derived.by(() => {
   switch (store.status) {
     case 'connecting':
       return 'Connecting to the radar';
     case 'live':
-      return 'Live';
+      return 'Connected';
     case 'error':
       return 'No signal from the radar';
     default:
       return '';
   }
 });
+
+// The radar's own operational state, distinct from the stream connection above. Drives the TX/Standby
+// section and the power pill.
+const operational = $derived(store.operationalStatus);
+const operationalLabel = $derived.by(() => {
+  switch (operational) {
+    case 'transmit':
+      return 'Transmitting';
+    case 'standby':
+      return 'Standby';
+    case 'warming':
+      return 'Warming up';
+    case 'off':
+      return 'Off';
+    default:
+      return 'Unknown';
+  }
+});
+// Power buttons need write access and a present radar. Standby stays available during warm-up so the
+// navigator can abort a warm-up; only Transmit waits out the transitional warming state.
+const powerBusy = $derived(!store.hasRadar || store.controlsForbidden);
+const transmitDisabled = $derived(powerBusy || operational === 'warming');
+const isTransmitting = $derived(operational === 'transmit');
 
 // The slider readout: the live value with its unit when the radar reports one, the shared placeholder
 // until a value arrives. Capability ranges arrive in the provider's display units over the v2 API, so
@@ -54,18 +87,20 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 
 <!-- One labeled control: the name (and, for a slider, the live value) on a head row, then a full-width
      control beneath, so sliders and selects line up in a single column rather than at ragged offsets.
-     The visible name is associated with the control via aria-labelledby across all three widget kinds. -->
+     A read-only control (diagnostics, info) renders as a value readout, never an inert widget. The
+     visible name is associated with the control via aria-labelledby across all widget kinds. -->
 {#snippet control(def: ControlDefinition)}
   {@const kind = widgetKind(def)}
   {@const labelId = `rc-${def.id}`}
+  {@const value = store.controlValues[def.id]}
   <div class="radar-field">
     <div class="field-head">
       <span class="field-name" id={labelId}>{def.name}</span>
       <div class="field-head-end">
-        {#if kind === 'slider'}
+        {#if kind === 'slider' || def.readOnly || (kind === 'toggle' && value === undefined)}
           <span class="num field-value">{readout(def)}</span>
         {/if}
-        {#if hasAuto(def)}
+        {#if hasAuto(def) && !def.readOnly}
           <!-- An auto-capable control (gain, sea, rain): Auto hands the value to the radar and
                disables the manual widget; touching the widget returns it to manual. -->
           <button
@@ -73,7 +108,8 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
             class="btn btn-compact auto-toggle"
             class:is-on={isAuto(def)}
             aria-pressed={isAuto(def)}
-            disabled={def.readOnly}
+            aria-label={`Auto ${def.name}`}
+            disabled={def.readOnly || store.controlsForbidden}
             onclick={() => onSetAuto(def.id, !isAuto(def))}
           >
             Auto
@@ -81,26 +117,30 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
         {/if}
       </div>
     </div>
-    {#if kind === 'slider'}
+    {#if def.readOnly}
+    <!-- Nothing more: the readout above is the whole control. -->
+    {:else if kind === 'slider'}
       <input
         type="range"
         class="range"
+        class:is-unset={value === undefined}
         min={def.range?.min ?? 0}
         max={def.range?.max ?? 100}
         step={def.range?.step ?? 1}
-        disabled={def.readOnly || isAuto(def)}
-        value={store.controlValues[def.id] ?? def.range?.min ?? 0}
+        disabled={isAuto(def) || store.controlsForbidden}
+        value={value ?? def.range?.min ?? 0}
         aria-labelledby={labelId}
-        oninput={(e) => onSetControl(def.id, Number(e.currentTarget.value))}
+        onchange={(e) => onSetControl(def.id, Number(e.currentTarget.value))}
+        oninput={(e) => store.setControlValue(def.id, Number(e.currentTarget.value))}
       >
     {:else if kind === 'toggle'}
       <div class="segmented" role="group" aria-labelledby={labelId}>
         <button
           type="button"
           class="btn"
-          class:is-on={!store.controlValues[def.id]}
-          aria-pressed={!store.controlValues[def.id]}
-          disabled={def.readOnly || isAuto(def)}
+          class:is-on={value !== undefined && !value}
+          aria-pressed={value !== undefined && !value}
+          disabled={isAuto(def) || store.controlsForbidden}
           onclick={() => onSetControl(def.id, 0)}
         >
           Off
@@ -108,20 +148,20 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
         <button
           type="button"
           class="btn"
-          class:is-on={Boolean(store.controlValues[def.id])}
-          aria-pressed={Boolean(store.controlValues[def.id])}
-          disabled={def.readOnly || isAuto(def)}
+          class:is-on={Boolean(value)}
+          aria-pressed={Boolean(value)}
+          disabled={isAuto(def) || store.controlsForbidden}
           onclick={() => onSetControl(def.id, 1)}
         >
           On
         </button>
       </div>
-    {:else}
+    {:else if kind === 'list'}
       <select
         class="input"
         aria-labelledby={labelId}
-        disabled={def.readOnly || isAuto(def)}
-        value={String(store.controlValues[def.id] ?? '')}
+        disabled={isAuto(def) || store.controlsForbidden}
+        value={String(value ?? '')}
         onchange={(e) => onSetControl(def.id, Number(e.currentTarget.value))}
       >
         {#each def.values ?? [] as opt (opt.value)}
@@ -166,9 +206,49 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 
 {#if store.controlsForbidden}
   <p class="alert-note sev-warning" role="status">
-    Adjusting radar controls needs read-write access. Approve Binnacle for read and write in the
-    Signal K server's access requests, then reconnect.
+    Radar needs read-write access. Approve Binnacle for read and write in the Signal K server's
+    access requests, then reconnect.
   </p>
+{/if}
+
+{#if store.hasRadar}
+  <section class="radar-section" aria-label="Radar power">
+    <span class="caps-label">Power</span>
+    <div class="field-head">
+      <div class="segmented" role="group" aria-label="Transmit or standby">
+        <button
+          type="button"
+          class="btn"
+          class:is-on={operational === 'standby'}
+          aria-pressed={operational === 'standby'}
+          disabled={powerBusy}
+          onclick={() => onSetPower('standby')}
+        >
+          Standby
+        </button>
+        <button
+          type="button"
+          class="btn"
+          class:is-on={operational === 'transmit'}
+          aria-pressed={operational === 'transmit'}
+          disabled={transmitDisabled}
+          onclick={() => onSetPower('transmit')}
+        >
+          Transmit
+        </button>
+      </div>
+      <span
+        class="power-status"
+        class:is-transmitting={isTransmitting}
+        role="status"
+        aria-live="polite"
+      >
+        {operationalLabel}
+      </span>
+    </div>
+    <ShowOnChartToggle shown={echoShown} label="Show echo on chart" onToggle={onToggleEcho} />
+    <p class="muted-note">Opacity and stacking are in Layers.</p>
+  </section>
 {/if}
 
 {#if primary.length > 0}
@@ -229,8 +309,29 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 .radar-field select.input {
   inline-size: 100%;
 }
-.radar-field .segmented .btn {
+/* Every segmented in this panel (the On/Off field toggles and the Power control) fills its row with
+   equal-width segments; one rule covers both since each lives inside a .radar-section. */
+.radar-section .segmented {
   flex: 1;
+}
+.radar-section .segmented .btn {
+  flex: 1;
+}
+/* Before any value has arrived the slider thumb parks at the minimum; dim it so it does not read as a
+   real minimum while the value readout shows the unknown placeholder. */
+.range.is-unset {
+  opacity: var(--disabled-opacity);
+}
+/* The operational state is the panel's most safety-relevant readout (is the radar emitting), so it is
+   larger than a field value and brightens when transmitting, distinguished by weight and brightness so
+   it survives night-red where hue alone would not. */
+.power-status {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}
+.power-status.is-transmitting {
+  color: var(--accent);
+  font-weight: 600;
 }
 /* The radar's identity row: the sweep glyph in the accent color paired with the live status. The
    glyph stays branded; the status text carries the muted or alarm state. */

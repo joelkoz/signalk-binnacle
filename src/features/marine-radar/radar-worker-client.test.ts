@@ -14,6 +14,7 @@ describe('wrapRadarWorker', () => {
       'ws://x/spokes',
       2048,
       1024,
+      1852,
       15,
       () => {},
       () => {},

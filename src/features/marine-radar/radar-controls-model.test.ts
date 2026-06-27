@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { widgetKind } from './radar-controls-model';
+import { isPowerControl, isPrimaryControl, widgetKind } from './radar-controls-model';
 import type { ControlDefinition } from './radar-types';
 
 describe('widgetKind', () => {
@@ -56,5 +56,20 @@ describe('widgetKind', () => {
       readOnly: true,
     };
     expect(widgetKind(def)).toBe('toggle');
+  });
+});
+
+describe('isPowerControl and isPrimaryControl', () => {
+  it('identifies the power and status controls so they leave the generic lists', () => {
+    expect(isPowerControl({ id: 'power', name: 'Power', type: 'enum' })).toBe(true);
+    expect(isPowerControl({ id: 'status', name: 'Status', type: 'enum' })).toBe(true);
+    expect(isPowerControl({ id: 'gain', name: 'Gain', type: 'number' })).toBe(false);
+  });
+
+  it('treats gain, sea, rain, and range as primary controls', () => {
+    for (const id of ['gain', 'sea', 'rain', 'range']) {
+      expect(isPrimaryControl({ id, name: id, type: 'number' })).toBe(true);
+    }
+    expect(isPrimaryControl({ id: 'doppler', name: 'Doppler', type: 'enum' })).toBe(false);
   });
 });

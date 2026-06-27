@@ -88,6 +88,24 @@ export function createPpiLayer(
   let lastRingRange = Number.NaN;
   let lastRingHeading = Number.NaN;
   let ringsDrawn = false;
+  // The last reason the echo render was a no-op, logged only on a transition (render runs every repaint)
+  // and only in dev, so "Live but blank" is traceable to no fix, no frame, or zero range.
+  let lastSuppress = '';
+
+  // The display range to draw at: the integrated frame's range, or the discovered RadarInfo.range when a
+  // frame has not yet reported a positive range, so a warmup or a range-omitting spoke does not collapse
+  // the echo quad and rings to zero extent.
+  function effectiveRange(): number {
+    if (frame && frame.range > 0) return frame.range;
+    return store.selected?.range ?? 0;
+  }
+
+  function suppress(reason: string): void {
+    if (import.meta.env.DEV && reason !== lastSuppress) {
+      console.debug(`[marine-radar] echo not drawn: ${reason}`);
+      lastSuppress = reason;
+    }
+  }
 
   function applyLegend(): void {
     const legend = store.selected?.legend ?? DEFAULT_RADAR_LEGEND;
@@ -145,11 +163,13 @@ export function createPpiLayer(
         buildGl();
       },
       render(_gc: WebGLRenderingContext | WebGL2RenderingContext, args: unknown) {
-        if (!gl || !visible || contextLost) return;
+        if (!gl || !visible || contextLost) return suppress('not-ready');
         const center = getCenter();
-        if (!frame || !center) return;
+        if (!frame || !center) return suppress(frame ? 'no-fix' : 'no-frame');
         const matrix = matrixOf(args);
-        if (matrix.length < 16) return;
+        if (matrix.length < 16) return suppress('bad-matrix');
+        const range = effectiveRange();
+        if (range <= 0) return suppress('no-range');
         if (dirty) {
           gl.setData(frame.buffer, frame.spokesPerRev, frame.maxSpokeLen);
           if (frame.heading !== undefined) gl.setHeading(frame.heading);
@@ -160,7 +180,8 @@ export function createPpiLayer(
           lng: center.longitude,
           lat: center.latitude,
         });
-        gl.render(matrix, mc.x, mc.y, rangeQuadHalfExtent(center.latitude, frame.range));
+        gl.render(matrix, mc.x, mc.y, rangeQuadHalfExtent(center.latitude, range));
+        lastSuppress = '';
       },
       onRemove() {
         removed = true;
@@ -218,7 +239,8 @@ export function createPpiLayer(
 
   function syncRings(ctx: OverlayContext): void {
     const center = getCenter();
-    if (!center || !frame) {
+    const range = effectiveRange();
+    if (!center || !frame || range <= 0) {
       if (ringsDrawn) {
         ringsDrawn = false;
         setSourceData(ctx.map, RINGS_SOURCE_ID, emptyFeatureCollection());
@@ -231,19 +253,19 @@ export function createPpiLayer(
       ringsDrawn &&
       Object.is(center.latitude, lastRingLat) &&
       Object.is(center.longitude, lastRingLon) &&
-      Object.is(frame.range, lastRingRange) &&
+      Object.is(range, lastRingRange) &&
       Object.is(heading, lastRingHeading)
     ) {
       return;
     }
     lastRingLat = center.latitude;
     lastRingLon = center.longitude;
-    lastRingRange = frame.range;
+    lastRingRange = range;
     lastRingHeading = heading;
     ringsDrawn = true;
-    const rings = rangeRingFeatures(center, frame.range, RANGE_RINGS, ringLabel);
+    const rings = rangeRingFeatures(center, range, RANGE_RINGS, ringLabel);
     if (frame.heading !== undefined) {
-      rings.features.push(headingLineFeature(center, frame.heading, frame.range));
+      rings.features.push(headingLineFeature(center, frame.heading, range));
     }
     setSourceData(ctx.map, RINGS_SOURCE_ID, rings);
   }

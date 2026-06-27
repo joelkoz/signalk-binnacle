@@ -1,4 +1,4 @@
-import type { ControlDefinition, RadarInfo } from './radar-types';
+import type { ControlDefinition, RadarInfo, RadarStatus } from './radar-types';
 
 // The stream connection state, distinct from the radar's own operational status (off/standby/transmit).
 export type RadarConnectionStatus = 'idle' | 'connecting' | 'live' | 'error';
@@ -30,6 +30,10 @@ export class MarineRadarStore {
   radars = $state<RadarInfo[]>([]);
   selectedId = $state<string | undefined>(undefined);
   status = $state<RadarConnectionStatus>('idle');
+  // The radar's own operational state (off/standby/transmit/warming), distinct from the stream
+  // connection status above. Seeded from discovery and reconciled from GET /state, so the panel shows
+  // whether the radar is transmitting and the TX/Standby control reflects the real state.
+  operationalStatus = $state<RadarStatus | undefined>(undefined);
   capabilities = $state<ControlDefinition[]>([]);
   controlValues = $state<Record<string, number>>({});
   // Which controls are currently in auto mode, keyed by control id, for the controls that report an
@@ -56,6 +60,7 @@ export class MarineRadarStore {
       this.capabilities = [];
       this.controlValues = first ? controlValuesOf(first) : {};
       this.controlAuto = first ? controlAutoOf(first) : {};
+      this.operationalStatus = first?.status;
     }
   }
 
@@ -66,6 +71,31 @@ export class MarineRadarStore {
       this.capabilities = [];
       this.controlValues = controlValuesOf(radar);
       this.controlAuto = controlAutoOf(radar);
+      this.operationalStatus = radar.status;
+    }
+  }
+
+  setOperationalStatus(status: RadarStatus): void {
+    this.operationalStatus = status;
+  }
+
+  // Reconcile live control values and the operational status from GET /state, skipping any control id
+  // in `pending` so a value the user just set (an in-flight optimistic write the server has not yet
+  // echoed) is not clobbered back to its old value.
+  reconcile(
+    snapshot: {
+      status?: RadarStatus;
+      controls: Record<string, { value: number; auto?: boolean } | undefined>;
+    },
+    pending: ReadonlySet<string>,
+  ): void {
+    // 'power' guards the operational status the same way a control id guards its value: a poll landing
+    // right after an optimistic transmit/standby must not flip the pill back to the stale server state.
+    if (snapshot.status && !pending.has('power')) this.operationalStatus = snapshot.status;
+    for (const [id, entry] of Object.entries(snapshot.controls)) {
+      if (!entry || pending.has(id)) continue;
+      this.controlValues[id] = entry.value;
+      if (entry.auto !== undefined) this.controlAuto[id] = entry.auto;
     }
   }
 

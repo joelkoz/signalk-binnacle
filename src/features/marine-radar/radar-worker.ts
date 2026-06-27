@@ -38,13 +38,14 @@ class RadarWorker {
     url: string,
     spokesPerRev: number,
     maxSpokeLen: number,
+    initialRange: number,
     flushHz: number,
     onFrame: (frame: RadarFrame) => void,
     onStatus: (status: RadarStreamStatus) => void,
   ): Promise<void> {
     this.#teardown();
     this.#callbacks = [onFrame as Releasable, onStatus as Releasable];
-    const core = new RadarFrameCore(spokesPerRev, maxSpokeLen);
+    const core = new RadarFrameCore(spokesPerRev, maxSpokeLen, initialRange);
     let hasData = false;
     const socket = new WebSocket(url);
     socket.binaryType = 'arraybuffer';
@@ -54,9 +55,10 @@ class RadarWorker {
         console.warn('[marine-radar] ignoring a non-binary stream message');
         return;
       }
-      hasData = true;
       try {
-        core.ingest(new Uint8Array(event.data));
+        // hasData flips only once a message actually decodes to >= 1 spoke, so a stream of undecodable
+        // or empty messages never starts flushing and the controller never reports a false "live".
+        if (core.ingest(new Uint8Array(event.data)) > 0) hasData = true;
       } catch (error) {
         // One malformed or truncated frame must not kill the stream: drop it and keep integrating.
         console.warn('[marine-radar] dropped a malformed radar frame', error);
@@ -72,8 +74,8 @@ class RadarWorker {
     };
     this.#socket = socket;
     // A worker-thread interval, never requestAnimationFrame, so a backgrounded tab keeps sweeping. The
-    // flush is skipped until the first spoke message arrives, so an empty all-zero buffer never flips
-    // the status to live.
+    // flush is skipped until the first message decodes to a real spoke; each flushed frame carries the
+    // spoke count since the last flush so the controller can tell painting from connected-but-no-data.
     this.#timer = setInterval(
       () => {
         if (!hasData) return;

@@ -32,7 +32,10 @@ function readSpoke(pbf: Pbf, end: number): RadarSpoke {
 }
 
 // Decode a Signal K radar spoke message (RadarMessage.proto: `repeated Spoke spokes = 2`, lat/lon as
-// double degrees). Unknown fields are skipped so a provider extension never breaks the decode.
+// double degrees). Unknown fields are skipped so a provider extension never breaks the decode. A
+// truncated or malformed trailing spoke is salvaged: the spokes that parsed before it are kept rather
+// than discarding the whole revolution's batch, so an occasional provider quirk thins the picture by one
+// spoke instead of blanking it.
 export function decodeRadarMessage(bytes: Uint8Array): RadarMessage {
   const pbf = new Pbf(bytes);
   const msg: RadarMessage = { spokes: [] };
@@ -41,8 +44,14 @@ export function decodeRadarMessage(bytes: Uint8Array): RadarMessage {
     const tag = pbf.readVarint();
     const field = tag >> 3;
     if (field === 2) {
-      const end = pbf.readVarint() + pbf.pos;
-      msg.spokes.push(readSpoke(pbf, end));
+      // Clamp the sub-message end to the buffer so a corrupt length varint cannot drive a read past it,
+      // and bail out of the loop (keeping prior spokes) if a spoke field still reads out of range.
+      const end = Math.min(pbf.readVarint() + pbf.pos, len);
+      try {
+        msg.spokes.push(readSpoke(pbf, end));
+      } catch {
+        break;
+      }
     } else {
       pbf.skip(tag);
     }

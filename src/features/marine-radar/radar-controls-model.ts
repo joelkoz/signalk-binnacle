@@ -16,3 +16,12 @@ const PRIMARY_CONTROL_IDS: ReadonlySet<string> = new Set(['gain', 'sea', 'rain',
 export function isPrimaryControl(def: ControlDefinition): boolean {
   return PRIMARY_CONTROL_IDS.has(def.id);
 }
+
+// The radar power/operational-state control. It is rendered as the dedicated TX/Standby section driven
+// by the live operational status, not as a generic slider or select in the controls list, so it is
+// excluded from both the primary and advanced groups.
+const POWER_CONTROL_IDS: ReadonlySet<string> = new Set(['power', 'status']);
+
+export function isPowerControl(def: ControlDefinition): boolean {
+  return POWER_CONTROL_IDS.has(def.id);
+}

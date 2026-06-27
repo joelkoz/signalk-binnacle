@@ -3,14 +3,19 @@ import type { LegendEntry } from './radar-types';
 const hex2 = (n: number): string => n.toString(16).padStart(2, '0');
 
 // A fallback intensity ramp for a radar that reports no legend: a transparent empty bin, then green to
-// amber to red over the low 16 sample values (the common pixel-value depth), so the picture stays
-// legible until the provider supplies its own legend.
-export const DEFAULT_RADAR_LEGEND: LegendEntry[] = Array.from({ length: 16 }, (_, i) => {
+// amber to red across the full 0..255 sample range. Spoke samples are legend indices, and a real radar
+// (Navico, Garmin, Furuno via mayara) streams 8-bit intensities, so a ramp that only colored the low 16
+// values left every strong return transparent: the echo read as blank even while spokes flowed. The
+// ramp now spans all 255 non-empty values so an un-legended radar still paints at any depth (a 4-bit
+// radar's 1..15 land at the low green end, dim but visible), until the provider supplies its own legend.
+export const DEFAULT_RADAR_LEGEND: LegendEntry[] = Array.from({ length: 256 }, (_, i) => {
   if (i === 0) return { color: '#00000000', label: 'none' };
-  const t = (i - 1) / 14;
+  const t = (i - 1) / 254;
   const r = Math.round(t < 0.5 ? t * 2 * 255 : 255);
   const g = Math.round(t < 0.5 ? 200 : 200 * (1 - (t - 0.5) * 2));
-  return { color: `#${hex2(r)}${hex2(g)}28ff`, label: `level ${i}` };
+  // No blue: a strong return ends at pure red, the marine convention, rather than a desaturated pink.
+  // night-red theming reds the whole ramp at render via themedColorTable, so the daytime hues are safe.
+  return { color: `#${hex2(r)}${hex2(g)}00ff`, label: `level ${i}` };
 });
 
 // Parse a #rrggbb or #rrggbbaa color. The 8-digit form (the Signal K legend uses it) carries alpha;
