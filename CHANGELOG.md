@@ -8,6 +8,39 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v0105"></a>
+
+## [0.10.5] - 2026-06-27
+
+### Added
+
+- **Transmit and standby control.** Key the radar between transmit and standby from the radar panel,
+  with a live status that reads transmitting, standby, warming up, or off.
+- **Show echo on chart toggle** in the radar panel, synced with the Layers eye so the two never
+  disagree. The echo also turns on automatically the first time a radar is detected, so a radar boat
+  sees its picture without hunting for a layer switch.
+- **Read and write access prompt.** When the server grants a read-only token, a banner offers a
+  one-click request for read and write, so saving routes, waypoints, tracks, course, alarms, and radar
+  controls works. The chart keeps updating from the existing read access while the new grant is approved.
+
+### Fixed
+
+- **The radar echo renders.** With the stream live the picture had been blank for three reasons, all
+  fixed: the echo layer shipped off and nothing turned it on, the fallback color ramp only colored the
+  lowest sample values so strong returns were transparent, and the spoke image was drawn transposed and
+  swept counter-clockwise. The echo now draws in the correct orientation and sweeps clockwise from dead
+  ahead, matching the radar's rotation.
+- **The radar spoke stream reconnects** automatically after a drop (a provider restart, a power cycle, or
+  a network blip), and the panel reconciles control values and the operational status from the radar's
+  live state.
+- **The spoke stream carries the auth token**, so a token-secured stream connects rather than failing
+  silently, and the device token is never sent to a cross-origin provider.
+
+### Changed
+
+- Radar controls parse both the array and object-keyed capability shapes, so the gain, sea clutter,
+  rain, mode, and power controls render whichever shape a provider serves.
+
 <a id="v0104"></a>
 
 ## [0.10.4] - 2026-06-26

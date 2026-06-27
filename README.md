@@ -15,25 +15,26 @@ A WebGL chart plotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.10.4
+## What's new in 0.10.5
 
-This release fixes three display problems:
+The radar picture works on real hardware now, with help from a tester running a live radar:
 
-- **Radar controls show up again.** The control panel reads a provider's capabilities in the shape the
-  Signal K radar API actually returns, so the gain, sea clutter, rain, and mode controls render. It had
-  shown nothing because the response was misread. If a provider reports no capabilities, the controls the
-  radar advertises at discovery are shown instead.
-- **Vector charts served as `{z}/{x}/{y}` tile templates load.** Such a chart was requested with the
-  placeholders unfilled and returned a 404; the tiles now resolve correctly.
-- **Older recorded tracks draw correctly.** A track point saved by an earlier build without a speed value
-  no longer breaks the speed-colored track line or the track statistics.
+- **The radar echo renders correctly.** It had been blank with the stream live for three reasons, all
+  fixed: the echo layer was off and nothing turned it on, the fallback color ramp left strong returns
+  transparent, and the spoke image was drawn transposed and swept the wrong way. The echo now draws in
+  the right orientation and sweeps clockwise from dead ahead, and it turns on automatically the first
+  time a radar is detected.
+- **Transmit and standby control.** Key the radar between transmit and standby from the radar panel,
+  with a live status reading transmitting, standby, warming up, or off, plus a "Show echo on chart"
+  toggle synced with the Layers eye.
+- **Read and write access prompt.** If the server granted Binnacle a read-only token, a banner now
+  offers a one-click request for read and write so routes, waypoints, tracks, course, alarms, and radar
+  controls can save. The chart keeps updating while the new grant is approved.
 
-I still do not have a radar on my own boat, so the radar fix is verified against the Signal K radar API
-spec and the test suite, not real hardware. If you have a radar, please open a
-[GitHub issue](https://github.com/NearlCrews/signalk-binnacle/issues) with what you see (a screenshot
-helps) and whether the controls behave.
+The radar spoke stream also reconnects automatically after a drop and carries the auth token, and the
+controls parse whichever capability shape a provider serves.
 
-See the [changelog](CHANGELOG.md#v0104) for the full list.
+See the [changelog](CHANGELOG.md#v0105) for the full list.
 
 ## What it does
 

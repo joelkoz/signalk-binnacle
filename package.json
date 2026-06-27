@@ -1,6 +1,6 @@
 {
   "name": "signalk-binnacle",
-  "version": "0.10.4",
+  "version": "0.10.5",
   "description": "WebGL chart plotter for Signal K",
   "type": "module",
   "license": "Apache-2.0",
