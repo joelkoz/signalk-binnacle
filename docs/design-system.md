@@ -8,7 +8,7 @@ overlap, neither contradicts the other: CLAUDE.md is the rule, this is the how.
 
 ## 1. What Binnacle is, and the design tiebreaker
 
-Binnacle is a from-scratch marine chart plotter for Signal K, for the bluewater cruiser and the
+Binnacle is a from-scratch marine chartplotter for Signal K, for the bluewater cruiser and the
 liveaboard. The north star: Binnacle should be so good that people adopt Signal K specifically to use
 it. Every design call is decided by that, in this order: first-run excellence on a stock server, polish
 over feature count, "it just works" caching, one coherent design system, and gloved-hand marine UX.

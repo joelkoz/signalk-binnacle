@@ -2172,7 +2172,9 @@ onDestroy(() => {
         onEditingChange={(next) => (menuEditing = next)}
         {onTogglePin}
       />
-      <span class="brand">Binnacle <span class="version">v{__APP_VERSION__}</span></span>
+      <span class="brand"
+        >Binnacle Chartplotter <span class="version">v{__APP_VERSION__}</span></span
+      >
     </span>
     <MobButton {mob} onTrigger={mobController.onTrigger} onLocate={flyToPosition} />
     <span class="topbar-actions">

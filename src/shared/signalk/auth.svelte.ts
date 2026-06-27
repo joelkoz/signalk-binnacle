@@ -169,7 +169,7 @@ export class AuthController {
 
   async requestAccess(): Promise<void> {
     this.status = 'requesting';
-    const { ok, href } = await this.#postAccessRequest(this.clientId, 'Binnacle chart plotter');
+    const { ok, href } = await this.#postAccessRequest(this.clientId, 'Binnacle Chartplotter');
     if (!ok) {
       // A failed POST (offline at startup) must not strand the request at 'requesting' forever: re-issue
       // it on the poll cadence, bounded by the attempt counter, which resets once a POST lands.
@@ -257,7 +257,7 @@ export class AuthController {
     this.upgrading = true;
     const { href } = await this.#postAccessRequest(
       this.#upgradeClientId,
-      'Binnacle chart plotter (read/write)',
+      'Binnacle Chartplotter (read/write)',
     );
     this.#upgradeHref = href;
     if (!href) {

@@ -1,7 +1,7 @@
 {
   "name": "signalk-binnacle",
   "version": "0.10.6",
-  "description": "WebGL chart plotter for Signal K",
+  "description": "WebGL chartplotter for Signal K",
   "type": "module",
   "license": "Apache-2.0",
   "author": "Nearl Crews <23341701+NearlCrews@users.noreply.github.com>",
@@ -20,7 +20,7 @@
   "keywords": [
     "signalk-webapp",
     "signalk-category-chart-plotters",
-    "chart-plotter",
+    "chartplotter",
     "navigation",
     "marine",
     "ais",
@@ -33,7 +33,7 @@
   },
   "signalk": {
     "appIcon": "./binnacle-icon.svg",
-    "displayName": "Binnacle",
+    "displayName": "Binnacle Chartplotter",
     "screenshots": [
       "./screenshots/01-chart.png",
       "./screenshots/02-points-of-interest.png",

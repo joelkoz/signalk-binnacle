@@ -1,6 +1,6 @@
 # Binnacle: AI assistant operating rules
 
-Binnacle is a from-scratch, next-generation marine chart plotter for Signal K, for the
+Binnacle is a from-scratch, next-generation marine chartplotter for Signal K, for the
 bluewater cruiser and the liveaboard. It is NOT a port of Freeboard-SK or of the earlier
 signalk-open-binnacle fork; those are conceptual references only. The project name is
 Binnacle, not Open Binnacle. No legacy code is carried forward.
@@ -285,7 +285,7 @@ Binnacle does not need to build every capability itself. When a mature Signal K 
 produces the data (alarms, anchor watch, course calcValues, weather providers, symbols, history),
 Binnacle's job is to CONSUME and surface it well, with a graceful client-side degrade when the
 plugin is absent (the navigation.closestApproach pattern). Build a feature in-app only when no
-maintained plugin covers it or when it is core chart-plotter interaction (rendering, editing,
+maintained plugin covers it or when it is core chartplotter interaction (rendering, editing,
 touch UX). Evaluate plugin maturity before depending on one: published on npm, active within the
 last year, and a stable API surface.
 

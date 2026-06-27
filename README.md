@@ -1,4 +1,4 @@
-# Binnacle
+# Binnacle Chartplotter
 
 [![npm version](https://img.shields.io/npm/v/signalk-binnacle.svg)](https://www.npmjs.com/package/signalk-binnacle)
 [![npm downloads](https://img.shields.io/npm/dm/signalk-binnacle.svg)](https://www.npmjs.com/package/signalk-binnacle)
@@ -8,7 +8,7 @@
 [![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/nearlcrews)
 
-A WebGL chart plotter for [Signal K](https://signalk.org).
+A WebGL chartplotter for [Signal K](https://signalk.org).
 
 > **It has not been field-tested at any scale.** It has been developed and verified against a single
 > Signal K server, never across a fleet or a range of real-world boats, hardware, and conditions. It
@@ -37,7 +37,7 @@ See the [changelog](CHANGELOG.md#v0106) for the full list.
 ## What it does
 
 Signal K is an open marine data standard that streams a boat's navigation, environment, and AIS data
-over a single API. Binnacle displays that data: a GPU-rendered, offline-capable chart plotter that
+over a single API. Binnacle displays that data: a GPU-rendered, offline-capable chartplotter that
 runs in a browser and is served by the boat's Signal K server.
 
 It is built for low-bandwidth, offline use on modest hardware. It has night-readable themes, computes

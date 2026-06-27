@@ -22,15 +22,15 @@ export default defineConfig({
   plugins: [
     svelte(),
     VitePWA({
-      // 'prompt', not 'autoUpdate': a chart plotter must not silently reload itself underway. A new
+      // 'prompt', not 'autoUpdate': a chartplotter must not silently reload itself underway. A new
       // build surfaces an Update control (registerPwa's onNeedRefresh) so the navigator chooses when
       // to reload, rather than the chart vanishing mid-passage.
       registerType: 'prompt',
       includeAssets: ['binnacle-icon.svg'],
       manifest: {
-        name: 'Binnacle',
+        name: 'Binnacle Chartplotter',
         short_name: 'Binnacle',
-        description: 'A WebGL chart plotter for Signal K.',
+        description: 'A WebGL chartplotter for Signal K.',
         start_url: '/signalk-binnacle/',
         scope: '/signalk-binnacle/',
         display: 'standalone',

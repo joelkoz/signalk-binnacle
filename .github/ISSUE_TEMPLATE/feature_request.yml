@@ -73,7 +73,7 @@ body:
     id: examples
     attributes:
       label: Examples or References
-      description: Links to similar features in other chart plotters, specifications, or documentation
+      description: Links to similar features in other chartplotters, specifications, or documentation
       placeholder: |
         Similar to how Freeboard-SK does...
         Signal K path convention: ...
