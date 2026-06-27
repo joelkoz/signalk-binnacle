@@ -4,9 +4,9 @@ import {
   type TideReading,
   type TideStation,
 } from '$entities/tides';
-import { HOUR_MS, withTimeout } from '$shared/lib';
+import { HOUR_MS } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
-import { authInit } from '$shared/signalk';
+import { fetchAuthedJson } from '$shared/signalk';
 
 // The signalk-tides plugin (npm package signalk-tides, plugin id "tides") registers a "tides"
 // resource that answers GET /signalk/v2/api/resources/tides with tide extremes for the vessel's
@@ -121,14 +121,10 @@ export async function fetchSignalkTidesReading(
   lon: number,
   options: SignalkTidesOptions = {},
 ): Promise<TideReading | undefined> {
-  try {
-    const response = await fetch(
-      `${options.origin ?? ''}${RESOURCE_PATH}`,
-      withTimeout(authInit(options.token)),
-    );
-    if (!response.ok) return undefined;
-    return parseTidesResource(await response.json(), lat, lon, options.now?.() ?? Date.now());
-  } catch {
-    return undefined;
-  }
+  const body = await fetchAuthedJson<unknown>(
+    `${options.origin ?? ''}${RESOURCE_PATH}`,
+    options.token,
+  );
+  if (body === undefined) return undefined;
+  return parseTidesResource(body, lat, lon, options.now?.() ?? Date.now());
 }

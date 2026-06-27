@@ -1,4 +1,5 @@
 import type { OwnVessel } from '$entities/vessel';
+import { latLonToLonLat } from '$shared/geo';
 import { headingDegrees } from '$shared/lib';
 import {
   createSymbolOverlay,
@@ -34,7 +35,7 @@ export function createVesselOverlay(vessel: OwnVessel): SymbolOverlay {
     return featureCollection([
       {
         type: 'Feature',
-        geometry: { type: 'Point', coordinates: [position.longitude, position.latitude] },
+        geometry: { type: 'Point', coordinates: latLonToLonLat(position) },
         properties: { heading: resolveHeading() },
       },
     ]);

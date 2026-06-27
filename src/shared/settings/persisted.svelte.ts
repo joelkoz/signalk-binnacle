@@ -20,10 +20,17 @@ export class PersistedValue<T> {
 
   #key: string;
   #storage: StorageLike | undefined;
+  #validate: ((value: unknown) => value is T) | undefined;
 
-  constructor(key: string, fallback: T, storage?: StorageLike) {
+  constructor(
+    key: string,
+    fallback: T,
+    storage?: StorageLike,
+    validate?: (value: unknown) => value is T,
+  ) {
     this.#key = key;
     this.#storage = resolveStorage(storage);
+    this.#validate = validate;
     const read = this.#read(fallback);
     this.fromStorage = read.fromStorage;
     this.value = read.value;
@@ -47,7 +54,12 @@ export class PersistedValue<T> {
     const raw = this.#storage?.getItem(this.#key);
     if (raw == null) return { value: fallback, fromStorage: false };
     try {
-      return { value: JSON.parse(raw) as T, fromStorage: true };
+      const parsed: unknown = JSON.parse(raw);
+      // A value that drifted across a beta release (a renamed or dropped field) or was corrupted
+      // would otherwise flow in untyped and surface deep in use (a NaN threshold silently disabling
+      // an alarm). When a validator is supplied and rejects it, fall back to the default.
+      if (this.#validate && !this.#validate(parsed)) return { value: fallback, fromStorage: false };
+      return { value: parsed as T, fromStorage: true };
     } catch {
       return { value: fallback, fromStorage: false };
     }
@@ -86,8 +98,24 @@ export const DEFAULT_TRACK_SETTINGS: TrackSettings = {
   colorMode: 'speed',
 };
 
+// Guards a stored track-recording policy against schema drift or corruption, so a malformed value
+// falls back to the defaults rather than feeding NaN into the recorder.
+export function isTrackSettings(value: unknown): value is TrackSettings {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.intervalSeconds) &&
+    isFiniteNumber(value.minMeters) &&
+    (value.colorMode === 'speed' || value.colorMode === 'solid')
+  );
+}
+
 export function createTrackSettings(storage?: StorageLike): PersistedValue<TrackSettings> {
-  return new PersistedValue('binnacle:track-settings', DEFAULT_TRACK_SETTINGS, storage);
+  return new PersistedValue(
+    'binnacle:track-settings',
+    DEFAULT_TRACK_SETTINGS,
+    storage,
+    isTrackSettings,
+  );
 }
 
 export interface Thresholds {
@@ -106,6 +134,23 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
   warningTcpaSeconds: 20 * MINUTE_S,
 };
 
+// Guards stored collision thresholds against schema drift or corruption: a missing field would
+// otherwise read as NaN and silently disable the CPA/TCPA comparison that raises a collision alarm.
+export function isThresholds(value: unknown): value is Thresholds {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.dangerCpaMeters) &&
+    isFiniteNumber(value.dangerTcpaSeconds) &&
+    isFiniteNumber(value.warningCpaMeters) &&
+    isFiniteNumber(value.warningTcpaSeconds)
+  );
+}
+
 export function createThresholds(storage?: StorageLike): PersistedValue<Thresholds> {
-  return new PersistedValue('binnacle:lookout-thresholds', DEFAULT_THRESHOLDS, storage);
+  return new PersistedValue(
+    'binnacle:lookout-thresholds',
+    DEFAULT_THRESHOLDS,
+    storage,
+    isThresholds,
+  );
 }

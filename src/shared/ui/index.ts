@@ -11,6 +11,7 @@ export { default as ShowOnChartToggle } from './ShowOnChartToggle.svelte';
 export { default as SlideOver } from './SlideOver.svelte';
 export type { Theme } from './theme.svelte';
 export { createThemeController, THEMES, ThemeController } from './theme.svelte';
+export { PANEL_TRANSITION_MS } from './transitions';
 export { default as UnavailableHint } from './UnavailableHint.svelte';
 export { default as UnitField } from './UnitField.svelte';
 export { default as VisibilityToggle } from './VisibilityToggle.svelte';

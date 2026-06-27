@@ -103,6 +103,9 @@ function bracket(axis: number[], v: number): { i: number; f: number } {
 }
 
 function frac(axisVals: number[], v: number): { i: number; f: number } | undefined {
+  // bracket needs at least two points to form an interval; an empty or single-point axis would slip
+  // past the range check (comparisons against undefined are false) and return a NaN fraction.
+  if (axisVals.length < 2) return undefined;
   if (v < axisVals[0] || v > axisVals[axisVals.length - 1]) return undefined;
   return bracket(axisVals, v);
 }

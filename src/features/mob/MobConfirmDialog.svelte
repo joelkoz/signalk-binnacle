@@ -88,7 +88,7 @@ function confirm(): void {
   border: 2px solid var(--alarm);
   /* Clips the header band to the radius. */
   overflow: hidden;
-  animation: mob-dialog-in 0.12s ease;
+  animation: mob-dialog-in var(--transition-fast);
 }
 @keyframes mob-dialog-in {
   from {

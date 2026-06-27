@@ -1,4 +1,10 @@
-import type { ControlDefinition, RadarInfo, RadarStatus } from './radar-types';
+import type { RadarStateSnapshot } from './radar-client';
+import {
+  type ControlDefinition,
+  POWER_PENDING_KEY,
+  type RadarInfo,
+  type RadarStatus,
+} from './radar-types';
 
 // The stream connection state, distinct from the radar's own operational status (off/standby/transmit).
 export type RadarConnectionStatus = 'idle' | 'connecting' | 'live' | 'error';
@@ -82,16 +88,11 @@ export class MarineRadarStore {
   // Reconcile live control values and the operational status from GET /state, skipping any control id
   // in `pending` so a value the user just set (an in-flight optimistic write the server has not yet
   // echoed) is not clobbered back to its old value.
-  reconcile(
-    snapshot: {
-      status?: RadarStatus;
-      controls: Record<string, { value: number; auto?: boolean } | undefined>;
-    },
-    pending: ReadonlySet<string>,
-  ): void {
-    // 'power' guards the operational status the same way a control id guards its value: a poll landing
-    // right after an optimistic transmit/standby must not flip the pill back to the stale server state.
-    if (snapshot.status && !pending.has('power')) this.operationalStatus = snapshot.status;
+  reconcile(snapshot: RadarStateSnapshot, pending: ReadonlySet<string>): void {
+    // POWER_PENDING_KEY guards the operational status the same way a control id guards its value: a
+    // poll landing right after an optimistic transmit/standby must not flip the pill back to stale.
+    if (snapshot.status && !pending.has(POWER_PENDING_KEY))
+      this.operationalStatus = snapshot.status;
     for (const [id, entry] of Object.entries(snapshot.controls)) {
       if (!entry || pending.has(id)) continue;
       this.controlValues[id] = entry.value;

@@ -1,3 +1,5 @@
+import type { Bbox4 } from '$shared/geo';
+
 export type MapSourceType = 'tilelayer' | 'WMS' | 'WMTS' | 'tileJSON' | 'mapstyleJSON' | 'S-57';
 
 export interface SignalKChart {
@@ -6,7 +8,7 @@ export interface SignalKChart {
   description?: string;
   type: MapSourceType;
   scale?: number;
-  bounds?: [number, number, number, number];
+  bounds?: Bbox4;
   minzoom?: number;
   maxzoom?: number;
   format?: string;

@@ -1,5 +1,5 @@
 import type { OwnVessel } from '$entities/vessel';
-import type { LatLon } from '$shared/geo';
+import { isLatLon, type LatLon } from '$shared/geo';
 import {
   etaSeconds,
   rhumbBearingRad,
@@ -26,15 +26,31 @@ const DEFAULT_ARRIVAL_CIRCLE_METERS = 100;
 // the boundary cannot re-fire the arrival alarm and banner.
 const ARRIVAL_EXIT_FACTOR = 1.2;
 
+// calcValues does not stream as one object: the course-provider publishes each value as its own leaf
+// delta (navigation.course.calcValues.<field>) and the core never emits the parent, so each field is
+// held in its own store cell. These are the fields the guidance reads; the REST seed is decomposed
+// into the same cells so the stream keeps them live afterward.
+const CALC_VALUE_FIELDS = [
+  'crossTrackError',
+  'distance',
+  'bearingTrue',
+  'velocityMadeGood',
+  'timeToGo',
+  'estimatedTimeOfArrival',
+] as const;
+
+const calcLeafPath = (field: (typeof CALC_VALUE_FIELDS)[number]): string =>
+  `${SK_PATHS.courseCalcValues}.${field}`;
+
 // Every course cell the guidance owns, so the pre-created, seeded, staleness-checked, and cleared
-// sets provably match.
-const COURSE_CELL_PATHS = [
+// sets provably match. calcValues contributes one cell per leaf field, since that is how it streams.
+const COURSE_CELL_PATHS: readonly string[] = [
   SK_PATHS.courseNextPoint,
   SK_PATHS.coursePreviousPoint,
   SK_PATHS.courseActiveRoute,
-  SK_PATHS.courseCalcValues,
   SK_PATHS.courseArrivalCircle,
-] as const;
+  ...CALC_VALUE_FIELDS.map(calcLeafPath),
+];
 
 // Source-agnostic active-following guidance. It reads the Signal K navigation.course paths from
 // the store and exposes the active-leg readouts, preferring the server's calcValues when a
@@ -83,8 +99,14 @@ export class CourseGuidance {
         this.#store.cell(SK_PATHS.courseArrivalCircle).value = info.arrivalCircle;
       }
     }
-    if (calc && unstreamed(SK_PATHS.courseCalcValues)) {
-      this.#store.cell(SK_PATHS.courseCalcValues).value = calc;
+    if (calc) {
+      // calcValues streams as leaf deltas, so the snapshot is decomposed into the same per-field
+      // cells the stream writes; each field is seeded only when no stream delta landed at or after
+      // the hydrate, matching the per-cell staleness rule used for the info cells above.
+      for (const field of CALC_VALUE_FIELDS) {
+        const path = calcLeafPath(field);
+        if (unstreamed(path)) this.#store.cell(path).value = calc[field];
+      }
     }
   }
 
@@ -103,12 +125,30 @@ export class CourseGuidance {
     arrivalCircle: this.#store.cell(SK_PATHS.courseArrivalCircle).value as number | undefined,
   }));
 
-  #calc = $derived.by(
-    () => this.#store.cell(SK_PATHS.courseCalcValues).value as CourseCalculations | undefined,
-  );
+  // Assembled from the per-field leaf cells that the stream and the REST seed both write. Undefined
+  // until at least one field is present, so an inactive course or an absent provider reads as a
+  // computed source. The leaf cells are read individually, so a single streamed field keeps the
+  // readouts live.
+  #calc = $derived.by<CourseCalculations | undefined>(() => {
+    let present = false;
+    const read = <T>(field: (typeof CALC_VALUE_FIELDS)[number]): T | null | undefined => {
+      const v = this.#store.cell(calcLeafPath(field)).value;
+      if (v != null) present = true;
+      return v as T | null | undefined;
+    };
+    const calc: CourseCalculations = {
+      crossTrackError: read<number>('crossTrackError'),
+      distance: read<number>('distance'),
+      bearingTrue: read<number>('bearingTrue'),
+      velocityMadeGood: read<number>('velocityMadeGood'),
+      timeToGo: read<number>('timeToGo'),
+      estimatedTimeOfArrival: read<string>('estimatedTimeOfArrival'),
+    };
+    return present ? calc : undefined;
+  });
 
   get active(): boolean {
-    return !!this.#info.nextPoint?.position;
+    return this.#next !== undefined;
   }
 
   // True when the active point is the last in the route, so the arrival advance does not step past
@@ -165,7 +205,11 @@ export class CourseGuidance {
   }
 
   get #next(): LatLon | undefined {
-    return this.#info.nextPoint?.position;
+    // Validate the streamed position before it reaches the map and the geodesy: a malformed or
+    // NaN nextPoint.position would otherwise poison the destination marker and every fallback
+    // distance, bearing, and cross-track computation, unlike the validated vessel and AIS paths.
+    const pos = this.#info.nextPoint?.position;
+    return isLatLon(pos) ? pos : undefined;
   }
 
   // The vessel position only while the fix is fresh. A stale fix must not feed the computed-fallback

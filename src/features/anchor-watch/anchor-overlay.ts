@@ -110,6 +110,10 @@ export function createAnchorOverlay(
   // add() can run again after a base-style swap; the map keeps its listeners across that, so the
   // drag handlers must only ever attach once.
   let handlersAttached = false;
+  // Detaches the marker-layer drag handlers, set when they attach so remove() can unregister them.
+  // Without it a standalone unregister-then-readd would leak the listeners and the attach guard would
+  // then block reattach, silently disabling anchor drag.
+  let detachMarkerDrag: (() => void) | undefined;
 
   const onPointerMove = (e: MapMouseEvent | MapTouchEvent): void => {
     dragPreview = { latitude: e.lngLat.lat, longitude: e.lngLat.lng };
@@ -206,26 +210,39 @@ export function createAnchorOverlay(
         dragPreview = undefined;
         needsRedraw = true;
       }
-      map.on('mousedown', MARKER_LAYER, (e: MapLayerMouseEvent) => {
+      const onMarkerMouseDown = (e: MapLayerMouseEvent): void => {
         e.preventDefault();
         map.on('mousemove', onPointerMove);
         // No mouse cancel path: MapLibre tracks an in-flight mouse drag at the window level, so
         // mouseup reaches endDrag even when the button is released off the canvas.
         map.once('mouseup', endDrag);
-      });
-      map.on('touchstart', MARKER_LAYER, (e: MapLayerTouchEvent) => {
+      };
+      const onMarkerTouchStart = (e: MapLayerTouchEvent): void => {
         if (e.points.length !== 1) return;
         e.preventDefault();
         map.on('touchmove', onPointerMove);
         map.once('touchend', endDrag);
         map.once('touchcancel', cancelDrag);
-      });
-      map.on('mouseenter', MARKER_LAYER, () => {
+      };
+      const onMarkerEnter = (): void => {
         map.getCanvas().style.cursor = 'move';
-      });
-      map.on('mouseleave', MARKER_LAYER, () => {
+      };
+      const onMarkerLeave = (): void => {
         map.getCanvas().style.cursor = '';
-      });
+      };
+      map.on('mousedown', MARKER_LAYER, onMarkerMouseDown);
+      map.on('touchstart', MARKER_LAYER, onMarkerTouchStart);
+      map.on('mouseenter', MARKER_LAYER, onMarkerEnter);
+      map.on('mouseleave', MARKER_LAYER, onMarkerLeave);
+      detachMarkerDrag = () => {
+        map.off('mousedown', MARKER_LAYER, onMarkerMouseDown);
+        map.off('touchstart', MARKER_LAYER, onMarkerTouchStart);
+        map.off('mouseenter', MARKER_LAYER, onMarkerEnter);
+        map.off('mouseleave', MARKER_LAYER, onMarkerLeave);
+        // Drop any in-flight drag listeners too, so a teardown mid-drag leaves nothing attached.
+        map.off('mousemove', onPointerMove);
+        map.off('touchmove', onPointerMove);
+      };
     },
     sync(ctx) {
       const anchorPos = dragPreview ?? anchor.position;
@@ -269,6 +286,9 @@ export function createAnchorOverlay(
       ctx.map.setPaintProperty(MARKER_LAYER, 'circle-stroke-color', paint.markerGlyph);
     },
     remove(ctx) {
+      detachMarkerDrag?.();
+      detachMarkerDrag = undefined;
+      handlersAttached = false;
       removeLayersAndSources(ctx.map, LAYERS, [SHAPE_SRC, POINT_SRC]);
     },
   };

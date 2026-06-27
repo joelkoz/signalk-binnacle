@@ -1,4 +1,4 @@
-import type { Waypoint } from '$entities/route';
+import type { RouteWaypoint } from '$entities/route';
 import { authInit } from '$shared/signalk';
 import {
   type DRAFT_ERRORS,
@@ -43,7 +43,7 @@ export interface DraftFlag {
 }
 
 export interface DraftedRoute {
-  waypoints: Waypoint[];
+  waypoints: RouteWaypoint[];
   name?: string;
   note: string;
   destination?: { name: string };

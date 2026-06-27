@@ -1,4 +1,4 @@
-import type { Route, Waypoint } from '$entities/route';
+import type { Route, RouteWaypoint } from '$entities/route';
 import type { TrackPoint } from '$entities/track';
 import { uuidv4 } from '$shared/lib';
 import { METERS_PER_DEG } from '$shared/nav';
@@ -19,7 +19,7 @@ export function trackToRoute(
   toleranceMeters: number = DEFAULT_ROUTE_TOLERANCE_M,
 ): Route {
   const kept = douglasPeucker(points, toleranceMeters / METERS_PER_DEG);
-  const waypoints: Waypoint[] = kept.map((p) => ({
+  const waypoints: RouteWaypoint[] = kept.map((p) => ({
     position: { latitude: p.lat, longitude: p.lon },
   }));
   return { id: uuidv4(), name, waypoints };

@@ -1,4 +1,4 @@
-import { withTimeout } from '$shared/lib';
+import { fetchJsonOrUndefined, withTimeout } from '$shared/lib';
 
 // Helpers shared by the resource clients (charts, notes, tracks): the bearer-auth request init
 // and the string guards for parsing untyped resource JSON. A token is sent only when present.
@@ -7,6 +7,28 @@ export function authInit(token: string | undefined, extra?: RequestInit): Reques
   if (!token && !extra) return undefined;
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
   return { ...extra, headers: { ...headers, ...extra?.headers } };
+}
+
+// Best-effort authenticated GET returning parsed JSON, or undefined on any non-OK status, network
+// failure, timeout, or parse error. The bearer-auth GET-then-degrade shape recurs across the
+// applicationData, trails, notes-detail, and tides clients; this is its single home.
+export function fetchAuthedJson<T>(url: string, token: string | undefined): Promise<T | undefined> {
+  return fetchJsonOrUndefined<T>(url, authInit(token));
+}
+
+// Best-effort authenticated GET returning the response text, or undefined on any non-OK status,
+// network failure, or timeout. The text sibling of fetchAuthedJson, for SVG symbol bodies.
+export async function fetchAuthedText(
+  url: string,
+  token: string | undefined,
+): Promise<string | undefined> {
+  try {
+    const response = await fetch(url, withTimeout(authInit(token)));
+    if (!response.ok) return undefined;
+    return await response.text();
+  } catch {
+    return undefined;
+  }
 }
 
 // The Signal K resources API returns a keyed object (id to record). An error envelope
@@ -129,6 +151,17 @@ export async function putResource(
   body: unknown,
 ): Promise<boolean> {
   return (await sendJson(url, token, 'PUT', body))?.ok ?? false;
+}
+
+// POST a JSON body (or no body) to a URL, returning whether it succeeded. Never throws (see
+// putResource). Routes through sendJson so the write-outcome listener observes the status, which is
+// how a read-only token reveals itself on a write.
+export async function postResource(
+  url: string,
+  token: string | undefined,
+  body?: unknown,
+): Promise<boolean> {
+  return (await sendJson(url, token, 'POST', body))?.ok ?? false;
 }
 
 // DELETE a resource URL, returning whether it succeeded. Never throws (see putResource).

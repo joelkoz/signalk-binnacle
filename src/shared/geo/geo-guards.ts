@@ -35,8 +35,15 @@ export type LonLat = [number, number];
 // filter raw coordinate arrays down to numeric pairs before mapping them to LatLon.
 export function isLonLat(value: unknown): value is LonLat {
   // Finite, not just number, matching isLatLon: JSON.parse turns an extreme literal into Infinity,
-  // and a non-finite coordinate poisons every distance, bounds, and rendered line downstream.
-  return Array.isArray(value) && Number.isFinite(value[0]) && Number.isFinite(value[1]);
+  // and a non-finite coordinate poisons every distance, bounds, and rendered line downstream. The
+  // length guard rejects empty and single-element arrays; a GeoJSON position may legitimately carry
+  // a third elevation element, so the upper bound is open and only indices 0 and 1 are read.
+  return (
+    Array.isArray(value) &&
+    value.length >= 2 &&
+    Number.isFinite(value[0]) &&
+    Number.isFinite(value[1])
+  );
 }
 
 export function lonLatToLatLon([longitude, latitude]: LonLat): LatLon {

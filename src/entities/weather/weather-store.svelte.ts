@@ -4,11 +4,11 @@ import { nearestGridTime, timeBracket } from './weather-grid';
 export type WeatherStatus = 'idle' | 'loading' | 'ready' | 'error' | 'stale';
 
 export class WeatherStore {
-  grid = $state<WeatherGrid | undefined>(undefined);
+  grid = $state.raw<WeatherGrid | undefined>(undefined);
   status = $state<WeatherStatus>('idle');
   bbox = $state<Bbox | undefined>(undefined);
   selectedTime = $state<number>(0);
-  radar = $state<RadarData | undefined>(undefined);
+  radar = $state.raw<RadarData | undefined>(undefined);
 
   // The two forecast indices and blend fraction for the selected time. Overlays read this to render
   // the right step; it recomputes only when the grid or the selected time changes.

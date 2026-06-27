@@ -1,6 +1,5 @@
 import type { LatLon } from '$shared/geo';
-import { withTimeout } from '$shared/lib';
-import { authInit, putResource } from '$shared/signalk';
+import { postResource, putResource } from '$shared/signalk';
 
 // The HTTP client for the signalk-anchoralarm-plugin. Every call returns whether it succeeded and
 // never throws: a missing plugin, a 401, or a dead network all come back false, and the caller
@@ -11,26 +10,15 @@ const PLUGIN_BASE = '/plugins/anchoralarm';
 
 // POST an anchor command under the degrade contract above. A body is JSON-encoded when given; the
 // standard Anchor API's drop and raise take none, so those calls send a bare POST. Shared with the
-// standard-API client in anchor-api-client.ts.
-export async function postAnchorCommand(
+// standard-API client in anchor-api-client.ts. Routes through postResource so a read-only token's
+// 401/403 reaches the write-outcome listener and raises the read-only banner, rather than being
+// silently absorbed as a plugin-absent degrade.
+export function postAnchorCommand(
   url: string,
   token: string | undefined,
   body?: unknown,
 ): Promise<boolean> {
-  try {
-    const init: RequestInit =
-      body === undefined
-        ? { method: 'POST' }
-        : {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          };
-    const response = await fetch(url, withTimeout(authInit(token, init)));
-    return response.ok;
-  } catch {
-    return false;
-  }
+  return postResource(url, token, body);
 }
 
 // Drop the anchor at the vessel's current position with the given watch radius. On success the

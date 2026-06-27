@@ -434,7 +434,8 @@ const weatherLayerSettings = new PersistedValue<LayerSettings>('binnacle:weather
 
 // Saved tracks fetched from /resources/tracks, and the subset the user has chosen to show on
 // the chart. The overlay polls savedSource each frame, so a version counter signals changes.
-let savedTracks = $state<SavedTrack[]>([]);
+// Replace-only (refreshSavedTracks reassigns the whole list), so raw state skips the deep proxy.
+let savedTracks = $state.raw<SavedTrack[]>([]);
 let shownSaved = $state<ReadonlySet<string>>(new Set());
 let savedVersion = 0;
 const savedSource: SavedTracksSource = {
@@ -498,7 +499,8 @@ let selectedNote = $state<NoteSelection | undefined>();
 let noteLoader = $state<NoteDetailLoader | undefined>();
 let mapView = $state<MapView | undefined>();
 // The on-screen POIs reported by the notes overlay, clipped to the live viewport for the POI search.
-let poiNotes = $state<NotePoint[]>([]);
+// Replace-only (reassigned wholesale from onNotes), so raw state skips the wasted deep proxy.
+let poiNotes = $state.raw<NotePoint[]>([]);
 // Reading mapView ties this to every map move, so the in-view clip recomputes on pan and zoom; the
 // live bounds come from the map. The clip is only computed while the POI search panel reads it.
 const poiInView = $derived.by<Poi[]>(() => {
@@ -2032,7 +2034,7 @@ async function connectStream(token: string | undefined): Promise<void> {
     { path: SK_PATHS.coursePreviousPoint, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.courseActiveRoute, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.courseArrivalCircle, policy: 'instant', minPeriod: 1000 },
-    { path: SK_PATHS.courseCalcValues, policy: 'instant', minPeriod: 1000 },
+    { path: SK_PATHS.courseCalcValuesAll, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.depthBelowTransducer, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.windSpeedApparent, policy: 'instant', minPeriod: 1000 },
     { path: SK_PATHS.outsidePressure, policy: 'instant', minPeriod: 5000 },

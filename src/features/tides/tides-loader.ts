@@ -299,7 +299,10 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
         // them concurrently halves the cold-start wait on a slow boat link.
         const [events, current] = await Promise.all([
           eventsFor(tideEventCache, 'tide', deps.tideEvents, nearTide.station.id, nowMs, day),
-          nearestCurrent(lat, lon, nowMs, day),
+          // Per-station isolation: a current-station fetch (a reference-only station the loop skips,
+          // a CO-OPS hiccup) must degrade to no current, not reject the whole load and discard the
+          // tide events already fetched alongside it.
+          nearestCurrentOrUndefined(lat, lon, nowMs, day),
         ]);
         const tide: TideReading = {
           station: nearTide.station,
@@ -307,8 +310,11 @@ export function createTidesLoader(overrides: Partial<LoaderDeps> = {}): TidesLoa
           events,
         };
         store.setReadings(tide, current, 'noaa-coops');
-      } catch {
+      } catch (error) {
         cooldownUntil = deps.now() + COOLDOWN_MS;
+        // Leave a breadcrumb: a persistent tides failure (provider down, network, parse) is
+        // otherwise undiagnosable behind the generic error state and the cooldown.
+        console.warn('[tides] load failed', error);
         store.setError();
       } finally {
         inFlight = false;

@@ -123,7 +123,9 @@ export async function fetchSavedTracks(
   base: string,
   token?: string,
 ): Promise<SavedTrack[] | undefined> {
-  return fetchKeyedResource(base, [V2, V1], token, toSavedTrack);
+  return fetchKeyedResource(base, [V2, V1], token, toSavedTrack, (url, status) =>
+    console.warn(`[tracks] ${url} returned ${status}`),
+  );
 }
 
 // Splits the points into a MultiLineString at gaps; distance (meters) and timespan (seconds)

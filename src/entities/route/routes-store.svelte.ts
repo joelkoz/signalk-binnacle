@@ -3,7 +3,7 @@ import type { Route, RouteHighlight } from './route-types';
 // The reactive home for routes. A version counter lets the overlay poll for changes the way the
 // saved-tracks overlay does, without deep reactivity on the arrays.
 export class RouteStore {
-  routes = $state<Route[]>([]);
+  routes = $state.raw<Route[]>([]);
   shownIds = $state<Set<string>>(new Set());
   working = $state<Route | undefined>(undefined);
   activeId = $state<string | undefined>(undefined);

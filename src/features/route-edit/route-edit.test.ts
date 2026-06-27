@@ -1,7 +1,7 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { TerraDraw } from 'terra-draw';
 import { describe, expect, it, vi } from 'vitest';
-import type { Waypoint } from '$entities/route';
+import type { RouteWaypoint } from '$entities/route';
 import { createRouteEditor, drawFeatureToWaypoints, routeToStoreFeature } from './route-edit';
 
 vi.mock('terra-draw-maplibre-gl-adapter', () => ({
@@ -119,8 +119,8 @@ function lastInstance(): FakeDraw {
   return instances[instances.length - 1];
 }
 
-function startEditor(waypoints: Waypoint[]): { draw: FakeDraw; emitted: Waypoint[][] } {
-  const emitted: Waypoint[][] = [];
+function startEditor(waypoints: RouteWaypoint[]): { draw: FakeDraw; emitted: RouteWaypoint[][] } {
+  const emitted: RouteWaypoint[][] = [];
   const editor = createRouteEditor({
     map: {} as MapLibreMap,
     theme: 'day',
@@ -131,8 +131,8 @@ function startEditor(waypoints: Waypoint[]): { draw: FakeDraw; emitted: Waypoint
 }
 
 // Start with no route, which puts the editor in linestring drawing mode (drawing = true).
-function startDrawing(): { draw: FakeDraw; emitted: Waypoint[][] } {
-  const emitted: Waypoint[][] = [];
+function startDrawing(): { draw: FakeDraw; emitted: RouteWaypoint[][] } {
+  const emitted: RouteWaypoint[][] = [];
   const editor = createRouteEditor({
     map: {} as MapLibreMap,
     theme: 'day',
@@ -206,7 +206,7 @@ describe('route-edit converters', () => {
 });
 
 describe('createRouteEditor name reconciliation', () => {
-  const named: Waypoint[] = [
+  const named: RouteWaypoint[] = [
     { position: { latitude: 0, longitude: 0 }, name: 'Alpha' },
     { position: { latitude: 1, longitude: 1 }, name: 'Bravo' },
     { position: { latitude: 2, longitude: 2 }, name: 'Charlie' },
@@ -258,7 +258,7 @@ describe('createRouteEditor name reconciliation', () => {
   });
 
   it('a route visiting the same point twice consumes remembered names in order', () => {
-    const revisits: Waypoint[] = [
+    const revisits: RouteWaypoint[] = [
       { position: { latitude: 0, longitude: 0 }, name: 'Out' },
       { position: { latitude: 1, longitude: 1 }, name: 'Mark' },
       { position: { latitude: 0, longitude: 0 }, name: 'Home' },

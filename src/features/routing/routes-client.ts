@@ -11,7 +11,9 @@ const V1 = '/signalk/v1/api/resources/routes';
 // list-but-not-edit behavior rather than writes against a legacy API the rest of the app does not
 // speak.
 export function fetchRoutes(base: string, token?: string): Promise<Route[] | undefined> {
-  return fetchKeyedResource(base, [V2, V1], token, featureToRoute);
+  return fetchKeyedResource(base, [V2, V1], token, featureToRoute, (url, status) =>
+    console.warn(`[routes] ${url} returned ${status}`),
+  );
 }
 
 // The server-relative resource href for a route id, as the Course API's activeRoute wants it.

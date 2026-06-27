@@ -1,4 +1,4 @@
-import type { Route, Waypoint } from '$entities/route';
+import type { Route, RouteWaypoint } from '$entities/route';
 import { isLatitude, isLongitude } from '$shared/geo';
 import { uuidv4 } from '$shared/lib';
 import { unescapeXml } from './xml-entities';
@@ -15,8 +15,8 @@ function attrNumber(attrs: string, pattern: RegExp): number {
   return m ? Number.parseFloat(m[1]) : Number.NaN;
 }
 
-function parseWaypoints(block: string): Waypoint[] {
-  const waypoints: Waypoint[] = [];
+function parseWaypoints(block: string): RouteWaypoint[] {
+  const waypoints: RouteWaypoint[] = [];
   for (const pt of block.matchAll(RTEPT)) {
     const latitude = attrNumber(pt[1], LAT);
     const longitude = attrNumber(pt[1], LON);

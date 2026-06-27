@@ -11,7 +11,9 @@ const V1 = '/signalk/v1/api/resources/waypoints';
 // v1-only server gets list-but-not-edit behavior rather than writes against a legacy API the
 // rest of the app does not speak.
 export function fetchWaypoints(base: string, token?: string): Promise<Waypoint[] | undefined> {
-  return fetchKeyedResource(base, [V2, V1], token, featureToWaypoint);
+  return fetchKeyedResource(base, [V2, V1], token, featureToWaypoint, (url, status) =>
+    console.warn(`[waypoints] ${url} returned ${status}`),
+  );
 }
 
 // PUT the waypoint to its client-chosen id. Returns whether the write succeeded.

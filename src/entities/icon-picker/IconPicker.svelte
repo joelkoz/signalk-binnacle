@@ -1,4 +1,5 @@
 <script lang="ts">
+import { ChevronDown } from '@lucide/svelte';
 import {
   categoryLabel,
   POI_CATEGORIES,
@@ -188,25 +189,11 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   >
     <span class="picker-icon"> {@render iconGlyph(selected)} </span>
     <span class="picker-label">{selected.label}</span>
-    <svg
-      class="picker-chevron"
-      xmlns="http://www.w3.org/2000/svg"
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <polyline points="6 9 12 15 18 9"></polyline>
-    </svg>
+    <ChevronDown class="picker-chevron" size={14} aria-hidden="true" />
   </button>
 
   {#if isOpen}
-    <div class="picker-list" role="listbox" aria-label="Icon">
+    <div class="picker-list popover-card" role="listbox" aria-label="Icon">
       {#each options as opt, i (opt.value)}
         {#if i === poiStart}
           <div class="caps-label picker-group-label" aria-hidden="true">POI categories</div>
@@ -216,8 +203,9 @@ const poiStart = $derived(defaultOption ? 1 : 0);
         <button
           type="button"
           role="option"
+          class="row-interactive picker-option"
           aria-selected={value === opt.value}
-          class:is-selected={value === opt.value}
+          class:is-on={value === opt.value}
           tabindex={-1}
           bind:this={optionEls[i]}
           onclick={() => select(opt.value)}
@@ -248,7 +236,7 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   text-align: start;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
   cursor: pointer;
 }
@@ -258,8 +246,8 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  inline-size: 1.375rem;
+  block-size: 1.375rem;
 }
 
 .picker-label {
@@ -269,11 +257,15 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   white-space: nowrap;
 }
 
-.picker-chevron {
+/* :global because the class lands on the lucide ChevronDown's svg, a child component Svelte's scoped
+   CSS cannot see; scoped under .picker-trigger so it does not leak. */
+.picker-trigger :global(.picker-chevron) {
   flex-shrink: 0;
   color: var(--text-muted);
 }
 
+/* The floating frame is the shared .popover-card; only position, sizing, scroll, padding, and
+   stacking stay scoped here. */
 .picker-list {
   position: absolute;
   inset-block-start: calc(100% + 2px);
@@ -283,38 +275,19 @@ const poiStart = $derived(defaultOption ? 1 : 0);
   overflow-y: auto;
   margin: 0;
   padding: var(--space-1) 0;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-overlay);
   z-index: var(--z-menu);
 }
 
-/* Option rows are buttons so Enter and Space activate them natively and keyboard focus picks up the
-   shared :focus-visible ring (a tabindex=-1 div gets neither). */
-.picker-list button[role="option"] {
+/* Option rows compose the shared .row-interactive primitive (hover tint, lit .is-on body, control
+   height) so they are buttons that activate on Enter and Space, pick up the shared :focus-visible
+   ring, and match the app's other interactive rows. Only the row's own layout stays scoped. */
+.picker-list .picker-option {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  inline-size: 100%;
-  min-block-size: var(--control-size);
   padding: var(--space-2) var(--space-3);
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
   font-size: var(--text-md);
   text-align: start;
-  color: var(--text);
-}
-
-.picker-list button[role="option"]:hover,
-.picker-list button[role="option"]:focus {
-  background: var(--accent-tint);
-}
-
-.picker-list button[role="option"].is-selected {
-  background: var(--accent-tint-strong);
 }
 
 .picker-group-label {

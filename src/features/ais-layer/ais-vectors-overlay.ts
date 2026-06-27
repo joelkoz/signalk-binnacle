@@ -6,6 +6,7 @@ import type {
 
 import type { AisTargets, AisTargetView } from '$entities/ais';
 import type { Assessment, Severity } from '$entities/collision';
+import { latLonToLonLat } from '$shared/geo';
 import {
   emptyFeatureCollection,
   featureCollection,
@@ -56,7 +57,7 @@ export function buildFeatures(
     const sog = target.sogMps ?? 0;
     if (sog < MIN_SOG_MPS) continue;
     const distanceMeters = sog * VECTOR_SECONDS;
-    const origin: [number, number] = [target.position.longitude, target.position.latitude];
+    const origin: [number, number] = latLonToLonLat(target.position);
     const tip = geodesicDestination(
       target.position.latitude,
       target.position.longitude,

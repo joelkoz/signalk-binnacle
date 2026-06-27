@@ -1,15 +1,24 @@
 import { isRecord } from '$shared/lib';
-import type { NotificationState, SignalKStore } from '$shared/signalk';
+import type { RaisedNotificationState, SignalKStore } from '$shared/signalk';
 
 // Sort rank for the raised grades; lower is more severe. Doubles as the membership test:
-// a state outside this table (normal, nominal, or junk) is not an active alert.
-const SEVERITY_RANK: Record<string, number> = { emergency: 0, alarm: 1, warn: 2, alert: 3 };
+// a state outside this table (normal, nominal, or junk) is not an active alert. Keyed by
+// RaisedNotificationState so the table provably covers every raised grade and nothing else.
+const SEVERITY_RANK: Record<RaisedNotificationState, number> = {
+  emergency: 0,
+  alarm: 1,
+  warn: 2,
+  alert: 3,
+};
+
+// The Signal K notification delivery methods (server-api), the only values method carries.
+type NotificationMethod = 'visual' | 'sound';
 
 export interface ActiveNotification {
   path: string;
-  state: NotificationState;
+  state: RaisedNotificationState;
   message: string;
-  method: string[];
+  method: NotificationMethod[];
   // ISO 8601, from the value's createdAt when the producer included it.
   timestamp?: string;
   // The v2 notification id the server stamps on the value; absent on pre-2.28 servers,
@@ -30,12 +39,12 @@ function parseNotification(path: string, value: unknown): ActiveNotification | u
   // Object.hasOwn, not `in`: a junk state like 'constructor' must not match the prototype.
   if (typeof state !== 'string' || !Object.hasOwn(SEVERITY_RANK, state)) return undefined;
   const method = Array.isArray(raw.method)
-    ? raw.method.filter((m): m is string => typeof m === 'string')
+    ? raw.method.filter((m): m is NotificationMethod => m === 'visual' || m === 'sound')
     : [];
   const status = isRecord(raw.status) ? raw.status : {};
   return {
     path,
-    state: state as NotificationState,
+    state: state as RaisedNotificationState,
     message: typeof raw.message === 'string' ? raw.message : '',
     method,
     timestamp: typeof raw.createdAt === 'string' ? raw.createdAt : undefined,

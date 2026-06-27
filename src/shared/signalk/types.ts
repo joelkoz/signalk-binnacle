@@ -22,12 +22,18 @@ export const NOTIFICATIONS_PREFIX = 'notifications.';
 // The notification states that actually sound, alarm and emergency; nominal, normal, alert, and
 // warn are the quiet grades. The narrow name says so, since the canonical NotificationState below
 // carries all six grades; shared by every consumer that grades a notifications.* cell for an
-// audible alarm (anchor drag, MOB).
-export const SOUNDING_NOTIFICATION_STATES: ReadonlySet<string> = new Set(['alarm', 'emergency']);
+// audible alarm (anchor drag, MOB). Built from a NotificationState[] literal so a typo in a member
+// is a compile error, while the Set stays string-keyed so a raw notifications.* state reads cleanly.
+const SOUNDING_STATES: readonly NotificationState[] = ['alarm', 'emergency'];
+export const SOUNDING_NOTIFICATION_STATES: ReadonlySet<string> = new Set(SOUNDING_STATES);
 
 // The full Signal K alarm-state set (server-api ALARM_STATE). 'nominal' and 'normal' are the
 // quiet grades; the rest escalate alert < warn < alarm < emergency.
 export type NotificationState = 'nominal' | 'normal' | 'alert' | 'warn' | 'alarm' | 'emergency';
+
+// The grades a raised notification carries: the escalating subset of NotificationState, excluding
+// the quiet 'nominal' and 'normal'. A parsed active alert is always one of these.
+export type RaisedNotificationState = Exclude<NotificationState, 'nominal' | 'normal'>;
 
 export interface PathValue {
   path: Path;

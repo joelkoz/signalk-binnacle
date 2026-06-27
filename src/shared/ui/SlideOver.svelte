@@ -4,6 +4,7 @@ import type { Snippet } from 'svelte';
 import { fly } from 'svelte/transition';
 import { prefersReducedMotion } from '$shared/lib';
 import { dialog } from './dialog';
+import { PANEL_TRANSITION_MS } from './transitions';
 
 // The panel slides in from the edge it docks to, with a zero duration when the system reduced-motion
 // preference is set, so a helm with reduce-motion sees no movement.
@@ -59,7 +60,11 @@ const {
   aria-label={ariaLabel ?? title}
   tabindex="-1"
   use:dialog={onClose}
-  transition:fly={{ x: dock === 'right' ? 24 : -24, duration: reduceMotion ? 0 : 180, opacity: 0.3 }}
+  transition:fly={{
+    x: dock === 'right' ? 24 : -24,
+    duration: reduceMotion ? 0 : PANEL_TRANSITION_MS,
+    opacity: 0.3,
+  }}
 >
   <header class="panel-header" class:panel-header--stacked={subtitle}>
     {#if onBack}

@@ -125,8 +125,10 @@ watch handoff) MUST be a self-contained module dropped in against stable interfa
 surgery on the core. The core never hardcodes knowledge of a specific feature.
 
 - Layered structure (Feature-Sliced Design, adapted): imports flow strictly downward,
-  `app -> views -> widgets -> features -> entities -> shared`. No same-layer slice-to-slice
-  imports. Cross-feature data flows through an `entities` store, never feature to feature.
+  `app -> views -> widgets -> features -> entities -> shared`. A slice may reach a same-layer sibling
+  only through that sibling's `index` public API, never its internal files (the machine-enforced
+  `no-cross-feature`, `no-cross-slice-shared`, and `no-cross-slice-entities` rules). Cross-feature
+  data flows through an `entities` store, never feature to feature.
 - Every slice exposes a public API via `index.ts`. Named re-exports only, never `export *`.
   Nothing outside a slice imports its internal files.
 - Features are self-contained slices under `features/<name>`, each exposing a public API via its

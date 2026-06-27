@@ -7,7 +7,7 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import type { Route, Waypoint } from '$entities/route';
+import type { Route, RouteWaypoint } from '$entities/route';
 import { isLonLat, type LatLon, latLonToLonLat, lonLatToLatLon, roundLatLon } from '$shared/geo';
 import { mapThemePaint } from '$shared/map';
 import type { Theme } from '$shared/ui';
@@ -27,7 +27,7 @@ function drawColor(theme: Theme): `#${string}` {
   return mapThemePaint(theme).select as `#${string}`;
 }
 
-export function drawFeatureToWaypoints(feature: GeoJSON.Feature): Waypoint[] {
+export function drawFeatureToWaypoints(feature: GeoJSON.Feature): RouteWaypoint[] {
   const geom = feature.geometry;
   if (geom.type !== 'LineString') return [];
   return geom.coordinates.filter(isLonLat).map((c) => ({ position: lonLatToLatLon(c) }));
@@ -78,7 +78,7 @@ export function createRouteEditor(opts: {
   map: MapLibreMap;
   beforeId?: string;
   theme: Theme;
-  onChange: (waypoints: Waypoint[]) => void;
+  onChange: (waypoints: RouteWaypoint[]) => void;
   // Fired when the navigator edits the geometry by hand (a drag, a midpoint insert, a tap), but not
   // for the programmatic seeding of an existing route through start(). Lets the app drop a shown AI
   // draft out of draft mode when the route is hand-tweaked, so it reads as a plain editable route.
@@ -118,9 +118,9 @@ export function createRouteEditor(opts: {
   // only carries coordinates, so without this every edit would discard all names and the save
   // would drop coordinatesMeta. anyNamed is kept beside it so the per-pointermove change events
   // of an unnamed route (the common case) skip the O(rebuilt x remembered) scan entirely.
-  let remembered: Waypoint[] = [];
+  let remembered: RouteWaypoint[] = [];
   let anyNamed = false;
-  const remember = (waypoints: Waypoint[]): void => {
+  const remember = (waypoints: RouteWaypoint[]): void => {
     remembered = waypoints;
     anyNamed = waypoints.some((w) => w.name != null);
   };
@@ -146,7 +146,7 @@ export function createRouteEditor(opts: {
   // Reused across change events: a drag fires one change per pointermove, so allocating a fresh
   // consumed array each call would churn proportional to the named-route length on every pixel.
   const nameConsumed: boolean[] = [];
-  const reconcileNames = (rebuilt: Waypoint[]): Waypoint[] => {
+  const reconcileNames = (rebuilt: RouteWaypoint[]): RouteWaypoint[] => {
     if (!anyNamed) return rebuilt;
     nameConsumed.length = remembered.length;
     nameConsumed.fill(false);
@@ -209,7 +209,7 @@ export function createRouteEditor(opts: {
     }
   };
 
-  const read = (): Waypoint[] => {
+  const read = (): RouteWaypoint[] => {
     const lines = linestrings();
     if (lines.length === 0) return [];
     const { line, extraIds } = workingLine(lines);

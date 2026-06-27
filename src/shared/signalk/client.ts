@@ -20,12 +20,25 @@ export function createSignalKClient(): SignalKClient {
   // identical to "still connecting". Capture the first load error and reject any in-flight connect()
   // with it, so the caller (App.svelte) surfaces the failure instead of latching on forever.
   let rejectPendingConnect: ((error: Error) => void) | undefined;
+  // The most recent frame sink, captured at connect. A worker crash AFTER the initial connect would
+  // otherwise only log to console: the socket dies with the worker but no frame is ever emitted, so
+  // the connection badge keeps reading its last live phase while data silently stops. Emitting a
+  // closed-connection frame here flips the badge to disconnected so the failure is visible.
+  let onFrameRef: ((frame: SKFrame) => void) | undefined;
   worker.onerror = (event) => {
     const error = new Error(
       `Signal K worker failed to load or threw: ${event.message ?? 'unknown'}`,
     );
     console.error(error.message, event);
-    rejectPendingConnect?.(error);
+    if (rejectPendingConnect) {
+      rejectPendingConnect(error);
+      return;
+    }
+    onFrameRef?.({
+      self: new Map(),
+      connection: { phase: 'closed', attempt: 0 },
+      epoch: Date.now(),
+    });
   };
   worker.onmessageerror = (event) => {
     console.error('Signal K worker message could not be deserialized', event);
@@ -34,6 +47,7 @@ export function createSignalKClient(): SignalKClient {
   return {
     raw,
     async connect(url, onFrame) {
+      onFrameRef = onFrame;
       const workerFailed = new Promise<never>((_, reject) => {
         rejectPendingConnect = reject;
       });

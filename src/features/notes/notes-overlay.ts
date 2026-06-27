@@ -254,9 +254,12 @@ export function createNotesOverlay(
         const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
         if (!source) return;
         const center = feature.geometry.coordinates as [number, number];
-        void source.getClusterExpansionZoom(clusterId).then((zoom) => {
-          ctx.map.easeTo({ center, zoom });
-        });
+        void source
+          .getClusterExpansionZoom(clusterId)
+          .then((zoom) => {
+            ctx.map.easeTo({ center, zoom });
+          })
+          .catch(() => undefined);
       };
       onEnter = () => {
         ctx.map.getCanvas().style.cursor = 'pointer';

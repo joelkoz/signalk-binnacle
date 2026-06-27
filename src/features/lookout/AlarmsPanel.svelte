@@ -90,7 +90,7 @@ const caution = $derived(thresholdsCaution(t));
     {#each alerts as n (n.path)}
       {@const time = alertTime(n)}
       <div class="alert-row card-frame">
-        <span class="state-tag {n.state}">{n.state}</span>
+        <span class="state-tag caps-label {n.state}">{n.state}</span>
         <div class="alert-main">
           <span class="alert-message">{alertLabel(n)}</span>
           {#if time}
@@ -229,10 +229,6 @@ const caution = $derived(thresholdsCaution(t));
   padding: 0.1rem var(--space-2);
   border: 1px solid currentColor;
   border-radius: var(--radius-pill);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
 }
 /* Severity colors reuse the alarm and warning tokens, so the tags hold in night-red. */
 .state-tag.emergency,

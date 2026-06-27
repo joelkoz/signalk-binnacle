@@ -211,7 +211,7 @@ const eta = $derived.by(() => {
   margin-inline-end: var(--space-3);
 }
 /* Waypoint-skip buttons in the strip head: bordered variant of .icon-btn--accent, with a compact
-   padding and a tighter disabled opacity than the global --disabled-opacity. */
+   padding and the global --disabled-opacity token when disabled. */
 .skip {
   flex-shrink: 0;
   padding: 0.2rem;

@@ -1,3 +1,4 @@
+import type { Bbox4 } from '$shared/geo';
 import { isFiniteNumber, isRecord, uuidv4 } from '$shared/lib';
 import { readPmtilesMeta, type SignalKChart } from '$shared/map';
 
@@ -9,7 +10,7 @@ export interface UserChartSource {
   name: string;
   kind: 'vector' | 'raster';
   origin: { type: 'url'; url: string };
-  bounds?: [number, number, number, number];
+  bounds?: Bbox4;
   minzoom?: number;
   maxzoom?: number;
   layers?: string[];

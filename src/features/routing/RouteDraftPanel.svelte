@@ -310,7 +310,7 @@ $effect(() => {
 /* The per-leg hazard breakdown under a grouped hazard summary: a compact, muted, indented list. */
 .draft-hazards {
   margin: 0.25rem 0 0;
-  padding-left: 1.1rem;
+  padding-inline-start: 1.1rem;
   list-style: disc;
   font-size: var(--text-sm);
   color: var(--text-muted);

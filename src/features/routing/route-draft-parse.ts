@@ -1,4 +1,4 @@
-import type { Waypoint } from '$entities/route';
+import type { RouteWaypoint } from '$entities/route';
 import { isLatitude, isLongitude } from '$shared/geo';
 import { isFiniteNumber } from '$shared/lib';
 import type { DraftError, DraftedRoute, DraftFlag, DraftFuel } from './route-draft-client';
@@ -62,9 +62,9 @@ function isFlagKind(v: unknown): v is DraftFlag['kind'] {
   return typeof v === 'string' && FLAG_KINDS.has(v);
 }
 
-export function validateWaypoints(raw: unknown): Waypoint[] | undefined {
+export function validateWaypoints(raw: unknown): RouteWaypoint[] | undefined {
   if (!Array.isArray(raw) || raw.length < 2) return undefined;
-  const waypoints: Waypoint[] = [];
+  const waypoints: RouteWaypoint[] = [];
   for (const item of raw) {
     if (!item || typeof item !== 'object') return undefined;
     const obj = item as Record<string, unknown>;

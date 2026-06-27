@@ -1,6 +1,5 @@
 import type { Bbox4 } from '$shared/geo';
-import { withTimeout } from '$shared/lib';
-import { asKeyedObject, authInit } from '$shared/signalk';
+import { asKeyedObject, fetchAuthedJson } from '$shared/signalk';
 
 // One recent-track line for a vessel from the tracks plugin (@signalk/tracks-plugin): the Signal K
 // vessel context and a GeoJSON-order [longitude, latitude] line.
@@ -57,20 +56,13 @@ export async function fetchAisTrails(
   token: string | undefined,
   bbox: Bbox4,
 ): Promise<AisTrail[] | undefined> {
-  try {
-    const response = await fetch(
-      `${base}${TRACKS_PATH}?bbox=${bboxQuery(bbox)}`,
-      withTimeout(authInit(token)),
-    );
-    if (!response.ok) return undefined;
-    const keyed = asKeyedObject(await response.json());
-    if (!keyed) return undefined;
-    const trails: AisTrail[] = [];
-    for (const [context, raw] of Object.entries(keyed)) {
-      for (const line of linesFromEntry(raw)) trails.push({ context, line });
-    }
-    return trails;
-  } catch {
-    return undefined;
+  const keyed = asKeyedObject(
+    await fetchAuthedJson<unknown>(`${base}${TRACKS_PATH}?bbox=${bboxQuery(bbox)}`, token),
+  );
+  if (!keyed) return undefined;
+  const trails: AisTrail[] = [];
+  for (const [context, raw] of Object.entries(keyed)) {
+    for (const line of linesFromEntry(raw)) trails.push({ context, line });
   }
+  return trails;
 }

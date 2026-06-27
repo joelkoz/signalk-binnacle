@@ -1,7 +1,7 @@
 import { isLonLat, type LonLat, latLonToLonLat, lonLatToLatLon } from '$shared/geo';
 import { rhumbBearingRad, rhumbDistanceMeters } from '$shared/nav';
 import { str } from '$shared/signalk';
-import type { Route, Waypoint } from './route-types';
+import type { Route, RouteWaypoint } from './route-types';
 
 // The Signal K v2 route resource body: a GeoJSON Feature with a LineString, plus name and the
 // total SI distance. Per-waypoint names ride in properties.coordinatesMeta, index-aligned.
@@ -53,7 +53,7 @@ export function featureToRoute(id: string, raw: unknown): Route | undefined {
   const meta = Array.isArray(r.feature?.properties?.coordinatesMeta)
     ? (r.feature?.properties?.coordinatesMeta as Array<{ name?: unknown }>)
     : [];
-  const waypoints: Waypoint[] = [];
+  const waypoints: RouteWaypoint[] = [];
   for (const [i, coord] of geom.coordinates.entries()) {
     if (isLonLat(coord)) {
       const name = str(meta[i]?.name);
@@ -65,7 +65,7 @@ export function featureToRoute(id: string, raw: unknown): Route | undefined {
   return { id, name, waypoints };
 }
 
-export function routeDistanceMeters(waypoints: readonly Waypoint[]): number {
+export function routeDistanceMeters(waypoints: readonly RouteWaypoint[]): number {
   return remainingRouteDistanceMeters(waypoints, 0);
 }
 
@@ -73,7 +73,7 @@ export function routeDistanceMeters(waypoints: readonly Waypoint[]): number {
 // waypoint). The whole-route distance-to-go is this plus the boat's distance to that next waypoint,
 // so a passage planner can show total remaining distance and arrival time, not just the next leg.
 export function remainingRouteDistanceMeters(
-  waypoints: readonly Waypoint[],
+  waypoints: readonly RouteWaypoint[],
   fromIndex: number,
 ): number {
   let total = 0;
@@ -95,7 +95,7 @@ export interface RouteLeg {
 // overlay tags each point with its route id; the working overlay needs none, so both overlays build
 // their waypoint points from one helper.
 export function waypointPointFeatures(
-  waypoints: readonly Waypoint[],
+  waypoints: readonly RouteWaypoint[],
   extra?: { id?: string },
 ): GeoJSON.Feature[] {
   return waypoints.map((w, index) => ({
@@ -105,7 +105,7 @@ export function waypointPointFeatures(
   }));
 }
 
-export function routeLegs(waypoints: readonly Waypoint[]): RouteLeg[] {
+export function routeLegs(waypoints: readonly RouteWaypoint[]): RouteLeg[] {
   const legs: RouteLeg[] = [];
   for (let i = 1; i < waypoints.length; i += 1) {
     legs.push({

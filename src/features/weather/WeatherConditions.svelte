@@ -180,7 +180,7 @@ const sortedWarnings = $derived(sortWarnings(warnings));
 const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTime));
 </script>
 
-<section class="conditions" aria-label="Conditions at the vessel">
+<section class="conditions popover-card" aria-label="Conditions at the vessel">
   <header class="cond-head">
     <span class="caps-label">Here</span>
     <span class="cond-source">{sourceLabel}</span>
@@ -226,6 +226,8 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
 </section>
 
 <style>
+/* The floating frame is the shared .popover-card; only the column layout, sizing, scroll, padding,
+   and text color stay scoped here. */
 .conditions {
   display: flex;
   flex-direction: column;
@@ -234,10 +236,6 @@ const untilLabel = (endTime: string): string => formatDayClock(Date.parse(endTim
   max-block-size: 100%;
   overflow-y: auto;
   padding: var(--space-2) 0.6rem;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-overlay);
   color: var(--text);
 }
 .cond-head {

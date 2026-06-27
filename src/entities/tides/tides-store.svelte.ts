@@ -5,9 +5,9 @@ import type { CurrentReading, TideReading, TidesSource, TidesStatus } from './ti
 export class TidesStore {
   status = $state<TidesStatus>('idle');
   // The nearest tide station and its day of high and low events, or undefined when none is in range.
-  tide = $state<TideReading | undefined>(undefined);
+  tide = $state.raw<TideReading | undefined>(undefined);
   // The nearest current station and its flood, ebb, and slack events, when one is close enough.
-  current = $state<CurrentReading | undefined>(undefined);
+  current = $state.raw<CurrentReading | undefined>(undefined);
   // Which source served the tide reading; undefined until a reading lands or after coverage is lost.
   source = $state<TidesSource | undefined>(undefined);
 

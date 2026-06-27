@@ -283,8 +283,8 @@ const closeMore = (): void => {
   align-items: center;
 }
 .conn-dot {
-  inline-size: 0.625rem;
-  block-size: 0.625rem;
+  inline-size: 0.6rem;
+  block-size: 0.6rem;
   border-radius: 50%;
   background: var(--ok);
 }

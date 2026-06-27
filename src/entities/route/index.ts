@@ -9,5 +9,5 @@ export {
 } from './route-geojson';
 export { highlightFeatures, litLegIndices } from './route-highlight';
 export { reverseRoute } from './route-ops';
-export type { Route, RouteHighlight, Waypoint } from './route-types';
+export type { Route, RouteHighlight, RouteWaypoint } from './route-types';
 export { RouteStore } from './routes-store.svelte';

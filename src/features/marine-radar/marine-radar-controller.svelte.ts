@@ -12,7 +12,7 @@ import {
   spokesUrl,
   writeControl,
 } from './radar-client';
-import type { RadarStatus } from './radar-types';
+import { POWER_PENDING_KEY, type RadarStatus } from './radar-types';
 import { createRadarWorkerClient, type RadarWorkerClient } from './radar-worker-client';
 
 export interface MarineRadarDeps {
@@ -231,7 +231,7 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
     if (!radar) return false;
     const prior = store.operationalStatus;
     store.setOperationalStatus(status);
-    markPending('power');
+    markPending(POWER_PENDING_KEY);
     const result = await setPowerRequest(deps.origin, deps.getToken(), radar.id, status);
     return applyWriteOutcome(result, () => {
       if (prior) store.setOperationalStatus(prior);

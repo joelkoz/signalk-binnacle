@@ -1,5 +1,5 @@
 import { asNumber, isLatLon, type LatLon } from '$shared/geo';
-import { isFiniteNumber } from '$shared/lib';
+import { isFiniteNumber, isRecord } from '$shared/lib';
 import { type SignalKStore, SK_PATHS } from '$shared/signalk';
 import { AIS_PRUNE_INTERVAL_MS, AIS_STALE_TTL_MS } from './ais-staleness';
 
@@ -103,16 +103,10 @@ export class AisTargets {
   }
 
   #numField(value: unknown, key: string): number | undefined {
-    if (typeof value === 'object' && value !== null) {
-      return asNumber((value as Record<string, unknown>)[key]);
-    }
-    return undefined;
+    return isRecord(value) ? asNumber(value[key]) : undefined;
   }
 
   #timeToSeconds(approach: unknown): number | undefined {
-    if (typeof approach === 'object' && approach !== null) {
-      return parseIso8601DurationSeconds((approach as Record<string, unknown>).timeTo);
-    }
-    return undefined;
+    return isRecord(approach) ? parseIso8601DurationSeconds(approach.timeTo) : undefined;
   }
 }

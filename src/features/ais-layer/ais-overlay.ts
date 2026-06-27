@@ -1,4 +1,5 @@
 import type { AisTargets } from '$entities/ais';
+import { latLonToLonLat } from '$shared/geo';
 import { headingDegrees } from '$shared/lib';
 import {
   createSymbolOverlay,
@@ -27,7 +28,7 @@ export function createAisOverlay(targets: AisTargets): SymbolOverlay {
         type: 'Feature',
         geometry: {
           type: 'Point',
-          coordinates: [target.position.longitude, target.position.latitude],
+          coordinates: latLonToLonLat(target.position),
         },
         properties: {
           id: target.id,

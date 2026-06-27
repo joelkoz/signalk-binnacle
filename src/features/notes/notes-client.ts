@@ -89,5 +89,11 @@ export function fetchNotes(
   bbox: Bbox4,
 ): Promise<NotePoint[] | undefined> {
   const params = new URLSearchParams({ bbox: JSON.stringify(bbox) });
-  return fetchKeyedResource(serverBase, [`${NOTES_PATH}?${params}`], token, noteFromEntry);
+  return fetchKeyedResource(
+    serverBase,
+    [`${NOTES_PATH}?${params}`],
+    token,
+    noteFromEntry,
+    (url, status) => console.warn(`[notes] ${url} returned ${status}`),
+  );
 }

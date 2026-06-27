@@ -46,7 +46,7 @@ import {
 import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shared/map';
 import type { MapView } from '$shared/settings';
 import { serverOrigin } from '$shared/signalk';
-import { dialog, type Theme } from '$shared/ui';
+import { dialog, PANEL_TRANSITION_MS, type Theme } from '$shared/ui';
 import { createForecastPlayback } from './playback.svelte';
 import WeatherLayerMenu from './WeatherLayerMenu.svelte';
 import WeatherLegendBar from './WeatherLegendBar.svelte';
@@ -391,7 +391,7 @@ onDestroy(() => {
   aria-label="Weather"
   tabindex="-1"
   use:dialog={onClose}
-  transition:fly={{ y: 20, duration: prefersReducedMotion() ? 0 : 180, opacity: 0.3 }}
+  transition:fly={{ y: 20, duration: prefersReducedMotion() ? 0 : PANEL_TRANSITION_MS, opacity: 0.3 }}
 >
   <header class="panel-header panel-head">
     {#if onBack}
@@ -505,7 +505,7 @@ onDestroy(() => {
           {/if}
           <button
             type="button"
-            class="readout-close"
+            class="icon-btn readout-close"
             aria-label="Dismiss readout"
             onclick={pointReadout.dismiss}
           >
@@ -694,21 +694,12 @@ onDestroy(() => {
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+/* Composes the shared .icon-btn (44px target, hover affordance); only the absolute placement in the
+   readout corner stays scoped. */
 .readout-close {
   position: absolute;
   inset-block-start: 0;
   inset-inline-end: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-1);
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.readout-close:hover {
-  color: var(--text);
 }
 .conditions-slot {
   position: absolute;

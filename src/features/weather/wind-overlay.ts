@@ -71,7 +71,10 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
 
   // Particle path.
   let particles: WindParticles | undefined;
-  let lastMatrix: number[] = [];
+  // Reused across composite frames so the per-frame dirty check never allocates; hasLastMatrix keeps
+  // the first frame from being read as unchanged before the buffer is filled.
+  const lastMatrix: number[] = new Array(16).fill(0);
+  let hasLastMatrix = false;
   // The render-loop clock for the simulation throttle, and the cleanup for the context-loss listeners
   // (empty until the particle layer is added, run on its removal).
   let lastStep = 0;
@@ -179,10 +182,11 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
         if (!particles || !visible || contextLost) return;
         const matrix = matrixOf(args);
         if (matrix.length < 16) return; // unrecognized render args; MapLibre 5 gives a 4x4 matrix
-        const moved = !sameMatrix(matrix, lastMatrix);
+        const moved = !hasLastMatrix || !sameMatrix(matrix, lastMatrix);
         // Copy, never alias: if MapLibre mutates the matrix in place, sameMatrix would compare an
-        // array to itself and never see a move.
-        lastMatrix = matrix.slice();
+        // array to itself and never see a move. Overwrite the reused buffer instead of allocating.
+        for (let i = 0; i < 16; i += 1) lastMatrix[i] = matrix[i];
+        hasLastMatrix = true;
         const w = gl.drawingBufferWidth;
         const h = gl.drawingBufferHeight;
         // A pan or zoom must redraw immediately so the trail clears in place; otherwise step the

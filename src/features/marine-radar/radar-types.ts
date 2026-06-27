@@ -5,6 +5,12 @@
 
 export type RadarStatus = 'off' | 'standby' | 'transmit' | 'warming';
 
+// The pending-set key for an in-flight transmit/standby write. Shared by the controller (which marks
+// it pending on setPower) and the store (which skips it in reconcile), so the optimistic-write guard
+// cannot break by the two sides spelling the sentinel differently, and it cannot collide with a real
+// control id.
+export const POWER_PENDING_KEY = 'power';
+
 // A live control value. `auto` is present on controls that support an automatic mode (gain, sea); a
 // value-only control (rain on some radars) omits it.
 export interface RadarControlEntry {

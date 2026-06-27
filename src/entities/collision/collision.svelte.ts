@@ -6,6 +6,9 @@ import { computeCpa } from '$shared/nav';
 import type { PersistedValue, Thresholds } from '$shared/settings';
 
 export type Severity = 'danger' | 'warning' | 'clear';
+// A contact only enters the danger list once it is past 'clear', so its severity is always one of
+// the two active grades. The full Severity stays on Assessment.worst, which can read 'clear'.
+export type ActiveSeverity = Exclude<Severity, 'clear'>;
 export type CpaSource = 'provider' | 'computed';
 
 export interface DangerContact {
@@ -14,7 +17,7 @@ export interface DangerContact {
   position: LatLon;
   cpaMeters: number;
   tcpaSeconds: number;
-  severity: Severity;
+  severity: ActiveSeverity;
   source: CpaSource;
 }
 

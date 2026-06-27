@@ -5,6 +5,7 @@ import type {
 } from 'maplibre-gl';
 import type { CurrentReading, TideReading, TidesStore } from '$entities/tides';
 import type { UnitsStore } from '$entities/units';
+import { latLonToLonLat } from '$shared/geo';
 import { formatClockTime, MINUTE_MS, type UnitsMode } from '$shared/lib';
 import {
   emptyFeatureCollection,
@@ -27,7 +28,6 @@ const SOURCE_ID = 'binnacle-tides';
 const CIRCLE_LAYER = 'binnacle-tides-circle';
 const LABEL_LAYER = 'binnacle-tides-label';
 const LAYERS = [CIRCLE_LAYER, LABEL_LAYER];
-const EMPTY = emptyFeatureCollection();
 
 interface TidesOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
@@ -58,7 +58,7 @@ function features(
   if (tide) {
     list.push({
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: [tide.station.longitude, tide.station.latitude] },
+      geometry: { type: 'Point', coordinates: latLonToLonLat(tide.station) },
       properties: { label: tideLabel(tide, nowMs, mode) },
     });
   }
@@ -67,7 +67,7 @@ function features(
       type: 'Feature',
       geometry: {
         type: 'Point',
-        coordinates: [current.station.longitude, current.station.latitude],
+        coordinates: latLonToLonLat(current.station),
       },
       properties: { label: currentLabel(current, nowMs) },
     });
@@ -111,7 +111,10 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
       const paint = mapThemePaint('day');
       const before = ctx.beforeIdFor('safety');
       if (!ctx.map.getSource(SOURCE_ID)) {
-        const source: GeoJSONSourceSpecification = { type: 'geojson', data: EMPTY };
+        const source: GeoJSONSourceSpecification = {
+          type: 'geojson',
+          data: emptyFeatureCollection(),
+        };
         ctx.map.addSource(SOURCE_ID, source);
       }
 

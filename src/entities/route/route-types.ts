@@ -1,7 +1,8 @@
 import type { LatLon } from '$shared/geo';
 
-// A route waypoint. Position is decimal degrees (the SI exception); name is optional.
-export interface Waypoint {
+// A route waypoint. Position is decimal degrees (the SI exception); name is optional. Named
+// RouteWaypoint to distinguish it from the waypoint entity's richer Waypoint (id, required name, icon).
+export interface RouteWaypoint {
   position: LatLon;
   name?: string;
 }
@@ -10,7 +11,7 @@ export interface Waypoint {
 export interface Route {
   id: string;
   name: string;
-  waypoints: Waypoint[];
+  waypoints: RouteWaypoint[];
 }
 
 // Which part of the working route is highlighted for the cross-highlight between the leg list and the

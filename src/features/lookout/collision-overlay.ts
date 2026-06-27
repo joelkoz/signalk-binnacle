@@ -4,6 +4,7 @@ import type {
   GeoJSONSourceSpecification,
 } from 'maplibre-gl';
 import type { CollisionAssessment, DangerContact } from '$entities/collision';
+import { latLonToLonLat } from '$shared/geo';
 import {
   featureCollection,
   type MapThemePaint,
@@ -38,7 +39,7 @@ function contactsToFeatures(contacts: readonly DangerContact[]): GeoJSON.Feature
       type: 'Feature' as const,
       geometry: {
         type: 'Point' as const,
-        coordinates: [contact.position.longitude, contact.position.latitude],
+        coordinates: latLonToLonLat(contact.position),
       },
       properties: { severity: contact.severity },
     })),

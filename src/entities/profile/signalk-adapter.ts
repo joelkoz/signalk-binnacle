@@ -1,5 +1,4 @@
-import { withTimeout } from '$shared/lib';
-import { authInit } from '$shared/signalk';
+import { fetchAuthedJson, postResource } from '$shared/signalk';
 import type { ProfilesState } from './profile-types';
 import type { AsyncProfileAdapter } from './profiles-store.svelte';
 
@@ -22,39 +21,20 @@ export class SignalKProfileAdapter implements AsyncProfileAdapter {
   }
 
   async load(): Promise<ProfilesState | undefined> {
-    try {
-      const response = await fetch(APP_DATA_URL(this.#base), withTimeout(authInit(this.#token)));
-      // Any non-2xx (401 unauthenticated, 405 security off, 404, and the rest) means the store is
-      // unavailable: undefined tells the caller to stay local and not attempt a write that would also
-      // fail, distinct from the reachable-but-empty case below.
-      if (!response.ok) return undefined;
-      const body = await response.json();
-      // A reachable but empty store answers with {} and a 200, so a missing profiles array is an empty
-      // state, not an unavailable one: returning it lets the store seed the server from the local cache.
-      if (!body || typeof body !== 'object' || !Array.isArray((body as ProfilesState).profiles)) {
-        return { profiles: [], activeId: undefined, defaultId: undefined };
-      }
-      return body as ProfilesState;
-    } catch {
-      return undefined;
+    const body = await fetchAuthedJson<unknown>(APP_DATA_URL(this.#base), this.#token);
+    // undefined means the store is unavailable (any non-2xx such as 401 unauthenticated or 405
+    // security off, a network failure, or an unparseable body): tell the caller to stay local and
+    // not attempt a write that would also fail, distinct from the reachable-but-empty case below.
+    if (body === undefined) return undefined;
+    // A reachable but empty store answers with {} and a 200, so a missing profiles array is an empty
+    // state, not an unavailable one: returning it lets the store seed the server from the local cache.
+    if (!body || typeof body !== 'object' || !Array.isArray((body as ProfilesState).profiles)) {
+      return { profiles: [], activeId: undefined, defaultId: undefined };
     }
+    return body as ProfilesState;
   }
 
   async save(state: ProfilesState): Promise<boolean> {
-    try {
-      const response = await fetch(
-        APP_DATA_URL(this.#base),
-        withTimeout(
-          authInit(this.#token, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(state),
-          }),
-        ),
-      );
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return postResource(APP_DATA_URL(this.#base), this.#token, state);
   }
 }

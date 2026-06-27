@@ -1,4 +1,4 @@
-import type { LatLon } from '$shared/geo';
+import { type LatLon, latLonToLonLat } from '$shared/geo';
 import { featureCollection } from '$shared/map';
 import { geodesicCircleRing, geodesicDestination } from '$shared/nav';
 
@@ -46,6 +46,6 @@ export function headingLineFeature(
   return {
     type: 'Feature',
     properties: { heading: true },
-    geometry: { type: 'LineString', coordinates: [[center.longitude, center.latitude], tip] },
+    geometry: { type: 'LineString', coordinates: [latLonToLonLat(center), tip] },
   };
 }

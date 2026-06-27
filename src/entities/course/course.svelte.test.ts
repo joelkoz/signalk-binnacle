@@ -29,12 +29,11 @@ describe('CourseGuidance', () => {
     const store = storeWith({
       'navigation.position': { latitude: 0, longitude: 0 },
       'navigation.course.nextPoint': { position: { latitude: 0, longitude: 1 }, name: 'B' },
-      'navigation.course.calcValues': {
-        crossTrackError: 12,
-        distance: 1852,
-        bearingTrue: 1.57,
-        velocityMadeGood: 3,
-      },
+      // calcValues streams one leaf delta per field, never the parent object.
+      'navigation.course.calcValues.crossTrackError': 12,
+      'navigation.course.calcValues.distance': 1852,
+      'navigation.course.calcValues.bearingTrue': 1.57,
+      'navigation.course.calcValues.velocityMadeGood': 3,
     });
     const g = new CourseGuidance(store, new OwnVessel(store));
     expect(g.active).toBe(true);
@@ -43,14 +42,26 @@ describe('CourseGuidance', () => {
     expect(g.distanceToNextMeters).toBe(1852);
   });
 
+  it('keeps calcValues live from streamed leaf deltas, not just the REST seed', () => {
+    const store = storeWith({
+      'navigation.position': { latitude: 0, longitude: 0 },
+      'navigation.course.nextPoint': { position: { latitude: 0, longitude: 1 }, name: 'B' },
+    });
+    const g = new CourseGuidance(store, new OwnVessel(store));
+    // A REST hydration seeds the first distance, then a later streamed leaf must override it.
+    g.seed(undefined, { distance: 2000 }, 1);
+    expect(g.distanceToNextMeters).toBe(2000);
+    applySelf(store, { 'navigation.course.calcValues.distance': 1500 }, 10);
+    expect(g.distanceToNextMeters).toBe(1500);
+    expect(g.source).toBe('server');
+  });
+
   it("exposes the server's estimatedTimeOfArrival when present and undefined otherwise", () => {
     const withEta = storeWith({
       'navigation.position': { latitude: 0, longitude: 0 },
       'navigation.course.nextPoint': { position: { latitude: 0, longitude: 1 }, name: 'B' },
-      'navigation.course.calcValues': {
-        crossTrackError: 0,
-        estimatedTimeOfArrival: '2026-06-10T18:30:00Z',
-      },
+      'navigation.course.calcValues.crossTrackError': 0,
+      'navigation.course.calcValues.estimatedTimeOfArrival': '2026-06-10T18:30:00Z',
     });
     expect(new CourseGuidance(withEta, new OwnVessel(withEta)).estimatedTimeOfArrivalIso).toBe(
       '2026-06-10T18:30:00Z',
@@ -123,16 +134,17 @@ describe('CourseGuidance', () => {
     const store = storeWith({
       'navigation.position': { latitude: 0, longitude: 0 },
       'navigation.course.nextPoint': { position: { latitude: 0, longitude: 1 }, name: 'B' },
-      'navigation.course.calcValues': { crossTrackError: 0, distance: 100 },
+      'navigation.course.calcValues.crossTrackError': 0,
+      'navigation.course.calcValues.distance': 100,
     });
     const g = new CourseGuidance(store, new OwnVessel(store));
     // At the (default 100 m) circle: arrived.
     expect(g.arrived).toBe(true);
     // Jitter 5 percent outside the circle: still latched.
-    applySelf(store, { 'navigation.course.calcValues': { crossTrackError: 0, distance: 105 } }, 2);
+    applySelf(store, { 'navigation.course.calcValues.distance': 105 }, 2);
     expect(g.arrived).toBe(true);
     // 25 percent outside, past the exit margin: a real departure clears the latch.
-    applySelf(store, { 'navigation.course.calcValues': { crossTrackError: 0, distance: 125 } }, 3);
+    applySelf(store, { 'navigation.course.calcValues.distance': 125 }, 3);
     expect(g.arrived).toBe(false);
   });
 
@@ -140,7 +152,8 @@ describe('CourseGuidance', () => {
     const store = storeWith({
       'navigation.position': { latitude: 0, longitude: 0 },
       'navigation.course.nextPoint': { position: { latitude: 0, longitude: 1 }, name: 'B' },
-      'navigation.course.calcValues': { crossTrackError: 0, distance: 50 },
+      'navigation.course.calcValues.crossTrackError': 0,
+      'navigation.course.calcValues.distance': 50,
     });
     const g = new CourseGuidance(store, new OwnVessel(store));
     expect(g.arrived).toBe(true);
@@ -150,7 +163,7 @@ describe('CourseGuidance', () => {
       store,
       {
         'navigation.course.nextPoint': { position: { latitude: 1, longitude: 1 }, name: 'C' },
-        'navigation.course.calcValues': { crossTrackError: 0, distance: 110 },
+        'navigation.course.calcValues.distance': 110,
       },
       2,
     );

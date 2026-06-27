@@ -93,7 +93,9 @@ const reorder = createLayerReorder(
 </script>
 
 <!-- While a chart detail is open it shows its own "Back to layers" control, so the panel-level
-     "Back to menu" arrow is suppressed to avoid two stacked back buttons. -->
+     "Back to menu" arrow is suppressed to avoid two stacked back buttons.
+     bodyFlex is intentionally omitted: this body is a continuous accordion list that manages its own
+     section spacing, unlike the readout panels that rely on SlideOver's flow rhythm. -->
 <SlideOver
   title="Layers and charts"
   closeLabel="Close layers and charts"

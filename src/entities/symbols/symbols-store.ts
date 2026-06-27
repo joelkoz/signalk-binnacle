@@ -1,5 +1,4 @@
-import { withTimeout } from '$shared/lib';
-import { authInit, type SkSymbol } from '$shared/signalk';
+import { fetchAuthedText, type SkSymbol } from '$shared/signalk';
 import { SymbolIconRegistry } from './icon-registry';
 import { type RasterizeSymbol, rasterizeSymbolSvg } from './symbol-raster';
 
@@ -116,16 +115,10 @@ export class SymbolsStore {
   }
 
   async #loadSvgText(url: string): Promise<string | undefined> {
-    try {
-      const response = await fetch(url, withTimeout(authInit(this.#token)));
-      if (!response.ok) return undefined;
-      const text = await response.text();
-      // A 200 that is not SVG (a proxy error page, a misrouted asset) must not reach the
-      // rasterizer as a symbol.
-      return text.includes('<svg') ? text : undefined;
-    } catch {
-      return undefined;
-    }
+    const text = await fetchAuthedText(url, this.#token);
+    // A 200 that is not SVG (a proxy error page, a misrouted asset) must not reach the rasterizer
+    // as a symbol.
+    return text?.includes('<svg') ? text : undefined;
   }
 
   #lookup(idOrAlias: string): SkSymbol | undefined {
