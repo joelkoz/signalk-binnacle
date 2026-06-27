@@ -1,5 +1,6 @@
 export type { AuthStatus } from './auth.svelte';
 export { AuthController } from './auth.svelte';
+export { fullJitterDelay } from './backoff';
 export type { SignalKClient } from './client';
 export { createSignalKClient } from './client';
 export type { ServerFeatures } from './features-client';
@@ -30,7 +31,7 @@ export {
   silenceNotification,
   updateNotification,
 } from './notifications-client';
-export { serverOrigin, streamUrl } from './origin';
+export { appendToken, serverOrigin, streamUrl } from './origin';
 export type { SkPathKey } from './paths';
 export { SK_PATHS } from './paths';
 export {
@@ -40,6 +41,7 @@ export {
   fetchKeyedResource,
   putResource,
   sendJson,
+  setWriteOutcomeListener,
   str,
   strArray,
 } from './resource';

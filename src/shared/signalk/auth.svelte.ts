@@ -39,6 +39,12 @@ function newClientId(): string {
 export class AuthController {
   status = $state<AuthStatus>('unknown');
   token = $state<string | null>(null);
+  // True once an authenticated session has had a write refused (401/403): the granted token is
+  // read-only. A later successful write clears it. Drives the read-only banner and its upgrade action.
+  writeBlocked = $state(false);
+  // True while a read/write upgrade request is pending admin approval. The existing read token stays
+  // live throughout, so the chart keeps updating while the navigator waits for the new grant.
+  upgrading = $state(false);
 
   #base: string;
   #fetch: typeof fetch;
@@ -51,6 +57,10 @@ export class AuthController {
   #pollScheduled = false;
   #checking = false;
   #watching = false;
+  #upgradeHref?: string;
+  #upgradeClientId?: string;
+  #upgradeAttempts = 0;
+  #upgradeScheduled = false;
 
   constructor(base: string, opts: AuthOptions = {}) {
     this.#base = base;
@@ -74,6 +84,12 @@ export class AuthController {
 
   get clientId(): string {
     return this.#identity.value.clientId;
+  }
+
+  // The client id of a pending read/write upgrade request, so the banner names the request the admin
+  // actually sees (a fresh id), not the old persisted one. Undefined when no upgrade is in flight.
+  get upgradeClientId(): string | undefined {
+    return this.#upgradeClientId;
   }
 
   async probe(): Promise<void> {
@@ -113,35 +129,56 @@ export class AuthController {
     await this.requestAccess();
   }
 
-  async requestAccess(): Promise<void> {
-    this.status = 'requesting';
+  // POST an access request for a client id, requesting readwrite up front so the admin's approval UI
+  // defaults to it rather than the server's readonly fallback (Binnacle writes routes, waypoints,
+  // tracks, course, alarms, and radar controls; a readonly grant 401s every one). `ok` is false only
+  // when the POST itself did not land (offline), so the caller can retry; `href` is the granted poll
+  // URL. Anonymous (credentials omitted): the request is keyed by clientId and href, never a cookie.
+  async #postAccessRequest(
+    clientId: string,
+    description: string,
+  ): Promise<{ ok: boolean; href?: string }> {
     const res = await this.#safeFetch(`${this.#base}${REQUEST_PATH}`, {
       method: 'POST',
-      // Anonymous like the probes: the access request is keyed by clientId and href, never a
-      // session cookie, so omit credentials to keep the choice deliberate and consistent.
       credentials: 'omit',
       headers: { 'Content-Type': 'application/json' },
-      // Request readwrite up front so the admin's approval UI defaults to it, not the server's
-      // readonly fallback for an omitted permission. Binnacle writes routes, waypoints, tracks,
-      // course, alarms, and radar controls; a readonly grant 401s every one of those.
-      body: JSON.stringify({
-        clientId: this.clientId,
-        description: 'Binnacle chart plotter',
-        permissions: 'readwrite',
-      }),
+      body: JSON.stringify({ clientId, description, permissions: 'readwrite' }),
     });
-    if (!res) {
-      // A failed POST (offline at startup) must not strand the request: with no #href,
-      // checkRequest returns immediately, so without this retry the status would read
-      // 'requesting' forever. Re-issue the POST on the poll cadence; the attempt counter
-      // bounds the retries and is reset below once a POST lands.
+    if (!res) return { ok: false };
+    const body = await jsonOr<Record<string, unknown>>(res, {});
+    return { ok: true, href: typeof body.href === 'string' ? body.href : undefined };
+  }
+
+  // Poll a pending access-request href once. 'gone' = the request expired or was cleared (404/410),
+  // 'pending' = not yet answered or a transient error, 'denied' = completed but not approved, and an
+  // object carries the approved token. Shared by the initial flow and the read/write upgrade flow.
+  async #pollAccessRequest(
+    href: string,
+  ): Promise<'gone' | 'pending' | 'denied' | { token: string }> {
+    const res = await this.#safeFetch(`${this.#base}${href}`, { credentials: 'omit' });
+    if (res && (res.status === 404 || res.status === 410)) return 'gone';
+    if (!res?.ok) return 'pending';
+    const body = await jsonOr<Record<string, unknown>>(res, {});
+    if (body.state !== 'COMPLETED') return 'pending';
+    const request = (body.accessRequest ?? {}) as { permission?: string; token?: string };
+    if (request.permission === 'APPROVED' && typeof request.token === 'string') {
+      return { token: request.token };
+    }
+    return 'denied';
+  }
+
+  async requestAccess(): Promise<void> {
+    this.status = 'requesting';
+    const { ok, href } = await this.#postAccessRequest(this.clientId, 'Binnacle chart plotter');
+    if (!ok) {
+      // A failed POST (offline at startup) must not strand the request at 'requesting' forever: re-issue
+      // it on the poll cadence, bounded by the attempt counter, which resets once a POST lands.
       this.#schedulePoll(() => this.requestAccess());
       return;
     }
     this.#pollAttempts = 0;
-    const body = await jsonOr<Record<string, unknown>>(res, {});
-    this.#href = typeof body.href === 'string' ? body.href : undefined;
-    if (!this.#href) {
+    this.#href = href;
+    if (!href) {
       this.status = 'denied';
       return;
     }
@@ -154,29 +191,19 @@ export class AuthController {
     if (this.#checking || !this.#href || this.status === 'authenticated') return;
     this.#checking = true;
     try {
-      const res = await this.#safeFetch(`${this.#base}${this.#href}`, { credentials: 'omit' });
-      if (res && (res.status === 404 || res.status === 410)) {
+      const result = await this.#pollAccessRequest(this.#href);
+      if (result === 'gone') {
         // The request expired or was cleared server-side; start a fresh one rather than poll a dead
         // href forever (which left the first tab stuck until the user opened a new one).
         await this.requestAccess();
-        return;
-      }
-      if (!res?.ok) {
+      } else if (result === 'pending') {
         this.#schedulePoll();
-        return;
-      }
-      const body = await jsonOr<Record<string, unknown>>(res, {});
-      if (body.state !== 'COMPLETED') {
-        this.#schedulePoll();
-        return;
-      }
-      const request = (body.accessRequest ?? {}) as { permission?: string; token?: string };
-      if (request.permission === 'APPROVED' && typeof request.token === 'string') {
-        this.#store(request.token);
-        this.token = request.token;
-        this.status = 'authenticated';
-      } else {
+      } else if (result === 'denied') {
         this.status = 'denied';
+      } else {
+        this.#store(result.token);
+        this.token = result.token;
+        this.status = 'authenticated';
       }
     } finally {
       this.#checking = false;
@@ -199,6 +226,7 @@ export class AuthController {
 
   recheck(): void {
     if (this.status === 'requesting') void this.checkRequest();
+    if (this.upgrading) void this.checkUpgrade();
   }
 
   adoptToken(token: string): void {
@@ -206,6 +234,55 @@ export class AuthController {
     this.#store(token);
     this.token = token;
     this.status = 'authenticated';
+  }
+
+  // Record a write outcome observed through sendJson. An authenticated session whose write is refused
+  // (401/403) holds a read-only token; a 2xx write proves write access and clears the flag (so the
+  // banner disappears once an upgraded token takes effect). Reads and an unsecured server never set it.
+  reportWriteOutcome(ok: boolean, status: number): void {
+    if (this.status !== 'authenticated') return;
+    if (ok) this.writeBlocked = false;
+    else if (status === 401 || status === 403) this.writeBlocked = true;
+  }
+
+  // Request a fresh read/write token when the current one is read-only. A new clientId is used so the
+  // admin sees a new request to approve (re-requesting the same clientId would just re-return the
+  // existing read grant). The current read token stays live until the new one is approved, so the chart
+  // keeps updating; on approval the new identity is adopted wholesale.
+  async requestWriteAccess(): Promise<void> {
+    if (this.upgrading) return;
+    // Set the upgrade client id before the reactive flag so the banner names it on first render.
+    this.#upgradeAttempts = 0;
+    this.#upgradeClientId = newClientId();
+    this.upgrading = true;
+    const { href } = await this.#postAccessRequest(
+      this.#upgradeClientId,
+      'Binnacle chart plotter (read/write)',
+    );
+    this.#upgradeHref = href;
+    if (!href) {
+      this.upgrading = false;
+      return;
+    }
+    this.#scheduleUpgradePoll();
+  }
+
+  async checkUpgrade(): Promise<void> {
+    if (!this.#upgradeHref) return;
+    const result = await this.#pollAccessRequest(this.#upgradeHref);
+    if (result === 'pending') {
+      this.#scheduleUpgradePoll();
+      return;
+    }
+    // On approval adopt the new read/write identity wholesale; 'gone' and 'denied' just end the upgrade,
+    // leaving the live read token in place so the chart keeps updating.
+    if (typeof result === 'object' && this.#upgradeClientId) {
+      this.#identity.set({ clientId: this.#upgradeClientId, token: result.token });
+      this.token = result.token;
+      this.status = 'authenticated';
+      this.writeBlocked = false;
+    }
+    this.#endUpgrade();
   }
 
   stop(): void {
@@ -247,6 +324,26 @@ export class AuthController {
       this.#pollScheduled = false;
       void (task ? task() : this.checkRequest());
     }, this.#pollMs);
+  }
+
+  #scheduleUpgradePoll(): void {
+    if (this.#stopped || this.#upgradeScheduled || !this.#upgradeHref) return;
+    if (this.#upgradeAttempts >= MAX_POLL_ATTEMPTS) {
+      this.#endUpgrade();
+      return;
+    }
+    this.#upgradeAttempts += 1;
+    this.#upgradeScheduled = true;
+    this.#schedule(() => {
+      this.#upgradeScheduled = false;
+      void this.checkUpgrade();
+    }, this.#pollMs);
+  }
+
+  #endUpgrade(): void {
+    this.upgrading = false;
+    this.#upgradeHref = undefined;
+    this.#upgradeClientId = undefined;
   }
 
   #store(token: string | null): void {

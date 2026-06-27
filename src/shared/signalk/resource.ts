@@ -82,6 +82,17 @@ async function tryKeyedResource<T>(
   }
 }
 
+// A single app-wide observer of write outcomes. Every write goes through sendJson, so this is the one
+// chokepoint where a read-only token reveals itself: an authenticated session whose write returns
+// 401/403 has read-only access. The auth controller registers a listener to flip its writeBlocked flag,
+// and a later 2xx write clears it. Kept as a module callback (not a parameter) so the dozens of write
+// call sites need no change.
+type WriteOutcomeListener = (ok: boolean, status: number) => void;
+let writeOutcomeListener: WriteOutcomeListener | undefined;
+export function setWriteOutcomeListener(listener: WriteOutcomeListener | undefined): void {
+  writeOutcomeListener = listener;
+}
+
 // Send a JSON body (or no body) to a URL and return the raw Response, or undefined on a network
 // failure. Never throws. Shared by putResource and the notifications client so the
 // fetch-plus-timeout-plus-auth-plus-try/catch shape lives in one place.
@@ -92,7 +103,7 @@ export async function sendJson(
   body?: unknown,
 ): Promise<Response | undefined> {
   try {
-    return await fetch(
+    const response = await fetch(
       url,
       withTimeout(
         authInit(token, {
@@ -103,6 +114,8 @@ export async function sendJson(
         }),
       ),
     );
+    writeOutcomeListener?.(response.ok, response.status);
+    return response;
   } catch {
     return undefined;
   }

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { authInit, str, strArray } from './resource';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { authInit, sendJson, setWriteOutcomeListener, str, strArray } from './resource';
 
 describe('authInit', () => {
   it('returns undefined with no token and no extra', () => {
@@ -41,5 +41,36 @@ describe('strArray', () => {
     expect(strArray(['a', '', 'b', 1])).toEqual(['a', 'b']);
     expect(strArray([])).toBeUndefined();
     expect(strArray('x')).toBeUndefined();
+  });
+});
+
+describe('sendJson write-outcome listener', () => {
+  afterEach(() => {
+    setWriteOutcomeListener(undefined);
+    vi.restoreAllMocks();
+  });
+
+  it('reports the ok flag and status of every write to the listener', async () => {
+    const seen: Array<{ ok: boolean; status: number }> = [];
+    setWriteOutcomeListener((ok, status) => seen.push({ ok, status }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('', { status: 403 })),
+    );
+    await sendJson('http://x/r', 'tok', 'PUT', { a: 1 });
+    expect(seen).toEqual([{ ok: false, status: 403 }]);
+  });
+
+  it('does not fire the listener on a network failure', async () => {
+    const seen: number[] = [];
+    setWriteOutcomeListener((_ok, status) => seen.push(status));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('offline');
+      }),
+    );
+    expect(await sendJson('http://x/r', undefined, 'DELETE')).toBeUndefined();
+    expect(seen).toEqual([]);
   });
 });

@@ -25,6 +25,23 @@ const { auth, requestsUrl }: Props = $props();
       Request again
     </button>
   </div>
+{:else if auth.upgrading}
+  <div class="auth-banner" role="status" aria-live="polite">
+    Requesting read and write access as <strong>{auth.upgradeClientId ?? auth.clientId}</strong>.
+    Approve it in Signal K under Security, then Access Requests; the current read-only access keeps
+    working until then.
+    <a class="btn btn-ghost btn-pill" href={requestsUrl} target="_blank" rel="noopener noreferrer">
+      Approve in Signal K
+    </a>
+  </div>
+{:else if auth.writeBlocked}
+  <div class="auth-banner warn" role="status" aria-live="polite">
+    Binnacle has read-only access. Saving routes, waypoints, tracks, course, alarms, and radar
+    controls needs read and write.
+    <button type="button" class="btn btn-ghost btn-pill" onclick={() => auth.requestWriteAccess()}>
+      Request read/write access
+    </button>
+  </div>
 {/if}
 
 <style>
@@ -37,6 +54,11 @@ const { auth, requestsUrl }: Props = $props();
 }
 .auth-banner.denied {
   color: var(--alarm);
+}
+/* Read-only access is a capability limit, not a danger, so it reads as a warning, not an alarm, and is
+   announced politely. This keeps a bright-red pixel off the screen at night. */
+.auth-banner.warn {
+  color: var(--warning);
 }
 /* The action reuses the shared .btn .btn-ghost .btn-pill vocabulary; only the display is overridden,
    since this button sits inline within a sentence rather than in a panel button row. */

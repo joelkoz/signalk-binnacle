@@ -2,6 +2,13 @@ export function serverOrigin(): string {
   return `${location.protocol}//${location.host}`;
 }
 
+// Append the device token as a query parameter, the only header-free form a browser WebSocket handshake
+// can carry that this server actually authenticates (the subprotocol form does not: see the note below).
+// Shared by the delta stream and the radar spoke stream so the idiom lives in one place.
+export function appendToken(url: string, token: string): string {
+  return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
+}
+
 // The stream URL, optionally carrying the auth token as a query parameter.
 //
 // Security note (token in URL): browsers cannot set an Authorization header on a
@@ -19,5 +26,5 @@ export function serverOrigin(): string {
 export function streamUrl(token?: string): string {
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const base = `${scheme}//${location.host}/signalk/v1/stream`;
-  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+  return token ? appendToken(base, token) : base;
 }

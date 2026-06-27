@@ -309,6 +309,65 @@ describe('AuthController', () => {
     expect(scheduled.length).toBeGreaterThan(1);
   });
 
+  it('flags read-only when an authenticated write is refused, and clears it on a later success', async () => {
+    const fetchFn = vi.fn(async () => res(true, {}));
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: storage({
+        'binnacle:signalk-auth': JSON.stringify({ clientId: 'binnacle-1', token: 'tok' }),
+      }),
+      schedule: noSchedule,
+    });
+    await auth.probe();
+    expect(auth.status).toBe('authenticated');
+    auth.reportWriteOutcome(false, 403);
+    expect(auth.writeBlocked).toBe(true);
+    auth.reportWriteOutcome(true, 200);
+    expect(auth.writeBlocked).toBe(false);
+  });
+
+  it('ignores write outcomes when not authenticated (a read-only flag needs a working token)', () => {
+    const auth = new AuthController(BASE, {
+      fetch: (async () => res(true)) as unknown as typeof fetch,
+      storage: storage(),
+      schedule: noSchedule,
+    });
+    auth.reportWriteOutcome(false, 403);
+    expect(auth.writeBlocked).toBe(false);
+  });
+
+  it('requests a fresh read/write token without dropping the live read token, then adopts it', async () => {
+    const fetchFn = vi.fn(async (url: string) => {
+      if (url.endsWith('/access/requests')) return res(true, { href: '/signalk/v1/requests/up1' });
+      if (url.endsWith('/requests/up1'))
+        return res(true, {
+          state: 'COMPLETED',
+          accessRequest: { permission: 'APPROVED', token: 'rwtok' },
+        });
+      return res(true, {});
+    });
+    const auth = new AuthController(BASE, {
+      fetch: fetchFn as unknown as typeof fetch,
+      storage: storage({
+        'binnacle:signalk-auth': JSON.stringify({ clientId: 'binnacle-1', token: 'old' }),
+      }),
+      schedule: noSchedule,
+    });
+    await auth.probe();
+    auth.reportWriteOutcome(false, 403);
+    expect(auth.writeBlocked).toBe(true);
+    await auth.requestWriteAccess();
+    // While the upgrade is pending the read token keeps working: status stays authenticated on 'old'.
+    expect(auth.upgrading).toBe(true);
+    expect(auth.token).toBe('old');
+    expect(auth.status).toBe('authenticated');
+    await auth.checkUpgrade();
+    expect(auth.token).toBe('rwtok');
+    expect(auth.status).toBe('authenticated');
+    expect(auth.writeBlocked).toBe(false);
+    expect(auth.upgrading).toBe(false);
+  });
+
   it('keeps a stable clientId across instances', () => {
     const store = storage();
     const a = new AuthController(BASE, {
