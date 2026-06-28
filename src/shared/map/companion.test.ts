@@ -55,8 +55,16 @@ describe('proxiedSources', () => {
 describe('proxied overlay ids match the companion registry', () => {
   it('every proxied overlay id exists in CHART_SOURCES, so the proxy resolves it', () => {
     const registryIds = new Set(CHART_SOURCES.map((s) => s.id));
-    for (const s of [...STREAMING_CHART_SOURCES, ...BOUNDARY_SOURCES, ...MPA_SOURCES, ...SEAMARK_SOURCES]) {
-      expect(registryIds.has(s.id), `${s.id} is not in CHART_SOURCES; the companion proxy would 404 it`).toBe(true);
+    for (const s of [
+      ...STREAMING_CHART_SOURCES,
+      ...BOUNDARY_SOURCES,
+      ...MPA_SOURCES,
+      ...SEAMARK_SOURCES,
+    ]) {
+      expect(
+        registryIds.has(s.id),
+        `${s.id} is not in CHART_SOURCES; the companion proxy would 404 it`,
+      ).toBe(true);
     }
   });
 });
