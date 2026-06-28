@@ -42,6 +42,7 @@ let jobId = $state<string | null>(null);
 let warmStatus = $state<WarmStatus | null>(null);
 let jobGone = $state(false);
 let error = $state<string | null>(null);
+let submitting = $state(false);
 
 // Internal references not read in the template: the draw controller and the poll timer.
 let rect: PrewarmRectangle | null = null;
@@ -86,14 +87,20 @@ $effect(() => {
 });
 
 // Load stats when the companion is found, and refresh when the auth token changes.
+// A stale flag guards against a previous slow request overwriting a fresh response when client
+// changes (auth token rotates) mid-flight.
 $effect(() => {
   if (companionBase === null) return;
+  let stale = false;
   void client
     .getCacheStats()
     .then((s) => {
-      stats = s;
+      if (!stale) stats = s;
     })
     .catch(() => {});
+  return () => {
+    stale = true;
+  };
 });
 
 // Wire up the panel-scoped Terra Draw rectangle instance. The prefixId 'binnacle-prewarm-draw'
@@ -156,10 +163,11 @@ function startPolling(id: string): void {
 }
 
 async function doPrewarm(): Promise<void> {
-  if (!gate || bbox === null) return;
+  if (!gate || bbox === null || submitting) return;
   error = null;
   jobGone = false;
   warmStatus = null;
+  submitting = true;
   try {
     const { jobId: id } = await client.postPrewarm({
       bbox,
@@ -171,6 +179,8 @@ async function doPrewarm(): Promise<void> {
     startPolling(id);
   } catch (e) {
     error = e instanceof Error ? e.message : 'Prewarm failed';
+  } finally {
+    submitting = false;
   }
 }
 
@@ -208,14 +218,19 @@ function toggleSource(id: string, on: boolean): void {
 
     <h3 class="caps-label section-head">Cruising box</h3>
     <div class="panel-controls">
-      <button type="button" class="btn btn--grow" disabled={running} onclick={() => rect?.start()}>
+      <button
+        type="button"
+        class="btn btn--grow"
+        disabled={running || auth.writeBlocked}
+        onclick={() => rect?.start()}
+      >
         <Square size={16} aria-hidden="true" />
         Draw box
       </button>
       <button
         type="button"
         class="btn btn-ghost"
-        disabled={bbox === null || running}
+        disabled={bbox === null || running || auth.writeBlocked}
         onclick={() => rect?.clear()}
       >
         <Trash2 size={16} aria-hidden="true" />
@@ -236,7 +251,7 @@ function toggleSource(id: string, on: boolean): void {
       <LayerToggle
         title={source.title}
         visible={selectedSources.includes(source.id)}
-        disabled={running}
+        disabled={running || auth.writeBlocked}
         onToggle={(on) => toggleSource(source.id, on)}
       />
     {/each}
@@ -291,7 +306,7 @@ function toggleSource(id: string, on: boolean): void {
 
     {#if jobGone}
       <p class="muted-note">
-        Job lost: the container restarted and the in-memory job is gone. Re-warm below.
+        Job lost: the container restarted and the in-memory job is gone. Click Prewarm to restart.
       </p>
     {:else if warmStatus !== null && isTerminal(warmStatus)}
       {#if warmStatus.state === 'done'}
@@ -321,7 +336,7 @@ function toggleSource(id: string, on: boolean): void {
         <button
           type="button"
           class="btn btn-primary btn--grow"
-          disabled={!gate}
+          disabled={!gate || submitting}
           onclick={() => void doPrewarm()}
         >
           <Download size={16} aria-hidden="true" />
@@ -334,6 +349,7 @@ function toggleSource(id: string, on: boolean): void {
       <div
         class="warm-track"
         role="progressbar"
+        aria-valuemin={0}
         aria-valuenow={warmStatus.done}
         aria-valuemax={warmStatus.total}
         aria-label="Prewarm progress"

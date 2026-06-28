@@ -52,8 +52,12 @@ export function createPrewarmRectangle(map: MapLibreMap): PrewarmRectangle {
       onChangeCb = cb;
     },
     destroy() {
-      if (!started) return;
-      started = false;
+      if (started) {
+        started = false;
+      }
+      // draw.stop() calls adapter.unregister() which removes all prefixed MapLibre sources and
+      // layers. It is a no-op when the instance was never started (_enabled=false), so calling
+      // it unconditionally is safe and ensures teardown always runs.
       draw.stop();
     },
   };
