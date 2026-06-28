@@ -15,7 +15,8 @@ export function prewarmableSources(): ChartSource[] {
 
 const byId = new Map(CHART_SOURCES.map((s) => [s.id, s]));
 
-/** The upper-bound byte estimate: sum over sources of tileCountInBbox times the per-source average. */
+/** The upper-bound byte estimate: sum over sources of tileCountInBbox times the per-source average.
+ * Note: sourceIds should come from prewarmableSources() to ensure all ids resolve in the internal source map. */
 export function estimateBytes(
   sourceIds: string[],
   bbox: [number, number, number, number],

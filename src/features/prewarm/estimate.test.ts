@@ -46,6 +46,10 @@ describe('prewarm estimate', () => {
     expect(exceedsFreeCap(500, stats({ cap: 1000, bytes: 400 }))).toBe(false);
   });
 
+  it('does not exceed when estimate equals the free cap', () => {
+    expect(exceedsFreeCap(600, stats({ cap: 1000, bytes: 400 }))).toBe(false);
+  });
+
   it('derives a bbox from a drawn rectangle ring', () => {
     const ring: Array<[number, number]> = [
       [10, 50],
