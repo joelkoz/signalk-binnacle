@@ -28,6 +28,11 @@ export function windFieldTexture(grid: WeatherGrid, bracket: TimeBracket): WindF
   const vHi = grid.windV[bracket.hi] ?? vLo;
   const cols = grid.lons.length;
   const rows = grid.lats.length;
+  // A degenerate grid with no real lat/lon span (e.g. one persisted from before the sampleGrid span
+  // floor) would map every particle onto a single latitude, drawing one horizontal line. Skip it so
+  // the layer shows nothing until a real grid arrives.
+  if (grid.lats[rows - 1] === grid.lats[0] || grid.lons[cols - 1] === grid.lons[0])
+    return undefined;
   const u = new Float32Array(cols * rows);
   const v = new Float32Array(cols * rows);
   let uMin = Number.POSITIVE_INFINITY;
