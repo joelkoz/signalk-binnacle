@@ -183,6 +183,9 @@ const {
 
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
+// onMount now awaits companion detection before building the map; this guards against the component
+// unmounting during that await, which would otherwise build a map onDestroy never tears down.
+let destroyed = false;
 let routeEditor: RouteEditor | undefined;
 // The unmanaged overlay that draws the working route's dots, labels, and cross-highlight. Like the
 // editor, ChartCanvas owns its lifecycle (add, tick, recolor, raise) rather than the layer manager.
@@ -234,6 +237,7 @@ onMount(async () => {
   // synchronously at map construction, so detection must precede it. The same result routes the
   // raster overlays in onLoad below, so it is detected once here.
   const companionBase = await detectCompanion(origin);
+  if (destroyed) return; // unmounted during the probe; do not build a map nothing will tear down
   // createThemedMap defaults to the world view ([0, 30], zoom 2) when no saved view is passed.
   mapHandle = createThemedMap({
     container,
@@ -447,6 +451,7 @@ onDestroy(() => {
   // Stop the route editor before the map is removed so Terra Draw deregisters its adapter and
   // layers in the right order (start -> stop, before map.remove()); the guard makes it a no-op when
   // editing never started. Then tear the map down.
+  destroyed = true;
   routeEditor?.stop();
   mapHandle?.destroy();
 });

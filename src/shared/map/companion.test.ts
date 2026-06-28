@@ -1,4 +1,9 @@
+import { CHART_SOURCES } from 'signalk-binnacle-chart-sources';
 import { describe, expect, it } from 'vitest';
+import { BOUNDARY_SOURCES } from '$features/boundaries-overlay';
+import { STREAMING_CHART_SOURCES } from '$features/depth-charts';
+import { MPA_SOURCES } from '$features/mpa-overlays';
+import { SEAMARK_SOURCES } from '$features/seamark-overlay';
 import { detectCompanion, proxiedSources } from './companion';
 import type { RasterOverlaySource } from './raster-overlay';
 
@@ -44,5 +49,14 @@ describe('proxiedSources', () => {
     const out = proxiedSources(SAMPLE, base);
     expect(out[0].tiles).toEqual([`${base}/tile/depth-gebco/{z}/{x}/{y}`]);
     expect(out[0].id).toBe('depth-gebco'); // other fields preserved
+  });
+});
+
+describe('proxied overlay ids match the companion registry', () => {
+  it('every proxied overlay id exists in CHART_SOURCES, so the proxy resolves it', () => {
+    const registryIds = new Set(CHART_SOURCES.map((s) => s.id));
+    for (const s of [...STREAMING_CHART_SOURCES, ...BOUNDARY_SOURCES, ...MPA_SOURCES, ...SEAMARK_SOURCES]) {
+      expect(registryIds.has(s.id), `${s.id} is not in CHART_SOURCES; the companion proxy would 404 it`).toBe(true);
+    }
   });
 });

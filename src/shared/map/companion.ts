@@ -18,7 +18,9 @@ export async function detectCompanion(
 ): Promise<string | null> {
   const base = `${origin}${COMPANION_PATH}`;
   try {
-    const response = await fetchImpl(`${base}/tiles/ready`);
+    // The map cannot build until this resolves (baseStyleUrl is read synchronously at construction), so
+    // bound the wait: a server that accepts the connection but never answers must not hang map init.
+    const response = await fetchImpl(`${base}/tiles/ready`, { signal: AbortSignal.timeout(2000) });
     return response.ok ? base : null;
   } catch {
     return null;

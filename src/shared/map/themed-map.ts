@@ -106,11 +106,21 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   // so sprite, glyph, and tile failures (which all come after it) can never trip this. One shot;
   // the real style returns on the next load with connectivity.
   let styleArrived = false;
+  let triedDirectBase = false;
   mapInstance.once('styledata', () => {
     styleArrived = true;
   });
   mapInstance.on('error', () => {
     if (styleArrived || destroyed) return;
+    // A companion-proxied base style that fails while the device is online should not drop straight to
+    // the blank fallback: try the direct openfreemap style first (the proxy made a broken base more
+    // likely than the CDN was), and reserve the one-layer offline fallback for a second failure.
+    if (opts.companionBase && !triedDirectBase) {
+      triedDirectBase = true;
+      console.info('[map] the companion base style is unreachable; trying the direct base style.');
+      mapInstance.setStyle(baseStyleUrl());
+      return;
+    }
     styleArrived = true;
     console.info(
       '[map] the base map style is unreachable; starting on the offline fallback base. Cached charts and overlays still load.',
