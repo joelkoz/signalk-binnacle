@@ -40,4 +40,19 @@ describe('prewarm client', () => {
       undefined,
     );
   });
+
+  it('posts config with the bearer token', async () => {
+    const fetchImpl = vi.fn(async () => ok(undefined));
+    const client = createPrewarmClient('http://h', 'tok', fetchImpl as unknown as typeof fetch);
+    const config = { sources: ['seamark'] };
+    await client.postConfig(config);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://h/plugins/signalk-binnacle-companion/api/prewarm/config',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer tok' }),
+        body: JSON.stringify(config),
+      }),
+    );
+  });
 });
