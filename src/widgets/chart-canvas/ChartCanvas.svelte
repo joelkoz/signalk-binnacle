@@ -39,6 +39,7 @@ import {
   type LayerSettings,
   type ThemedMapHandle,
 } from '$shared/map';
+import { detectCompanion, proxiedSources } from '$shared/map/companion';
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
 import type { HistoryProviders, SignalKStore } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
@@ -182,6 +183,9 @@ const {
 
 let container: HTMLDivElement;
 let mapHandle: ThemedMapHandle | undefined;
+// onMount now awaits companion detection before building the map; this guards against the component
+// unmounting during that await, which would otherwise build a map onDestroy never tears down.
+let destroyed = false;
 let routeEditor: RouteEditor | undefined;
 // The unmanaged overlay that draws the working route's dots, labels, and cross-highlight. Like the
 // editor, ChartCanvas owns its lifecycle (add, tick, recolor, raise) rather than the layer manager.
@@ -228,10 +232,16 @@ $effect(() => {
   };
 });
 
-onMount(() => {
+onMount(async () => {
+  // Detect the Binnacle Companion before the map is built: the basemap style URL is read
+  // synchronously at map construction, so detection must precede it. The same result routes the
+  // raster overlays in onLoad below, so it is detected once here.
+  const companionBase = await detectCompanion(origin);
+  if (destroyed) return; // unmounted during the probe; do not build a map nothing will tear down
   // createThemedMap defaults to the world view ([0, 30], zoom 2) when no saved view is passed.
   mapHandle = createThemedMap({
     container,
+    companionBase,
     view: initialView,
     managerOptions: {
       saved: savedLayers,
@@ -329,15 +339,25 @@ onMount(() => {
         timeTravel,
         marineRadarLayer,
       });
+      // Route the remote raster overlays through the Binnacle Companion tile proxy when it is installed,
+      // so the boat shares one cache and works offline. When it is absent, the sources keep their direct
+      // upstream URLs (a standalone install is unchanged). The NASA GIBS ocean fields stay direct: they
+      // are date-dynamic and not yet in the companion allowlist.
       await mgr.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
-        ...STREAMING_CHART_SOURCES.map((source) => createStreamingChartOverlay(source)),
+        ...proxiedSources(STREAMING_CHART_SOURCES, companionBase).map((source) =>
+          createStreamingChartOverlay(source),
+        ),
         ...buildOceanSources().map((source) => createOceanOverlay(source)),
         // Within the safety band, registration order is z, so the seamark navigation aids draw over
         // the reference area fills and boundary lines beneath them.
-        ...BOUNDARY_SOURCES.map((source) => createBoundaryOverlay(source)),
-        ...MPA_SOURCES.map((source) => createMpaOverlay(source)),
-        ...SEAMARK_SOURCES.map((source) => createSeamarkOverlay(source)),
+        ...proxiedSources(BOUNDARY_SOURCES, companionBase).map((source) =>
+          createBoundaryOverlay(source),
+        ),
+        ...proxiedSources(MPA_SOURCES, companionBase).map((source) => createMpaOverlay(source)),
+        ...proxiedSources(SEAMARK_SOURCES, companionBase).map((source) =>
+          createSeamarkOverlay(source),
+        ),
         ...dynamicOverlays,
       ]);
       // Capture the manager so the time-travel review effect can dim the vessel and toggle history.
@@ -431,6 +451,7 @@ onDestroy(() => {
   // Stop the route editor before the map is removed so Terra Draw deregisters its adapter and
   // layers in the right order (start -> stop, before map.remove()); the guard makes it a no-op when
   // editing never started. Then tear the map down.
+  destroyed = true;
   routeEditor?.stop();
   mapHandle?.destroy();
 });

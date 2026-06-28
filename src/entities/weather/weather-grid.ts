@@ -51,15 +51,29 @@ export interface RadarData {
   frames: RadarFrame[]; // ascending by time
 }
 
+// The smallest axis span sampleGrid will build. A degenerate viewport (the map reporting equal
+// north/south or east/west before it has a size) would collapse every grid row onto one latitude,
+// which the wind and pressure overlays draw as a single horizontal line. Flooring the span keeps the
+// axes spread; for any real viewport the span is far larger, so this changes nothing.
+const MIN_SPAN_DEG = 0.02;
+
+// Expand a [min, max] axis range around its center to at least MIN_SPAN_DEG, leaving real spans
+// untouched so normal grids are bit-for-bit identical.
+function spanned(min: number, max: number): [number, number] {
+  if (max - min >= MIN_SPAN_DEG) return [min, max];
+  const c = (min + max) / 2;
+  return [c - MIN_SPAN_DEG / 2, c + MIN_SPAN_DEG / 2];
+}
+
 // Sample a bbox into a grid no larger than maxCells, keeping the axes roughly proportional to the
 // bbox so neither is starved. Inclusive of both corners so the field covers the whole viewport.
 export function sampleGrid(bbox: Bbox, maxCells: number): { lats: number[]; lons: number[] } {
-  const w = Math.max(1e-6, bbox.east - bbox.west);
-  const h = Math.max(1e-6, bbox.north - bbox.south);
-  const aspect = w / h;
+  const [west, east] = spanned(bbox.west, bbox.east);
+  const [south, north] = spanned(bbox.south, bbox.north);
+  const aspect = (east - west) / (north - south);
   const rows = Math.max(2, Math.round(Math.sqrt(maxCells / aspect)));
   const cols = Math.max(2, Math.floor(maxCells / rows));
-  return { lats: axis(bbox.south, bbox.north, rows), lons: axis(bbox.west, bbox.east, cols) };
+  return { lats: axis(south, north, rows), lons: axis(west, east, cols) };
 }
 
 function axis(min: number, max: number, n: number): number[] {

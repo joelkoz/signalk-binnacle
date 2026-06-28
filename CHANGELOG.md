@@ -8,6 +8,17 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Shared offline cache for the remote charts and the basemap.** When the Binnacle Companion plugin
+  is installed, the depth, boundary, protected-area, and seamark raster overlays, and the vector
+  basemap with its glyphs and tiles, are fetched and cached through the Signal K server, so the whole
+  boat shares one cache, they work offline at sea, and the same tile is not refetched per device. When
+  the companion is absent, every source keeps its direct upstream URL, so a standalone install is
+  unchanged. The NASA GIBS ocean fields still fetch directly for now. Companion detection is bounded by
+  a short timeout so a wedged server cannot stall the map, and if the proxied basemap style fails while
+  the device is online the direct style is used before the blank offline fallback.
+
 <a id="v0106"></a>
 
 ## [0.10.6] - 2026-06-27

@@ -38,6 +38,9 @@ export interface ThemedMapApi {
 
 export interface ThemedMapOptions {
   container: HTMLElement;
+  // The Binnacle Companion plugin base when installed, so the basemap style is proxied and cached, or
+  // null or undefined for the direct openfreemap style.
+  companionBase?: string | null;
   // The view to open at; capped to maxZoom. Falls back to the default center and zoom.
   view?: MapView;
   defaultCenter?: [number, number];
@@ -77,7 +80,7 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
     const wanted = opts.view ? opts.view.zoom : (opts.defaultZoom ?? DEFAULT_ZOOM);
     map = new maplibregl.Map({
       container: opts.container,
-      style: baseStyleUrl(),
+      style: baseStyleUrl(opts.companionBase),
       center,
       zoom: Math.min(wanted, opts.maxZoom ?? Number.POSITIVE_INFINITY),
       minZoom: opts.minZoom,
@@ -103,11 +106,21 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
   // so sprite, glyph, and tile failures (which all come after it) can never trip this. One shot;
   // the real style returns on the next load with connectivity.
   let styleArrived = false;
+  let triedDirectBase = false;
   mapInstance.once('styledata', () => {
     styleArrived = true;
   });
   mapInstance.on('error', () => {
     if (styleArrived || destroyed) return;
+    // A companion-proxied base style that fails while the device is online should not drop straight to
+    // the blank fallback: try the direct openfreemap style first (the proxy made a broken base more
+    // likely than the CDN was), and reserve the one-layer offline fallback for a second failure.
+    if (opts.companionBase && !triedDirectBase) {
+      triedDirectBase = true;
+      console.info('[map] the companion base style is unreachable; trying the direct base style.');
+      mapInstance.setStyle(baseStyleUrl());
+      return;
+    }
     styleArrived = true;
     console.info(
       '[map] the base map style is unreachable; starting on the offline fallback base. Cached charts and overlays still load.',
