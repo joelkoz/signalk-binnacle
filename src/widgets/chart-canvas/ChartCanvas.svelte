@@ -229,10 +229,15 @@ $effect(() => {
   };
 });
 
-onMount(() => {
+onMount(async () => {
+  // Detect the Binnacle Companion before the map is built: the basemap style URL is read
+  // synchronously at map construction, so detection must precede it. The same result routes the
+  // raster overlays in onLoad below, so it is detected once here.
+  const companionBase = await detectCompanion(origin);
   // createThemedMap defaults to the world view ([0, 30], zoom 2) when no saved view is passed.
   mapHandle = createThemedMap({
     container,
+    companionBase,
     view: initialView,
     managerOptions: {
       saved: savedLayers,
@@ -334,8 +339,6 @@ onMount(() => {
       // so the boat shares one cache and works offline. When it is absent, the sources keep their direct
       // upstream URLs (a standalone install is unchanged). The NASA GIBS ocean fields stay direct: they
       // are date-dynamic and not yet in the companion allowlist.
-      const companionBase = await detectCompanion(origin);
-      if (isDestroyed()) return;
       await mgr.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
         ...proxiedSources(STREAMING_CHART_SOURCES, companionBase).map((source) => createStreamingChartOverlay(source)),

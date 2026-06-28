@@ -38,6 +38,9 @@ export interface ThemedMapApi {
 
 export interface ThemedMapOptions {
   container: HTMLElement;
+  // The Binnacle Companion plugin base when installed, so the basemap style is proxied and cached, or
+  // null or undefined for the direct openfreemap style.
+  companionBase?: string | null;
   // The view to open at; capped to maxZoom. Falls back to the default center and zoom.
   view?: MapView;
   defaultCenter?: [number, number];
@@ -77,7 +80,7 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
     const wanted = opts.view ? opts.view.zoom : (opts.defaultZoom ?? DEFAULT_ZOOM);
     map = new maplibregl.Map({
       container: opts.container,
-      style: baseStyleUrl(),
+      style: baseStyleUrl(opts.companionBase),
       center,
       zoom: Math.min(wanted, opts.maxZoom ?? Number.POSITIVE_INFINITY),
       minZoom: opts.minZoom,

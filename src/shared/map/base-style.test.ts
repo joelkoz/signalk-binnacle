@@ -16,3 +16,16 @@ describe('fallbackBaseStyle', () => {
     expect(new URL(style.glyphs as string).host).toBe(new URL(baseStyleUrl()).host);
   });
 });
+
+describe('baseStyleUrl', () => {
+  it('returns the direct openfreemap style when there is no companion', () => {
+    expect(baseStyleUrl()).toContain('openfreemap.org');
+    expect(baseStyleUrl(null)).toContain('openfreemap.org');
+  });
+
+  it('returns the companion-proxied basemap style when the companion is present', () => {
+    expect(baseStyleUrl('http://boat.local/plugins/signalk-binnacle-companion')).toBe(
+      'http://boat.local/plugins/signalk-binnacle-companion/style/basemap',
+    );
+  });
+});
