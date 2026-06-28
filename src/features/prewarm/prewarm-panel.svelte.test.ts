@@ -1,0 +1,76 @@
+import { describe, expect, it } from 'vitest';
+import { canPrewarm } from './estimate.js';
+import type { CacheStats } from './prewarm-client.js';
+
+// Pins the gate predicate the panel uses: Prewarm is enabled only when a box is drawn, at least
+// one source is selected, the user can write, and the estimate fits the free cap.
+
+const stats: CacheStats = {
+  rows: 0,
+  bytes: 0,
+  cap: 1_000_000_000,
+  perSourceAvgBytes: { seamark: 20_000 },
+};
+
+describe('prewarm gate', () => {
+  it('disabled with no box', () => {
+    expect(
+      canPrewarm({
+        bbox: null,
+        sources: ['seamark'],
+        writeBlocked: false,
+        stats,
+        zoomRange: [6, 8],
+      }),
+    ).toBe(false);
+  });
+
+  it('disabled when write is blocked', () => {
+    expect(
+      canPrewarm({
+        bbox: [-1, -1, 1, 1],
+        sources: ['seamark'],
+        writeBlocked: true,
+        stats,
+        zoomRange: [6, 8],
+      }),
+    ).toBe(false);
+  });
+
+  it('disabled when the estimate exceeds the free cap', () => {
+    const tiny: CacheStats = { ...stats, cap: 1000, bytes: 0 };
+    expect(
+      canPrewarm({
+        bbox: [-5, -5, 5, 5],
+        sources: ['seamark'],
+        writeBlocked: false,
+        stats: tiny,
+        zoomRange: [6, 10],
+      }),
+    ).toBe(false);
+  });
+
+  it('enabled when a box and a source are set and the estimate fits', () => {
+    expect(
+      canPrewarm({
+        bbox: [-0.1, -0.1, 0.1, 0.1],
+        sources: ['seamark'],
+        writeBlocked: false,
+        stats,
+        zoomRange: [6, 7],
+      }),
+    ).toBe(true);
+  });
+
+  it('disabled with no sources selected', () => {
+    expect(
+      canPrewarm({
+        bbox: [-1, -1, 1, 1],
+        sources: [],
+        writeBlocked: false,
+        stats,
+        zoomRange: [6, 8],
+      }),
+    ).toBe(false);
+  });
+});

@@ -5,6 +5,7 @@ export type { PickedTextResult } from './file-pick';
 export { pickTextFile, readErrorMessage } from './file-pick';
 export { focusOnMount, focusTrap, isTabKey, onKeydownAction, rovingFocus } from './focus';
 export { default as InlineConfirm } from './InlineConfirm.svelte';
+export { default as LayerToggle } from './LayerToggle.svelte';
 export { defaultSaveName, promptRename, promptSaveName } from './prompt';
 export { default as SavedList } from './SavedList.svelte';
 export { default as ShowOnChartToggle } from './ShowOnChartToggle.svelte';

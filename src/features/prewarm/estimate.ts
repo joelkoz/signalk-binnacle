@@ -3,7 +3,7 @@
  * is a ceiling (a warm negative-caches 404s at zero bytes, so the real footprint is smaller). */
 
 import { CHART_SOURCES, type ChartSource, tileCountInBbox } from 'signalk-binnacle-chart-sources';
-import type { CacheStats } from './prewarm-client.js';
+import type { CacheStats, WarmStatus } from './prewarm-client.js';
 
 /** Fallback per-tile size for a source never cached yet, so the estimate still gates a first prewarm. */
 export const DEFAULT_TILE_BYTES = 25_000;
@@ -49,4 +49,38 @@ export function bboxFromRectangle(ring: Array<[number, number]>): [number, numbe
   const lngs = ring.map((p) => p[0]);
   const lats = ring.map((p) => p[1]);
   return [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)];
+}
+
+/** The single gate predicate shared by the panel and its test. Returns true only when a box is
+ * drawn, at least one source is selected, the user can write, and the estimate fits the free cap. */
+export function canPrewarm(opts: {
+  bbox: [number, number, number, number] | null;
+  sources: string[];
+  writeBlocked: boolean;
+  stats: CacheStats;
+  zoomRange: [number, number];
+}): boolean {
+  if (opts.bbox === null || opts.sources.length === 0 || opts.writeBlocked) return false;
+  return !exceedsFreeCap(
+    estimateBytes(opts.sources, opts.bbox, opts.zoomRange, opts.stats),
+    opts.stats,
+  );
+}
+
+/** A poll status is terminal when the job is no longer running. A null status means the job is
+ * gone (the container restarted and lost the in-memory job); treat it as gone and offer a re-warm. */
+export function isTerminal(status: WarmStatus | null): boolean {
+  return status === null || status.state !== 'running';
+}
+
+const KB = 1024;
+const MB = KB * 1024;
+const GB = MB * 1024;
+
+/** Humanize a byte count to a rounded value and unit label, for display in the estimate row. */
+export function formatBytes(bytes: number): { value: string; unit: string } {
+  if (bytes >= GB) return { value: (bytes / GB).toFixed(2), unit: 'GB' };
+  if (bytes >= MB) return { value: (bytes / MB).toFixed(1), unit: 'MB' };
+  if (bytes >= KB) return { value: (bytes / KB).toFixed(1), unit: 'KB' };
+  return { value: String(Math.round(bytes)), unit: 'B' };
 }
