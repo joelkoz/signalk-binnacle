@@ -14,7 +14,6 @@ import type { UnitsStore } from '$entities/units';
 import type { UserCharts } from '$entities/user-charts';
 import type { OwnVessel } from '$entities/vessel';
 import type { WaypointsStore } from '$entities/waypoint';
-import { detectCompanion, proxiedSources } from '$shared/map/companion';
 import { BOUNDARY_SOURCES, createBoundaryOverlay } from '$features/boundaries-overlay';
 import { fetchCharts } from '$features/charts';
 import { createStreamingChartOverlay, STREAMING_CHART_SOURCES } from '$features/depth-charts';
@@ -40,6 +39,7 @@ import {
   type LayerSettings,
   type ThemedMapHandle,
 } from '$shared/map';
+import { detectCompanion, proxiedSources } from '$shared/map/companion';
 import type { MapView, PersistedValue, TrackSettings } from '$shared/settings';
 import type { HistoryProviders, SignalKStore } from '$shared/signalk';
 import type { Theme } from '$shared/ui';
@@ -341,13 +341,19 @@ onMount(async () => {
       // are date-dynamic and not yet in the companion allowlist.
       await mgr.registerAll([
         ...charts.map((chart) => createChartOverlay(chart, origin)),
-        ...proxiedSources(STREAMING_CHART_SOURCES, companionBase).map((source) => createStreamingChartOverlay(source)),
+        ...proxiedSources(STREAMING_CHART_SOURCES, companionBase).map((source) =>
+          createStreamingChartOverlay(source),
+        ),
         ...buildOceanSources().map((source) => createOceanOverlay(source)),
         // Within the safety band, registration order is z, so the seamark navigation aids draw over
         // the reference area fills and boundary lines beneath them.
-        ...proxiedSources(BOUNDARY_SOURCES, companionBase).map((source) => createBoundaryOverlay(source)),
+        ...proxiedSources(BOUNDARY_SOURCES, companionBase).map((source) =>
+          createBoundaryOverlay(source),
+        ),
         ...proxiedSources(MPA_SOURCES, companionBase).map((source) => createMpaOverlay(source)),
-        ...proxiedSources(SEAMARK_SOURCES, companionBase).map((source) => createSeamarkOverlay(source)),
+        ...proxiedSources(SEAMARK_SOURCES, companionBase).map((source) =>
+          createSeamarkOverlay(source),
+        ),
         ...dynamicOverlays,
       ]);
       // Capture the manager so the time-travel review effect can dim the vessel and toggle history.

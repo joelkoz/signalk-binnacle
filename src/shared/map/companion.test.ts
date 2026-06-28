@@ -3,7 +3,14 @@ import { detectCompanion, proxiedSources } from './companion';
 import type { RasterOverlaySource } from './raster-overlay';
 
 const SAMPLE: RasterOverlaySource[] = [
-  { id: 'depth-gebco', title: 'GEBCO', tiles: ['https://wms.gebco.net/mapserv?LAYERS=GEBCO_LATEST'], minzoom: 0, maxzoom: 12, attribution: 'GEBCO' },
+  {
+    id: 'depth-gebco',
+    title: 'GEBCO',
+    tiles: ['https://wms.gebco.net/mapserv?LAYERS=GEBCO_LATEST'],
+    minzoom: 0,
+    maxzoom: 12,
+    attribution: 'GEBCO',
+  },
 ];
 
 describe('detectCompanion', () => {
@@ -13,11 +20,17 @@ describe('detectCompanion', () => {
   });
 
   it('returns null on a non-ok response', async () => {
-    expect(await detectCompanion('http://boat.local', async () => ({ ok: false }) as Response)).toBeNull();
+    expect(
+      await detectCompanion('http://boat.local', async () => ({ ok: false }) as Response),
+    ).toBeNull();
   });
 
   it('returns null on a network error (no companion installed)', async () => {
-    expect(await detectCompanion('http://boat.local', async () => { throw new Error('refused'); })).toBeNull();
+    expect(
+      await detectCompanion('http://boat.local', async () => {
+        throw new Error('refused');
+      }),
+    ).toBeNull();
   });
 });
 

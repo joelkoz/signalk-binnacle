@@ -12,7 +12,10 @@ const COMPANION_PATH = '/plugins/signalk-binnacle-companion';
  * Probe whether the companion tile proxy is installed and ready. Returns its plugin base URL on a 200,
  * or null on a 404 or any network error (the standalone case).
  */
-export async function detectCompanion(origin: string, fetchImpl: typeof fetch = fetch): Promise<string | null> {
+export async function detectCompanion(
+  origin: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string | null> {
   const base = `${origin}${COMPANION_PATH}`;
   try {
     const response = await fetchImpl(`${base}/tiles/ready`);
@@ -27,10 +30,15 @@ export async function detectCompanion(origin: string, fetchImpl: typeof fetch = 
  * direct upstream URLs. The proxied template keys on the source id, which the companion expands to the
  * real upstream, so the webapp no longer builds WMS, WMTS, or ArcGIS requests on the proxied path.
  */
-export function proxiedSources(sources: RasterOverlaySource[], companionBase: string | null): RasterOverlaySource[] {
+export function proxiedSources(
+  sources: RasterOverlaySource[],
+  companionBase: string | null,
+): RasterOverlaySource[] {
   if (companionBase === null) {
     return sources;
   }
-  return sources.map((source) => ({ ...source, tiles: [proxyTileTemplate(companionBase, source.id)] }));
+  return sources.map((source) => ({
+    ...source,
+    tiles: [proxyTileTemplate(companionBase, source.id)],
+  }));
 }
-
