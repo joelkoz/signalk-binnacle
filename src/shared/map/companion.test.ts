@@ -1,0 +1,35 @@
+import { describe, expect, it } from 'vitest';
+import { detectCompanion, proxiedSources } from './companion';
+import type { RasterOverlaySource } from './raster-overlay';
+
+const SAMPLE: RasterOverlaySource[] = [
+  { id: 'depth-gebco', title: 'GEBCO', tiles: ['https://wms.gebco.net/mapserv?LAYERS=GEBCO_LATEST'], minzoom: 0, maxzoom: 12, attribution: 'GEBCO' },
+];
+
+describe('detectCompanion', () => {
+  it('returns the plugin base when the readiness probe is ok', async () => {
+    const base = await detectCompanion('http://boat.local', async () => ({ ok: true }) as Response);
+    expect(base).toBe('http://boat.local/plugins/signalk-binnacle-companion');
+  });
+
+  it('returns null on a non-ok response', async () => {
+    expect(await detectCompanion('http://boat.local', async () => ({ ok: false }) as Response)).toBeNull();
+  });
+
+  it('returns null on a network error (no companion installed)', async () => {
+    expect(await detectCompanion('http://boat.local', async () => { throw new Error('refused'); })).toBeNull();
+  });
+});
+
+describe('proxiedSources', () => {
+  it('leaves the direct upstream URLs when no companion is present', () => {
+    expect(proxiedSources(SAMPLE, null)).toBe(SAMPLE);
+  });
+
+  it('rewrites each source to the companion proxy template keyed by id', () => {
+    const base = 'http://boat.local/plugins/signalk-binnacle-companion';
+    const out = proxiedSources(SAMPLE, base);
+    expect(out[0].tiles).toEqual([`${base}/tile/depth-gebco/{z}/{x}/{y}`]);
+    expect(out[0].id).toBe('depth-gebco'); // other fields preserved
+  });
+});
