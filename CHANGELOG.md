@@ -8,6 +8,22 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Regions panel.** Draw a box on the chart and download every covering raster source into the
+  boat-wide tile cache before leaving internet coverage. The panel enumerates the raster chart sources
+  that cover the box, shows a regions-free byte estimate gated against the cache budget so a download
+  cannot overrun the space reserved for saved regions, and lets you edit a geocoded name for the region
+  before saving it. Saved regions are listed with their cached size and last download date, each with
+  re-download and delete, and a progress bar tracks a region while it warms. Requires the Chart Locker
+  plugin.
+
+### Changed
+
+- **Companion plugin renamed to Chart Locker.** Binnacle now points its tile cache, basemap, chart,
+  and region requests at the renamed `signalk-chart-locker` plugin, previously the Binnacle Companion
+  plugin, and the prewarm panel and its client were renamed to the regions naming throughout.
+
 <a id="v0120"></a>
 
 ## [0.12.0] - 2026-06-29
