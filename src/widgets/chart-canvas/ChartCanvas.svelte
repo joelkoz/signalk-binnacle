@@ -238,7 +238,7 @@ $effect(() => {
 });
 
 onMount(async () => {
-  // Detect the Binnacle Companion before the map is built: the basemap style URL is read
+  // Detect Chart Locker before the map is built: the basemap style URL is read
   // synchronously at map construction, so detection must precede it. The same result routes the
   // raster overlays in onLoad below, so it is detected once here.
   const companionBase = await detectCompanion(origin);
@@ -345,7 +345,7 @@ onMount(async () => {
         timeTravel,
         marineRadarLayer,
       });
-      // Route the remote raster overlays through the Binnacle Companion tile proxy when it is installed,
+      // Route the remote raster overlays through the Chart Locker tile proxy when it is installed,
       // so the boat shares one cache and works offline. When it is absent, the sources keep their direct
       // upstream URLs (a standalone install is unchanged). The NASA GIBS ocean fields stay direct: they
       // are date-dynamic and not yet in the companion allowlist.

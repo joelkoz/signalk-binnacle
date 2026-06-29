@@ -233,8 +233,8 @@ describe('createThemedMap transformRequest', () => {
     createThemedMap({ container, getToken: () => 'test-token', onLoad: () => {} });
     const map = await lastMap();
     const tr = map.options.transformRequest as (url: string) => unknown;
-    expect(tr('http://localhost/plugins/signalk-binnacle-companion/style/basemap')).toEqual({
-      url: 'http://localhost/plugins/signalk-binnacle-companion/style/basemap',
+    expect(tr('http://localhost/plugins/signalk-chart-locker/style/basemap')).toEqual({
+      url: 'http://localhost/plugins/signalk-chart-locker/style/basemap',
       headers: { Authorization: 'Bearer test-token' },
     });
   });

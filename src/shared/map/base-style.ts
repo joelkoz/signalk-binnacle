@@ -11,7 +11,7 @@ const VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
 
 export function baseStyleUrl(companionBase?: string | null): string {
-  // Through the Binnacle Companion the style, its glyphs, and its vector tiles are proxied and cached,
+  // Through Chart Locker the style, its glyphs, and its vector tiles are proxied and cached,
   // so the basemap geometry works offline. Without it, the direct openfreemap style is used.
   return companionBase ? `${companionBase}/style/basemap` : VECTOR_STYLE_URL;
 }

@@ -21,7 +21,7 @@ const SAMPLE: RasterOverlaySource[] = [
 describe('detectCompanion', () => {
   it('returns the plugin base when the readiness probe is ok', async () => {
     const base = await detectCompanion('http://boat.local', async () => ({ ok: true }) as Response);
-    expect(base).toBe('http://boat.local/plugins/signalk-binnacle-companion');
+    expect(base).toBe('http://boat.local/plugins/signalk-chart-locker');
   });
 
   it('returns null on a non-ok response', async () => {
@@ -45,7 +45,7 @@ describe('proxiedSources', () => {
   });
 
   it('rewrites each source to the companion proxy template keyed by id', () => {
-    const base = 'http://boat.local/plugins/signalk-binnacle-companion';
+    const base = 'http://boat.local/plugins/signalk-chart-locker';
     const out = proxiedSources(SAMPLE, base);
     expect(out[0].tiles).toEqual([`${base}/tile/depth-gebco/{z}/{x}/{y}`]);
     expect(out[0].id).toBe('depth-gebco'); // other fields preserved

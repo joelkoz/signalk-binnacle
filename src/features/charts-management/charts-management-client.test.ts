@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fetchManagedCharts, putChartOverride } from './charts-management-client';
 
 const ORIGIN = 'http://pi.local';
-const BASE = `${ORIGIN}/plugins/signalk-binnacle-companion`;
+const BASE = `${ORIGIN}/plugins/signalk-chart-locker`;
 const API = `${BASE}/api`;
 
 describe('charts-management-client', () => {
