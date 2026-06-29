@@ -8,6 +8,7 @@ import {
   History,
   Layers,
   LocateFixed,
+  Map as MapIcon,
   MapPin,
   Navigation,
   Radar,
@@ -53,6 +54,7 @@ import {
 } from '$features/anchor-watch';
 import { AuthBanner } from '$features/auth-banner';
 import { deleteChart, putChart } from '$features/charts';
+import { ChartsManagementPanel } from '$features/charts-management';
 import { LayersPanel, type LayersView } from '$features/layers-panel';
 import {
   AlarmsPanel,
@@ -463,7 +465,8 @@ type LeftPanel =
   | 'alarms'
   | 'poi-search'
   | 'profiles'
-  | 'prewarm';
+  | 'prewarm'
+  | 'charts-management';
 let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
 // the menu after it closed on selection.
@@ -1123,6 +1126,15 @@ const menuItems = $derived<MenuItem[]>([
           group: 'Settings',
           pressed: activePanel === 'prewarm',
           onSelect: () => togglePanel('prewarm'),
+        } satisfies MenuItem,
+        {
+          id: 'charts-management',
+          label: 'Chart management',
+          shortLabel: 'Charts',
+          icon: MapIcon,
+          group: 'Settings',
+          pressed: activePanel === 'charts-management',
+          onSelect: () => togglePanel('charts-management'),
         } satisfies MenuItem,
       ]
     : []),
@@ -2544,6 +2556,11 @@ onDestroy(() => {
     {#if activePanel === 'prewarm' && companionPresent && mapInstance}
       <div class="panel-slot">
         <PrewarmPanel {auth} map={mapInstance} {units} onClose={closePanel} onBack={backToMenu} />
+      </div>
+    {/if}
+    {#if activePanel === 'charts-management' && companionPresent}
+      <div class="panel-slot">
+        <ChartsManagementPanel {auth} onClose={closePanel} onBack={backToMenu} />
       </div>
     {/if}
     {#if weatherPanelOpen}
