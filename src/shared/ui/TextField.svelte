@@ -1,0 +1,80 @@
+<script lang="ts">
+interface Props {
+  label: string;
+  // The text the field shows. A controlled value: the parent owns it and updates it on commit.
+  value: string;
+  // 'inline' sets the label beside a growing input (the region name row); 'stacked' sets a caps
+  // label above a full-width input (the chart name and description rows).
+  variant?: 'inline' | 'stacked';
+  placeholder?: string;
+  disabled?: boolean;
+  // Overrides the accessible name; left unset, the visible label names the input through the wrapping
+  // label, so most callers can omit it.
+  ariaLabel?: string;
+  // Fired on the native change (a commit on blur or Enter), carrying the entered text.
+  onCommit: (value: string) => void;
+}
+
+const {
+  label,
+  value,
+  variant = 'inline',
+  placeholder,
+  disabled = false,
+  ariaLabel,
+  onCommit,
+}: Props = $props();
+
+function commit(event: Event): void {
+  onCommit((event.currentTarget as HTMLInputElement).value);
+}
+</script>
+
+<!-- The labeled text-input row shared by the region name field and the chart name and description
+     fields, so the labeled-text shape cannot drift per panel. The inline variant grows the input
+     beside its label; the stacked variant sets a caps label above a card-width input. -->
+<label class="text-field" class:stacked={variant === 'stacked'}>
+  <span class="name" class:caps-label={variant === 'stacked'}>{label}</span>
+  <input
+    class="input"
+    type="text"
+    {value}
+    {placeholder}
+    {disabled}
+    aria-label={ariaLabel}
+    onchange={commit}
+  >
+</label>
+
+<style>
+.text-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--control-size);
+}
+.text-field .name {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+/* The input box comes from the shared .input primitive; it grows to fill the inline row. */
+.text-field .input {
+  flex: 1;
+  min-inline-size: 0;
+}
+/* Stacked: the caps label sits above a full-width input, for a card-width text row. */
+.text-field.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  min-block-size: 0;
+}
+.text-field.stacked .name {
+  display: block;
+}
+.text-field.stacked .input {
+  inline-size: 100%;
+  box-sizing: border-box;
+}
+</style>

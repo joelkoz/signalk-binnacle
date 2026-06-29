@@ -1,20 +1,21 @@
 <script lang="ts">
-import { Download, Square, Trash2 } from '@lucide/svelte';
+import { Download, RefreshCw, Square, Trash2 } from '@lucide/svelte';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { onDestroy } from 'svelte';
 import type { UnitsStore } from '$entities/units';
 import { feetToMeters, lengthUnit, metersToFeet } from '$shared/lib';
 import type { AuthController } from '$shared/signalk';
-import { LayerToggle, SlideOver, UnitField } from '$shared/ui';
+import { InlineConfirm, LayerToggle, SavedList, SlideOver, TextField, UnitField } from '$shared/ui';
 import {
   canPrewarm,
+  coveringSources,
   estimateBytes,
   formatBytes,
-  freeCapBytes,
   isTerminal,
   prewarmableSources,
+  regionsFreeBytes,
 } from './estimate.js';
-import type { CacheStats, WarmStatus } from './prewarm-client.js';
+import type { CacheStats, SavedRegionDto, WarmStatus } from './prewarm-client.js';
 import { createPrewarmClient } from './prewarm-client.js';
 import type { PrewarmRectangle } from './prewarm-draw.js';
 import { createPrewarmRectangle } from './prewarm-draw.js';
@@ -31,26 +32,48 @@ interface Props {
 
 const { auth, companionBase, map, units, onClose, onBack }: Props = $props();
 
-// Panel data
+// The whole-world box stands in for "no box drawn" when enumerating covering sources.
+const WORLD_BBOX: [number, number, number, number] = [-180, -90, 180, 90];
+
+// Region builder state. regions starts null to mean "loading"; loadError surfaces a failed initial
+// load. stats follows the same null-is-loading, statsError-is-failed shape.
 let stats = $state<CacheStats | null>(null);
+let statsError = $state<string | null>(null);
+let regions = $state<SavedRegionDto[] | null>(null);
+let loadError = $state<string | null>(null);
 let bbox = $state<[number, number, number, number] | null>(null);
 let selectedSources = $state<string[]>([]);
 let minzoom = $state(6);
 let maxzoom = $state(12);
 
-// Job state
-let jobId = $state<string | null>(null);
-let warmStatus = $state<WarmStatus | null>(null);
-let jobGone = $state(false);
-let error = $state<string | null>(null);
+// Name prep and submission state.
+let namePrep = $state(false);
+let regionName = $state('');
 let submitting = $state(false);
+let error = $state<string | null>(null);
 
-// Internal references not read in the template: the draw controller and the poll timer.
+// The latest warm snapshot per downloading region, for the determinate progress bar.
+let regionStatus = $state<Record<string, WarmStatus>>({});
+// Deleting a region arms an inline confirm first, like every other destructive delete in the app.
+let confirmingDelete = $state<string | undefined>();
+// A per-region busy flag so a re-download or delete on one card does not disable the others, and
+// neither action can fire twice.
+let pendingRegion = $state<Record<string, boolean>>({});
+
+// Internal references not read in the template: the draw controller, the per-region poll timers, and
+// the consecutive poll-failure counts.
 let rect: PrewarmRectangle | null = null;
-let pollIntervalId: ReturnType<typeof setInterval> | null = null;
+const pollTimers = new Map<string, ReturnType<typeof setInterval>>();
+const pollFailures = new Map<string, number>();
+// Generation counters so two in-flight loads cannot resolve out of order and clobber the newer value.
+let regionsGen = 0;
+let statsGen = 0;
+// Stop a region's 2-second poller after this many consecutive failures, surfacing an error.
+const POLL_FAIL_CAP = 5;
 
-// prewarmableSources() is a pure function with no reactive deps, evaluated once.
-const sources = prewarmableSources();
+// prewarmableSources() is a pure function with no reactive deps, evaluated once. Used by the
+// position-warm section, which is not box-scoped.
+const prewarmable = prewarmableSources();
 
 // Rebuild the client when the auth token changes so every call carries the current bearer token.
 const client = $derived(createPrewarmClient(companionBase, auth.token ?? undefined));
@@ -79,11 +102,21 @@ const positionMoveDisplay = $derived(
   ),
 );
 
+// Only the sources that cover the current box show; a global source (no bounds) always covers a
+// non-empty box, and the style basemap is already excluded.
+const sourceList = $derived(coveringSources(bbox ?? WORLD_BBOX, [minzoom, maxzoom]));
+// The selected ids restricted to what is currently shown, so a zoom change that drops a source from
+// the list never carries a stale id into the estimate or the request.
+const activeSourceIds = $derived(
+  sourceList.filter((s) => selectedSources.includes(s.id)).map((s) => s.id),
+);
+
 const gate = $derived(
   stats !== null &&
+    !namePrep &&
     canPrewarm({
       bbox,
-      sources: selectedSources,
+      sources: activeSourceIds,
       writeBlocked: auth.writeBlocked,
       stats,
       zoomRange: [minzoom, maxzoom],
@@ -91,40 +124,37 @@ const gate = $derived(
 );
 
 const estimateVal = $derived(
-  stats !== null && bbox !== null && selectedSources.length > 0
-    ? estimateBytes(selectedSources, bbox, [minzoom, maxzoom], stats)
+  stats !== null && bbox !== null && activeSourceIds.length > 0
+    ? estimateBytes(activeSourceIds, bbox, [minzoom, maxzoom], stats.perSourceAvgBytes)
     : 0,
 );
 const estimateFmt = $derived(formatBytes(estimateVal));
-const freeCapFmt = $derived(stats !== null ? formatBytes(freeCapBytes(stats)) : null);
+const regionsFreeFmt = $derived(stats !== null ? formatBytes(regionsFreeBytes(stats)) : null);
+const pinnedFmt = $derived(stats !== null ? formatBytes(stats.pinnedBytes ?? 0) : null);
+const scrollFmt = $derived(stats !== null ? formatBytes(stats.scrollBytes ?? 0) : null);
 
-const running = $derived(warmStatus !== null && warmStatus.state === 'running');
-const progress = $derived(
-  warmStatus !== null && warmStatus.total > 0 ? warmStatus.done / warmStatus.total : 0,
-);
-
-// Load stats on mount and refresh when the auth token changes (client rebuilds on token change).
-// A stale flag guards against a previous slow request overwriting a fresh response when client
-// changes (auth token rotates) mid-flight.
+// Load the cache stats on mount and refresh when the auth token changes (the client rebuilds on a
+// token change, so the effect re-runs with the new credentials). The generation guard inside
+// loadStats drops a slow earlier response.
 $effect(() => {
-  let stale = false;
-  void client
-    .getCacheStats()
-    .then((s) => {
-      if (!stale) stats = s;
-    })
-    .catch(() => {});
-  return () => {
-    stale = true;
-  };
+  void loadStats();
+});
+
+// Load the saved regions on mount, and resume polling any caught mid-download.
+$effect(() => {
+  void loadRegions();
 });
 
 // Wire up the panel-scoped Terra Draw rectangle instance. The prefixId 'binnacle-prewarm-draw'
-// keeps it separate from the route editor's 'binnacle-route-draw' so the two never collide.
+// keeps it separate from the route editor's 'binnacle-route-draw' so the two never collide. A new
+// box auto-selects every covering source; the owner can then deselect.
 $effect(() => {
   const r = createPrewarmRectangle(map);
   r.onChange((newBbox) => {
     bbox = newBbox;
+    selectedSources =
+      newBbox === null ? [] : coveringSources(newBbox, [minzoom, maxzoom]).map((s) => s.id);
+    namePrep = false;
   });
   rect = r;
   return () => {
@@ -133,9 +163,10 @@ $effect(() => {
   };
 });
 
-// Clear the poll timer on unmount regardless of job state.
+// Clear every poll timer on unmount.
 onDestroy(() => {
-  if (pollIntervalId !== null) clearInterval(pollIntervalId);
+  for (const timer of pollTimers.values()) clearInterval(timer);
+  pollTimers.clear();
 });
 
 // Load the persisted position-warm settings on mount.
@@ -215,97 +246,227 @@ function commitMoveThreshold(entered: number): void {
   void savePositionWarm();
 }
 
-function stopPolling(): void {
-  if (pollIntervalId !== null) {
-    clearInterval(pollIntervalId);
-    pollIntervalId = null;
+// Load the saved regions with a generation guard so a slow earlier load cannot clobber a newer one.
+// A failed first load (regions still null) surfaces loadError; a failed refresh keeps the list and
+// surfaces a transient action error instead.
+async function loadRegions(): Promise<void> {
+  const gen = ++regionsGen;
+  try {
+    const list = await client.getRegions();
+    if (gen !== regionsGen) return;
+    regions = list;
+    loadError = null;
+    for (const region of list) {
+      if (region.status === 'downloading') pollRegion(region.id);
+    }
+  } catch {
+    if (gen !== regionsGen) return;
+    if (regions === null)
+      loadError = 'Could not load the saved regions. Check the connection and access.';
+    else error = 'Could not refresh the saved regions.';
   }
 }
 
-function startPolling(id: string): void {
-  stopPolling();
-  // Capture the client at poll-start so every tick in this job uses the same instance.
-  const activeClient = client;
-  const iv = setInterval(() => {
-    void activeClient.getStatus(id).then((s) => {
-      // A null status means the container restarted and the in-memory job is gone.
-      if (s === null) {
-        stopPolling();
-        jobGone = true;
-        warmStatus = null;
-        return;
-      }
-      warmStatus = s;
-      if (isTerminal(s)) {
-        stopPolling();
-        if (s.state === 'done') {
-          // Refresh stats so the free-cap readout reflects the newly cached tiles.
-          void client
-            .getCacheStats()
-            .then((fresh) => {
-              stats = fresh;
-            })
-            .catch(() => {});
-        }
-      }
-    });
-  }, 2000);
-  pollIntervalId = iv;
+// Load the cache stats with the same generation guard and loading-versus-failed split.
+async function loadStats(): Promise<void> {
+  const gen = ++statsGen;
+  try {
+    const s = await client.getCacheStats();
+    if (gen !== statsGen) return;
+    stats = s;
+    statsError = null;
+  } catch {
+    if (gen !== statsGen) return;
+    if (stats === null) statsError = 'Could not load the cache stats.';
+    else error = 'Could not refresh the cache stats.';
+  }
 }
 
-async function doPrewarm(): Promise<void> {
+function stopRegionPoll(id: string): void {
+  const timer = pollTimers.get(id);
+  if (timer !== undefined) {
+    clearInterval(timer);
+    pollTimers.delete(id);
+  }
+  pollFailures.delete(id);
+}
+
+// Poll a region's warm job to a terminal result. The plugin status route reconciles the persisted
+// region status on each poll, so a reload after the terminal tick shows ready, capped, or error.
+// A non-ok, non-404 status throws; after POLL_FAIL_CAP consecutive failures the poller stops and
+// surfaces an error rather than spinning silently. The latest snapshot per region drives the bar.
+function pollRegion(id: string): void {
+  stopRegionPoll(id);
+  pollFailures.set(id, 0);
+  const activeClient = client;
+  const timer = setInterval(() => {
+    void activeClient
+      .getRegionJobStatus(id)
+      .then((s) => {
+        pollFailures.set(id, 0);
+        if (s !== null) regionStatus = { ...regionStatus, [id]: s };
+        if (isTerminal(s)) {
+          stopRegionPoll(id);
+          void loadRegions();
+          void loadStats();
+        }
+      })
+      .catch(() => {
+        const failures = (pollFailures.get(id) ?? 0) + 1;
+        pollFailures.set(id, failures);
+        if (failures >= POLL_FAIL_CAP) {
+          stopRegionPoll(id);
+          error = 'Lost contact with a region download. Check the connection and try again.';
+        }
+      });
+  }, 2000);
+  pollTimers.set(id, timer);
+}
+
+function centerOf(box: [number, number, number, number]): { lat: number; lon: number } {
+  return { lat: (box[1] + box[3]) / 2, lon: (box[0] + box[2]) / 2 };
+}
+
+function coordName(box: [number, number, number, number]): string {
+  const { lat, lon } = centerOf(box);
+  return `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+}
+
+// The geocode lookup fires once here, on the Download action, never on rectangle drag, which is the
+// rate control for the Nominatim usage policy. The name falls back to a coordinate string on failure.
+async function prepareDownload(): Promise<void> {
   if (!gate || bbox === null || submitting) return;
   error = null;
-  jobGone = false;
-  warmStatus = null;
+  submitting = true;
+  // Capture the box the lookup is for; a Clear or redraw during the await changes bbox, so the
+  // result is stale and must not reopen the prompt or seed a name under the wrong box.
+  const startedFor = bbox;
+  const { lat, lon } = centerOf(bbox);
+  const fallback = coordName(bbox);
+  try {
+    const name = await client.geocode(lat, lon);
+    if (bbox === startedFor) regionName = name ?? fallback;
+  } catch {
+    if (bbox === startedFor) regionName = fallback;
+  } finally {
+    if (bbox === startedFor) namePrep = true;
+    submitting = false;
+  }
+}
+
+async function saveRegion(): Promise<void> {
+  if (bbox === null || activeSourceIds.length === 0 || submitting) return;
+  const name = regionName.trim() || coordName(bbox);
+  error = null;
   submitting = true;
   try {
-    const { jobId: id } = await client.postPrewarm({
+    const { region } = await client.postRegion({
       bbox,
-      sources: selectedSources,
+      sourceIds: activeSourceIds,
       minzoom,
       maxzoom,
+      name,
     });
-    jobId = id;
-    startPolling(id);
+    namePrep = false;
+    regionName = '';
+    await loadRegions();
+    await loadStats();
+    pollRegion(region.id);
   } catch (e) {
-    error = e instanceof Error ? e.message : 'Prewarm failed';
+    error = e instanceof Error ? e.message : 'Region download failed';
   } finally {
     submitting = false;
   }
 }
 
-async function doCancel(): Promise<void> {
-  if (jobId === null) return;
-  stopPolling();
-  const id = jobId;
-  jobId = null;
-  warmStatus = null;
+function cancelNamePrep(): void {
+  namePrep = false;
+  regionName = '';
+}
+
+function setPending(id: string, busy: boolean): void {
+  pendingRegion = { ...pendingRegion, [id]: busy };
+}
+
+async function redownloadRegion(id: string): Promise<void> {
+  if (auth.writeBlocked || submitting || pendingRegion[id]) return;
+  error = null;
+  setPending(id, true);
   try {
-    await client.cancel(id);
-  } catch {
-    // Cancel is best-effort: if the container restarted the job is already gone.
+    await client.redownloadRegion(id);
+    await loadRegions();
+    pollRegion(id);
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Re-download failed';
+  } finally {
+    setPending(id, false);
+  }
+}
+
+function confirmDelete(id: string): void {
+  confirmingDelete = undefined;
+  void deleteRegion(id);
+}
+
+async function deleteRegion(id: string): Promise<void> {
+  if (auth.writeBlocked || submitting || pendingRegion[id]) return;
+  error = null;
+  setPending(id, true);
+  stopRegionPoll(id);
+  try {
+    await client.deleteRegion(id);
+    await loadRegions();
+    await loadStats();
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Delete failed';
+  } finally {
+    setPending(id, false);
   }
 }
 
 function toggleSource(id: string, on: boolean): void {
   selectedSources = on ? [...selectedSources, id] : selectedSources.filter((s) => s !== id);
 }
+
+const STATUS_LABELS: Record<SavedRegionDto['status'], string> = {
+  downloading: 'Downloading',
+  ready: 'Ready',
+  capped: 'Cap reached',
+  error: 'Error',
+  'needs-redownload': 'Needs re-download',
+};
+
+// Severity coloring for the status caps label so a failed or capped region reads at a glance. The
+// sev-* classes live in text.css; an empty string leaves the plain muted caps label.
+const STATUS_SEVERITY: Record<SavedRegionDto['status'], string> = {
+  downloading: '',
+  ready: '',
+  capped: 'sev-warning',
+  error: 'sev-danger',
+  'needs-redownload': 'sev-warning',
+};
+
+function updatedLabel(ts: number): string {
+  return new Date(ts * 1000).toLocaleDateString();
+}
 </script>
 
-<SlideOver title="Tile cache prewarm" closeLabel="Close prewarm panel" {onClose} {onBack} bodyFlex>
+<SlideOver title="Saved regions" closeLabel="Close regions panel" {onClose} {onBack} bodyFlex>
+  {#if error !== null}
+    <p class="alert-note" role="alert">{error}</p>
+  {/if}
   {#if auth.writeBlocked}
     <p class="muted-note">
-      A write token is needed to prewarm the tile cache. Request a read/write token to continue.
+      A write token is needed to download a region. Request a read/write token to continue.
     </p>
   {/if}
 
-  <h3 class="caps-label section-head">Cruising box</h3>
+  <h3 class="caps-label section-head">Region box</h3>
   <div class="panel-controls">
     <button
       type="button"
       class="btn btn--grow"
-      disabled={running || auth.writeBlocked}
+      disabled={auth.writeBlocked}
       onclick={() => rect?.start()}
     >
       <Square size={16} aria-hidden="true" />
@@ -314,7 +475,7 @@ function toggleSource(id: string, on: boolean): void {
     <button
       type="button"
       class="btn btn-ghost"
-      disabled={bbox === null || running || auth.writeBlocked}
+      disabled={bbox === null || auth.writeBlocked}
       onclick={() => rect?.clear()}
     >
       <Trash2 size={16} aria-hidden="true" />
@@ -331,16 +492,16 @@ function toggleSource(id: string, on: boolean): void {
   {/if}
 
   <h3 class="caps-label section-head">Sources</h3>
-  {#each sources as source (source.id)}
+  {#each sourceList as source (source.id)}
     <LayerToggle
       title={source.title}
       visible={selectedSources.includes(source.id)}
-      disabled={running || auth.writeBlocked}
+      disabled={auth.writeBlocked}
       onToggle={(on) => toggleSource(source.id, on)}
     />
   {/each}
-  {#if sources.length === 0}
-    <p class="muted-note">No prewarmable sources found in the registry.</p>
+  {#if sourceList.length === 0}
+    <p class="muted-note">No sources cover this box and zoom range.</p>
   {/if}
 
   <h3 class="caps-label section-head">Zoom range</h3>
@@ -366,22 +527,142 @@ function toggleSource(id: string, on: boolean): void {
   />
 
   <h3 class="caps-label section-head">Estimate</h3>
-  {#if stats !== null}
+  {#if statsError !== null}
+    <p class="alert-note" role="alert">{statsError}</p>
+  {:else if stats === null}
+    <p class="muted-note">Loading cache stats...</p>
+  {:else}
     <dl class="stat-grid">
       <dt>Estimated download</dt>
       <dd>
         <span class="num">{estimateFmt.value}</span>
         <span class="unit">{estimateFmt.unit}</span>
       </dd>
-      <dt>Free capacity</dt>
+      <dt>Regions free</dt>
       <dd>
-        <span class="num">{freeCapFmt?.value ?? '--'}</span>
-        <span class="unit">{freeCapFmt?.unit ?? ''}</span>
+        <span class="num">{regionsFreeFmt?.value ?? '--'}</span>
+        <span class="unit">{regionsFreeFmt?.unit ?? ''}</span>
+      </dd>
+      <dt>Pinned</dt>
+      <dd>
+        <span class="num">{pinnedFmt?.value ?? '--'}</span>
+        <span class="unit">{pinnedFmt?.unit ?? ''}</span>
+      </dd>
+      <dt>Scrolling cache</dt>
+      <dd>
+        <span class="num">{scrollFmt?.value ?? '--'}</span>
+        <span class="unit">{scrollFmt?.unit ?? ''}</span>
       </dd>
     </dl>
     <p class="muted-note">The estimate is a ceiling. Cached 404s cost no bytes.</p>
+  {/if}
+
+  {#if namePrep}
+    <TextField label="Region name" value={regionName} onCommit={(v) => (regionName = v)} />
+    <div class="panel-controls">
+      <button
+        type="button"
+        class="btn btn-primary btn--grow"
+        disabled={submitting}
+        onclick={() => void saveRegion()}
+      >
+        <Download size={16} aria-hidden="true" />
+        Save region
+      </button>
+      <button type="button" class="btn btn-ghost" onclick={cancelNamePrep}>Cancel</button>
+    </div>
   {:else}
-    <p class="muted-note">Loading cache stats...</p>
+    <div class="panel-controls">
+      <button
+        type="button"
+        class="btn btn-primary btn--grow"
+        disabled={!gate || submitting}
+        onclick={() => void prepareDownload()}
+      >
+        <Download size={16} aria-hidden="true" />
+        Download region
+      </button>
+    </div>
+  {/if}
+
+  {#if loadError !== null}
+    <span class="caps-label section-head">Saved regions</span>
+    <p class="alert-note" role="alert">{loadError}</p>
+  {:else if regions === null}
+    <span class="caps-label section-head">Saved regions</span>
+    <p class="muted-note">Loading regions...</p>
+  {:else}
+    <SavedList
+      heading="Saved regions"
+      items={regions}
+      empty="No regions saved yet. Draw a box and download to save one."
+      key={(region) => region.id}
+    >
+      {#snippet card(region)}
+        {@const cached = formatBytes(region.cachedBytes)}
+        {@const live = regionStatus[region.id]}
+        <div class="card-head">
+          <span class="name" title={region.name}>{region.name}</span>
+          <span class="caps-label {STATUS_SEVERITY[region.status]}">
+            {STATUS_LABELS[region.status]}
+          </span>
+        </div>
+        <dl class="card-stats">
+          <dt class="caps-label">Cached</dt>
+          <dd><span class="num">{cached.value}</span> {cached.unit}</dd>
+          {#if region.lastDownloadedAt !== null}
+            <dt class="caps-label">Updated</dt>
+            <dd><span class="num">{updatedLabel(region.lastDownloadedAt)}</span></dd>
+          {/if}
+        </dl>
+        {#if region.status === 'downloading' && live && live.total > 0}
+          {@const pct = Math.round((live.done / live.total) * 100)}
+          <div
+            class="warm-track"
+            role="progressbar"
+            aria-label="Download progress"
+            aria-valuemin="0"
+            aria-valuemax={live.total}
+            aria-valuenow={live.done}
+          >
+            <div class="warm-fill" style:inline-size="{pct}%"></div>
+          </div>
+        {/if}
+        {#if confirmingDelete === region.id}
+          <InlineConfirm
+            question="Delete this region?"
+            onConfirm={() => confirmDelete(region.id)}
+            onCancel={() => (confirmingDelete = undefined)}
+          />
+        {:else}
+          <div class="actions">
+            <button
+              type="button"
+              class="icon-btn"
+              aria-label="Re-download region"
+              title="Re-download"
+              disabled={auth.writeBlocked ||
+                submitting ||
+                pendingRegion[region.id] ||
+                region.status === 'downloading'}
+              onclick={() => void redownloadRegion(region.id)}
+            >
+              <RefreshCw size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              class="icon-btn icon-btn--danger"
+              aria-label="Delete region"
+              title="Delete"
+              disabled={auth.writeBlocked || submitting || pendingRegion[region.id]}
+              onclick={() => (confirmingDelete = region.id)}
+            >
+              <Trash2 size={18} aria-hidden="true" />
+            </button>
+          </div>
+        {/if}
+      {/snippet}
+    </SavedList>
   {/if}
 
   <h3 class="caps-label section-head">Position warm</h3>
@@ -433,7 +714,7 @@ function toggleSource(id: string, on: boolean): void {
     }}
   />
   <h3 class="caps-label section-head">Position warm sources</h3>
-  {#each sources as source (source.id)}
+  {#each prewarmable as source (source.id)}
     <LayerToggle
       title={source.title}
       visible={positionSources.includes(source.id)}
@@ -446,67 +727,8 @@ function toggleSource(id: string, on: boolean): void {
       }}
     />
   {/each}
-  {#if sources.length === 0}
+  {#if prewarmable.length === 0}
     <p class="muted-note">No prewarmable sources found in the registry.</p>
-  {/if}
-
-  {#if error !== null}
-    <p class="alert-note" role="alert">{error}</p>
-  {/if}
-
-  {#if jobGone}
-    <p class="muted-note">
-      Job lost: the container restarted and the in-memory job is gone. Click Prewarm to restart.
-    </p>
-  {:else if warmStatus !== null && isTerminal(warmStatus)}
-    {#if warmStatus.state === 'done'}
-      {@const doneFmt = formatBytes(warmStatus.bytes)}
-      <p class="muted-note">
-        Done: {warmStatus.done} tiles cached ({doneFmt.value} {doneFmt.unit}).
-      </p>
-    {:else if warmStatus.state === 'capped'}
-      <p class="alert-note">
-        Cap reached after {warmStatus.done} tiles. Free up space or raise the cap, then re-warm.
-      </p>
-    {:else if warmStatus.state === 'cancelled'}
-      <p class="muted-note">Cancelled after {warmStatus.done} tiles.</p>
-    {:else}
-      <p class="alert-note" role="alert">
-        Ended with {warmStatus.errors} error(s). Check the server log, then re-warm.
-      </p>
-    {/if}
-  {/if}
-
-  <div class="panel-controls">
-    {#if running}
-      <button type="button" class="btn btn-danger btn--grow" onclick={() => void doCancel()}>
-        Cancel
-      </button>
-    {:else}
-      <button
-        type="button"
-        class="btn btn-primary btn--grow"
-        disabled={!gate || submitting}
-        onclick={() => void doPrewarm()}
-      >
-        <Download size={16} aria-hidden="true" />
-        Prewarm
-      </button>
-    {/if}
-  </div>
-
-  {#if running && warmStatus !== null}
-    <div
-      class="warm-track"
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuenow={warmStatus.done}
-      aria-valuemax={warmStatus.total}
-      aria-label="Prewarm progress"
-    >
-      <div class="warm-fill" style:inline-size="{Math.round(progress * 100)}%"></div>
-    </div>
-    <p class="muted-note">{warmStatus.done} / {warmStatus.total} tiles</p>
   {/if}
 </SlideOver>
 
@@ -517,18 +739,18 @@ function toggleSource(id: string, on: boolean): void {
   margin-block-start: var(--space-2);
 }
 
-/* Token-driven progress bar: same track height and pill radius as the .range slider in forms.css,
-   so the two progress indicators read as one visual family across all three themes. */
+/* The determinate download progress bar on a downloading region card: a token-driven track with an
+   accent fill, mirroring the themed range track so it reads as one instrument across all three
+   themes. Local because this is the only place a determinate bar appears. */
 .warm-track {
   block-size: var(--range-track-h);
   border-radius: var(--radius-pill);
   background: var(--border);
   overflow: hidden;
 }
-
 .warm-fill {
   block-size: 100%;
   background: var(--accent);
-  transition: inline-size 0.3s ease;
+  transition: inline-size var(--transition-fast);
 }
 </style>

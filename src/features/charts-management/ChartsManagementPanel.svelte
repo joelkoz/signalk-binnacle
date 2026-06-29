@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onDestroy } from 'svelte';
 import type { AuthController } from '$shared/signalk';
-import { SlideOver } from '$shared/ui';
+import { SlideOver, TextField } from '$shared/ui';
 import type { ManagedChart, ManagedChartsResponse } from './charts-management-client.js';
 import { fetchManagedCharts, putChartOverride } from './charts-management-client.js';
 
@@ -122,18 +122,14 @@ function formatBounds(bounds: [number, number, number, number]): string {
             </dd>
           {/if}
         </dl>
-        <label class="field-row">
-          <span class="field-label caps-label">Display name</span>
-          <input
-            class="input field-input"
-            type="text"
-            value={chart.override.name ?? chart.name}
-            disabled={auth.writeBlocked}
-            aria-label="Display name for {chart.fileName}"
-            onchange={(e) =>
-              void saveOverride(chart, 'name', (e.currentTarget as HTMLInputElement).value)}
-          >
-        </label>
+        <TextField
+          variant="stacked"
+          label="Display name"
+          value={chart.override.name ?? chart.name}
+          disabled={auth.writeBlocked}
+          ariaLabel="Display name for {chart.fileName}"
+          onCommit={(value) => void saveOverride(chart, 'name', value)}
+        />
         {#if saveStates[nameKey] === 'saving'}
           <p class="muted-note save-note">Saving...</p>
         {:else if saveStates[nameKey] === 'saved'}
@@ -141,22 +137,14 @@ function formatBounds(bounds: [number, number, number, number]): string {
         {:else if saveStates[nameKey] === 'error'}
           <p class="alert-note save-note" role="alert">Could not save the name. Check access.</p>
         {/if}
-        <label class="field-row">
-          <span class="field-label caps-label">Description</span>
-          <input
-            class="input field-input"
-            type="text"
-            value={chart.override.description ?? chart.description}
-            disabled={auth.writeBlocked}
-            aria-label="Description for {chart.fileName}"
-            onchange={(e) =>
-              void saveOverride(
-                chart,
-                'description',
-                (e.currentTarget as HTMLInputElement).value,
-              )}
-          >
-        </label>
+        <TextField
+          variant="stacked"
+          label="Description"
+          value={chart.override.description ?? chart.description}
+          disabled={auth.writeBlocked}
+          ariaLabel="Description for {chart.fileName}"
+          onCommit={(value) => void saveOverride(chart, 'description', value)}
+        />
         {#if saveStates[descKey] === 'saving'}
           <p class="muted-note save-note">Saving...</p>
         {:else if saveStates[descKey] === 'saved'}
@@ -223,24 +211,6 @@ function formatBounds(bounds: [number, number, number, number]): string {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
-}
-
-/* The labeled text-input row: a column stack so the caps label sits above the full-width input,
-   consistent with how the layers panel stacks its chart URL label above its input. */
-.field-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.field-label {
-  display: block;
-}
-
-/* Stretch the text input to fill the card width, matching the chart URL input in the layers panel. */
-.field-input {
-  inline-size: 100%;
-  box-sizing: border-box;
 }
 
 /* The deferred-upload note sits at the end of the panel body, always present as a clear signal

@@ -5,29 +5,24 @@ const ok = (body: unknown, status = 200): Response =>
   ({ ok: status < 400, status, json: async () => body }) as unknown as Response;
 
 describe('prewarm client', () => {
-  it('posts a prewarm with the bearer token and returns the jobId', async () => {
-    const fetchImpl = vi.fn(async () => ok({ jobId: 'warm-3' }));
+  it('maps a region status 404 to null (the job is gone)', async () => {
+    const fetchImpl = vi.fn(async () => ok({}, 404));
     const client = createPrewarmClient('http://h/plugins/signalk-binnacle-companion', 'tok', fetchImpl as unknown as typeof fetch);
-    const res = await client.postPrewarm({
-      bbox: [-1, -1, 1, 1],
-      sources: ['seamark'],
-      minzoom: 6,
-      maxzoom: 8,
-    });
-    expect(res).toEqual({ jobId: 'warm-3' });
+    expect(await client.getRegionJobStatus('region-9')).toBeNull();
     expect(fetchImpl).toHaveBeenCalledWith(
-      'http://h/plugins/signalk-binnacle-companion/api/prewarm',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({ Authorization: 'Bearer tok' }),
-      }),
+      'http://h/plugins/signalk-binnacle-companion/api/regions/region-9/status',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer tok' }) }),
     );
   });
 
-  it('maps a 404 status to null (the job is gone)', async () => {
-    const fetchImpl = vi.fn(async () => ok({}, 404));
-    const client = createPrewarmClient('http://h/plugins/signalk-binnacle-companion', 'tok', fetchImpl as unknown as typeof fetch);
-    expect(await client.getStatus('warm-9')).toBeNull();
+  it('encodes lat and lon into the geocode query', async () => {
+    const fetchImpl = vi.fn(async () => ok({ display_name: 'Test City' }));
+    const client = createPrewarmClient('http://h/plugins/signalk-binnacle-companion', undefined, fetchImpl as unknown as typeof fetch);
+    expect(await client.geocode(37.77, -122.41)).toBe('Test City');
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://h/plugins/signalk-binnacle-companion/api/geocode?lat=37.77&lon=-122.41',
+      undefined,
+    );
   });
 
   it('reads the cache stats without a token on an unsecured server', async () => {

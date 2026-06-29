@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { canPrewarm } from './estimate.js';
 import type { CacheStats } from './prewarm-client.js';
 
-// Pins the gate predicate the panel uses: Prewarm is enabled only when a box is drawn, at least
-// one source is selected, the user can write, and the estimate fits the free cap.
+// Pins the gate predicate the panel uses: Download is enabled only when a box is drawn, at least
+// one source is selected, the user can write, and the estimate fits the regions-free budget.
 
 const stats: CacheStats = {
   rows: 0,
   bytes: 0,
   cap: 1_000_000_000,
+  regionsBudgetBytes: 500_000_000,
+  regionsFreeBytes: 450_000_000,
   perSourceAvgBytes: { seamark: 20_000 },
 };
 
@@ -37,8 +39,8 @@ describe('prewarm gate', () => {
     ).toBe(false);
   });
 
-  it('disabled when the estimate exceeds the free cap', () => {
-    const tiny: CacheStats = { ...stats, cap: 1000, bytes: 0 };
+  it('disabled when the estimate exceeds the regions-free budget', () => {
+    const tiny: CacheStats = { ...stats, regionsBudgetBytes: 1000, regionsFreeBytes: 1000 };
     expect(
       canPrewarm({
         bbox: [-5, -5, 5, 5],
