@@ -8,16 +8,39 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v0110"></a>
+
+## [0.11.0] - 2026-06-28
+
 ### Added
 
-- **Shared offline cache for the remote charts and the basemap.** When the Binnacle Companion plugin
-  is installed, the depth, boundary, protected-area, and seamark raster overlays, and the vector
-  basemap with its glyphs and tiles, are fetched and cached through the Signal K server, so the whole
-  boat shares one cache, they work offline at sea, and the same tile is not refetched per device. When
-  the companion is absent, every source keeps its direct upstream URL, so a standalone install is
-  unchanged. The NASA GIBS ocean fields still fetch directly for now. Companion detection is bounded by
-  a short timeout so a wedged server cannot stall the map, and if the proxied basemap style fails while
-  the device is online the direct style is used before the blank offline fallback.
+- **Tile cache prewarm panel.** Draw a cruising box on the chart and fill the shared boat-wide tile
+  cache before leaving internet coverage. A live byte estimate, gated against the cache capacity,
+  shows how much storage the selected area and zoom range will use before the fill begins. The
+  prewarmed box is pinned and never evicted; writes are bounded for microSD longevity. Requires the
+  Binnacle Companion plugin.
+- **Off-plan position-warm.** An optional, throttled background fill keeps a small tile radius warm
+  around the vessel when it travels outside the prewarmed box, using an LRU-bounded eviction policy
+  so the fill is always storage-bounded and never displaces the pinned prewarm.
+- **Chart-management panel.** Lists every local `.pmtiles` archive the Binnacle Companion has
+  discovered and registered, with a per-chart name and description, so the full set of offline charts
+  is visible in one panel. Requires the Binnacle Companion plugin.
+- **Shared offline tile cache for the remote charts and the basemap.** When the Binnacle Companion
+  plugin is installed, the depth, boundary, protected-area, and seamark raster overlays, and the
+  vector basemap with its glyphs and tiles, are fetched and cached through the Signal K server, so
+  the whole boat shares one cache, they work offline at sea, and the same tile is not refetched per
+  device. When the companion is absent, every source keeps its direct upstream URL, so a standalone
+  install is unchanged. The NASA GIBS ocean fields still fetch directly for now. Companion detection
+  is bounded by a short timeout so a wedged server cannot stall the map, and if the proxied basemap
+  style fails while the device is online the direct style is used before the blank offline fallback.
+
+### Changed
+
+- **PMTiles charts served by the companion use the browser cache correctly.** When the Binnacle
+  Companion provides a `.pmtiles` archive, Binnacle issues conditional requests against the strong
+  ETag the companion sets, retiring the `no-store` workaround that had been applied to
+  companion-provided chart paths. The archive is served with HTTP Range support so partial fetches
+  work and previously cached ranges are reused.
 
 <a id="v0106"></a>
 
