@@ -576,9 +576,9 @@ const units = new UnitsStore();
 // its Terra Draw rectangle tool independently of the route editor.
 let mapInstance = $state<MapLibreMap | undefined>();
 
-// Companion feature-detect: resolved once at startup. The prewarm panel and its menu entry are only
-// shown when the Binnacle Companion is present, matching how the tile proxy gates itself in ChartCanvas.
-let companionPresent = $state(false);
+// Companion feature-detect: resolved once at startup. Both the prewarm and chart-management panels
+// receive the resolved base URL as a prop, so they mount ready without their own probe RTT.
+let companionBase = $state<string | null>(null);
 
 // Samples the live instruments from app start so the Trends panel has an honest in-session
 // series on servers with no history provider. Stopped on destroy.
@@ -1116,7 +1116,7 @@ const menuItems = $derived<MenuItem[]>([
     pressed: activePanel === 'profiles',
     onSelect: () => togglePanel('profiles'),
   },
-  ...(companionPresent
+  ...(companionBase !== null
     ? [
         {
           id: 'prewarm',
@@ -2147,7 +2147,7 @@ const NARROW_BREAKPOINT_PX = 600;
 onMount(() => {
   // origin is fixed for the page lifetime; onMount ensures this runs exactly once.
   void detectCompanion(origin).then((base) => {
-    companionPresent = base !== null;
+    companionBase = base;
   });
   trendRecorder.start(() => ({
     depth: vessel.depthMeters,
@@ -2553,14 +2553,21 @@ onDestroy(() => {
         />
       </div>
     {/if}
-    {#if activePanel === 'prewarm' && companionPresent && mapInstance}
+    {#if activePanel === 'prewarm' && companionBase !== null && mapInstance}
       <div class="panel-slot">
-        <PrewarmPanel {auth} map={mapInstance} {units} onClose={closePanel} onBack={backToMenu} />
+        <PrewarmPanel
+          {auth}
+          map={mapInstance}
+          {units}
+          {companionBase}
+          onClose={closePanel}
+          onBack={backToMenu}
+        />
       </div>
     {/if}
-    {#if activePanel === 'charts-management' && companionPresent}
+    {#if activePanel === 'charts-management' && companionBase !== null}
       <div class="panel-slot">
-        <ChartsManagementPanel {auth} onClose={closePanel} onBack={backToMenu} />
+        <ChartsManagementPanel {auth} {companionBase} onClose={closePanel} onBack={backToMenu} />
       </div>
     {/if}
     {#if weatherPanelOpen}

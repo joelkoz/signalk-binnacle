@@ -101,9 +101,7 @@ function isCompanionProvided(httpUrl: string): boolean {
   if (typeof window === 'undefined') return false;
   try {
     const u = new URL(httpUrl, window.location.href);
-    return (
-      u.hostname === window.location.hostname && u.pathname.startsWith(COMPANION_PMTILES_PREFIX)
-    );
+    return u.origin === window.location.origin && u.pathname.startsWith(COMPANION_PMTILES_PREFIX);
   } catch {
     return false;
   }

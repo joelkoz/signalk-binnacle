@@ -120,6 +120,13 @@ describe('createArchiveSource provided-path switch', () => {
     expect(source).toBeInstanceOf(BlockCachedSource);
   });
 
+  it('does not treat a same-host-different-port url as companion-provided', () => {
+    const source = createArchiveSource(
+      'http://localhost:9000/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles',
+    );
+    expect(source).toBeInstanceOf(BlockCachedSource);
+  });
+
   it('keeps NoStoreSource for a blob archive', () => {
     const source = createArchiveSource('blob:http://localhost/abc-123');
     expect(source).toBeInstanceOf(NoStoreSource);

@@ -1,6 +1,5 @@
 <script lang="ts">
 import { onDestroy } from 'svelte';
-import { detectCompanion } from '$shared/map/companion.js';
 import type { AuthController } from '$shared/signalk';
 import { SlideOver } from '$shared/ui';
 import type { ManagedChart, ManagedChartsResponse } from './charts-management-client.js';
@@ -8,15 +7,12 @@ import { fetchManagedCharts, putChartOverride } from './charts-management-client
 
 interface Props {
   auth: AuthController;
+  companionBase: string;
   onClose: () => void;
   onBack?: () => void;
 }
 
-const { auth, onClose, onBack }: Props = $props();
-
-// Feature-detect: the panel renders nothing until detectCompanion resolves.
-let detecting = $state(true);
-let companionBase = $state<string | null>(null);
+const { auth, companionBase, onClose, onBack }: Props = $props();
 
 let data = $state<ManagedChartsResponse | null>(null);
 let loadError = $state<string | null>(null);
@@ -32,24 +28,15 @@ onDestroy(() => {
 // the current bearer token, matching the prewarm panel's client-rebuild pattern.
 const token = $derived(auth.token ?? undefined);
 
-// Detect the companion on mount. Reads no reactive deps so runs once.
-$effect(() => {
-  void detectCompanion(location.origin).then((base) => {
-    companionBase = base;
-    detecting = false;
-  });
-});
-
-// Load the chart list when the companion is found, and refresh when the auth token changes.
+// Load the chart list on mount and refresh when the auth token changes.
 // A stale flag guards against a previous slow request overwriting a fresh response when the
 // token rotates mid-flight, matching the prewarm panel's stats-load effect.
 $effect(() => {
-  if (companionBase === null) return;
   // Track the token so a token change triggers a re-fetch with the new credentials.
   void token;
   let stale = false;
   loadError = null;
-  void fetchManagedCharts(location.origin, token).then((result) => {
+  void fetchManagedCharts(companionBase, token).then((result) => {
     if (stale) return;
     if (result === undefined) {
       loadError = 'Could not load charts. Check the connection and access.';
@@ -71,7 +58,7 @@ async function saveOverride(
   const key = `${chart.identifier}:${field}`;
   const override = { ...chart.override, [field]: value };
   saveStates[key] = 'saving';
-  const ok = await putChartOverride(location.origin, token, chart.identifier, override);
+  const ok = await putChartOverride(companionBase, token, chart.identifier, override);
   saveStates[key] = ok ? 'saved' : 'error';
   if (ok) {
     // Optimistically update the local override so a subsequent save on the same chart
@@ -95,108 +82,106 @@ function formatBounds(bounds: [number, number, number, number]): string {
 }
 </script>
 
-{#if !detecting && companionBase !== null}
-  <SlideOver
-    title="Chart management"
-    closeLabel="Close chart management panel"
-    {onClose}
-    {onBack}
-    bodyFlex
-  >
-    {#if auth.writeBlocked}
-      <p class="muted-note">
-        A write token is needed to edit chart names and descriptions. Request a read/write token to
-        continue.
-      </p>
-    {/if}
+<SlideOver
+  title="Chart management"
+  closeLabel="Close chart management panel"
+  {onClose}
+  {onBack}
+  bodyFlex
+>
+  {#if auth.writeBlocked}
+    <p class="muted-note">
+      A write token is needed to edit chart names and descriptions. Request a read/write token to
+      continue.
+    </p>
+  {/if}
 
-    <h3 class="caps-label section-head">Charts</h3>
+  <h3 class="caps-label section-head">Charts</h3>
 
-    {#if loadError !== null}
-      <p class="alert-note" role="alert">{loadError}</p>
-    {:else if data === null}
-      <p class="muted-note">Loading charts...</p>
-    {:else if data.charts.length === 0}
-      <p class="muted-note">No charts found. Add PMTiles files to the server chart directory.</p>
-    {:else}
-      {#each data.charts as chart (chart.identifier)}
-        {@const nameKey = `${chart.identifier}:name`}
-        {@const descKey = `${chart.identifier}:description`}
-        <div class="chart-card card-frame">
-          <p class="chart-file">{chart.fileName}</p>
-          <dl class="stat-grid">
-            <dt>Format</dt>
-            <dd><span>{chart.format.toUpperCase()}</span><span class="unit"></span></dd>
-            <dt>Zoom range</dt>
-            <dd><span>{chart.minzoom} to {chart.maxzoom}</span><span class="unit"></span></dd>
-            {#if chart.bounds}
-              <dt>Bounds</dt>
-              <dd class="bounds-val">
-                <span>{formatBounds(chart.bounds)}</span><span class="unit"></span>
-              </dd>
-            {/if}
-          </dl>
-          <label class="field-row">
-            <span class="field-label caps-label">Display name</span>
-            <input
-              class="input field-input"
-              type="text"
-              value={chart.override.name ?? chart.name}
-              disabled={auth.writeBlocked}
-              aria-label="Display name for {chart.fileName}"
-              onchange={(e) =>
-                void saveOverride(chart, 'name', (e.currentTarget as HTMLInputElement).value)}
-            >
-          </label>
-          {#if saveStates[nameKey] === 'saving'}
-            <p class="muted-note save-note">Saving...</p>
-          {:else if saveStates[nameKey] === 'saved'}
-            <p class="muted-note save-note">Saved.</p>
-          {:else if saveStates[nameKey] === 'error'}
-            <p class="alert-note save-note" role="alert">Could not save the name. Check access.</p>
+  {#if loadError !== null}
+    <p class="alert-note" role="alert">{loadError}</p>
+  {:else if data === null}
+    <p class="muted-note">Loading charts...</p>
+  {:else if data.charts.length === 0}
+    <p class="muted-note">No charts found. Add PMTiles files to the server chart directory.</p>
+  {:else}
+    {#each data.charts as chart (chart.identifier)}
+      {@const nameKey = `${chart.identifier}:name`}
+      {@const descKey = `${chart.identifier}:description`}
+      <div class="chart-card card-frame">
+        <p class="chart-file">{chart.fileName}</p>
+        <dl class="stat-grid">
+          <dt>Format</dt>
+          <dd><span>{chart.format.toUpperCase()}</span><span class="unit"></span></dd>
+          <dt>Zoom range</dt>
+          <dd><span>{chart.minzoom} to {chart.maxzoom}</span><span class="unit"></span></dd>
+          {#if chart.bounds}
+            <dt>Bounds</dt>
+            <dd class="bounds-val">
+              <span>{formatBounds(chart.bounds)}</span><span class="unit"></span>
+            </dd>
           {/if}
-          <label class="field-row">
-            <span class="field-label caps-label">Description</span>
-            <input
-              class="input field-input"
-              type="text"
-              value={chart.override.description ?? chart.description}
-              disabled={auth.writeBlocked}
-              aria-label="Description for {chart.fileName}"
-              onchange={(e) =>
-                void saveOverride(
-                  chart,
-                  'description',
-                  (e.currentTarget as HTMLInputElement).value,
-                )}
-            >
-          </label>
-          {#if saveStates[descKey] === 'saving'}
-            <p class="muted-note save-note">Saving...</p>
-          {:else if saveStates[descKey] === 'saved'}
-            <p class="muted-note save-note">Saved.</p>
-          {:else if saveStates[descKey] === 'error'}
-            <p class="alert-note save-note" role="alert">
-              Could not save the description. Check access.
-            </p>
-          {/if}
-        </div>
-      {/each}
-    {/if}
+        </dl>
+        <label class="field-row">
+          <span class="field-label caps-label">Display name</span>
+          <input
+            class="input field-input"
+            type="text"
+            value={chart.override.name ?? chart.name}
+            disabled={auth.writeBlocked}
+            aria-label="Display name for {chart.fileName}"
+            onchange={(e) =>
+              void saveOverride(chart, 'name', (e.currentTarget as HTMLInputElement).value)}
+          >
+        </label>
+        {#if saveStates[nameKey] === 'saving'}
+          <p class="muted-note save-note">Saving...</p>
+        {:else if saveStates[nameKey] === 'saved'}
+          <p class="muted-note save-note">Saved.</p>
+        {:else if saveStates[nameKey] === 'error'}
+          <p class="alert-note save-note" role="alert">Could not save the name. Check access.</p>
+        {/if}
+        <label class="field-row">
+          <span class="field-label caps-label">Description</span>
+          <input
+            class="input field-input"
+            type="text"
+            value={chart.override.description ?? chart.description}
+            disabled={auth.writeBlocked}
+            aria-label="Description for {chart.fileName}"
+            onchange={(e) =>
+              void saveOverride(
+                chart,
+                'description',
+                (e.currentTarget as HTMLInputElement).value,
+              )}
+          >
+        </label>
+        {#if saveStates[descKey] === 'saving'}
+          <p class="muted-note save-note">Saving...</p>
+        {:else if saveStates[descKey] === 'saved'}
+          <p class="muted-note save-note">Saved.</p>
+        {:else if saveStates[descKey] === 'error'}
+          <p class="alert-note save-note" role="alert">
+            Could not save the description. Check access.
+          </p>
+        {/if}
+      </div>
+    {/each}
+  {/if}
 
-    {#if data !== null && data.invalid.length > 0}
-      <h3 class="caps-label section-head">Invalid files</h3>
-      {#each data.invalid as item (item.fileName)}
-        <div class="card-frame invalid-card">
-          <p class="chart-file">{item.fileName}</p>
-          <p class="alert-note">{item.error}</p>
-        </div>
-      {/each}
-    {/if}
+  {#if data !== null && data.invalid.length > 0}
+    <h3 class="caps-label section-head">Invalid files</h3>
+    {#each data.invalid as item (item.fileName)}
+      <div class="card-frame invalid-card">
+        <p class="chart-file">{item.fileName}</p>
+        <p class="alert-note">{item.error}</p>
+      </div>
+    {/each}
+  {/if}
 
-    <p class="muted-note deferred-note">Browser upload of chart archives is not yet available.</p>
-  </SlideOver>
-{/if}
+  <p class="muted-note deferred-note">Browser upload of chart archives is not yet available.</p>
+</SlideOver>
 
 <style>
 /* Extra top margin on each section heading so the caps labels breathe inside the bodyFlex column,
