@@ -7,16 +7,16 @@ import { TerraDraw, TerraDrawRectangleMode } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import { bboxFromRectangle } from './estimate.js';
 
-export interface PrewarmRectangle {
+export interface RegionRectangle {
   start(): void;
   clear(): void;
   onChange(cb: (bbox: [number, number, number, number] | null) => void): void;
   destroy(): void;
 }
 
-export function createPrewarmRectangle(map: MapLibreMap): PrewarmRectangle {
+export function createRegionRectangle(map: MapLibreMap): RegionRectangle {
   const draw = new TerraDraw({
-    adapter: new TerraDrawMapLibreGLAdapter({ map, prefixId: 'binnacle-prewarm-draw' }),
+    adapter: new TerraDrawMapLibreGLAdapter({ map, prefixId: 'chart-locker-region-draw' }),
     modes: [new TerraDrawRectangleMode()],
   });
 

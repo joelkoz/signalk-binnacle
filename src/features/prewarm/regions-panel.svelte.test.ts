@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { canPrewarm } from './estimate.js';
-import type { CacheStats } from './prewarm-client.js';
+import { canDownloadRegion } from './estimate.js';
+import type { CacheStats } from './regions-client.js';
 
 // Pins the gate predicate the panel uses: Download is enabled only when a box is drawn, at least
 // one source is selected, the user can write, and the estimate fits the regions-free budget.
@@ -14,10 +14,10 @@ const stats: CacheStats = {
   perSourceAvgBytes: { seamark: 20_000 },
 };
 
-describe('prewarm gate', () => {
+describe('regions gate', () => {
   it('disabled with no box', () => {
     expect(
-      canPrewarm({
+      canDownloadRegion({
         bbox: null,
         sources: ['seamark'],
         writeBlocked: false,
@@ -29,7 +29,7 @@ describe('prewarm gate', () => {
 
   it('disabled when write is blocked', () => {
     expect(
-      canPrewarm({
+      canDownloadRegion({
         bbox: [-1, -1, 1, 1],
         sources: ['seamark'],
         writeBlocked: true,
@@ -42,7 +42,7 @@ describe('prewarm gate', () => {
   it('disabled when the estimate exceeds the regions-free budget', () => {
     const tiny: CacheStats = { ...stats, regionsBudgetBytes: 1000, regionsFreeBytes: 1000 };
     expect(
-      canPrewarm({
+      canDownloadRegion({
         bbox: [-5, -5, 5, 5],
         sources: ['seamark'],
         writeBlocked: false,
@@ -54,7 +54,7 @@ describe('prewarm gate', () => {
 
   it('enabled when a box and a source are set and the estimate fits', () => {
     expect(
-      canPrewarm({
+      canDownloadRegion({
         bbox: [-0.1, -0.1, 0.1, 0.1],
         sources: ['seamark'],
         writeBlocked: false,
@@ -66,7 +66,7 @@ describe('prewarm gate', () => {
 
   it('disabled with no sources selected', () => {
     expect(
-      canPrewarm({
+      canDownloadRegion({
         bbox: [-1, -1, 1, 1],
         sources: [],
         writeBlocked: false,

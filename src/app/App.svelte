@@ -86,7 +86,7 @@ import {
   type NoteSelection,
 } from '$features/notes';
 import { type Poi, PoiSearchPanel } from '$features/poi-search';
-import { PrewarmPanel } from '$features/prewarm';
+import { RegionsPanel } from '$features/prewarm';
 import {
   createProfileBindings,
   downloadProfileJson,
@@ -452,7 +452,7 @@ type LeftPanel =
   | 'alarms'
   | 'poi-search'
   | 'profiles'
-  | 'prewarm'
+  | 'regions'
   | 'charts-management';
 let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
@@ -559,11 +559,11 @@ const layerCategoriesOpen = new PersistedValue<Record<string, boolean>>(
 // locally persisted fallback that profiles can carry. The store stays SI; only readouts consult it.
 const units = new UnitsStore();
 
-// The raw MapLibre map instance, handed up once after the chart loads so the prewarm panel can mount
+// The raw MapLibre map instance, handed up once after the chart loads so the regions panel can mount
 // its Terra Draw rectangle tool independently of the route editor.
 let mapInstance = $state<MapLibreMap | undefined>();
 
-// Companion feature-detect: resolved once at startup. Both the prewarm and chart-management panels
+// Companion feature-detect: resolved once at startup. Both the regions and chart-management panels
 // receive the resolved base URL as a prop, so they mount ready without their own probe RTT.
 let companionBase = $state<string | null>(null);
 
@@ -1106,13 +1106,13 @@ const menuItems = $derived<MenuItem[]>([
   ...(companionBase !== null
     ? [
         {
-          id: 'prewarm',
+          id: 'regions',
           label: 'Tile cache',
           shortLabel: 'Cache',
           icon: HardDrive,
           group: 'Settings',
-          pressed: activePanel === 'prewarm',
-          onSelect: () => togglePanel('prewarm'),
+          pressed: activePanel === 'regions',
+          onSelect: () => togglePanel('regions'),
         } satisfies MenuItem,
         {
           id: 'charts-management',
@@ -2318,9 +2318,9 @@ onDestroy(() => {
         />
       </div>
     {/if}
-    {#if activePanel === 'prewarm' && companionBase !== null && mapInstance}
+    {#if activePanel === 'regions' && companionBase !== null && mapInstance}
       <div class="panel-slot">
-        <PrewarmPanel
+        <RegionsPanel
           {auth}
           map={mapInstance}
           {units}

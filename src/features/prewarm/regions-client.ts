@@ -1,4 +1,4 @@
-/** The webapp client for the companion prewarm and config routes. The panel never calls the container
+/** The webapp client for the companion regions and config routes. The panel never calls the container
  * directly; it always goes through the admin-gated plugin routes, so the container port stays private.
  * Auth follows the webapp scheme: a bearer token through the shared authInit, the origin as the base,
  * and the client owning the path. */
@@ -52,7 +52,7 @@ export interface RegionRequest {
   name: string;
 }
 
-export interface PrewarmClient {
+export interface RegionsClient {
   getConfig(): Promise<unknown>;
   postConfig(config: unknown): Promise<void>;
   getCacheStats(): Promise<CacheStats>;
@@ -64,11 +64,11 @@ export interface PrewarmClient {
   geocode(lat: number, lon: number): Promise<string | null>;
 }
 
-export function createPrewarmClient(
+export function createRegionsClient(
   origin: string,
   token: string | undefined,
   fetchImpl: typeof fetch = fetch,
-): PrewarmClient {
+): RegionsClient {
   const url = (path: string): string => companionApiUrl(origin, path);
   const json = async <T>(r: Response): Promise<T> => (await r.json()) as T;
   const jsonPost = (body: unknown): RequestInit | undefined =>
@@ -79,10 +79,10 @@ export function createPrewarmClient(
     });
   return {
     async getConfig() {
-      return json(await fetchImpl(url('/prewarm/config'), authInit(token)));
+      return json(await fetchImpl(url('/position-warm/config'), authInit(token)));
     },
     async postConfig(config) {
-      await fetchImpl(url('/prewarm/config'), jsonPost(config));
+      await fetchImpl(url('/position-warm/config'), jsonPost(config));
     },
     async getCacheStats() {
       return json<CacheStats>(await fetchImpl(url('/cache/stats'), authInit(token)));

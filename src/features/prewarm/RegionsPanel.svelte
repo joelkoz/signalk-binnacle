@@ -7,18 +7,18 @@ import { feetToMeters, lengthUnit, metersToFeet } from '$shared/lib';
 import type { AuthController } from '$shared/signalk';
 import { InlineConfirm, LayerToggle, SavedList, SlideOver, TextField, UnitField } from '$shared/ui';
 import {
-  canPrewarm,
+  canDownloadRegion,
   coveringSources,
   estimateBytes,
   formatBytes,
   isTerminal,
-  prewarmableSources,
+  regionSources,
   regionsFreeBytes,
 } from './estimate.js';
-import type { CacheStats, SavedRegionDto, WarmStatus } from './prewarm-client.js';
-import { createPrewarmClient } from './prewarm-client.js';
-import type { PrewarmRectangle } from './prewarm-draw.js';
-import { createPrewarmRectangle } from './prewarm-draw.js';
+import type { CacheStats, SavedRegionDto, WarmStatus } from './regions-client.js';
+import { createRegionsClient } from './regions-client.js';
+import type { RegionRectangle } from './regions-draw.js';
+import { createRegionRectangle } from './regions-draw.js';
 import { buildConfigPayload, type PositionWarmSettings } from './settings-payload.js';
 
 interface Props {
@@ -62,7 +62,7 @@ let pendingRegion = $state<Record<string, boolean>>({});
 
 // Internal references not read in the template: the draw controller, the per-region poll timers, and
 // the consecutive poll-failure counts.
-let rect: PrewarmRectangle | null = null;
+let rect: RegionRectangle | null = null;
 const pollTimers = new Map<string, ReturnType<typeof setInterval>>();
 const pollFailures = new Map<string, number>();
 // Generation counters so two in-flight loads cannot resolve out of order and clobber the newer value.
@@ -71,12 +71,12 @@ let statsGen = 0;
 // Stop a region's 2-second poller after this many consecutive failures, surfacing an error.
 const POLL_FAIL_CAP = 5;
 
-// prewarmableSources() is a pure function with no reactive deps, evaluated once. Used by the
+// regionSources() is a pure function with no reactive deps, evaluated once. Used by the
 // position-warm section, which is not box-scoped.
-const prewarmable = prewarmableSources();
+const regionSourceList = regionSources();
 
 // Rebuild the client when the auth token changes so every call carries the current bearer token.
-const client = $derived(createPrewarmClient(companionBase, auth.token ?? undefined));
+const client = $derived(createRegionsClient(companionBase, auth.token ?? undefined));
 
 // Position-warm settings; default OFF per spec, loaded from getConfig on open.
 let positionEnabled = $state(false);
@@ -114,7 +114,7 @@ const activeSourceIds = $derived(
 const gate = $derived(
   stats !== null &&
     !namePrep &&
-    canPrewarm({
+    canDownloadRegion({
       bbox,
       sources: activeSourceIds,
       writeBlocked: auth.writeBlocked,
@@ -145,11 +145,11 @@ $effect(() => {
   void loadRegions();
 });
 
-// Wire up the panel-scoped Terra Draw rectangle instance. The prefixId 'binnacle-prewarm-draw'
+// Wire up the panel-scoped Terra Draw rectangle instance. The prefixId 'chart-locker-region-draw'
 // keeps it separate from the route editor's 'binnacle-route-draw' so the two never collide. A new
 // box auto-selects every covering source; the owner can then deselect.
 $effect(() => {
-  const r = createPrewarmRectangle(map);
+  const r = createRegionRectangle(map);
   r.onChange((newBbox) => {
     bbox = newBbox;
     selectedSources =
@@ -714,7 +714,7 @@ function updatedLabel(ts: number): string {
     }}
   />
   <h3 class="caps-label section-head">Position warm sources</h3>
-  {#each prewarmable as source (source.id)}
+  {#each regionSourceList as source (source.id)}
     <LayerToggle
       title={source.title}
       visible={positionSources.includes(source.id)}
@@ -727,8 +727,8 @@ function updatedLabel(ts: number): string {
       }}
     />
   {/each}
-  {#if prewarmable.length === 0}
-    <p class="muted-note">No prewarmable sources found in the registry.</p>
+  {#if regionSourceList.length === 0}
+    <p class="muted-note">No downloadable sources cover this area.</p>
   {/if}
 </SlideOver>
 

@@ -5,10 +5,10 @@ import {
   DEFAULT_TILE_BYTES,
   estimateBytes,
   exceedsRegionsFree,
-  prewarmableSources,
+  regionSources,
   regionsFreeBytes,
 } from './estimate.js';
-import type { CacheStats } from './prewarm-client.js';
+import type { CacheStats } from './regions-client.js';
 
 const stats = (over: Partial<CacheStats> = {}): CacheStats => ({
   rows: 0,
@@ -24,10 +24,10 @@ const stats = (over: Partial<CacheStats> = {}): CacheStats => ({
   ...over,
 });
 
-describe('prewarm estimate', () => {
-  it('excludes style sources from the prewarmable list', () => {
-    expect(prewarmableSources().some((s) => s.upstream.mode === 'style')).toBe(false);
-    expect(prewarmableSources().some((s) => s.id === 'seamark')).toBe(true);
+describe('regions estimate', () => {
+  it('excludes style sources from the region list', () => {
+    expect(regionSources().some((s) => s.upstream.mode === 'style')).toBe(false);
+    expect(regionSources().some((s) => s.id === 'seamark')).toBe(true);
   });
 
   it('uses the per-source average when present, the default otherwise', () => {

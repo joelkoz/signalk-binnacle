@@ -1,5 +1,5 @@
 /** Talks to the companion chart-management routes. Admin-gated, so calls carry the bearer token
- * through the shared authInit, with companionApiUrl as the base, exactly like the prewarm client
+ * through the shared authInit, with companionApiUrl as the base, exactly like the regions client
  * and the other resource clients. Never throws: a failed read returns undefined so the panel keeps
  * its last list. */
 

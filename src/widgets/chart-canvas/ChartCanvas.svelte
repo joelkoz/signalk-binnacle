@@ -133,7 +133,7 @@ interface Props {
   // (for example, a Terra Draw tool that is not part of the route editor).
   onMapInstance?: (map: MapLibreMap) => void;
   // Fired when the map handle is destroyed, so the host can clear any reference it holds (for
-  // example, clearing mapInstance so the prewarm panel never mounts Terra Draw against a stale map).
+  // example, clearing mapInstance so the regions panel never mounts Terra Draw against a stale map).
   onMapDestroyed?: () => void;
 }
 
