@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { fetchManagedCharts, putChartOverride } from './charts-management-client';
 
 const ORIGIN = 'http://pi.local';
-const API = `${ORIGIN}/plugins/signalk-binnacle-companion/api`;
+const BASE = `${ORIGIN}/plugins/signalk-binnacle-companion`;
+const API = `${BASE}/api`;
 
 describe('charts-management-client', () => {
   it('fetches and parses the managed charts list with the bearer token', async () => {
@@ -25,7 +26,7 @@ describe('charts-management-client', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }));
-    const result = await fetchManagedCharts(ORIGIN, 'tok', fetchImpl);
+    const result = await fetchManagedCharts(BASE, 'tok', fetchImpl);
     expect(result?.charts[0].identifier).toBe('sf-pmtiles');
     expect(fetchImpl).toHaveBeenCalledWith(
       `${API}/charts`,
@@ -37,12 +38,12 @@ describe('charts-management-client', () => {
 
   it('returns undefined on a non-ok response', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response('nope', { status: 403 }));
-    expect(await fetchManagedCharts(ORIGIN, 'tok', fetchImpl)).toBeUndefined();
+    expect(await fetchManagedCharts(BASE, 'tok', fetchImpl)).toBeUndefined();
   });
 
   it('posts an override with the bearer token and reports success', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
-    const ok = await putChartOverride(ORIGIN, 'tok', 'sf-pmtiles', { name: 'Renamed' }, fetchImpl);
+    const ok = await putChartOverride(BASE, 'tok', 'sf-pmtiles', { name: 'Renamed' }, fetchImpl);
     expect(ok).toBe(true);
     expect(fetchImpl).toHaveBeenCalledWith(
       `${API}/charts/sf-pmtiles/override`,

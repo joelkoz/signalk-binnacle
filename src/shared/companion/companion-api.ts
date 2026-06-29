@@ -1,9 +1,11 @@
 /** The one place the webapp builds the companion plugin api base. Both companion webapp clients (the
- * prewarm client here and the PMTiles chart-management client) call companionApiUrl(origin, path), so
- * the base path is spelled once. base is always the server origin; the caller owns the rest of the path. */
+ * prewarm client here and the PMTiles chart-management client) call companionApiUrl(companionBase, path),
+ * where companionBase is the plugin base from detectCompanion (the server origin plus the plugin path),
+ * the same base baseStyleUrl and proxyTileTemplate build their URLs on. The /api segment is spelled once
+ * here, and the caller owns the rest of the path. */
 
-export const COMPANION_API_PATH = '/plugins/signalk-binnacle-companion/api';
+export const COMPANION_API_PATH = '/api';
 
-export function companionApiUrl(origin: string, path: string): string {
-  return `${origin}${COMPANION_API_PATH}${path}`;
+export function companionApiUrl(companionBase: string, path: string): string {
+  return `${companionBase}${COMPANION_API_PATH}${path}`;
 }
