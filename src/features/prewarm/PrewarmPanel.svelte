@@ -1,5 +1,5 @@
 <script lang="ts">
-import { Download, Square, Trash2 } from '@lucide/svelte';
+import { Download, RefreshCw, Square, Trash2 } from '@lucide/svelte';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { onDestroy } from 'svelte';
 import type { UnitsStore } from '$entities/units';
@@ -8,13 +8,14 @@ import type { AuthController } from '$shared/signalk';
 import { LayerToggle, SlideOver, UnitField } from '$shared/ui';
 import {
   canPrewarm,
+  coveringSources,
   estimateBytes,
   formatBytes,
-  freeCapBytes,
   isTerminal,
   prewarmableSources,
+  regionsFreeBytes,
 } from './estimate.js';
-import type { CacheStats, WarmStatus } from './prewarm-client.js';
+import type { CacheStats, SavedRegionDto } from './prewarm-client.js';
 import { createPrewarmClient } from './prewarm-client.js';
 import type { PrewarmRectangle } from './prewarm-draw.js';
 import { createPrewarmRectangle } from './prewarm-draw.js';
@@ -31,26 +32,30 @@ interface Props {
 
 const { auth, companionBase, map, units, onClose, onBack }: Props = $props();
 
-// Panel data
+// The whole-world box stands in for "no box drawn" when enumerating covering sources.
+const WORLD_BBOX: [number, number, number, number] = [-180, -90, 180, 90];
+
+// Region builder state.
 let stats = $state<CacheStats | null>(null);
+let regions = $state<SavedRegionDto[]>([]);
 let bbox = $state<[number, number, number, number] | null>(null);
 let selectedSources = $state<string[]>([]);
 let minzoom = $state(6);
 let maxzoom = $state(12);
 
-// Job state
-let jobId = $state<string | null>(null);
-let warmStatus = $state<WarmStatus | null>(null);
-let jobGone = $state(false);
-let error = $state<string | null>(null);
+// Name prep and submission state.
+let namePrep = $state(false);
+let regionName = $state('');
 let submitting = $state(false);
+let error = $state<string | null>(null);
 
-// Internal references not read in the template: the draw controller and the poll timer.
+// Internal references not read in the template: the draw controller and the per-region poll timers.
 let rect: PrewarmRectangle | null = null;
-let pollIntervalId: ReturnType<typeof setInterval> | null = null;
+const pollTimers = new Map<string, ReturnType<typeof setInterval>>();
 
-// prewarmableSources() is a pure function with no reactive deps, evaluated once.
-const sources = prewarmableSources();
+// prewarmableSources() is a pure function with no reactive deps, evaluated once. Used by the
+// position-warm section, which is not box-scoped.
+const prewarmable = prewarmableSources();
 
 // Rebuild the client when the auth token changes so every call carries the current bearer token.
 const client = $derived(createPrewarmClient(companionBase, auth.token ?? undefined));
@@ -79,11 +84,21 @@ const positionMoveDisplay = $derived(
   ),
 );
 
+// Only the sources that cover the current box show; a global source (no bounds) always covers a
+// non-empty box, and the style basemap is already excluded.
+const sourceList = $derived(coveringSources(bbox ?? WORLD_BBOX, [minzoom, maxzoom]));
+// The selected ids restricted to what is currently shown, so a zoom change that drops a source from
+// the list never carries a stale id into the estimate or the request.
+const activeSourceIds = $derived(
+  sourceList.filter((s) => selectedSources.includes(s.id)).map((s) => s.id),
+);
+
 const gate = $derived(
   stats !== null &&
+    !namePrep &&
     canPrewarm({
       bbox,
-      sources: selectedSources,
+      sources: activeSourceIds,
       writeBlocked: auth.writeBlocked,
       stats,
       zoomRange: [minzoom, maxzoom],
@@ -91,17 +106,14 @@ const gate = $derived(
 );
 
 const estimateVal = $derived(
-  stats !== null && bbox !== null && selectedSources.length > 0
-    ? estimateBytes(selectedSources, bbox, [minzoom, maxzoom], stats)
+  stats !== null && bbox !== null && activeSourceIds.length > 0
+    ? estimateBytes(activeSourceIds, bbox, [minzoom, maxzoom], stats.perSourceAvgBytes)
     : 0,
 );
 const estimateFmt = $derived(formatBytes(estimateVal));
-const freeCapFmt = $derived(stats !== null ? formatBytes(freeCapBytes(stats)) : null);
-
-const running = $derived(warmStatus !== null && warmStatus.state === 'running');
-const progress = $derived(
-  warmStatus !== null && warmStatus.total > 0 ? warmStatus.done / warmStatus.total : 0,
-);
+const regionsFreeFmt = $derived(stats !== null ? formatBytes(regionsFreeBytes(stats)) : null);
+const pinnedFmt = $derived(stats !== null ? formatBytes(stats.pinnedBytes ?? 0) : null);
+const scrollFmt = $derived(stats !== null ? formatBytes(stats.scrollBytes ?? 0) : null);
 
 // Load stats on mount and refresh when the auth token changes (client rebuilds on token change).
 // A stale flag guards against a previous slow request overwriting a fresh response when client
@@ -119,12 +131,34 @@ $effect(() => {
   };
 });
 
+// Load the saved regions on mount, and resume polling any caught mid-download.
+$effect(() => {
+  let stale = false;
+  void client
+    .getRegions()
+    .then((list) => {
+      if (stale) return;
+      regions = list;
+      for (const region of list) {
+        if (region.status === 'downloading') pollRegion(region.id);
+      }
+    })
+    .catch(() => {});
+  return () => {
+    stale = true;
+  };
+});
+
 // Wire up the panel-scoped Terra Draw rectangle instance. The prefixId 'binnacle-prewarm-draw'
-// keeps it separate from the route editor's 'binnacle-route-draw' so the two never collide.
+// keeps it separate from the route editor's 'binnacle-route-draw' so the two never collide. A new
+// box auto-selects every covering source; the owner can then deselect.
 $effect(() => {
   const r = createPrewarmRectangle(map);
   r.onChange((newBbox) => {
     bbox = newBbox;
+    selectedSources =
+      newBbox === null ? [] : coveringSources(newBbox, [minzoom, maxzoom]).map((s) => s.id);
+    namePrep = false;
   });
   rect = r;
   return () => {
@@ -133,9 +167,10 @@ $effect(() => {
   };
 });
 
-// Clear the poll timer on unmount regardless of job state.
+// Clear every poll timer on unmount.
 onDestroy(() => {
-  if (pollIntervalId !== null) clearInterval(pollIntervalId);
+  for (const timer of pollTimers.values()) clearInterval(timer);
+  pollTimers.clear();
 });
 
 // Load the persisted position-warm settings on mount.
@@ -215,97 +250,163 @@ function commitMoveThreshold(entered: number): void {
   void savePositionWarm();
 }
 
-function stopPolling(): void {
-  if (pollIntervalId !== null) {
-    clearInterval(pollIntervalId);
-    pollIntervalId = null;
+async function reloadRegions(): Promise<void> {
+  try {
+    regions = await client.getRegions();
+  } catch {
+    // Best-effort refresh; the existing list stays on a transient failure.
   }
 }
 
-function startPolling(id: string): void {
-  stopPolling();
-  // Capture the client at poll-start so every tick in this job uses the same instance.
-  const activeClient = client;
-  const iv = setInterval(() => {
-    void activeClient.getStatus(id).then((s) => {
-      // A null status means the container restarted and the in-memory job is gone.
-      if (s === null) {
-        stopPolling();
-        jobGone = true;
-        warmStatus = null;
-        return;
-      }
-      warmStatus = s;
-      if (isTerminal(s)) {
-        stopPolling();
-        if (s.state === 'done') {
-          // Refresh stats so the free-cap readout reflects the newly cached tiles.
-          void client
-            .getCacheStats()
-            .then((fresh) => {
-              stats = fresh;
-            })
-            .catch(() => {});
-        }
-      }
-    });
-  }, 2000);
-  pollIntervalId = iv;
+async function refreshStats(): Promise<void> {
+  try {
+    stats = await client.getCacheStats();
+  } catch {
+    // Best-effort; the readout keeps its last value.
+  }
 }
 
-async function doPrewarm(): Promise<void> {
+function stopRegionPoll(id: string): void {
+  const timer = pollTimers.get(id);
+  if (timer !== undefined) {
+    clearInterval(timer);
+    pollTimers.delete(id);
+  }
+}
+
+// Poll a region's warm job to a terminal result. The plugin status route reconciles the persisted
+// region status on each poll, so a reload after the terminal tick shows ready, capped, or error.
+function pollRegion(id: string): void {
+  stopRegionPoll(id);
+  const activeClient = client;
+  const timer = setInterval(() => {
+    void activeClient
+      .getRegionJobStatus(id)
+      .then((s) => {
+        if (isTerminal(s)) {
+          stopRegionPoll(id);
+          void reloadRegions();
+          void refreshStats();
+        }
+      })
+      .catch(() => {});
+  }, 2000);
+  pollTimers.set(id, timer);
+}
+
+function centerOf(box: [number, number, number, number]): { lat: number; lon: number } {
+  return { lat: (box[1] + box[3]) / 2, lon: (box[0] + box[2]) / 2 };
+}
+
+function coordName(box: [number, number, number, number]): string {
+  const { lat, lon } = centerOf(box);
+  return `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+}
+
+// The geocode lookup fires once here, on the Download action, never on rectangle drag, which is the
+// rate control for the Nominatim usage policy. The name falls back to a coordinate string on failure.
+async function prepareDownload(): Promise<void> {
   if (!gate || bbox === null || submitting) return;
   error = null;
-  jobGone = false;
-  warmStatus = null;
+  submitting = true;
+  const { lat, lon } = centerOf(bbox);
+  const fallback = coordName(bbox);
+  try {
+    const name = await client.geocode(lat, lon);
+    regionName = name ?? fallback;
+  } catch {
+    regionName = fallback;
+  } finally {
+    submitting = false;
+    namePrep = true;
+  }
+}
+
+async function saveRegion(): Promise<void> {
+  if (bbox === null || activeSourceIds.length === 0 || submitting) return;
+  const name = regionName.trim() || coordName(bbox);
+  error = null;
   submitting = true;
   try {
-    const { jobId: id } = await client.postPrewarm({
+    const { region } = await client.postRegion({
       bbox,
-      sources: selectedSources,
+      sourceIds: activeSourceIds,
       minzoom,
       maxzoom,
+      name,
     });
-    jobId = id;
-    startPolling(id);
+    namePrep = false;
+    regionName = '';
+    await reloadRegions();
+    await refreshStats();
+    pollRegion(region.id);
   } catch (e) {
-    error = e instanceof Error ? e.message : 'Prewarm failed';
+    error = e instanceof Error ? e.message : 'Region download failed';
   } finally {
     submitting = false;
   }
 }
 
-async function doCancel(): Promise<void> {
-  if (jobId === null) return;
-  stopPolling();
-  const id = jobId;
-  jobId = null;
-  warmStatus = null;
+function cancelNamePrep(): void {
+  namePrep = false;
+  regionName = '';
+}
+
+async function redownloadRegion(id: string): Promise<void> {
+  if (auth.writeBlocked) return;
+  error = null;
   try {
-    await client.cancel(id);
-  } catch {
-    // Cancel is best-effort: if the container restarted the job is already gone.
+    await client.redownloadRegion(id);
+    await reloadRegions();
+    pollRegion(id);
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Re-download failed';
+  }
+}
+
+async function deleteRegion(id: string): Promise<void> {
+  if (auth.writeBlocked) return;
+  error = null;
+  stopRegionPoll(id);
+  try {
+    await client.deleteRegion(id);
+    await reloadRegions();
+    await refreshStats();
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Delete failed';
   }
 }
 
 function toggleSource(id: string, on: boolean): void {
   selectedSources = on ? [...selectedSources, id] : selectedSources.filter((s) => s !== id);
 }
+
+const STATUS_LABELS: Record<SavedRegionDto['status'], string> = {
+  downloading: 'Downloading',
+  ready: 'Ready',
+  capped: 'Cap reached',
+  error: 'Error',
+  'needs-redownload': 'Needs re-download',
+};
+
+function updatedLabel(ts: number | null): string {
+  return ts === null ? 'never' : new Date(ts * 1000).toLocaleDateString();
+}
 </script>
 
-<SlideOver title="Tile cache prewarm" closeLabel="Close prewarm panel" {onClose} {onBack} bodyFlex>
+<SlideOver title="Saved regions" closeLabel="Close regions panel" {onClose} {onBack} bodyFlex>
   {#if auth.writeBlocked}
     <p class="muted-note">
-      A write token is needed to prewarm the tile cache. Request a read/write token to continue.
+      A write token is needed to download a region. Request a read/write token to continue.
     </p>
   {/if}
 
-  <h3 class="caps-label section-head">Cruising box</h3>
+  <h3 class="caps-label section-head">Region box</h3>
   <div class="panel-controls">
     <button
       type="button"
       class="btn btn--grow"
-      disabled={running || auth.writeBlocked}
+      disabled={auth.writeBlocked}
       onclick={() => rect?.start()}
     >
       <Square size={16} aria-hidden="true" />
@@ -314,7 +415,7 @@ function toggleSource(id: string, on: boolean): void {
     <button
       type="button"
       class="btn btn-ghost"
-      disabled={bbox === null || running || auth.writeBlocked}
+      disabled={bbox === null || auth.writeBlocked}
       onclick={() => rect?.clear()}
     >
       <Trash2 size={16} aria-hidden="true" />
@@ -331,16 +432,16 @@ function toggleSource(id: string, on: boolean): void {
   {/if}
 
   <h3 class="caps-label section-head">Sources</h3>
-  {#each sources as source (source.id)}
+  {#each sourceList as source (source.id)}
     <LayerToggle
       title={source.title}
       visible={selectedSources.includes(source.id)}
-      disabled={running || auth.writeBlocked}
+      disabled={auth.writeBlocked}
       onToggle={(on) => toggleSource(source.id, on)}
     />
   {/each}
-  {#if sources.length === 0}
-    <p class="muted-note">No prewarmable sources found in the registry.</p>
+  {#if sourceList.length === 0}
+    <p class="muted-note">No sources cover this box and zoom range.</p>
   {/if}
 
   <h3 class="caps-label section-head">Zoom range</h3>
@@ -373,15 +474,100 @@ function toggleSource(id: string, on: boolean): void {
         <span class="num">{estimateFmt.value}</span>
         <span class="unit">{estimateFmt.unit}</span>
       </dd>
-      <dt>Free capacity</dt>
+      <dt>Regions free</dt>
       <dd>
-        <span class="num">{freeCapFmt?.value ?? '--'}</span>
-        <span class="unit">{freeCapFmt?.unit ?? ''}</span>
+        <span class="num">{regionsFreeFmt?.value ?? '--'}</span>
+        <span class="unit">{regionsFreeFmt?.unit ?? ''}</span>
+      </dd>
+      <dt>Pinned</dt>
+      <dd>
+        <span class="num">{pinnedFmt?.value ?? '--'}</span>
+        <span class="unit">{pinnedFmt?.unit ?? ''}</span>
+      </dd>
+      <dt>Scrolling cache</dt>
+      <dd>
+        <span class="num">{scrollFmt?.value ?? '--'}</span>
+        <span class="unit">{scrollFmt?.unit ?? ''}</span>
       </dd>
     </dl>
     <p class="muted-note">The estimate is a ceiling. Cached 404s cost no bytes.</p>
   {:else}
     <p class="muted-note">Loading cache stats...</p>
+  {/if}
+
+  {#if error !== null}
+    <p class="alert-note" role="alert">{error}</p>
+  {/if}
+
+  {#if namePrep}
+    <label class="field">
+      <span class="name">Region name</span>
+      <input class="input region-name" type="text" bind:value={regionName} aria-label="Region name" />
+    </label>
+    <div class="panel-controls">
+      <button
+        type="button"
+        class="btn btn-primary btn--grow"
+        disabled={submitting}
+        onclick={() => void saveRegion()}
+      >
+        <Download size={16} aria-hidden="true" />
+        Save region
+      </button>
+      <button type="button" class="btn btn-ghost" onclick={cancelNamePrep}>Cancel</button>
+    </div>
+  {:else}
+    <div class="panel-controls">
+      <button
+        type="button"
+        class="btn btn-primary btn--grow"
+        disabled={!gate || submitting}
+        onclick={() => void prepareDownload()}
+      >
+        <Download size={16} aria-hidden="true" />
+        Download region
+      </button>
+    </div>
+  {/if}
+
+  <h3 class="caps-label section-head">Downloaded regions</h3>
+  {#if regions.length === 0}
+    <p class="muted-note">No regions saved yet. Draw a box and download to save one.</p>
+  {:else}
+    {#each regions as region (region.id)}
+      {@const cached = formatBytes(region.cachedBytes)}
+      <div class="region">
+        <div class="region-head">
+          <span class="region-name-text">{region.name}</span>
+          <span class="caps-label">{STATUS_LABELS[region.status]}</span>
+        </div>
+        <p class="muted-note">
+          <span class="num">{cached.value}</span>
+          <span class="unit">{cached.unit}</span>
+          cached, updated {updatedLabel(region.lastDownloadedAt)}
+        </p>
+        <div class="panel-controls">
+          <button
+            type="button"
+            class="btn btn--grow"
+            disabled={auth.writeBlocked || region.status === 'downloading'}
+            onclick={() => void redownloadRegion(region.id)}
+          >
+            <RefreshCw size={16} aria-hidden="true" />
+            Re-download
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger"
+            disabled={auth.writeBlocked}
+            onclick={() => void deleteRegion(region.id)}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            Delete
+          </button>
+        </div>
+      </div>
+    {/each}
   {/if}
 
   <h3 class="caps-label section-head">Position warm</h3>
@@ -433,7 +619,7 @@ function toggleSource(id: string, on: boolean): void {
     }}
   />
   <h3 class="caps-label section-head">Position warm sources</h3>
-  {#each sources as source (source.id)}
+  {#each prewarmable as source (source.id)}
     <LayerToggle
       title={source.title}
       visible={positionSources.includes(source.id)}
@@ -446,67 +632,8 @@ function toggleSource(id: string, on: boolean): void {
       }}
     />
   {/each}
-  {#if sources.length === 0}
+  {#if prewarmable.length === 0}
     <p class="muted-note">No prewarmable sources found in the registry.</p>
-  {/if}
-
-  {#if error !== null}
-    <p class="alert-note" role="alert">{error}</p>
-  {/if}
-
-  {#if jobGone}
-    <p class="muted-note">
-      Job lost: the container restarted and the in-memory job is gone. Click Prewarm to restart.
-    </p>
-  {:else if warmStatus !== null && isTerminal(warmStatus)}
-    {#if warmStatus.state === 'done'}
-      {@const doneFmt = formatBytes(warmStatus.bytes)}
-      <p class="muted-note">
-        Done: {warmStatus.done} tiles cached ({doneFmt.value} {doneFmt.unit}).
-      </p>
-    {:else if warmStatus.state === 'capped'}
-      <p class="alert-note">
-        Cap reached after {warmStatus.done} tiles. Free up space or raise the cap, then re-warm.
-      </p>
-    {:else if warmStatus.state === 'cancelled'}
-      <p class="muted-note">Cancelled after {warmStatus.done} tiles.</p>
-    {:else}
-      <p class="alert-note" role="alert">
-        Ended with {warmStatus.errors} error(s). Check the server log, then re-warm.
-      </p>
-    {/if}
-  {/if}
-
-  <div class="panel-controls">
-    {#if running}
-      <button type="button" class="btn btn-danger btn--grow" onclick={() => void doCancel()}>
-        Cancel
-      </button>
-    {:else}
-      <button
-        type="button"
-        class="btn btn-primary btn--grow"
-        disabled={!gate || submitting}
-        onclick={() => void doPrewarm()}
-      >
-        <Download size={16} aria-hidden="true" />
-        Prewarm
-      </button>
-    {/if}
-  </div>
-
-  {#if running && warmStatus !== null}
-    <div
-      class="warm-track"
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuenow={warmStatus.done}
-      aria-valuemax={warmStatus.total}
-      aria-label="Prewarm progress"
-    >
-      <div class="warm-fill" style:inline-size="{Math.round(progress * 100)}%"></div>
-    </div>
-    <p class="muted-note">{warmStatus.done} / {warmStatus.total} tiles</p>
   {/if}
 </SlideOver>
 
@@ -517,18 +644,46 @@ function toggleSource(id: string, on: boolean): void {
   margin-block-start: var(--space-2);
 }
 
-/* Token-driven progress bar: same track height and pill radius as the .range slider in forms.css,
-   so the two progress indicators read as one visual family across all three themes. */
-.warm-track {
-  block-size: var(--range-track-h);
-  border-radius: var(--radius-pill);
-  background: var(--border);
-  overflow: hidden;
+/* The labeled-row shape, matching the shared UnitField so the name row aligns with the zoom fields. */
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--control-size);
+}
+.name {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
-.warm-fill {
-  block-size: 100%;
-  background: var(--accent);
-  transition: inline-size 0.3s ease;
+/* The region name input grows to fill the field row, unlike the fixed-width numeric UnitField. */
+.region-name {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* A saved-region card: token-driven border and padding so the row reads as one instrument with the
+   rest of the panel across all three themes. */
+.region {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+.region-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.region-name-text {
+  font-size: var(--text-md);
+  overflow-wrap: anywhere;
 }
 </style>

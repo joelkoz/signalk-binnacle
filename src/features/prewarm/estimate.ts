@@ -1,37 +1,33 @@
-/** Pure estimate helpers for the prewarm panel: project the tile count with the shared enumerator and
- * multiply by the per-source byte average from the cache stats, gated against the free cap. The estimate
- * is a ceiling (a warm negative-caches 404s at zero bytes, so the real footprint is smaller). */
+/** Pure estimate helpers for the regions panel: project the tile count with the shared enumerator and
+ * multiply by the per-source byte average from the cache stats, gated against the regions-free budget.
+ * The estimate is a ceiling (a warm negative-caches 404s at zero bytes, so the real footprint is
+ * smaller). DEFAULT_TILE_BYTES and estimateBytes are hoisted into the shared package so the panel and
+ * the companion plugin share one implementation and the server-side budget re-validation agrees. */
 
-import { CHART_SOURCES, type ChartSource, tileCountInBbox } from 'signalk-binnacle-chart-sources';
+import {
+  type ChartSource,
+  CHART_SOURCES,
+  DEFAULT_TILE_BYTES,
+  estimateBytes,
+  tileCountInBbox,
+} from 'signalk-binnacle-chart-sources';
 import type { CacheStats, WarmStatus } from './prewarm-client.js';
 
-/** Fallback per-tile size for a source never cached yet, so the estimate still gates a first prewarm. */
-export const DEFAULT_TILE_BYTES = 25_000;
+/** Re-exported from the shared package so the panel, the plugin, and any caller share one estimate. */
+export { DEFAULT_TILE_BYTES, estimateBytes };
 
 /** The registry sources that have a tile path; the style basemap is excluded (its warm path differs and is out of scope). */
 export function prewarmableSources(): ChartSource[] {
   return CHART_SOURCES.filter((s) => s.upstream.mode !== 'style');
 }
 
-const byId = new Map(CHART_SOURCES.map((s) => [s.id, s]));
-
-/** The upper-bound byte estimate: sum over sources of tileCountInBbox times the per-source average.
- * Note: sourceIds should come from prewarmableSources() to ensure all ids resolve in the internal source map. */
-export function estimateBytes(
-  sourceIds: string[],
+/** Sources that cover the drawn bbox: prewarmable sources where tileCountInBbox > 0. Sources with no
+ * bounds are global and always included for a non-empty bbox; the style basemap is already excluded. */
+export function coveringSources(
   bbox: [number, number, number, number],
   zoomRange: [number, number],
-  stats: CacheStats,
-): number {
-  let total = 0;
-  for (const id of sourceIds) {
-    const source = byId.get(id);
-    if (!source) continue;
-    const tiles = tileCountInBbox(source, bbox, zoomRange);
-    const avg = stats.perSourceAvgBytes[id] ?? DEFAULT_TILE_BYTES;
-    total += tiles * avg;
-  }
-  return total;
+): ChartSource[] {
+  return prewarmableSources().filter((s) => tileCountInBbox(s, bbox, zoomRange) > 0);
 }
 
 /** The bytes still available under the cap. */
@@ -39,9 +35,31 @@ export function freeCapBytes(stats: CacheStats): number {
   return Math.max(0, stats.cap - stats.bytes);
 }
 
-/** Whether the estimate would exceed the free cap (Prewarm is disabled while true). */
+/** Whether the estimate would exceed the free cap. Kept for any remaining caller; the panel gate now
+ * uses the regions-free budget instead. */
 export function exceedsFreeCap(estimate: number, stats: CacheStats): boolean {
   return estimate > freeCapBytes(stats);
+}
+
+/** Room for new real-region pins. Prefers the server-computed regionsFreeBytes (which already accounts
+ * for the position-warm reserve P), falling back to a local floor at 0 that mirrors the container's
+ * (R - P) - real_pinned. */
+export function regionsFreeBytes(stats: CacheStats): number {
+  return Math.max(
+    0,
+    stats.regionsFreeBytes ??
+      Math.max(
+        0,
+        (stats.regionsBudgetBytes ?? 0) -
+          (stats.positionWarmBudgetBytes ?? 0) -
+          Math.max(0, (stats.pinnedBytes ?? 0) - (stats.positionWarmBytes ?? 0)),
+      ),
+  );
+}
+
+/** True when the estimate exceeds regionsFreeBytes (Download is disabled while true). */
+export function exceedsRegionsFree(estimate: number, stats: CacheStats): boolean {
+  return estimate > regionsFreeBytes(stats);
 }
 
 /** The [minLng, minLat, maxLng, maxLat] of a drawn rectangle ring of [lng, lat] points. */
@@ -52,7 +70,8 @@ export function bboxFromRectangle(ring: Array<[number, number]>): [number, numbe
 }
 
 /** The single gate predicate shared by the panel and its test. Returns true only when a box is
- * drawn, at least one source is selected, the user can write, and the estimate fits the free cap. */
+ * drawn, at least one source is selected, the user can write, and the estimate fits the regions-free
+ * budget. */
 export function canPrewarm(opts: {
   bbox: [number, number, number, number] | null;
   sources: string[];
@@ -61,8 +80,8 @@ export function canPrewarm(opts: {
   zoomRange: [number, number];
 }): boolean {
   if (opts.bbox === null || opts.sources.length === 0 || opts.writeBlocked) return false;
-  return !exceedsFreeCap(
-    estimateBytes(opts.sources, opts.bbox, opts.zoomRange, opts.stats),
+  return !exceedsRegionsFree(
+    estimateBytes(opts.sources, opts.bbox, opts.zoomRange, opts.stats.perSourceAvgBytes),
     opts.stats,
   );
 }
