@@ -1,4 +1,4 @@
-// Detects the Binnacle Companion tile proxy. When the companion plugin is installed, the chartplotter
+// Detects the Chart Locker tile proxy. When the Chart Locker plugin is installed, the chartplotter
 // fetches the remote raster overlays (and, later, the basemap) through the Signal K server so the boat
 // shares one cache and works offline at sea. When it is absent, every source keeps its direct upstream
 // URL, so a standalone install is unchanged.
@@ -6,7 +6,7 @@
 import { proxyTileTemplate } from 'signalk-binnacle-chart-sources';
 import type { RasterOverlaySource } from './raster-overlay';
 
-const COMPANION_PATH = '/plugins/signalk-binnacle-companion';
+const COMPANION_PATH = '/plugins/signalk-chart-locker';
 
 /**
  * Probe whether the companion tile proxy is installed and ready. Returns its plugin base URL on a 200,

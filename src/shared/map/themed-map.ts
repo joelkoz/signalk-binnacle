@@ -38,12 +38,12 @@ export interface ThemedMapApi {
 
 export interface ThemedMapOptions {
   container: HTMLElement;
-  // The Binnacle Companion plugin base when installed, so the basemap style is proxied and cached, or
+  // The Chart Locker plugin base when installed, so the basemap style is proxied and cached, or
   // null or undefined for the direct openfreemap style.
   companionBase?: string | null;
   // A getter for the current Signal K auth token, called on every map fetch. When provided, any
-  // same-origin request whose path starts with /plugins/signalk-binnacle-companion/ or /signalk/
-  // receives an Authorization: Bearer header so the companion-proxied basemap style, glyphs,
+  // same-origin request whose path starts with /plugins/signalk-chart-locker/ or /signalk/
+  // receives an Authorization: Bearer header so the Chart Locker proxied basemap style, glyphs,
   // sprite, and tile routes work on a security-enabled server.
   getToken?: () => string | undefined;
   // The view to open at; capped to maxZoom. Falls back to the default center and zoom.
@@ -99,7 +99,7 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
           if (parsed.origin !== location.origin) return undefined;
           const { pathname } = parsed;
           if (
-            !pathname.startsWith('/plugins/signalk-binnacle-companion/') &&
+            !pathname.startsWith('/plugins/signalk-chart-locker/') &&
             !pathname.startsWith('/signalk/')
           ) {
             return undefined;

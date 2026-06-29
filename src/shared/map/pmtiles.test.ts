@@ -107,7 +107,7 @@ describe('createArchiveSource provided-path switch', () => {
 
   it('uses a CompanionSource for a companion-provided archive (dynamic auth, browser cache)', () => {
     const source = createArchiveSource(
-      `${window.location.origin}/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles`,
+      `${window.location.origin}/plugins/signalk-chart-locker/pmtiles/sf.pmtiles`,
       () => 'tok',
     );
     expect(source).toBeInstanceOf(CompanionSource);
@@ -115,14 +115,14 @@ describe('createArchiveSource provided-path switch', () => {
 
   it('does not treat a different-host url with the companion path as companion-provided', () => {
     const source = createArchiveSource(
-      'https://evil.example.com/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles',
+      'https://evil.example.com/plugins/signalk-chart-locker/pmtiles/sf.pmtiles',
     );
     expect(source).toBeInstanceOf(BlockCachedSource);
   });
 
   it('does not treat a same-host-different-port url as companion-provided', () => {
     const source = createArchiveSource(
-      'http://localhost:9000/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles',
+      'http://localhost:9000/plugins/signalk-chart-locker/pmtiles/sf.pmtiles',
     );
     expect(source).toBeInstanceOf(BlockCachedSource);
   });
@@ -139,14 +139,14 @@ describe('createArchiveSource provided-path switch', () => {
 
   it('does not treat a remote url that merely contains the prefix as a different segment', () => {
     const source = createArchiveSource(
-      'https://evil.example.com/x/plugins/signalk-binnacle-companion/pmtilesX/a.pmtiles',
+      'https://evil.example.com/x/plugins/signalk-chart-locker/pmtilesX/a.pmtiles',
     );
     expect(source).toBeInstanceOf(BlockCachedSource);
   });
 });
 
 describe('CompanionSource.getBytes auth header', () => {
-  const COMPANION_URL = 'http://localhost/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles';
+  const COMPANION_URL = 'http://localhost/plugins/signalk-chart-locker/pmtiles/sf.pmtiles';
 
   function okResponse(): Response {
     return {

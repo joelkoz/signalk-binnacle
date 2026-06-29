@@ -131,7 +131,7 @@ let blockStore: BlockStore | undefined;
 // HTTP cache works and the no-store workaround plus the IndexedDB block cache are not needed. The
 // match is on the exact url path: a false positive that routed a blob or a remote weak-ETag archive
 // through this path would reintroduce the Chrome cache-write failure.
-const COMPANION_PMTILES_PREFIX = '/plugins/signalk-binnacle-companion/pmtiles/';
+const COMPANION_PMTILES_PREFIX = '/plugins/signalk-chart-locker/pmtiles/';
 
 function isCompanionProvided(httpUrl: string): boolean {
   if (typeof window === 'undefined') return false;

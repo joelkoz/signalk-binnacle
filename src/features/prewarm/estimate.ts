@@ -11,23 +11,23 @@ import {
   estimateBytes,
   tileCountInBbox,
 } from 'signalk-binnacle-chart-sources';
-import type { CacheStats, WarmStatus } from './prewarm-client.js';
+import type { CacheStats, WarmStatus } from './regions-client.js';
 
 /** Re-exported from the shared package so the panel, the plugin, and any caller share one estimate. */
 export { DEFAULT_TILE_BYTES, estimateBytes };
 
 /** The registry sources that have a tile path; the style basemap is excluded (its warm path differs and is out of scope). */
-export function prewarmableSources(): ChartSource[] {
+export function regionSources(): ChartSource[] {
   return CHART_SOURCES.filter((s) => s.upstream.mode !== 'style');
 }
 
-/** Sources that cover the drawn bbox: prewarmable sources where tileCountInBbox > 0. Sources with no
+/** Sources that cover the drawn bbox: region sources where tileCountInBbox > 0. Sources with no
  * bounds are global and always included for a non-empty bbox; the style basemap is already excluded. */
 export function coveringSources(
   bbox: [number, number, number, number],
   zoomRange: [number, number],
 ): ChartSource[] {
-  return prewarmableSources().filter((s) => tileCountInBbox(s, bbox, zoomRange) > 0);
+  return regionSources().filter((s) => tileCountInBbox(s, bbox, zoomRange) > 0);
 }
 
 /** Room for new real-region pins. Prefers the server-computed regionsFreeBytes (which already accounts
@@ -61,7 +61,7 @@ export function bboxFromRectangle(ring: Array<[number, number]>): [number, numbe
 /** The single gate predicate shared by the panel and its test. Returns true only when a box is
  * drawn, at least one source is selected, the user can write, and the estimate fits the regions-free
  * budget. */
-export function canPrewarm(opts: {
+export function canDownloadRegion(opts: {
   bbox: [number, number, number, number] | null;
   sources: string[];
   writeBlocked: boolean;

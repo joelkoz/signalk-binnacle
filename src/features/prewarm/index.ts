@@ -1,1 +1,1 @@
-export { default as PrewarmPanel } from './PrewarmPanel.svelte';
+export { default as RegionsPanel } from './RegionsPanel.svelte';

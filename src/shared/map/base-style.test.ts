@@ -24,8 +24,8 @@ describe('baseStyleUrl', () => {
   });
 
   it('returns the companion-proxied basemap style when the companion is present', () => {
-    expect(baseStyleUrl('http://boat.local/plugins/signalk-binnacle-companion')).toBe(
-      'http://boat.local/plugins/signalk-binnacle-companion/style/basemap',
+    expect(baseStyleUrl('http://boat.local/plugins/signalk-chart-locker')).toBe(
+      'http://boat.local/plugins/signalk-chart-locker/style/basemap',
     );
   });
 });

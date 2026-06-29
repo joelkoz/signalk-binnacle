@@ -1,5 +1,5 @@
 /** The one place the webapp builds the companion plugin api base. Both companion webapp clients (the
- * prewarm client here and the PMTiles chart-management client) call companionApiUrl(companionBase, path),
+ * regions client here and the PMTiles chart-management client) call companionApiUrl(companionBase, path),
  * where companionBase is the plugin base from detectCompanion (the server origin plus the plugin path),
  * the same base baseStyleUrl and proxyTileTemplate build their URLs on. The /api segment is spelled once
  * here, and the caller owns the rest of the path. */

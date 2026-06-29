@@ -25,12 +25,12 @@ onDestroy(() => {
 });
 
 // Rebuild the token shape the REST clients expect whenever auth changes so every call carries
-// the current bearer token, matching the prewarm panel's client-rebuild pattern.
+// the current bearer token, matching the regions panel's client-rebuild pattern.
 const token = $derived(auth.token ?? undefined);
 
 // Load the chart list on mount and refresh when the auth token changes.
 // A stale flag guards against a previous slow request overwriting a fresh response when the
-// token rotates mid-flight, matching the prewarm panel's stats-load effect.
+// token rotates mid-flight, matching the regions panel's stats-load effect.
 $effect(() => {
   // Track the token so a token change triggers a re-fetch with the new credentials.
   void token;
@@ -173,7 +173,7 @@ function formatBounds(bounds: [number, number, number, number]): string {
 
 <style>
 /* Extra top margin on each section heading so the caps labels breathe inside the bodyFlex column,
-   matching the prewarm panel's .section-head rule. */
+   matching the regions panel's .section-head rule. */
 .section-head {
   margin-block-start: var(--space-2);
 }
