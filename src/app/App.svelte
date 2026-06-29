@@ -31,11 +31,7 @@ import { MeasureStore } from '$entities/measure';
 import { MobStore } from '$entities/mob';
 import { type ActiveNotification, NotificationsStore } from '$entities/notifications';
 import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$entities/profile';
-import {
-  RouteStore,
-  remainingRouteDistanceMeters,
-  reverseRoute,
-} from '$entities/route';
+import { RouteStore, remainingRouteDistanceMeters, reverseRoute } from '$entities/route';
 import { SymbolsStore } from '$entities/symbols';
 import { TidesStore } from '$entities/tides';
 import { type TrackPoint, TrackRecorder } from '$entities/track';
@@ -144,19 +140,8 @@ import {
   WEATHER_LAYER_IDS,
 } from '$features/weather';
 import { GatedAlarm } from '$shared/audio';
-import {
-  bboxContainsPoint,
-  boundsOfPoints,
-  type LatLon,
-  padBbox,
-} from '$shared/geo';
-import {
-  Clock,
-  formatNm,
-  formatTcpaMin,
-  MINUTE_MS,
-  uuidv4,
-} from '$shared/lib';
+import { bboxContainsPoint, boundsOfPoints, type LatLon, padBbox } from '$shared/geo';
+import { Clock, formatNm, formatTcpaMin, MINUTE_MS, uuidv4 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
 import { detectCompanion } from '$shared/map/companion';
 import { etaSeconds } from '$shared/nav';

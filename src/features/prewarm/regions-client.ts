@@ -96,11 +96,17 @@ export function createRegionsClient(
       );
     },
     async deleteRegion(id) {
-      await fetchImpl(url(`/regions/${encodeURIComponent(id)}`), authInit(token, { method: 'DELETE' }));
+      await fetchImpl(
+        url(`/regions/${encodeURIComponent(id)}`),
+        authInit(token, { method: 'DELETE' }),
+      );
     },
     async redownloadRegion(id) {
       return json<{ jobId: string }>(
-        await fetchImpl(url(`/regions/${encodeURIComponent(id)}/redownload`), authInit(token, { method: 'POST' })),
+        await fetchImpl(
+          url(`/regions/${encodeURIComponent(id)}/redownload`),
+          authInit(token, { method: 'POST' }),
+        ),
       );
     },
     async getRegionJobStatus(id) {

@@ -5,8 +5,8 @@
  * the companion plugin share one implementation and the server-side budget re-validation agrees. */
 
 import {
-  type ChartSource,
   CHART_SOURCES,
+  type ChartSource,
   DEFAULT_TILE_BYTES,
   estimateBytes,
   tileCountInBbox,
