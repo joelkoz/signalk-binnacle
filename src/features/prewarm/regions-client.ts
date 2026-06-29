@@ -27,6 +27,9 @@ export interface CacheStats {
   positionWarmBytes?: number;
   regionsFreeBytes?: number;
   perSourceAvgBytes: Record<string, number>;
+  // The per-source scroll totals and the current TTL days, optional for backward compatibility.
+  bySource?: { source: string; bytes: number; rows: number }[];
+  ttlDays?: number;
 }
 
 export interface SavedRegionDto {
@@ -55,6 +58,8 @@ export interface RegionRequest {
 export interface RegionsClient {
   getConfig(): Promise<unknown>;
   postConfig(config: unknown): Promise<void>;
+  setCacheConfig(ttlDays: number): Promise<void>;
+  clearScrollCache(): Promise<{ freedBytes: number; freedRows: number }>;
   getCacheStats(): Promise<CacheStats>;
   getRegions(): Promise<SavedRegionDto[]>;
   postRegion(body: RegionRequest): Promise<{ region: SavedRegionDto; jobId: string }>;
@@ -83,6 +88,14 @@ export function createRegionsClient(
     },
     async postConfig(config) {
       await fetchImpl(url('/position-warm/config'), jsonPost(config));
+    },
+    async setCacheConfig(ttlDays) {
+      await fetchImpl(url('/cache/config'), jsonPost({ ttlDays }));
+    },
+    async clearScrollCache() {
+      return json<{ freedBytes: number; freedRows: number }>(
+        await fetchImpl(url('/cache/clear-scroll'), authInit(token, { method: 'POST' })),
+      );
     },
     async getCacheStats() {
       return json<CacheStats>(await fetchImpl(url('/cache/stats'), authInit(token)));

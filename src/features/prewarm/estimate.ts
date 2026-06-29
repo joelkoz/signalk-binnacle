@@ -92,3 +92,15 @@ export function formatBytes(bytes: number): { value: string; unit: string } {
   if (bytes >= KB) return { value: (bytes / KB).toFixed(1), unit: 'KB' };
   return { value: String(Math.round(bytes)), unit: 'B' };
 }
+
+/** Format the per-source scroll totals for the cache-management breakdown: each source's bytes through
+ * formatBytes, so the panel renders them with the same value-and-unit shape as every other stat. An
+ * absent bySource yields an empty list. */
+export function formatBySource(
+  stats: CacheStats,
+): Array<{ source: string; value: string; unit: string }> {
+  return (stats.bySource ?? []).map((row) => {
+    const b = formatBytes(row.bytes);
+    return { source: row.source, value: b.value, unit: b.unit };
+  });
+}

@@ -68,4 +68,33 @@ describe('regions client', () => {
       }),
     );
   });
+
+  it('setCacheConfig posts ttlDays to the cache config route', async () => {
+    const fetchImpl = vi.fn(async () => ok(undefined));
+    const client = createRegionsClient(
+      'http://h/plugins/signalk-chart-locker',
+      'tok',
+      fetchImpl as unknown as typeof fetch,
+    );
+    await client.setCacheConfig(14);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://h/plugins/signalk-chart-locker/api/cache/config',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ ttlDays: 14 }) }),
+    );
+  });
+
+  it('clearScrollCache posts to the clear route and returns the freed totals', async () => {
+    const fetchImpl = vi.fn(async () => ok({ freedBytes: 9, freedRows: 2 }));
+    const client = createRegionsClient(
+      'http://h/plugins/signalk-chart-locker',
+      'tok',
+      fetchImpl as unknown as typeof fetch,
+    );
+    const out = await client.clearScrollCache();
+    expect(out).toEqual({ freedBytes: 9, freedRows: 2 });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://h/plugins/signalk-chart-locker/api/cache/clear-scroll',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
 });

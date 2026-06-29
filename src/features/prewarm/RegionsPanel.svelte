@@ -10,6 +10,7 @@ import {
   canDownloadRegion,
   coveringSources,
   estimateBytes,
+  formatBySource,
   formatBytes,
   isTerminal,
   regionSources,
@@ -19,7 +20,7 @@ import type { CacheStats, SavedRegionDto, WarmStatus } from './regions-client.js
 import { createRegionsClient } from './regions-client.js';
 import type { RegionRectangle } from './regions-draw.js';
 import { createRegionRectangle } from './regions-draw.js';
-import { buildConfigPayload, type PositionWarmSettings } from './settings-payload.js';
+import { buildConfigPayload, extractPositionWarm } from './settings-payload.js';
 
 interface Props {
   auth: AuthController;
@@ -59,6 +60,12 @@ let confirmingDelete = $state<string | undefined>();
 // A per-region busy flag so a re-download or delete on one card does not disable the others, and
 // neither action can fire twice.
 let pendingRegion = $state<Record<string, boolean>>({});
+
+// The scroll cache TTL in days, seeded from stats.ttlDays on load. Zero means the age sweep is off.
+let ttlDays = $state(30);
+// Clearing the scroll cache arms an inline confirm first, like every destructive action in the app.
+let confirmingClear = $state(false);
+let clearNote = $state<string | null>(null);
 
 // Internal references not read in the template: the draw controller, the per-region poll timers, and
 // the consecutive poll-failure counts.
@@ -132,6 +139,8 @@ const estimateFmt = $derived(formatBytes(estimateVal));
 const regionsFreeFmt = $derived(stats !== null ? formatBytes(regionsFreeBytes(stats)) : null);
 const pinnedFmt = $derived(stats !== null ? formatBytes(stats.pinnedBytes ?? 0) : null);
 const scrollFmt = $derived(stats !== null ? formatBytes(stats.scrollBytes ?? 0) : null);
+const usedFmt = $derived(stats !== null ? formatBytes(stats.bytes) : null);
+const capFmt = $derived(stats !== null ? formatBytes(stats.cap) : null);
 
 // Load the cache stats on mount and refresh when the auth token changes (the client rebuilds on a
 // token change, so the effect re-runs with the new credentials). The generation guard inside
@@ -192,30 +201,6 @@ $effect(() => {
   };
 });
 
-function extractPositionWarm(cfg: unknown): PositionWarmSettings | null {
-  if (!cfg || typeof cfg !== 'object') return null;
-  const pw = (cfg as Record<string, unknown>).positionWarm;
-  if (!pw || typeof pw !== 'object') return null;
-  const p = pw as Record<string, unknown>;
-  if (
-    typeof p.enabled !== 'boolean' ||
-    typeof p.radiusMeters !== 'number' ||
-    typeof p.moveThresholdMeters !== 'number' ||
-    typeof p.intervalSecs !== 'number' ||
-    typeof p.baseZoom !== 'number' ||
-    !Array.isArray(p.sources)
-  )
-    return null;
-  return {
-    enabled: p.enabled,
-    radiusMeters: p.radiusMeters,
-    moveThresholdMeters: p.moveThresholdMeters,
-    intervalSecs: p.intervalSecs,
-    baseZoom: p.baseZoom,
-    sources: p.sources.filter((s): s is string => typeof s === 'string'),
-  };
-}
-
 async function savePositionWarm(): Promise<void> {
   if (auth.writeBlocked) return;
   try {
@@ -246,6 +231,27 @@ function commitMoveThreshold(entered: number): void {
   void savePositionWarm();
 }
 
+function commitTtlDays(entered: number): void {
+  if (auth.writeBlocked) return;
+  ttlDays = Math.round(Math.max(0, Math.min(entered, 365)));
+  void client.setCacheConfig(ttlDays).catch(() => {});
+}
+
+async function clearScrollCache(): Promise<void> {
+  if (auth.writeBlocked) return;
+  confirmingClear = false;
+  clearNote = null;
+  try {
+    const { freedBytes } = await client.clearScrollCache();
+    const f = formatBytes(freedBytes);
+    clearNote =
+      freedBytes > 0 ? `Cleared ${f.value} ${f.unit} of scroll cache.` : 'Nothing to clear.';
+    await loadStats();
+  } catch {
+    error = 'Could not clear the scroll cache.';
+  }
+}
+
 // Load the saved regions with a generation guard so a slow earlier load cannot clobber a newer one.
 // A failed first load (regions still null) surfaces loadError; a failed refresh keeps the list and
 // surfaces a transient action error instead.
@@ -274,6 +280,7 @@ async function loadStats(): Promise<void> {
     const s = await client.getCacheStats();
     if (gen !== statsGen) return;
     stats = s;
+    if (typeof s.ttlDays === 'number') ttlDays = s.ttlDays;
     statsError = null;
   } catch {
     if (gen !== statsGen) return;
@@ -663,6 +670,57 @@ function updatedLabel(ts: number): string {
         {/if}
       {/snippet}
     </SavedList>
+  {/if}
+
+  <h3 class="caps-label section-head">Scroll cache</h3>
+  {#if stats !== null}
+    <dl class="stat-grid">
+      <dt>Cache used</dt>
+      <dd>
+        <span class="num">{usedFmt?.value ?? '--'}</span>
+        <span class="unit">{usedFmt?.unit ?? ''}</span>
+      </dd>
+      <dt>Cache cap</dt>
+      <dd>
+        <span class="num">{capFmt?.value ?? '--'}</span>
+        <span class="unit">{capFmt?.unit ?? ''}</span>
+      </dd>
+      {#each formatBySource(stats) as row (row.source)}
+        <dt>{row.source}</dt>
+        <dd><span class="num">{row.value}</span> <span class="unit">{row.unit}</span></dd>
+      {/each}
+    </dl>
+  {/if}
+  <UnitField
+    label="Scroll cache age limit"
+    unit="days"
+    value={ttlDays}
+    min={0}
+    max={365}
+    step={1}
+    onCommit={commitTtlDays}
+  />
+  {#if confirmingClear}
+    <InlineConfirm
+      question="Clear all unpinned scroll tiles?"
+      onConfirm={() => void clearScrollCache()}
+      onCancel={() => (confirmingClear = false)}
+    />
+  {:else}
+    <div class="panel-controls">
+      <button
+        type="button"
+        class="btn btn-ghost"
+        disabled={auth.writeBlocked}
+        onclick={() => (confirmingClear = true)}
+      >
+        <Trash2 size={16} aria-hidden="true" />
+        Clear scroll cache
+      </button>
+    </div>
+  {/if}
+  {#if clearNote !== null}
+    <p class="muted-note">{clearNote}</p>
   {/if}
 
   <h3 class="caps-label section-head">Position warm</h3>
