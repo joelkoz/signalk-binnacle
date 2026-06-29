@@ -1,8 +1,7 @@
 <script lang="ts">
 import { GripVertical, RotateCcw, Settings2, SlidersHorizontal } from '@lucide/svelte';
 import type { LayerListItem } from '$shared/map';
-import { AnchoredMenu, UnavailableHint } from '$shared/ui';
-import LayerToggle from './LayerToggle.svelte';
+import { AnchoredMenu, LayerToggle, UnavailableHint } from '$shared/ui';
 import type { LayersView } from './layers-view.svelte';
 
 interface Props {

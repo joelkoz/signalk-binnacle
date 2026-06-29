@@ -15,24 +15,27 @@ A WebGL chartplotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.10.6
+## What's new in 0.11.0
 
-A round of fixes that keep the live readouts honest:
+Offline charts and tile coverage for passages away from internet, powered by the Binnacle
+Companion plugin:
 
-- **Course readouts stay live during navigation.** Cross-track error, velocity made good, distance and
-  bearing to the waypoint, and ETA had frozen at the value shown when the page loaded. Each course
-  calculation now updates continuously as it streams, so the nav strip keeps pace with the passage.
-- **Anchor controls report a read-only token.** Dropping the anchor, raising it, or changing the swing
-  radius on a read-only grant now raises the read-and-write request banner, the same as routes,
-  waypoints, tracks, course, and alarms, rather than appearing to do nothing.
-- **A tide forecast survives a current-station error.** A failing tidal-current station no longer
-  discards the tide forecast Binnacle already fetched.
-- **Weather readouts no longer show NaN.** The weather grid is guarded against a sparse data axis that
-  could otherwise produce not-a-number readings at the cursor.
-- **A mid-session data drop shows as a disconnect.** If the background connection crashes while running,
-  the status now reads as a closed connection instead of going silently stale.
+- **Tile cache prewarm panel.** Draw a cruising box on the chart before departure and fill the
+  shared boat-wide cache. A live byte estimate is gated against the cache capacity so you know
+  the storage cost before committing. The prewarmed box is pinned and never evicted.
+- **Off-plan position-warm.** An optional background fill keeps a small tile radius around the
+  vessel warm when it travels outside the prewarmed box, always LRU-bounded so it never
+  displaces the pinned coverage.
+- **Chart-management panel.** Lists every local `.pmtiles` archive the Binnacle Companion has
+  discovered, with a per-chart name and description.
+- **Shared boat-wide tile cache.** All raster overlays and the vector basemap are fetched and
+  cached through the Signal K server so every device on the boat shares one cache and the same
+  tile is never refetched per device. A standalone install without the companion is unchanged.
+- **PMTiles served by the companion use the browser cache correctly.** Binnacle now issues
+  conditional requests against the strong ETag the companion sets, retiring the no-store
+  workaround on companion-provided chart paths.
 
-See the [changelog](CHANGELOG.md#v0106) for the full list.
+See the [changelog](CHANGELOG.md#v0110) for the full list.
 
 ## What it does
 

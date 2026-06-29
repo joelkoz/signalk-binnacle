@@ -1,4 +1,5 @@
 <script lang="ts">
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import { onDestroy, onMount } from 'svelte';
 import type { AisTargets } from '$entities/ais';
 import type { AnchorWatch } from '$entities/anchor';
@@ -131,6 +132,12 @@ interface Props {
   onAnchorMoved?: (position: LatLon) => void;
   // The marine radar echo layer, built by its controller in the host and woven into the overlay stack.
   marineRadarLayer?: PpiLayer;
+  // The raw MapLibre map instance, handed up once after load for features that need direct map access
+  // (for example, a Terra Draw tool that is not part of the route editor).
+  onMapInstance?: (map: MapLibreMap) => void;
+  // Fired when the map handle is destroyed, so the host can clear any reference it holds (for
+  // example, clearing mapInstance so the prewarm panel never mounts Terra Draw against a stale map).
+  onMapDestroyed?: () => void;
 }
 
 const {
@@ -179,6 +186,8 @@ const {
   timeTravel,
   onAnchorMoved,
   marineRadarLayer,
+  onMapInstance,
+  onMapDestroyed,
 }: Props = $props();
 
 let container: HTMLDivElement;
@@ -436,6 +445,7 @@ onMount(async () => {
           currentEditGeneration: () => editGeneration,
         }),
       );
+      onMapInstance?.(map);
 
       // The working-route overlay rides the same tick but is not registered with the manager (it is
       // not a user-toggleable layer); its editVersion dirty-check gates its work. The initial theme
@@ -454,6 +464,7 @@ onDestroy(() => {
   destroyed = true;
   routeEditor?.stop();
   mapHandle?.destroy();
+  onMapDestroyed?.();
 });
 </script>
 

@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FetchSource } from 'pmtiles';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createArchiveSource, NoStoreSource } from './pmtiles';
 import { BlockCachedSource } from './pmtiles-block-cache';
 
@@ -94,5 +95,52 @@ describe('createArchiveSource', () => {
     const source = createArchiveSource('blob:http://x/123');
     expect(source).toBeInstanceOf(NoStoreSource);
     expect(source.getKey()).toBe('blob:http://x/123');
+  });
+});
+
+describe('createArchiveSource provided-path switch', () => {
+  beforeEach(() => {
+    vi.stubGlobal('window', {
+      location: { href: 'http://localhost/', hostname: 'localhost', origin: 'http://localhost' },
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('uses a plain FetchSource for a companion-provided archive (default cache, no block cache)', () => {
+    const source = createArchiveSource(
+      `${window.location.origin}/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles`,
+    );
+    expect(source).toBeInstanceOf(FetchSource);
+  });
+
+  it('does not treat a different-host url with the companion path as companion-provided', () => {
+    const source = createArchiveSource(
+      'https://evil.example.com/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles',
+    );
+    expect(source).toBeInstanceOf(BlockCachedSource);
+  });
+
+  it('does not treat a same-host-different-port url as companion-provided', () => {
+    const source = createArchiveSource(
+      'http://localhost:9000/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles',
+    );
+    expect(source).toBeInstanceOf(BlockCachedSource);
+  });
+
+  it('keeps NoStoreSource for a blob archive', () => {
+    const source = createArchiveSource('blob:http://localhost/abc-123');
+    expect(source).toBeInstanceOf(NoStoreSource);
+  });
+
+  it('keeps the block-cached no-store source for any other network archive', () => {
+    const source = createArchiveSource('https://charts.example.com/world.pmtiles');
+    expect(source).toBeInstanceOf(BlockCachedSource);
+  });
+
+  it('does not treat a remote url that merely contains the prefix as a different segment', () => {
+    const source = createArchiveSource(
+      'https://evil.example.com/x/plugins/signalk-binnacle-companion/pmtilesX/a.pmtiles',
+    );
+    expect(source).toBeInstanceOf(BlockCachedSource);
   });
 });
