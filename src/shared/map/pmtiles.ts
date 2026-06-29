@@ -98,8 +98,12 @@ let blockStore: BlockStore | undefined;
 const COMPANION_PMTILES_PREFIX = '/plugins/signalk-binnacle-companion/pmtiles/';
 
 function isCompanionProvided(httpUrl: string): boolean {
+  if (typeof window === 'undefined') return false;
   try {
-    return new URL(httpUrl).pathname.startsWith(COMPANION_PMTILES_PREFIX);
+    const u = new URL(httpUrl, window.location.href);
+    return (
+      u.hostname === window.location.hostname && u.pathname.startsWith(COMPANION_PMTILES_PREFIX)
+    );
   } catch {
     return false;
   }

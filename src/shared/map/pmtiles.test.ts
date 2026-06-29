@@ -1,5 +1,5 @@
 import { FetchSource } from 'pmtiles';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createArchiveSource, NoStoreSource } from './pmtiles';
 import { BlockCachedSource } from './pmtiles-block-cache';
 
@@ -99,15 +99,29 @@ describe('createArchiveSource', () => {
 });
 
 describe('createArchiveSource provided-path switch', () => {
+  beforeEach(() => {
+    vi.stubGlobal('window', {
+      location: { href: 'http://localhost/', hostname: 'localhost', origin: 'http://localhost' },
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
   it('uses a plain FetchSource for a companion-provided archive (default cache, no block cache)', () => {
     const source = createArchiveSource(
-      'http://pi.local/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles',
+      `${window.location.origin}/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles`,
     );
     expect(source).toBeInstanceOf(FetchSource);
   });
 
+  it('does not treat a different-host url with the companion path as companion-provided', () => {
+    const source = createArchiveSource(
+      'https://evil.example.com/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles',
+    );
+    expect(source).toBeInstanceOf(BlockCachedSource);
+  });
+
   it('keeps NoStoreSource for a blob archive', () => {
-    const source = createArchiveSource('blob:http://pi.local/abc-123');
+    const source = createArchiveSource('blob:http://localhost/abc-123');
     expect(source).toBeInstanceOf(NoStoreSource);
   });
 
