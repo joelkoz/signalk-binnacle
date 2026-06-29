@@ -15,27 +15,14 @@ A WebGL chartplotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.11.0
+## What's new in 0.12.0
 
-Offline charts and tile coverage for passages away from internet, powered by the Binnacle
-Companion plugin:
+- **AI route-draft and optimize controls removed.** The "Draft a route with AI" button and the
+  "Optimize route" button are no longer in the Routes panel. All manual routing is retained:
+  drawing, editing, GPX import and export, reversing, activating via the Course API, and
+  stopping navigation work exactly as before.
 
-- **Tile cache prewarm panel.** Draw a cruising box on the chart before departure and fill the
-  shared boat-wide cache. A live byte estimate is gated against the cache capacity so you know
-  the storage cost before committing. The prewarmed box is pinned and never evicted.
-- **Off-plan position-warm.** An optional background fill keeps a small tile radius around the
-  vessel warm when it travels outside the prewarmed box, always LRU-bounded so it never
-  displaces the pinned coverage.
-- **Chart-management panel.** Lists every local `.pmtiles` archive the Binnacle Companion has
-  discovered, with a per-chart name and description.
-- **Shared boat-wide tile cache.** All raster overlays and the vector basemap are fetched and
-  cached through the Signal K server so every device on the boat shares one cache and the same
-  tile is never refetched per device. A standalone install without the companion is unchanged.
-- **PMTiles served by the companion use the browser cache correctly.** Binnacle now issues
-  conditional requests against the strong ETag the companion sets, retiring the no-store
-  workaround on companion-provided chart paths.
-
-See the [changelog](CHANGELOG.md#v0110) for the full list.
+See the [changelog](CHANGELOG.md#v0120) for the full list.
 
 ## What it does
 

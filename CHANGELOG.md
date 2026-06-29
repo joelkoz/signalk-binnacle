@@ -8,6 +8,17 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v0120"></a>
+
+## [0.12.0] - 2026-06-29
+
+### Removed
+
+- **AI route-draft and optimize controls.** The "Draft a route with AI" button and the "Optimize
+  route" button are removed from the Routes panel. All manual routing is retained: drawing a
+  new route, editing an existing one, importing and exporting GPX files, reversing a route,
+  activating via the Course API, and stopping navigation all work exactly as before.
+
 <a id="v0110"></a>
 
 ## [0.11.0] - 2026-06-28
