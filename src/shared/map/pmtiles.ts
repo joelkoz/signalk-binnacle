@@ -1,5 +1,5 @@
 import maplibregl from 'maplibre-gl';
-import { PMTiles, Protocol, type RangeResponse, type Source } from 'pmtiles';
+import { FetchSource, PMTiles, Protocol, type RangeResponse, type Source } from 'pmtiles';
 import { isAbort } from './abort';
 import { BlockCachedSource, type BlockStore, createBlockStore } from './pmtiles-block-cache';
 
@@ -91,10 +91,26 @@ export function registerPmtilesProtocol(): void {
 
 let blockStore: BlockStore | undefined;
 
-// The source for an archive url: a network archive's no-store source is wrapped in the
-// IndexedDB block cache; a blob: archive is already local bytes (the user-chart blob in
-// IndexedDB), so block-caching it would only duplicate them. Exported for testing.
+// The companion serve route path. An archive served from it carries a strong ETag, so the browser
+// HTTP cache works and the no-store workaround plus the IndexedDB block cache are not needed. The
+// match is on the exact url path: a false positive that routed a blob or a remote weak-ETag archive
+// through this path would reintroduce the Chrome cache-write failure.
+const COMPANION_PMTILES_PREFIX = '/plugins/signalk-binnacle-companion/pmtiles/';
+
+function isCompanionProvided(httpUrl: string): boolean {
+  try {
+    return new URL(httpUrl).pathname.startsWith(COMPANION_PMTILES_PREFIX);
+  } catch {
+    return false;
+  }
+}
+
+// The source for an archive url. A companion-provided archive uses a plain FetchSource with the
+// default browser HTTP cache (its strong ETag makes the range-cache write succeed) and no block
+// cache. A blob: archive is already local bytes, so it skips the block cache too. Any other network
+// archive keeps the no-store source wrapped in the IndexedDB block cache. Exported for testing.
 export function createArchiveSource(httpUrl: string): Source {
+  if (isCompanionProvided(httpUrl)) return new FetchSource(httpUrl);
   const inner = new NoStoreSource(httpUrl);
   if (httpUrl.startsWith('blob:')) return inner;
   blockStore ??= createBlockStore();

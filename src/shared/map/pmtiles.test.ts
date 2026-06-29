@@ -1,3 +1,4 @@
+import { FetchSource } from 'pmtiles';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createArchiveSource, NoStoreSource } from './pmtiles';
 import { BlockCachedSource } from './pmtiles-block-cache';
@@ -94,5 +95,31 @@ describe('createArchiveSource', () => {
     const source = createArchiveSource('blob:http://x/123');
     expect(source).toBeInstanceOf(NoStoreSource);
     expect(source.getKey()).toBe('blob:http://x/123');
+  });
+});
+
+describe('createArchiveSource provided-path switch', () => {
+  it('uses a plain FetchSource for a companion-provided archive (default cache, no block cache)', () => {
+    const source = createArchiveSource(
+      'http://pi.local/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles',
+    );
+    expect(source).toBeInstanceOf(FetchSource);
+  });
+
+  it('keeps NoStoreSource for a blob archive', () => {
+    const source = createArchiveSource('blob:http://pi.local/abc-123');
+    expect(source).toBeInstanceOf(NoStoreSource);
+  });
+
+  it('keeps the block-cached no-store source for any other network archive', () => {
+    const source = createArchiveSource('https://charts.example.com/world.pmtiles');
+    expect(source).toBeInstanceOf(BlockCachedSource);
+  });
+
+  it('does not treat a remote url that merely contains the prefix as a different segment', () => {
+    const source = createArchiveSource(
+      'https://evil.example.com/x/plugins/signalk-binnacle-companion/pmtilesX/a.pmtiles',
+    );
+    expect(source).toBeInstanceOf(BlockCachedSource);
   });
 });
