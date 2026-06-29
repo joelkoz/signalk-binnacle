@@ -1,4 +1,5 @@
 <script lang="ts">
+import { onDestroy } from 'svelte';
 import { detectCompanion } from '$shared/map/companion.js';
 import type { AuthController } from '$shared/signalk';
 import { SlideOver } from '$shared/ui';
@@ -21,6 +22,11 @@ let data = $state<ManagedChartsResponse | null>(null);
 let loadError = $state<string | null>(null);
 // Per-field save state keyed as "<identifier>:<field>", so each field tracks independently.
 let saveStates = $state<Record<string, string>>({});
+// Tracks pending clear-indicator timer ids so they can be cancelled if the panel unmounts.
+const timerIds: ReturnType<typeof setTimeout>[] = [];
+onDestroy(() => {
+  for (const id of timerIds) clearTimeout(id);
+});
 
 // Rebuild the token shape the REST clients expect whenever auth changes so every call carries
 // the current bearer token, matching the prewarm panel's client-rebuild pattern.
@@ -75,9 +81,11 @@ async function saveOverride(
       charts: data.charts.map((c) => (c.identifier === chart.identifier ? { ...c, override } : c)),
     };
     // Clear the saved indicator after a short pause; errors stay until the next action.
-    setTimeout(() => {
-      saveStates[key] = '';
-    }, 2000);
+    timerIds.push(
+      setTimeout(() => {
+        saveStates[key] = '';
+      }, 2000),
+    );
   }
 }
 
@@ -116,14 +124,16 @@ function formatBounds(bounds: [number, number, number, number]): string {
         {@const descKey = `${chart.identifier}:description`}
         <div class="chart-card card-frame">
           <p class="chart-file">{chart.fileName}</p>
-          <dl class="chart-meta">
+          <dl class="stat-grid">
             <dt>Format</dt>
-            <dd>{chart.format.toUpperCase()}</dd>
+            <dd><span>{chart.format.toUpperCase()}</span><span class="unit"></span></dd>
             <dt>Zoom range</dt>
-            <dd>{chart.minzoom} to {chart.maxzoom}</dd>
+            <dd><span>{chart.minzoom} to {chart.maxzoom}</span><span class="unit"></span></dd>
             {#if chart.bounds}
               <dt>Bounds</dt>
-              <dd class="bounds-val">{formatBounds(chart.bounds)}</dd>
+              <dd class="bounds-val">
+                <span>{formatBounds(chart.bounds)}</span><span class="unit"></span>
+              </dd>
             {/if}
           </dl>
           <label class="field-row">
@@ -223,24 +233,6 @@ function formatBounds(bounds: [number, number, number, number]): string {
   white-space: nowrap;
 }
 
-/* Two-column definition list for the parsed header metadata, matching the .stat-grid two-column
-   pattern in cards.css but without tabular numerals (the zoom values are labels, not readouts). */
-.chart-meta {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.15rem var(--space-2);
-  margin: 0;
-  font-size: var(--text-sm);
-}
-
-.chart-meta dt {
-  color: var(--text-muted);
-}
-
-.chart-meta dd {
-  margin: 0;
-}
-
 /* Bounds are coordinate pairs: mono and tabular so the digits line up at a glance. */
 .bounds-val {
   font-family: var(--font-mono);
@@ -253,7 +245,7 @@ function formatBounds(bounds: [number, number, number, number]): string {
 .field-row {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .field-label {
@@ -264,11 +256,6 @@ function formatBounds(bounds: [number, number, number, number]): string {
 .field-input {
   inline-size: 100%;
   box-sizing: border-box;
-}
-
-/* The per-field save indicator: a smaller note so it reads as subordinate to the field label. */
-.save-note {
-  margin-top: -0.2rem;
 }
 
 /* The deferred-upload note sits at the end of the panel body, always present as a clear signal
