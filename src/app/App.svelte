@@ -169,7 +169,7 @@ import {
   uuidv4,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
-import { detectCompanion } from '$shared/map/companion.js';
+import { detectCompanion } from '$shared/map/companion';
 import { etaSeconds, routesRoughlyEqual } from '$shared/nav';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
 import {
@@ -576,11 +576,6 @@ let mapInstance = $state<MapLibreMap | undefined>();
 // Companion feature-detect: resolved once at startup. The prewarm panel and its menu entry are only
 // shown when the Binnacle Companion is present, matching how the tile proxy gates itself in ChartCanvas.
 let companionPresent = $state(false);
-$effect(() => {
-  void detectCompanion(origin).then((base) => {
-    companionPresent = base !== null;
-  });
-});
 
 // Samples the live instruments from app start so the Trends panel has an honest in-session
 // series on servers with no history provider. Stopped on destroy.
@@ -2138,6 +2133,10 @@ $effect(() => {
 const NARROW_BREAKPOINT_PX = 600;
 
 onMount(() => {
+  // origin is fixed for the page lifetime; onMount ensures this runs exactly once.
+  void detectCompanion(origin).then((base) => {
+    companionPresent = base !== null;
+  });
   trendRecorder.start(() => ({
     depth: vessel.depthMeters,
     wind: vessel.windSpeedApparentMps,
@@ -2291,6 +2290,7 @@ onDestroy(() => {
       onAnchorMoved={(position) => void anchorController.onAnchorMoved(position)}
       marineRadarLayer={marineRadar.layer}
       onMapInstance={(m) => (mapInstance = m)}
+      onMapDestroyed={() => (mapInstance = undefined)}
     />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />

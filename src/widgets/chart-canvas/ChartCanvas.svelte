@@ -135,6 +135,9 @@ interface Props {
   // The raw MapLibre map instance, handed up once after load for features that need direct map access
   // (for example, a Terra Draw tool that is not part of the route editor).
   onMapInstance?: (map: MapLibreMap) => void;
+  // Fired when the map handle is destroyed, so the host can clear any reference it holds (for
+  // example, clearing mapInstance so the prewarm panel never mounts Terra Draw against a stale map).
+  onMapDestroyed?: () => void;
 }
 
 const {
@@ -184,6 +187,7 @@ const {
   onAnchorMoved,
   marineRadarLayer,
   onMapInstance,
+  onMapDestroyed,
 }: Props = $props();
 
 let container: HTMLDivElement;
@@ -460,6 +464,7 @@ onDestroy(() => {
   destroyed = true;
   routeEditor?.stop();
   mapHandle?.destroy();
+  onMapDestroyed?.();
 });
 </script>
 
