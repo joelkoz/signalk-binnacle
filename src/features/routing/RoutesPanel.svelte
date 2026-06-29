@@ -4,10 +4,12 @@ import {
   Download,
   Navigation,
   Plus,
+  Save,
   Square,
   SquarePen,
   Trash2,
   Upload,
+  X,
 } from '@lucide/svelte';
 import { type Route, type RouteHighlight, routeDistanceMeters } from '$entities/route';
 import { formatNm } from '$shared/lib';
@@ -15,14 +17,13 @@ import type { PersistedValue } from '$shared/settings';
 import {
   InlineConfirm,
   pickTextFile,
+  promptSaveName,
   readErrorMessage,
   SavedList,
   SlideOver,
   VisibilityToggle,
 } from '$shared/ui';
-import RouteDraftPanel from './RouteDraftPanel.svelte';
 import RouteEditPlan from './RouteEditPlan.svelte';
-import type { DraftView } from './route-draft-client';
 
 interface Props {
   routes: Route[];
@@ -58,22 +59,6 @@ interface Props {
   onDelete: (id: string) => void;
   onClose: () => void;
   onBack?: () => void;
-  // AI route drafting: shown only when the route-drafting plugin is detected.
-  draftAvailable: boolean;
-  draftLoading: boolean;
-  draftError: string | undefined;
-  onDraft: (prompt: string) => void;
-  // The active AI draft as display strings (the caller formats the fuel line and orders the flags),
-  // or undefined for a hand-drawn working route. Its presence is what makes the route a draft.
-  draft: DraftView | undefined;
-  // Optimize the drawn route via the same plugin. Shown while editing a hand-drawn route.
-  onOptimize: (hint: string) => void;
-  // Restore the pre-optimize drawing instead of clearing, used by Cancel during an optimize draft.
-  onCancelDraft: () => void;
-  // True when the current draft came from Optimize, so Cancel restores rather than discards.
-  optimizeDraft: boolean;
-  // True when the last optimize returned an unchanged route, so the panel shows a brief note.
-  optimizeUnchanged: boolean;
 }
 
 const {
@@ -99,15 +84,6 @@ const {
   onDelete,
   onClose,
   onBack,
-  draftAvailable,
-  draftLoading,
-  draftError,
-  onDraft,
-  draft,
-  onOptimize,
-  onCancelDraft,
-  optimizeDraft,
-  optimizeUnchanged,
 }: Props = $props();
 
 // Delete is destructive and, for the active route, also stops navigation, so it arms a confirm step
@@ -132,6 +108,11 @@ async function importGpx(): Promise<void> {
   onImportGpx(picked.text);
 }
 
+function promptSave(): void {
+  const name = promptSaveName('Route');
+  if (name !== undefined) onSave(name);
+}
+
 // Precompute each route's formatted distance once per change rather than re-walking every route's
 // waypoints on every panel render inside the each-block.
 const savedCards = $derived(
@@ -151,12 +132,11 @@ $effect(() => {
 });
 </script>
 
-<!-- Disable minimize while a draft is shown: the draft warning and flag list are verification-critical and must not be collapsible. -->
 <SlideOver
   title="Routes"
   bodyFlex
   closeLabel="Close routes panel"
-  minimize={draft ? undefined : { collapsed: minimized, onToggle: () => (minimized = !minimized) }}
+  minimize={{ collapsed: minimized, onToggle: () => (minimized = !minimized) }}
   {onClose}
   {onBack}
 >
@@ -184,29 +164,29 @@ $effect(() => {
     <p class="alert-note" role="status">{importError}</p>
   {/if}
 
-  <RouteDraftPanel
-    {draftAvailable}
-    {working}
-    {draftLoading}
-    {draftError}
-    {draft}
-    {optimizeDraft}
-    {optimizeUnchanged}
-    {onDraft}
-    {onSave}
-    {onOptimize}
-    {onCancelDraft}
-    {onCancelEdit}
-  >
-    {#snippet body()}
-      {#if working}
-        <RouteEditPlan {working} {highlight} {onHighlightLeg} {planningSpeed} />
-      {/if}
+  {#if working}
+    <div class="editing" role="group" aria-label="Route under edit">
+      <div class="panel-controls">
+        <button
+          type="button"
+          class="btn btn-primary btn--grow"
+          disabled={working.waypoints.length < 2}
+          onclick={promptSave}
+        >
+          <Save size={16} aria-hidden="true" />
+          Save
+        </button>
+        <button type="button" class="btn" onclick={onCancelEdit}>
+          <X size={16} aria-hidden="true" />
+          Cancel
+        </button>
+      </div>
+      <RouteEditPlan {working} {highlight} {onHighlightLeg} {planningSpeed} />
       <p class="muted-note">
         Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
       </p>
-    {/snippet}
-  </RouteDraftPanel>
+    </div>
+  {/if}
 
   <SavedList
     heading="Saved routes"
@@ -316,3 +296,17 @@ $effect(() => {
     {/snippet}
   </SavedList>
 </SlideOver>
+
+<style>
+.editing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem;
+  border: 1px solid var(--accent);
+  border-inline-start-width: var(--active-bar-width);
+  border-radius: var(--radius-sm);
+  background: var(--accent-tint);
+  box-shadow: var(--shadow-overlay);
+}
+</style>

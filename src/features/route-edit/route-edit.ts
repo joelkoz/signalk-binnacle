@@ -39,11 +39,10 @@ export function drawFeatureToWaypoints(feature: GeoJSON.Feature): RouteWaypoint[
 const COORD_MATCH_EPSILON_DEG = 1e-9;
 
 // Terra Draw's default store precision: addFeatures rejects any feature whose coordinates carry more
-// than this many decimal places, dropping the whole route silently. A hand-drawn or saved route
-// already carries Terra-Draw-rounded coordinates, but an AI draft arrives as full-precision doubles,
-// so each seeded coordinate is rounded to this precision or the chart would show nothing. Nine
-// decimals shifts a point by at most ~5e-10 degrees, under COORD_MATCH_EPSILON_DEG, so name
-// reconciliation is unaffected.
+// than this many decimal places, dropping the whole route silently. A saved route already carries
+// Terra-Draw-rounded coordinates, but any seeded route with full-precision doubles needs rounding
+// or the chart would show nothing. Nine decimals shifts a point by at most ~5e-10 degrees, under
+// COORD_MATCH_EPSILON_DEG, so name reconciliation is unaffected.
 const DRAW_COORD_DECIMALS = 9;
 
 function positionsMatch(a: LatLon, b: LatLon): boolean {
@@ -79,10 +78,6 @@ export function createRouteEditor(opts: {
   beforeId?: string;
   theme: Theme;
   onChange: (waypoints: RouteWaypoint[]) => void;
-  // Fired when the navigator edits the geometry by hand (a drag, a midpoint insert, a tap), but not
-  // for the programmatic seeding of an existing route through start(). Lets the app drop a shown AI
-  // draft out of draft mode when the route is hand-tweaked, so it reads as a plain editable route.
-  onUserEdit?: () => void;
 }): RouteEditor {
   const color = drawColor(opts.theme);
   const draw = new TerraDraw({
@@ -133,11 +128,6 @@ export function createRouteEditor(opts: {
   // is dropped. The finish event (double-tap or Enter completes the line and removes the ghost)
   // clears the flag so the completed line's coordinates are then all kept.
   let drawing = false;
-
-  // start() seeds an existing route with addFeatures, which fires a change like any edit. This flag
-  // marks that seeding window so the change handler does not report it as a user edit, which would
-  // drop a draft the instant it is shown. It is cleared in a microtask after the synchronous seed.
-  let seeding = false;
 
   // Re-attach names: a rebuilt coordinate that equals a remembered waypoint's position keeps that
   // waypoint's name, consuming remembered entries in order so a route that visits the same point
@@ -226,13 +216,11 @@ export function createRouteEditor(opts: {
   draw.on('change', (_ids, type) => {
     if (pruning) return;
     // Styling changes come from setTheme's updateModeOptions, not a geometry edit, so they must not
-    // re-run the change pipeline or count as a user edit.
+    // re-run the change pipeline.
     if (type === 'styling') return;
     const next = read();
     remember(next);
     opts.onChange(next);
-    // Suppress only the seeding change; every later change is the navigator editing the geometry.
-    if (!seeding) opts.onUserEdit?.();
   });
 
   // Completing a line (double-tap or Enter) removes Terra Draw's trailing ghost, so stop dropping a
@@ -273,17 +261,12 @@ export function createRouteEditor(opts: {
       started = true;
       if (route && route.waypoints.length > 0) {
         drawing = false;
-        seeding = true;
         const validations = draw.addFeatures([routeToStoreFeature(route)]);
         // A seed that fails Terra Draw's coordinate-precision validation is dropped silently and the
         // editor would open blank; surface it so a rejected seed is observable rather than invisible.
         const rejected = validations.filter((v) => !v.valid);
         if (rejected.length > 0) console.warn('Route seed rejected by Terra Draw', rejected);
         draw.setMode(SELECT_MODE);
-        // Clear after the synchronous seeding change has fired, so only later edits count as the user's.
-        queueMicrotask(() => {
-          seeding = false;
-        });
       } else {
         drawing = true;
         draw.setMode(LINESTRING_MODE);

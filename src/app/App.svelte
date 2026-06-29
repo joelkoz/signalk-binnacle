@@ -32,7 +32,6 @@ import { MobStore } from '$entities/mob';
 import { type ActiveNotification, NotificationsStore } from '$entities/notifications';
 import { type ProfileSettings, ProfileStore, SignalKProfileAdapter } from '$entities/profile';
 import {
-  type Route as RouteModel,
   RouteStore,
   remainingRouteDistanceMeters,
   reverseRoute,
@@ -101,21 +100,12 @@ import {
   activationFromCourse,
   advancePoint,
   clearCourse,
-  type DraftedRoute,
-  type DraftResult,
-  type DraftRouteRequest,
-  type DraftView,
   deleteRoute,
   downloadRouteGpx,
-  draftErrorMessage,
-  draftRoute,
   fetchRoutes,
-  formatDraftFuel,
-  groupDraftFlags,
   hydrateCourse,
   parseGpxRoutes,
   RoutesPanel,
-  routeDraftAvailable,
   routeHref,
   saveRoute,
   setDestination,
@@ -155,10 +145,8 @@ import {
 } from '$features/weather';
 import { GatedAlarm } from '$shared/audio';
 import {
-  type Bbox4,
   bboxContainsPoint,
   boundsOfPoints,
-  clampToWorld,
   type LatLon,
   padBbox,
 } from '$shared/geo';
@@ -167,12 +155,11 @@ import {
   formatNm,
   formatTcpaMin,
   MINUTE_MS,
-  nauticalMilesToMeters,
   uuidv4,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
 import { detectCompanion } from '$shared/map/companion';
-import { etaSeconds, routesRoughlyEqual } from '$shared/nav';
+import { etaSeconds } from '$shared/nav';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
 import {
   createMapView,
@@ -1446,108 +1433,8 @@ function onToggleRouteShown(id: string, shown: boolean): void {
   if (shown) flyToRouteStart(id);
 }
 
-// AI route drafting is served by signalk-crows-nest: the control is hidden unless that plugin is
-// detected at the version that ships the route-draft endpoint, and every value the model returns is
-// an unverified draft the navigator must check leg by leg before saving.
-const draftAvailable = $derived(routeDraftAvailable(serverFeatures?.plugins));
-let draftLoading = $state(false);
-let draftError = $state<string | undefined>();
-// The active AI draft as the panel shows it, or undefined for a hand-drawn working route. These move
-// together, so one object beats six cells: setting it marks the working route a draft, clearing it
-// returns to the normal hand-drawn save.
-let draftView = $state<DraftView | undefined>();
-// One in-flight draft at a time: a newer request aborts the prior fetch, and the sequence guard drops
-// a stale or cancelled response that resolves after a newer one was issued.
-let draftAbort: AbortController | undefined;
-let draftSeq = 0;
-// The hand-drawn route stashed before an optimize, restored if the navigator cancels the result, so
-// Optimize is non-destructive. Set means "the current draft came from Optimize".
-let optimizeOriginal = $state<RouteModel | undefined>();
-// Set true when an optimize returned an effectively unchanged route, so the panel shows a brief note.
-let optimizeUnchanged = $state(false);
-
-// Two routes within this per-waypoint distance count as unchanged, so an optimize that moved nothing
-// shows a note instead of forcing a full re-verification.
-const UNCHANGED_TOLERANCE_M = nauticalMilesToMeters(0.05);
-
-// padBbox fractions for the three route-fit framings, each a fraction of the bounding box. The
-// optimize pad is wider than the draft pad so the route optimizer has room to move waypoints seaward
-// to clear hazards without the server dropping a good turn as out of window.
-const DRAFT_FIT_PAD_FRACTION = 0.15;
+// Leg-fit pad fraction: the chart eases to show a highlighted leg with a margin around it.
 const LEG_FIT_PAD_FRACTION = 0.3;
-const OPTIMIZE_FIT_PAD_FRACTION = 0.25;
-
-function clearDraftState(): void {
-  draftAbort?.abort();
-  draftAbort = undefined;
-  // Bump the sequence so any in-flight draft orphans itself instead of landing after a cancel or save.
-  draftSeq++;
-  draftLoading = false;
-  draftError = undefined;
-  draftView = undefined;
-  optimizeOriginal = undefined;
-  optimizeUnchanged = false;
-}
-
-// The companion scopes nearby notes and POIs to an area of interest. The live map viewport is that
-// area, read via mapCommands.getBounds(); this coarse box around the vessel is only the fallback for
-// the rare case a draft is triggered before the map command surface is ready.
-const VESSEL_AREA_HALF_DEG = 0.5;
-function vesselAreaBounds({ latitude, longitude }: LatLon): Bbox4 {
-  return clampToWorld([
-    longitude - VESSEL_AREA_HALF_DEG,
-    latitude - VESSEL_AREA_HALF_DEG,
-    longitude + VESSEL_AREA_HALF_DEG,
-    latitude + VESSEL_AREA_HALF_DEG,
-  ]);
-}
-
-// The shared request path for draft and optimize: one in-flight call, aborting any prior, with the
-// sequence guard that drops a superseded or cancelled response. Returns the result, or undefined when
-// this call was superseded (the caller does nothing in that case). The GPS-fix precondition lives in
-// onDraftRoute only, since optimize works on a drawn route with no fix.
-async function runDraft(req: DraftRouteRequest): Promise<DraftResult | undefined> {
-  draftAbort?.abort();
-  const controller = new AbortController();
-  draftAbort = controller;
-  const mine = ++draftSeq;
-  draftLoading = true;
-  let result: DraftResult;
-  try {
-    result = await draftRoute(origin, chartsToken, req, controller.signal);
-  } catch {
-    // The client classifies every error itself, so a throw here is unexpected. Guard anyway: a future
-    // regression must never strand the spinner with no error and no way back but cancel.
-    if (mine !== draftSeq) return undefined;
-    draftLoading = false;
-    return { ok: false, error: 'model-error', message: 'unexpected' };
-  }
-  // A newer request (or a cancel) superseded this one: drop the result without touching the UI.
-  if (mine !== draftSeq) return undefined;
-  draftLoading = false;
-  return result;
-}
-
-// Open a returned route as a working draft: set it editing, frame it, and build the panel view. The
-// id is the caller's: a fresh uuid for a from-scratch draft, the drawn route's id for an optimize, so
-// saving an optimized saved route overwrites it rather than orphaning a copy.
-function applyDraft(route: DraftedRoute, source: 'draft' | 'optimize', id: string): void {
-  const working = { id, name: route.name ?? '', waypoints: route.waypoints };
-  routeStore.setWorking(working);
-  mapCommands?.startRouteEdit(working);
-  // Frame the whole passage so every leg is visible before the navigator verifies it.
-  const box = boundsOfPoints(route.waypoints.map((w) => w.position));
-  if (box) mapCommands?.fitBounds(padBbox(box, DRAFT_FIT_PAD_FRACTION));
-  draftView = {
-    name: working.name,
-    destination: route.destination?.name,
-    note: route.note !== '' ? route.note : undefined,
-    fuel: route.fuel ? formatDraftFuel(route.fuel, units.mode) : undefined,
-    confidence: route.confidence,
-    flags: route.flags ? groupDraftFlags(route.flags) : undefined,
-    source,
-  };
-}
 
 // Tap a leg row: toggle its cross-highlight, and ease the chart to the leg only when it is not
 // already in view, so a tap on a visible leg does not jolt the camera. The dot tap on the chart sets
@@ -1569,87 +1456,8 @@ function onHighlightLeg(index: number): void {
   if (box) mapCommands?.fitBounds(padBbox(box, LEG_FIT_PAD_FRACTION));
 }
 
-async function onDraftRoute(prompt: string): Promise<void> {
-  clearRouteError();
-  draftError = undefined;
-  const from = vessel.position;
-  if (!from) {
-    draftError = 'No vessel position yet. Wait for a GPS fix before drafting.';
-    return;
-  }
-  if (vessel.positionStale) {
-    draftError = 'Vessel position is stale. Wait for a fresh GPS fix before drafting.';
-    return;
-  }
-  const result = await runDraft({
-    prompt,
-    from,
-    bounds: mapCommands?.getBounds() ?? vesselAreaBounds(from),
-    units: units.mode,
-  });
-  if (!result) return;
-  if (!result.ok) {
-    // A cancelled draft was aborted by a newer request or a clear; the sequence guard already dropped
-    // the superseded ones, so a cancel stays silent here too.
-    if (result.error !== 'cancelled') draftError = draftErrorMessage(result.error, false);
-    return;
-  }
-  applyDraft(result.route, 'draft', uuidv4());
-}
-
-// Optimize the drawn working route: send it to the same plugin and present the improved result as a
-// non-destructive draft. Stashes the original so Cancel restores it, asserts the optimized marker to
-// reject an older same-version build, and shows a note rather than the verify ritual when nothing moved.
-async function onOptimizeRoute(hint: string): Promise<void> {
-  clearRouteError();
-  const working = routeStore.working;
-  if (!working || working.waypoints.length < 2) return;
-  const positions = working.waypoints.map((w) => w.position);
-  // No GPS-fix requirement: the drawn route defines start, end, and area. Send the fix as context when
-  // fresh, else fall back to the route's first waypoint.
-  const from = vessel.position && !vessel.positionStale ? vessel.position : positions[0];
-  // padBbox clamps to the world and unwraps a crossing (dateline) box itself, so a crossing box
-  // flows through unchanged.
-  const box = boundsOfPoints(positions);
-  const bounds = box ? padBbox(box, OPTIMIZE_FIT_PAD_FRACTION) : vesselAreaBounds(positions[0]);
-  optimizeOriginal = working;
-  optimizeUnchanged = false;
-  const result = await runDraft({
-    route: positions,
-    prompt: hint,
-    from,
-    bounds,
-    units: units.mode,
-  });
-  if (!result) return;
-  if (!result.ok) {
-    if (result.error !== 'cancelled') flagRouteError(draftErrorMessage(result.error, true));
-    optimizeOriginal = undefined;
-    return;
-  }
-  if (!result.optimized) {
-    // A crows-nest build that does not yet consume route silently drafted from scratch; do not show
-    // that as an optimize. The version gate cannot catch this during the shared 0.10.0 dev window.
-    flagRouteError(
-      'This route-drafting plugin version cannot optimize a route. Update the plugin.',
-    );
-    optimizeOriginal = undefined;
-    return;
-  }
-  const optimized = result.route.waypoints.map((w) => w.position);
-  if (routesRoughlyEqual(positions, optimized, UNCHANGED_TOLERANCE_M)) {
-    // Nothing moved: show the note and drop the optimize stash. Clearing optimizeOriginal flips the
-    // panel's Cancel back to normal discard, which is correct since the drawn route is unchanged.
-    optimizeUnchanged = true;
-    optimizeOriginal = undefined;
-    return;
-  }
-  applyDraft(result.route, 'optimize', working.id);
-}
-
 function beginNewRoute(initialPoint?: LatLon): void {
   clearRouteError();
-  clearDraftState();
   // A client-chosen route id, known before the PUT, so activation needs no create-response parse.
   // The Signal K resources API requires a UUID for standard route ids, so this must be a real UUID.
   routeStore.setWorking({ id: uuidv4(), name: '', waypoints: [] });
@@ -1676,8 +1484,7 @@ async function onSaveRoute(name: string): Promise<void> {
   clearRouteError();
   const working = routeStore.working;
   if (!working || working.waypoints.length < 2) return;
-  // A drafted route can reach here with an empty name (no model name and a cleared field), unlike the
-  // hand-drawn path that prompts; fall back to a dated name so a route is never saved unnamed.
+  // Fall back to a dated name so a route is never saved unnamed.
   const route = { ...working, name: name.trim() || defaultSaveName('Route') };
   if (!(await saveRoute(origin, chartsToken, route))) {
     // A failed write (offline, no write permission, server error) must not lose the work: keep the
@@ -1688,27 +1495,13 @@ async function onSaveRoute(name: string): Promise<void> {
   }
   mapCommands?.stopRouteEdit();
   routeStore.setWorking(undefined);
-  clearDraftState();
   routeStore.toggleShown(route.id, true);
   await refreshRoutes();
-}
-
-// The editing-group Cancel during an optimize draft: put the drawn route back and stay in edit,
-// rather than discarding everything. clearDraftState clears the stash and draft view first, so the
-// restore reads the captured original, not a value it just nulled.
-function onCancelDraft(): void {
-  const original = optimizeOriginal;
-  clearDraftState();
-  if (original) {
-    routeStore.setWorking(original);
-    mapCommands?.startRouteEdit(original);
-  }
 }
 
 function onCancelRouteEdit(): void {
   mapCommands?.stopRouteEdit();
   routeStore.setWorking(undefined);
-  clearDraftState();
 }
 
 // The routes panel's close and back both cancel the in-progress edit and clear any error first.
@@ -1721,24 +1514,6 @@ function backFromRoutesPanel(): void {
   onCancelRouteEdit();
   clearRouteError();
   backToMenu();
-}
-
-// A manual edit of a draft's geometry (a drag, a midpoint insert) accepts it as a hand-drawn route:
-// clear the draft view and the optimize stash so the route becomes a normal working route the
-// navigator can re-optimize or save without the not-chart-verified banner. It must also supersede a
-// draft or optimize still IN FLIGHT (draftView not yet set): clearDraftState bumps draftSeq and aborts,
-// so a late result cannot overwrite the user's edit. The geometry is already updated by the editor's
-// onChange; clearDraftState drops only the draft state, not the working route. No-op for a plain route.
-function onRouteEdited(): void {
-  if (
-    draftView === undefined &&
-    !draftLoading &&
-    optimizeOriginal === undefined &&
-    !optimizeUnchanged
-  ) {
-    return;
-  }
-  clearDraftState();
 }
 
 // Seed the course cells once from a REST GET, then the stream keeps them live. The v2
@@ -2298,7 +2073,6 @@ onDestroy(() => {
       }}
       onRouteEditorError={() =>
         flagRouteError('Could not load the route editor. Check the connection and try again.')}
-      {onRouteEdited}
       onAnchorMoved={(position) => void anchorController.onAnchorMoved(position)}
       marineRadarLayer={marineRadar.layer}
       onMapInstance={(m) => (mapInstance = m)}
@@ -2394,15 +2168,6 @@ onDestroy(() => {
           onImportGpx={onImportRouteGpx}
           planningSpeed={planningSpeedKn}
           onDelete={onDeleteRoute}
-          {draftAvailable}
-          {draftLoading}
-          {draftError}
-          onDraft={onDraftRoute}
-          draft={draftView}
-          onOptimize={onOptimizeRoute}
-          {onCancelDraft}
-          optimizeDraft={optimizeOriginal !== undefined}
-          {optimizeUnchanged}
           onClose={closeRoutesPanel}
           onBack={backFromRoutesPanel}
         />
