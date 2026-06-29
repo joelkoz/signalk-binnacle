@@ -219,13 +219,13 @@ async function savePositionWarm(): Promise<void> {
 }
 
 function commitPositionRadius(entered: number): void {
-  const meters = mode === 'imperial' ? feetToMeters(entered) : entered;
+  const meters = mode === 'imperial' ? (feetToMeters(entered) ?? entered) : entered;
   positionRadiusMeters = Math.max(1, meters);
   void savePositionWarm();
 }
 
 function commitMoveThreshold(entered: number): void {
-  const meters = mode === 'imperial' ? feetToMeters(entered) : entered;
+  const meters = mode === 'imperial' ? (feetToMeters(entered) ?? entered) : entered;
   positionMoveThresholdMeters = Math.max(1, meters);
   void savePositionWarm();
 }

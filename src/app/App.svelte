@@ -4,6 +4,7 @@ import {
   Bell,
   ChartLine,
   CloudSun,
+  HardDrive,
   History,
   Layers,
   LocateFixed,
@@ -19,6 +20,7 @@ import {
   VolumeX,
   Waves,
 } from '@lucide/svelte';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import { onDestroy, onMount, tick, untrack } from 'svelte';
 import { AisTargets, vesselLabel } from '$entities/ais';
 import { AnchorWatch } from '$entities/anchor';
@@ -83,6 +85,7 @@ import {
   type NoteSelection,
 } from '$features/notes';
 import { type Poi, PoiSearchPanel } from '$features/poi-search';
+import { PrewarmPanel } from '$features/prewarm';
 import {
   createProfileBindings,
   downloadProfileJson,
@@ -166,6 +169,7 @@ import {
   uuidv4,
 } from '$shared/lib';
 import type { LayerSettings } from '$shared/map';
+import { detectCompanion } from '$shared/map/companion.js';
 import { etaSeconds, routesRoughlyEqual } from '$shared/nav';
 import { OnlineStatus, registerPwa } from '$shared/pwa';
 import {
@@ -458,7 +462,8 @@ type LeftPanel =
   | 'anchor'
   | 'alarms'
   | 'poi-search'
-  | 'profiles';
+  | 'profiles'
+  | 'prewarm';
 let activePanel = $state<LeftPanel | null>(null);
 // The hamburger's open state is owned here, not inside AppMenu, so a panel's back action can reopen
 // the menu after it closed on selection.
@@ -563,6 +568,20 @@ const layerCategoriesOpen = new PersistedValue<Record<string, boolean>>(
 // The display-unit preference: follows the server's unit preferences when they resolve, with a
 // locally persisted fallback that profiles can carry. The store stays SI; only readouts consult it.
 const units = new UnitsStore();
+
+// The raw MapLibre map instance, handed up once after the chart loads so the prewarm panel can mount
+// its Terra Draw rectangle tool independently of the route editor.
+let mapInstance = $state<MapLibreMap | undefined>();
+
+// Companion feature-detect: resolved once at startup. The prewarm panel and its menu entry are only
+// shown when the Binnacle Companion is present, matching how the tile proxy gates itself in ChartCanvas.
+let companionPresent = $state(false);
+$effect(() => {
+  void detectCompanion(origin).then((base) => {
+    companionPresent = base !== null;
+  });
+});
+
 // Samples the live instruments from app start so the Trends panel has an honest in-session
 // series on servers with no history provider. Stopped on destroy.
 const trendRecorder = new TrendSessionRecorder();
@@ -1099,6 +1118,19 @@ const menuItems = $derived<MenuItem[]>([
     pressed: activePanel === 'profiles',
     onSelect: () => togglePanel('profiles'),
   },
+  ...(companionPresent
+    ? [
+        {
+          id: 'prewarm',
+          label: 'Tile cache',
+          shortLabel: 'Cache',
+          icon: HardDrive,
+          group: 'Settings',
+          pressed: activePanel === 'prewarm',
+          onSelect: () => togglePanel('prewarm'),
+        } satisfies MenuItem,
+      ]
+    : []),
 ]);
 
 // The pinned actions in canonical order, resolved from the persisted id list against the live
@@ -2258,6 +2290,7 @@ onDestroy(() => {
       {onRouteEdited}
       onAnchorMoved={(position) => void anchorController.onAnchorMoved(position)}
       marineRadarLayer={marineRadar.layer}
+      onMapInstance={(m) => (mapInstance = m)}
     />
     <div class="banner-slot">
       <AuthBanner {auth} requestsUrl={accessRequestsUrl} />
@@ -2506,6 +2539,11 @@ onDestroy(() => {
           onClose={closePanel}
           onBack={backToMenu}
         />
+      </div>
+    {/if}
+    {#if activePanel === 'prewarm' && companionPresent && mapInstance}
+      <div class="panel-slot">
+        <PrewarmPanel {auth} map={mapInstance} {units} onClose={closePanel} onBack={backToMenu} />
       </div>
     {/if}
     {#if weatherPanelOpen}
