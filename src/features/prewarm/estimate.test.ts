@@ -5,6 +5,7 @@ import {
   DEFAULT_TILE_BYTES,
   estimateBytes,
   exceedsRegionsFree,
+  formatBySource,
   regionSources,
   regionsFreeBytes,
 } from './estimate.js';
@@ -95,5 +96,21 @@ describe('exceedsRegionsFree', () => {
   });
   it('returns false when the estimate fits', () => {
     expect(exceedsRegionsFree(100_000, stats({ regionsFreeBytes: 500_000_000 }))).toBe(false);
+  });
+});
+
+describe('formatBySource', () => {
+  it('formats each scroll source and returns an empty list when bySource is absent', () => {
+    const base = { rows: 0, bytes: 0, cap: 0, perSourceAvgBytes: {} } as CacheStats;
+    expect(formatBySource(base)).toEqual([]);
+    const withSources = {
+      ...base,
+      bySource: [{ source: 'seamark', bytes: 1024, rows: 3 }],
+    } as CacheStats;
+    const out = formatBySource(withSources);
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe('seamark');
+    expect(typeof out[0].value).toBe('string');
+    expect(typeof out[0].unit).toBe('string');
   });
 });
