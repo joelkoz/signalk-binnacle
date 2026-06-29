@@ -1,6 +1,8 @@
 <script lang="ts">
 import { Download, Square, Trash2 } from '@lucide/svelte';
 import type { Map as MapLibreMap } from 'maplibre-gl';
+import type { UnitsStore } from '$entities/units';
+import { feetToMeters, lengthUnit, metersToFeet } from '$shared/lib';
 import { detectCompanion } from '$shared/map/companion.js';
 import type { AuthController } from '$shared/signalk';
 import { LayerToggle, SlideOver, UnitField } from '$shared/ui';
@@ -16,15 +18,17 @@ import type { CacheStats, WarmStatus } from './prewarm-client.js';
 import { createPrewarmClient } from './prewarm-client.js';
 import type { PrewarmRectangle } from './prewarm-draw.js';
 import { createPrewarmRectangle } from './prewarm-draw.js';
+import { buildConfigPayload, type PositionWarmSettings } from './settings-payload.js';
 
 interface Props {
   auth: AuthController;
   map: MapLibreMap;
+  units: UnitsStore;
   onClose: () => void;
   onBack?: () => void;
 }
 
-const { auth, map, onClose, onBack }: Props = $props();
+const { auth, map, units, onClose, onBack }: Props = $props();
 
 // Feature-detect: the panel renders nothing until detectCompanion resolves.
 let detecting = $state(true);
@@ -53,6 +57,30 @@ const sources = prewarmableSources();
 
 // Rebuild the client when the auth token changes so every call carries the current bearer token.
 const client = $derived(createPrewarmClient(location.origin, auth.token ?? undefined));
+
+// Position-warm settings; default OFF per spec, loaded from getConfig on open.
+let positionEnabled = $state(false);
+let positionRadiusMeters = $state(3704); // ~2 nautical miles
+let positionMoveThresholdMeters = $state(1852); // 1 nautical mile
+let positionIntervalSecs = $state(60); // server-side floor is 60 s
+let positionBaseZoom = $state(12);
+let positionSources = $state<string[]>([]);
+
+// Length display unit follows the server unit preference, same as the anchor watch panel.
+const mode = $derived(units.mode);
+const unit = $derived(lengthUnit(mode));
+const positionRadiusDisplay = $derived(
+  Math.round(
+    mode === 'imperial' ? (metersToFeet(positionRadiusMeters) ?? 0) : positionRadiusMeters,
+  ),
+);
+const positionMoveDisplay = $derived(
+  Math.round(
+    mode === 'imperial'
+      ? (metersToFeet(positionMoveThresholdMeters) ?? 0)
+      : positionMoveThresholdMeters,
+  ),
+);
 
 const gate = $derived(
   stats !== null &&
@@ -123,6 +151,84 @@ $effect(() => {
     if (pollIntervalId !== null) clearInterval(pollIntervalId);
   };
 });
+
+// Load the persisted position-warm settings when the companion is found.
+$effect(() => {
+  if (companionBase === null) return;
+  let stale = false;
+  void client
+    .getConfig()
+    .then((cfg) => {
+      if (stale) return;
+      const pw = extractPositionWarm(cfg);
+      if (pw !== null) {
+        positionEnabled = pw.enabled;
+        positionRadiusMeters = pw.radiusMeters;
+        positionMoveThresholdMeters = pw.moveThresholdMeters;
+        positionIntervalSecs = pw.intervalSecs;
+        positionBaseZoom = pw.baseZoom;
+        positionSources = pw.sources;
+      }
+    })
+    .catch(() => {});
+  return () => {
+    stale = true;
+  };
+});
+
+function extractPositionWarm(cfg: unknown): PositionWarmSettings | null {
+  if (!cfg || typeof cfg !== 'object') return null;
+  const pw = (cfg as Record<string, unknown>).positionWarm;
+  if (!pw || typeof pw !== 'object') return null;
+  const p = pw as Record<string, unknown>;
+  if (
+    typeof p.enabled !== 'boolean' ||
+    typeof p.radiusMeters !== 'number' ||
+    typeof p.moveThresholdMeters !== 'number' ||
+    typeof p.intervalSecs !== 'number' ||
+    typeof p.baseZoom !== 'number' ||
+    !Array.isArray(p.sources)
+  )
+    return null;
+  return {
+    enabled: p.enabled,
+    radiusMeters: p.radiusMeters,
+    moveThresholdMeters: p.moveThresholdMeters,
+    intervalSecs: p.intervalSecs,
+    baseZoom: p.baseZoom,
+    sources: p.sources.filter((s): s is string => typeof s === 'string'),
+  };
+}
+
+async function savePositionWarm(): Promise<void> {
+  if (auth.writeBlocked || companionBase === null) return;
+  try {
+    await client.postConfig(
+      buildConfigPayload({
+        enabled: positionEnabled,
+        radiusMeters: positionRadiusMeters,
+        moveThresholdMeters: positionMoveThresholdMeters,
+        intervalSecs: positionIntervalSecs,
+        baseZoom: positionBaseZoom,
+        sources: positionSources,
+      }),
+    );
+  } catch {
+    // Save is best-effort; the server enforces its own floor values.
+  }
+}
+
+function commitPositionRadius(entered: number): void {
+  const meters = mode === 'imperial' ? feetToMeters(entered) : entered;
+  positionRadiusMeters = Math.max(1, meters);
+  void savePositionWarm();
+}
+
+function commitMoveThreshold(entered: number): void {
+  const meters = mode === 'imperial' ? feetToMeters(entered) : entered;
+  positionMoveThresholdMeters = Math.max(1, meters);
+  void savePositionWarm();
+}
 
 function stopPolling(): void {
   if (pollIntervalId !== null) {
@@ -298,6 +404,72 @@ function toggleSource(id: string, on: boolean): void {
       <p class="muted-note">The estimate is a ceiling. Cached 404s cost no bytes.</p>
     {:else}
       <p class="muted-note">Loading cache stats...</p>
+    {/if}
+
+    <h3 class="caps-label section-head">Position warm</h3>
+    <LayerToggle
+      title="Enable position warm"
+      visible={positionEnabled}
+      disabled={auth.writeBlocked}
+      onToggle={(on) => {
+        positionEnabled = on;
+        void savePositionWarm();
+      }}
+    />
+    <UnitField
+      label="Warm radius"
+      {unit}
+      value={positionRadiusDisplay}
+      min={1}
+      step={1}
+      onCommit={commitPositionRadius}
+    />
+    <UnitField
+      label="Move threshold"
+      {unit}
+      value={positionMoveDisplay}
+      min={1}
+      step={1}
+      onCommit={commitMoveThreshold}
+    />
+    <UnitField
+      label="Warm interval"
+      unit="s"
+      value={positionIntervalSecs}
+      min={60}
+      step={1}
+      onCommit={(v) => {
+        positionIntervalSecs = Math.max(60, Math.round(v));
+        void savePositionWarm();
+      }}
+    />
+    <UnitField
+      label="Base zoom"
+      value={positionBaseZoom}
+      min={0}
+      max={22}
+      step={1}
+      onCommit={(v) => {
+        positionBaseZoom = Math.round(Math.max(0, Math.min(v, 22)));
+        void savePositionWarm();
+      }}
+    />
+    <h3 class="caps-label section-head">Position warm sources</h3>
+    {#each sources as source (source.id)}
+      <LayerToggle
+        title={source.title}
+        visible={positionSources.includes(source.id)}
+        disabled={auth.writeBlocked}
+        onToggle={(on) => {
+          positionSources = on
+            ? [...positionSources, source.id]
+            : positionSources.filter((s) => s !== source.id);
+          void savePositionWarm();
+        }}
+      />
+    {/each}
+    {#if sources.length === 0}
+      <p class="muted-note">No prewarmable sources found in the registry.</p>
     {/if}
 
     {#if error !== null}

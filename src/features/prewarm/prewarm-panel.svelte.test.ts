@@ -74,3 +74,39 @@ describe('prewarm gate', () => {
     ).toBe(false);
   });
 });
+
+it('persists position-warm settings through postConfig', async () => {
+  const posted: unknown[] = [];
+  const client = {
+    getConfig: async () => ({
+      bbox: null,
+      sources: [],
+      minzoom: 6,
+      maxzoom: 12,
+      positionWarm: {
+        enabled: false,
+        radiusMeters: 3704,
+        moveThresholdMeters: 1852,
+        intervalSecs: 60,
+        baseZoom: 12,
+        sources: [],
+      },
+    }),
+    postConfig: async (c: unknown) => {
+      posted.push(c);
+    },
+  };
+  const { buildConfigPayload } = await import('./settings-payload.js');
+  const payload = buildConfigPayload({
+    enabled: true,
+    radiusMeters: 5556,
+    moveThresholdMeters: 1852,
+    intervalSecs: 120,
+    baseZoom: 13,
+    sources: ['seamark'],
+  });
+  await client.postConfig(payload);
+  expect(posted[0]).toMatchObject({
+    positionWarm: { enabled: true, radiusMeters: 5556, intervalSecs: 120 },
+  });
+});
