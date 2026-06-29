@@ -52,17 +52,7 @@ export interface RegionRequest {
   name: string;
 }
 
-export interface PrewarmRequestBody {
-  bbox: [number, number, number, number];
-  sources: string[];
-  minzoom: number;
-  maxzoom: number;
-}
-
 export interface PrewarmClient {
-  postPrewarm(body: PrewarmRequestBody): Promise<{ jobId: string }>;
-  getStatus(jobId: string): Promise<WarmStatus | null>;
-  cancel(jobId: string): Promise<void>;
   getConfig(): Promise<unknown>;
   postConfig(config: unknown): Promise<void>;
   getCacheStats(): Promise<CacheStats>;
@@ -88,24 +78,6 @@ export function createPrewarmClient(
       body: JSON.stringify(body),
     });
   return {
-    async postPrewarm(body) {
-      const r = await fetchImpl(url('/prewarm'), jsonPost(body));
-      return json<{ jobId: string }>(r);
-    },
-    async getStatus(jobId) {
-      const r = await fetchImpl(
-        url(`/prewarm/status/${encodeURIComponent(jobId)}`),
-        authInit(token),
-      );
-      if (r.status === 404) return null;
-      return json<WarmStatus>(r);
-    },
-    async cancel(jobId) {
-      await fetchImpl(
-        url(`/prewarm/cancel/${encodeURIComponent(jobId)}`),
-        authInit(token, { method: 'POST' }),
-      );
-    },
     async getConfig() {
       return json(await fetchImpl(url('/prewarm/config'), authInit(token)));
     },
@@ -133,12 +105,19 @@ export function createPrewarmClient(
     },
     async getRegionJobStatus(id) {
       const r = await fetchImpl(url(`/regions/${encodeURIComponent(id)}/status`), authInit(token));
+      // A 404 means the job is gone (the region reconciled server-side): treat it as terminal, not a
+      // failure. Any other non-ok is a real failure, so throw rather than parse an error body as a
+      // status snapshot, letting the poller count it and stop after a small cap.
       if (r.status === 404) return null;
+      if (!r.ok) throw new Error(`region status ${r.status}`);
       return json<WarmStatus>(r);
     },
     async geocode(lat, lon) {
       try {
-        const r = await fetchImpl(url(`/geocode?lat=${lat}&lon=${lon}`), authInit(token));
+        const r = await fetchImpl(
+          url(`/geocode?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`),
+          authInit(token),
+        );
         if (!r.ok) return null;
         const data = (await r.json()) as Record<string, unknown>;
         return typeof data.display_name === 'string' ? data.display_name : null;

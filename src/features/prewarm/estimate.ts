@@ -30,17 +30,6 @@ export function coveringSources(
   return prewarmableSources().filter((s) => tileCountInBbox(s, bbox, zoomRange) > 0);
 }
 
-/** The bytes still available under the cap. */
-export function freeCapBytes(stats: CacheStats): number {
-  return Math.max(0, stats.cap - stats.bytes);
-}
-
-/** Whether the estimate would exceed the free cap. Kept for any remaining caller; the panel gate now
- * uses the regions-free budget instead. */
-export function exceedsFreeCap(estimate: number, stats: CacheStats): boolean {
-  return estimate > freeCapBytes(stats);
-}
-
 /** Room for new real-region pins. Prefers the server-computed regionsFreeBytes (which already accounts
  * for the position-warm reserve P), falling back to a local floor at 0 that mirrors the container's
  * (R - P) - real_pinned. */

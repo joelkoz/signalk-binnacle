@@ -23,7 +23,7 @@ export function createPrewarmRectangle(map: MapLibreMap): PrewarmRectangle {
   let onChangeCb: (bbox: [number, number, number, number] | null) => void = () => {};
   let started = false;
 
-  draw.on('finish', () => {
+  const onFinish = (): void => {
     const snapshot = draw.getSnapshot();
     const polygon = snapshot.find((f) => f.geometry.type === 'Polygon');
     if (!polygon) {
@@ -34,7 +34,8 @@ export function createPrewarmRectangle(map: MapLibreMap): PrewarmRectangle {
       (p) => [p[0], p[1]] as [number, number],
     );
     onChangeCb(bboxFromRectangle(ring));
-  });
+  };
+  draw.on('finish', onFinish);
 
   return {
     start() {
@@ -45,7 +46,9 @@ export function createPrewarmRectangle(map: MapLibreMap): PrewarmRectangle {
       draw.setMode('rectangle');
     },
     clear() {
-      draw.clear();
+      // draw.clear() runs terra-draw's checkEnabled(), which throws when the instance was never
+      // started, so guard it with the same started flag start() uses; the null change still fires.
+      if (started) draw.clear();
       onChangeCb(null);
     },
     onChange(cb) {
@@ -55,6 +58,8 @@ export function createPrewarmRectangle(map: MapLibreMap): PrewarmRectangle {
       if (started) {
         started = false;
       }
+      // Drop the finish listener, mirroring the draw.on('finish', ...) registration above.
+      draw.off('finish', onFinish);
       // draw.stop() calls adapter.unregister() which removes all prefixed MapLibre sources and
       // layers. It is a no-op when the instance was never started (_enabled=false), so calling
       // it unconditionally is safe and ensures teardown always runs.

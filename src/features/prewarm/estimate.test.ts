@@ -4,9 +4,7 @@ import {
   coveringSources,
   DEFAULT_TILE_BYTES,
   estimateBytes,
-  exceedsFreeCap,
   exceedsRegionsFree,
-  freeCapBytes,
   prewarmableSources,
   regionsFreeBytes,
 } from './estimate.js';
@@ -44,19 +42,6 @@ describe('prewarm estimate', () => {
     expect(withAvg).toBeGreaterThan(0);
     expect(withDefault).toBeGreaterThan(0);
     expect(withDefault % DEFAULT_TILE_BYTES).toBe(0);
-  });
-
-  it('the free cap is the cap minus the used bytes', () => {
-    expect(freeCapBytes(stats({ cap: 1000, bytes: 400 }))).toBe(600);
-  });
-
-  it('flags an estimate over the free cap', () => {
-    expect(exceedsFreeCap(700, stats({ cap: 1000, bytes: 400 }))).toBe(true);
-    expect(exceedsFreeCap(500, stats({ cap: 1000, bytes: 400 }))).toBe(false);
-  });
-
-  it('does not exceed when estimate equals the free cap', () => {
-    expect(exceedsFreeCap(600, stats({ cap: 1000, bytes: 400 }))).toBe(false);
   });
 
   it('derives a bbox from a drawn rectangle ring', () => {
