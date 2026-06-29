@@ -41,6 +41,11 @@ export interface ThemedMapOptions {
   // The Binnacle Companion plugin base when installed, so the basemap style is proxied and cached, or
   // null or undefined for the direct openfreemap style.
   companionBase?: string | null;
+  // A getter for the current Signal K auth token, called on every map fetch. When provided, any
+  // same-origin request whose path starts with /plugins/signalk-binnacle-companion/ or /signalk/
+  // receives an Authorization: Bearer header so the companion-proxied basemap style, glyphs,
+  // sprite, and tile routes work on a security-enabled server.
+  getToken?: () => string | undefined;
   // The view to open at; capped to maxZoom. Falls back to the default center and zoom.
   view?: MapView;
   defaultCenter?: [number, number];
@@ -86,6 +91,24 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
       minZoom: opts.minZoom,
       maxZoom: opts.maxZoom,
       attributionControl: { compact: true },
+      transformRequest: (url: string) => {
+        const token = opts.getToken?.();
+        if (!token) return undefined;
+        try {
+          const parsed = new URL(url, location.href);
+          if (parsed.origin !== location.origin) return undefined;
+          const { pathname } = parsed;
+          if (
+            !pathname.startsWith('/plugins/signalk-binnacle-companion/') &&
+            !pathname.startsWith('/signalk/')
+          ) {
+            return undefined;
+          }
+          return { url, headers: { Authorization: `Bearer ${token}` } };
+        } catch {
+          return undefined;
+        }
+      },
     });
   } catch (error) {
     console.error('Map failed to initialize', error);

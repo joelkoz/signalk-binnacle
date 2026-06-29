@@ -251,6 +251,7 @@ onMount(async () => {
   mapHandle = createThemedMap({
     container,
     companionBase,
+    getToken: () => chartsToken,
     view: initialView,
     managerOptions: {
       saved: savedLayers,
@@ -353,7 +354,7 @@ onMount(async () => {
       // upstream URLs (a standalone install is unchanged). The NASA GIBS ocean fields stay direct: they
       // are date-dynamic and not yet in the companion allowlist.
       await mgr.registerAll([
-        ...charts.map((chart) => createChartOverlay(chart, origin)),
+        ...charts.map((chart) => createChartOverlay(chart, origin, 'basemap', () => chartsToken)),
         ...proxiedSources(STREAMING_CHART_SOURCES, companionBase).map((source) =>
           createStreamingChartOverlay(source),
         ),
@@ -414,7 +415,7 @@ onMount(async () => {
       const userChartRegistrar: UserChartRegistrar = {
         register: async (chart) => {
           if (isDestroyed()) return;
-          await mgr.register(createChartOverlay(chart, origin, 'bathymetry'));
+          await mgr.register(createChartOverlay(chart, origin, 'bathymetry', () => chartsToken));
           view.refresh();
         },
         unregister: (identifier) => {

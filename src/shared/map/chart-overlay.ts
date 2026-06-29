@@ -27,11 +27,13 @@ function opacityProperty(layerType: string): string | undefined {
 }
 
 // Server charts default to the basemap band; a user-imported chart passes 'bathymetry' so it
-// layers above the base map.
+// layers above the base map. Pass getToken when the archive may be companion-provided so each
+// PMTiles fetch carries the current auth token on a security-enabled server.
 export function createChartOverlay(
   chart: SignalKChart,
   serverBase: string,
   band: ZBand = 'basemap',
+  getToken?: () => string | undefined,
 ): OverlayModule {
   const specs = chartToSpecs(chart, serverBase);
   const sourceIds = Object.keys(specs.sources);
@@ -82,7 +84,7 @@ export function createChartOverlay(
       // A PMTiles archive registers a no-store source first so MapLibre resolves the
       // pmtiles:// url to it rather than the default cache-writing fetch source.
       for (const url of pmtilesUrls) {
-        registerPmtilesArchive(url);
+        registerPmtilesArchive(url, getToken);
       }
       for (const sourceId of sourceIds) {
         if (!ctx.map.getSource(sourceId)) {

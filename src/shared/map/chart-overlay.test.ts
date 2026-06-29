@@ -72,7 +72,7 @@ describe('chart overlay', () => {
     );
     const map = createFakeMap();
     overlay.add(ctxFor(map));
-    expect(registerPmtilesArchive).toHaveBeenCalledWith('https://x/c.pmtiles');
+    expect(registerPmtilesArchive).toHaveBeenCalledWith('https://x/c.pmtiles', undefined);
     overlay.remove(ctxFor(map));
     expect(unregisterPmtilesArchive).toHaveBeenCalledWith('https://x/c.pmtiles');
   });

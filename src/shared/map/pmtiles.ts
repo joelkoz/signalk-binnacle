@@ -1,5 +1,5 @@
 import maplibregl from 'maplibre-gl';
-import { FetchSource, PMTiles, Protocol, type RangeResponse, type Source } from 'pmtiles';
+import { PMTiles, Protocol, type RangeResponse, type Source } from 'pmtiles';
 import { isAbort } from './abort';
 import { BlockCachedSource, type BlockStore, createBlockStore } from './pmtiles-block-cache';
 
@@ -83,6 +83,42 @@ export class NoStoreSource implements Source {
   }
 }
 
+// A PMTiles source for companion-provided archives. Uses the default browser HTTP cache (the
+// companion serves with strong ETags so range-request cache writes succeed, unlike remote archives
+// that may have weak ETags). Reads the auth token from a getter on every fetch so a token refresh
+// is picked up without re-registering the archive. Exported for testing.
+export class CompanionSource implements Source {
+  #url: string;
+  #getToken: () => string | undefined;
+
+  constructor(url: string, getToken: () => string | undefined) {
+    this.#url = url;
+    this.#getToken = getToken;
+  }
+
+  getKey(): string {
+    return this.#url;
+  }
+
+  async getBytes(offset: number, length: number, signal?: AbortSignal): Promise<RangeResponse> {
+    const headers: Record<string, string> = { Range: `bytes=${offset}-${offset + length - 1}` };
+    const token = this.#getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(this.#url, { signal, headers });
+    if (response.status >= 300) {
+      throw new Error(`PMTiles fetch failed: ${response.status} for ${this.#url}`);
+    }
+    let etag = response.headers.get('ETag') ?? undefined;
+    if (etag?.startsWith('W/')) etag = undefined;
+    return {
+      data: await response.arrayBuffer(),
+      etag,
+      cacheControl: response.headers.get('Cache-Control') ?? undefined,
+      expires: response.headers.get('Expires') ?? undefined,
+    };
+  }
+}
+
 export function registerPmtilesProtocol(): void {
   if (protocol) return;
   protocol = new Protocol();
@@ -107,24 +143,27 @@ function isCompanionProvided(httpUrl: string): boolean {
   }
 }
 
-// The source for an archive url. A companion-provided archive uses a plain FetchSource with the
-// default browser HTTP cache (its strong ETag makes the range-cache write succeed) and no block
-// cache. A blob: archive is already local bytes, so it skips the block cache too. Any other network
-// archive keeps the no-store source wrapped in the IndexedDB block cache. Exported for testing.
-export function createArchiveSource(httpUrl: string): Source {
-  if (isCompanionProvided(httpUrl)) return new FetchSource(httpUrl);
+// The source for an archive url. A companion-provided archive uses a CompanionSource with the
+// default browser HTTP cache (its strong ETag makes the range-cache write succeed) and a dynamic
+// auth token getter so the auth header is attached on every fetch. A blob: archive is already local
+// bytes, so it skips the block cache too. Any other network archive keeps the no-store source
+// wrapped in the IndexedDB block cache. Exported for testing.
+export function createArchiveSource(httpUrl: string, getToken?: () => string | undefined): Source {
+  if (isCompanionProvided(httpUrl)) {
+    return new CompanionSource(httpUrl, getToken ?? (() => undefined));
+  }
   const inner = new NoStoreSource(httpUrl);
   if (httpUrl.startsWith('blob:')) return inner;
   blockStore ??= createBlockStore();
   return new BlockCachedSource(inner, blockStore);
 }
 
-// Register a PMTiles archive with the block-cached no-store source so MapLibre resolves
-// `pmtiles://<httpUrl>` to it instead of the default cache-writing fetch source.
-export function registerPmtilesArchive(httpUrl: string): void {
+// Register a PMTiles archive with the appropriate source so MapLibre resolves `pmtiles://<httpUrl>`
+// to it. Pass getToken for companion-provided archives so each fetch carries the current auth token.
+export function registerPmtilesArchive(httpUrl: string, getToken?: () => string | undefined): void {
   if (!protocol) registerPmtilesProtocol();
   if (protocol?.get(httpUrl)) return;
-  protocol?.add(new PMTiles(createArchiveSource(httpUrl)));
+  protocol?.add(new PMTiles(createArchiveSource(httpUrl, getToken)));
 }
 
 // Drop a registered archive when its chart is removed, or each user-chart delete would leak a

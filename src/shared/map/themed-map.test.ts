@@ -23,8 +23,10 @@ vi.mock('maplibre-gl', () => {
     static instances: FakeMap[] = [];
     handlers = new Map<string, Set<(e?: unknown) => void>>();
     canvas = new FakeCanvas();
-    constructor() {
+    options: Record<string, unknown>;
+    constructor(opts: Record<string, unknown> = {}) {
       FakeMap.instances.push(this);
+      this.options = opts;
     }
     on(event: string, fn: (e?: unknown) => void): void {
       const set = this.handlers.get(event) ?? new Set();
@@ -87,6 +89,7 @@ interface FakeMapInstance {
     dispatch(type: string, e: unknown): void;
   };
   fire(event: string, e?: unknown): void;
+  options: Record<string, unknown>;
 }
 
 async function lastMap(): Promise<FakeMapInstance> {
@@ -218,5 +221,28 @@ describe('createThemedMap long-press', () => {
     vi.advanceTimersByTime(600);
     expect(onContextMenu).toHaveBeenCalledTimes(1);
     expect(onContextMenu).toHaveBeenCalledWith({ lng: 1, lat: 2, x: 3, y: 4 });
+  });
+});
+
+describe('createThemedMap transformRequest', () => {
+  beforeEach(() => {
+    vi.stubGlobal('location', { href: 'http://localhost/', origin: 'http://localhost' });
+  });
+
+  it('adds Authorization header for a same-origin companion path', async () => {
+    createThemedMap({ container, getToken: () => 'test-token', onLoad: () => {} });
+    const map = await lastMap();
+    const tr = map.options.transformRequest as (url: string) => unknown;
+    expect(tr('http://localhost/plugins/signalk-binnacle-companion/style/basemap')).toEqual({
+      url: 'http://localhost/plugins/signalk-binnacle-companion/style/basemap',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+  });
+
+  it('does not add Authorization for a cross-origin URL', async () => {
+    createThemedMap({ container, getToken: () => 'test-token', onLoad: () => {} });
+    const map = await lastMap();
+    const tr = map.options.transformRequest as (url: string) => unknown;
+    expect(tr('https://tiles.openfreemap.org/fonts/figtree/0-255.pbf')).toBeUndefined();
   });
 });

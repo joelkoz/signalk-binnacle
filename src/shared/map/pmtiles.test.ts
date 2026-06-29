@@ -1,6 +1,5 @@
-import { FetchSource } from 'pmtiles';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createArchiveSource, NoStoreSource } from './pmtiles';
+import { CompanionSource, createArchiveSource, NoStoreSource } from './pmtiles';
 import { BlockCachedSource } from './pmtiles-block-cache';
 
 function response(status: number, bytes = 4): Response {
@@ -106,11 +105,12 @@ describe('createArchiveSource provided-path switch', () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it('uses a plain FetchSource for a companion-provided archive (default cache, no block cache)', () => {
+  it('uses a CompanionSource for a companion-provided archive (dynamic auth, browser cache)', () => {
     const source = createArchiveSource(
       `${window.location.origin}/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles`,
+      () => 'tok',
     );
-    expect(source).toBeInstanceOf(FetchSource);
+    expect(source).toBeInstanceOf(CompanionSource);
   });
 
   it('does not treat a different-host url with the companion path as companion-provided', () => {
@@ -142,5 +142,57 @@ describe('createArchiveSource provided-path switch', () => {
       'https://evil.example.com/x/plugins/signalk-binnacle-companion/pmtilesX/a.pmtiles',
     );
     expect(source).toBeInstanceOf(BlockCachedSource);
+  });
+});
+
+describe('CompanionSource.getBytes auth header', () => {
+  const COMPANION_URL = 'http://localhost/plugins/signalk-binnacle-companion/pmtiles/sf.pmtiles';
+
+  function okResponse(): Response {
+    return {
+      status: 206,
+      headers: new Headers(),
+      arrayBuffer: async () => new ArrayBuffer(4),
+    } as unknown as Response;
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('includes Authorization header when token is provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    await new CompanionSource(COMPANION_URL, () => 'test-token').getBytes(0, 4);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
+  });
+
+  it('reads the token dynamically so a later token change is picked up', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    let token: string | undefined;
+    const source = new CompanionSource(COMPANION_URL, () => token);
+    await source.getBytes(0, 4);
+    const call0 = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+    expect(call0.Authorization).toBeUndefined();
+    token = 'new-token';
+    await source.getBytes(0, 4);
+    const call1 = (fetchMock.mock.calls[1][1] as RequestInit).headers as Record<string, string>;
+    expect(call1.Authorization).toBe('Bearer new-token');
+  });
+
+  it('omits Authorization when no token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    await new CompanionSource(COMPANION_URL, () => undefined).getBytes(0, 4);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+  });
+
+  it('always includes the Range header', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    await new CompanionSource(COMPANION_URL, () => 'tok').getBytes(100, 512);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Range).toBe('bytes=100-611');
   });
 });
