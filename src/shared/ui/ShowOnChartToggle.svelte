@@ -7,11 +7,14 @@ let {
   label,
   onToggle,
   disabled = false,
+  description,
 }: {
   shown: boolean;
   label: string;
   onToggle: (shown: boolean) => void;
   disabled?: boolean;
+  // An optional plain-language hover and focus tooltip, matching LayerToggle.
+  description?: string;
 } = $props();
 </script>
 
@@ -20,6 +23,7 @@ let {
   class="btn show-on-chart"
   class:is-on={shown}
   aria-pressed={shown}
+  title={description}
   {disabled}
   onclick={() => onToggle(!shown)}
 >

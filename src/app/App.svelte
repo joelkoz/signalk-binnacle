@@ -926,9 +926,10 @@ function onSetRadarPower(status: RadarStatus): void {
   });
 }
 
-// The app menu's options, grouped into five intent groups: Map (center/follow), Navigate (plan and
-// chart), Conditions (weather and tides), Safety (traffic, anchor, alarms), and Settings.
-// Adding an option is a single entry; the launcher renders and groups whatever it is given.
+// The app menu's options, grouped into intent groups: Map (center and follow), Navigate (plan and
+// chart), Conditions (weather and tides), Safety (traffic, anchor, and alarms), Offline charts (the
+// companion-gated offline areas and chart files), and Settings. Adding an option is a single entry;
+// the launcher renders and groups whatever it is given.
 const menuItems = $derived<MenuItem[]>([
   {
     id: 'center',
@@ -974,8 +975,8 @@ const menuItems = $derived<MenuItem[]>([
   },
   {
     id: 'poi-search',
-    label: 'POI search',
-    shortLabel: 'POI',
+    label: 'Find places',
+    shortLabel: 'Places',
     icon: Search,
     group: 'Navigate',
     pressed: activePanel === 'poi-search',
@@ -1028,8 +1029,8 @@ const menuItems = $derived<MenuItem[]>([
   // time-travel is not a LeftPanel; it has its own active flag and enter/exit API.
   {
     id: 'time-travel',
-    label: 'Time travel',
-    shortLabel: 'Time',
+    label: 'Replay',
+    shortLabel: 'Replay',
     icon: History,
     group: 'Conditions',
     pressed: timeTravel.active,
@@ -1037,7 +1038,7 @@ const menuItems = $derived<MenuItem[]>([
   },
   {
     id: 'ais',
-    label: 'AIS targets',
+    label: 'Nearby vessels (AIS)',
     shortLabel: 'AIS',
     icon: Ship,
     group: 'Safety',
@@ -1080,14 +1081,8 @@ const menuItems = $derived<MenuItem[]>([
     pressed: activePanel === 'alarms',
     onSelect: () => togglePanel('alarms'),
   },
-  {
-    id: 'profiles',
-    label: 'Profiles',
-    icon: UserCog,
-    group: 'Settings',
-    pressed: activePanel === 'profiles',
-    onSelect: () => togglePanel('profiles'),
-  },
+  // Offline charts (companion-gated) comes before Settings so the Settings group stays last whether
+  // or not the companion plugin is installed.
   ...(companionBase !== null
     ? [
         {
@@ -1110,6 +1105,14 @@ const menuItems = $derived<MenuItem[]>([
         } satisfies MenuItem,
       ]
     : []),
+  {
+    id: 'profiles',
+    label: 'Profiles',
+    icon: UserCog,
+    group: 'Settings',
+    pressed: activePanel === 'profiles',
+    onSelect: () => togglePanel('profiles'),
+  },
 ]);
 
 // The pinned actions in canonical order, resolved from the persisted id list against the live
