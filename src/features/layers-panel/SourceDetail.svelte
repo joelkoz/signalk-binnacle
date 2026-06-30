@@ -1,7 +1,7 @@
 <script lang="ts">
-import { ArrowLeft, Trash2 } from '@lucide/svelte';
+import { Trash2 } from '@lucide/svelte';
 import type { UserChartSource, UserCharts } from '$entities/user-charts';
-import { InlineConfirm } from '$shared/ui';
+import { InlineConfirm, SubViewHeader, TextField } from '$shared/ui';
 import ChartSpecList from './ChartSpecList.svelte';
 import { chartSpecRows } from './chart-spec';
 
@@ -14,7 +14,8 @@ interface Props {
 const { source, userCharts, onBack }: Props = $props();
 
 let confirming = $state(false);
-let name = $state('');
+// Not `name`: that shadows the global window.name, which the linter flags on reassignment.
+let chartName = $state('');
 
 const spec = $derived(chartSpecRows(source));
 const specRows = $derived([
@@ -28,11 +29,11 @@ const specRows = $derived([
 // $effect re-runs only when source.name changes, not on every render, so this is the right tool;
 // the panel also keys this component by source id, so it starts fresh for each chart.
 $effect(() => {
-  name = source.name;
+  chartName = source.name;
 });
 
 function saveName(): void {
-  const trimmed = name.trim();
+  const trimmed = chartName.trim();
   if (trimmed && trimmed !== source.name) userCharts.rename(source.id, trimmed);
 }
 
@@ -52,30 +53,18 @@ function doDelete(): void {
 </script>
 
 <div class="detail">
-  <header>
-    <button
-      type="button"
-      class="icon-btn icon-btn--accent"
-      aria-label="Back to layers"
-      onclick={onBack}
-    >
-      <ArrowLeft size={20} aria-hidden="true" />
-    </button>
-    <h3 class="panel-title panel-title--sub">Chart detail</h3>
-  </header>
+  <SubViewHeader title="Chart detail" backLabel="Back to layers" {onBack} />
 
-  <label class="name-field">
-    <span class="caps-label">Name</span>
-    <input
-      class="input"
-      type="text"
-      bind:value={name}
-      onblur={saveName}
-      onkeydown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
-      }}
-    >
-  </label>
+  <TextField
+    variant="stacked"
+    label="Name"
+    value={chartName}
+    ariaLabel="Chart name"
+    onCommit={(value) => {
+      chartName = value;
+      saveName();
+    }}
+  />
 
   <ChartSpecList rows={specRows} />
 
@@ -99,15 +88,5 @@ function doDelete(): void {
   flex-direction: column;
   gap: var(--space-2);
   font-size: var(--text-sm);
-}
-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.name-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
 }
 </style>
