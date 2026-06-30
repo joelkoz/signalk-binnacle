@@ -6,6 +6,7 @@ import {
   estimateBytes,
   exceedsRegionsFree,
   formatBySource,
+  positionWarmSources,
   regionSources,
   regionsFreeBytes,
 } from './estimate.js';
@@ -26,9 +27,14 @@ const stats = (over: Partial<CacheStats> = {}): CacheStats => ({
 });
 
 describe('regions estimate', () => {
-  it('excludes style sources from the region list', () => {
-    expect(regionSources().some((s) => s.upstream.mode === 'style')).toBe(false);
+  it('includes the basemap in the region source list', () => {
+    expect(regionSources().some((s) => s.id === 'basemap')).toBe(true);
     expect(regionSources().some((s) => s.id === 'seamark')).toBe(true);
+  });
+
+  it('positionWarmSources excludes the basemap', () => {
+    expect(positionWarmSources().some((s) => s.id === 'basemap')).toBe(false);
+    expect(positionWarmSources().some((s) => s.id === 'seamark')).toBe(true);
   });
 
   it('uses the per-source average when present, the default otherwise', () => {
@@ -65,9 +71,9 @@ describe('coveringSources', () => {
     expect(result.some((s) => s.id === 'depth-gebco')).toBe(true);
   });
 
-  it('excludes the style basemap', () => {
+  it('includes the basemap for a non-empty box', () => {
     const bbox: [number, number, number, number] = [-122.5, 37.5, -122.0, 38.0];
-    expect(coveringSources(bbox, [6, 12]).every((s) => s.upstream.mode !== 'style')).toBe(true);
+    expect(coveringSources(bbox, [6, 12]).some((s) => s.id === 'basemap')).toBe(true);
   });
 
   it('excludes a bounded source with no overlap with the bbox', () => {
