@@ -8,6 +8,18 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Offline charts, redesigned for a plain-language flow.** The old "Tile cache" panel, a single long
+  scroll of chart-source checkboxes, zoom numbers, and cache internals, is now "Offline charts" under
+  its own menu group. A landing offers one "Download an area" action, the list of saved areas, and
+  rows to Storage and Auto-cache. The builder hides the chart layers behind "Customize what's
+  included" and shows a plain summary instead, the base map is saved by default so an offline area is
+  never a blank canvas, detail is an Overview, Coastal, or Harbor preset rather than raw zoom levels,
+  and storage and the around-the-boat auto-cache each move to their own sub-view. Smart defaults save
+  the chart that covers the area, the navigation marks, and the base map, leaving specialist layers
+  off. The US and EU chart bounds were tightened so a layer only appears where it has data.
+
 ### Fixed
 
 - **Vector basemap and labels rendered blank.** The OpenFreeMap base map tiles and glyphs are
