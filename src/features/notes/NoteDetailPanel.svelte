@@ -65,7 +65,7 @@ function measure(item: NormalizedItem): string {
   dock="right"
   title={selection.name}
   subtitle={categoryLabel(selection.category)}
-  ariaLabel="Point of interest detail"
+  ariaLabel="Details for {selection.name}"
   closeLabel="Close detail"
   {onClose}
   footer={hasFooter ? footer : undefined}
@@ -74,7 +74,7 @@ function measure(item: NormalizedItem): string {
     {#if loading}
       <p class="status" role="status">Loading...</p>
     {:else if failed}
-      <p class="status" role="alert">Could not load detail.</p>
+      <p class="status" role="alert">Could not load the details for this place.</p>
       <button type="button" class="btn btn-ghost" onclick={() => (attempt += 1)}>Retry</button>
     {:else if sections}
       {#each sections as section (section.id)}

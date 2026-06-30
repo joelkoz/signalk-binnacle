@@ -92,6 +92,13 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   {#if error}
     <p class="alert-note" role="alert">{error}</p>
   {/if}
+  <p class="muted-note">
+    A track is the breadcrumb trail of where the boat has been. Recording starts automatically while
+    underway.
+  </p>
+  <p class="muted-note status" class:status--on={!recorder.paused} role="status">
+    {recorder.paused ? 'Paused' : 'Recording'}
+  </p>
   <div class="panel-controls">
     {#if recorder.paused}
       <button type="button" class="btn" onclick={() => recorder.resume()}>
@@ -120,7 +127,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       disabled={recorder.points.length === 0}
     >
       <Eraser size={16} aria-hidden="true" />
-      Clear
+      Discard
     </button>
   </div>
   {#if confirmingClear}
@@ -132,6 +139,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     />
   {/if}
 
+  <h3 class="caps-label">Track color</h3>
   <div class="color-mode segmented" role="group" aria-label="Track color">
     <button
       type="button"
@@ -149,7 +157,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       aria-pressed={colorMode === 'solid'}
       onclick={() => setColorMode('solid')}
     >
-      Solid
+      One color
     </button>
   </div>
 
@@ -165,10 +173,15 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     </button>
     <button type="button" class="btn" onclick={onTrackHome} disabled={recorder.points.length < 2}>
       <Undo2 size={16} aria-hidden="true" />
-      Navigate home
+      Retrace track
     </button>
   </div>
+  <p class="muted-note">
+    Save keeps the track. Save as route makes a reusable route you can follow again. Retrace track
+    navigates back the way you came.
+  </p>
 
+  <h3 class="caps-label">Current track</h3>
   <dl class="stat-grid">
     <dt>Distance</dt>
     <dd>
@@ -178,14 +191,13 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     <dt>Duration</dt>
     <dd>
       <span class="num">{hasTrack ? formatDuration(stats.durationSeconds) : PLACEHOLDER}</span>
-      <span class="unit"></span>
     </dd>
-    <dt>Avg</dt>
+    <dt>Avg speed</dt>
     <dd>
       <span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span>
       <span class="unit">kn</span>
     </dd>
-    <dt>Max</dt>
+    <dt>Top speed</dt>
     <dd>
       <span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span>
       <span class="unit">kn</span>
@@ -195,7 +207,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
   <SavedList
     heading="Saved tracks"
     items={savedCards}
-    empty="None saved yet"
+    empty="No saved tracks yet. Record a track, then tap Save to keep it."
     key={({ track }) => track.id}
   >
     {#snippet card({ track, distanceNm, durationText })}
@@ -223,8 +235,8 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
           <button
             type="button"
             class="icon-btn"
-            aria-label="Export GeoJSON"
-            title="Export GeoJSON"
+            aria-label="Download track file"
+            title="Download track file (.geojson)"
             onclick={() => onExport(track)}
           >
             <Download size={18} aria-hidden="true" />
@@ -249,6 +261,11 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
    the off-segment quiet fill are local. */
 .color-mode .btn {
   flex: 1;
+}
+/* The recording-state line: muted while paused, accented while a track is being captured. */
+.status--on {
+  color: var(--accent);
+  font-weight: 600;
 }
 /* The current-track stats use the global .stat-grid system in app.css. */
 /* The saved-track card list, name, stats, and actions come from the global .saved system in app.css. */
