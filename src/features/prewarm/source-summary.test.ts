@@ -24,7 +24,12 @@ describe('source-summary', () => {
     expect(charts?.title).toBe('Base charts and depth');
     expect(charts?.sources.map((s) => s.id)).toEqual(['depth-noaa-enc', 'basemap']);
     const reference = groups.find((g) => g.category === 'reference');
-    expect(reference?.sources.map((s) => s.id)).toEqual(['seamark', 'mpa-noaa']);
+    expect(reference?.sources.map((s) => s.id)).toEqual(['seamark']);
+    // The specialist protected-area layer is split apart into the Advanced bucket, last.
+    const advanced = groups.find((g) => g.category === 'advanced');
+    expect(advanced?.title).toBe('Advanced layers');
+    expect(advanced?.sources.map((s) => s.id)).toEqual(['mpa-noaa']);
+    expect(groups[groups.length - 1].category).toBe('advanced');
   });
 
   it('summarizes the selected sources in plain language and de-dupes depth', () => {

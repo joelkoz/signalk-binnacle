@@ -42,27 +42,53 @@ export function isFacet(source: { id: string }): boolean {
   return META[source.id]?.parent !== undefined;
 }
 
+// Specialist layers a typical recreational boater rarely needs: the heavy second US depth layer, the
+// coarse worldwide bathymetry, the boundary lines, and the protected-area zones. They are off by
+// default and grouped apart so they do not clutter the layers that cover the area.
+const SPECIALIST = new Set([
+  'depth-bluetopo',
+  'depth-gebco',
+  'bound-eez',
+  'bound-12nm',
+  'mpa-emodnet',
+  'mpa-natura2000',
+  'mpa-noaa',
+]);
+
+/** True for a specialist layer that is off by default and belongs in the Advanced bucket. */
+export function isSpecialist(id: string): boolean {
+  return SPECIALIST.has(id);
+}
+
 export interface SourceGroup {
   category: string;
   title: string;
   sources: ChartSource[];
 }
 
-/** Group the covering sources by their plain Layers-panel category, in category order, dropping facets. */
+const ADVANCED_CATEGORY = 'advanced';
+
+/** Group the covering sources for the builder: the layers that matter under their plain Layers-panel
+ * category, and the specialist layers apart under an Advanced bucket at the end. Facets are dropped. */
 export function coveringGroups(covering: ChartSource[]): SourceGroup[] {
   const byCategory = new Map<string, ChartSource[]>();
   for (const source of covering) {
     if (isFacet(source)) continue;
-    const category = META[source.id]?.category ?? 'charts';
+    const category = isSpecialist(source.id)
+      ? ADVANCED_CATEGORY
+      : (META[source.id]?.category ?? 'charts');
     const list = byCategory.get(category) ?? [];
     list.push(source);
     byCategory.set(category, list);
   }
-  return CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((c) => ({
-    category: c,
-    title: CATEGORY_TITLES[c] ?? c,
-    sources: byCategory.get(c) ?? [],
-  }));
+  const order = [...CATEGORY_ORDER, ADVANCED_CATEGORY];
+  return order
+    .filter((c) => byCategory.has(c))
+    .map((c) => ({
+      category: c,
+      title: c === ADVANCED_CATEGORY ? 'Advanced layers' : (CATEGORY_TITLES[c] ?? c),
+      sources: byCategory.get(c) ?? [],
+    }));
 }
 
 // The plain noun each source contributes to the "what is included" sentence. Several depth sources map

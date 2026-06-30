@@ -677,24 +677,25 @@ function chartLabel(id: string): string {
           Unchecking a layer leaves it out, so it will not be available offline in this area. You
           can add it back and download again any time.
         </p>
-        {#each sourceGroups as group (group.category)}
-          <h4 class="caps-label">{group.title}</h4>
-          {#each group.sources as source (source.id)}
-            <div class="list-row">
-              <LayerToggle
-                title={source.id === 'basemap'
-                  ? 'Base map: land, roads, and place names'
-                  : source.title}
-                description={sourceDescription(source.id)}
-                visible={selectedSources.includes(source.id)}
-                disabled={auth.writeBlocked}
-                onToggle={(on) => toggleSource(source.id, on)}
-              />
-            </div>
+        {#if bbox === null}
+          <p class="muted-note">Draw an area first to see the chart layers that cover it.</p>
+        {:else}
+          {#each sourceGroups as group (group.category)}
+            <h4 class="caps-label">{group.title}</h4>
+            {#each group.sources as source (source.id)}
+              <div class="list-row">
+                <LayerToggle
+                  title={source.id === 'basemap'
+                    ? 'Base map: land, roads, and place names'
+                    : source.title}
+                  description={sourceDescription(source.id)}
+                  visible={selectedSources.includes(source.id)}
+                  disabled={auth.writeBlocked}
+                  onToggle={(on) => toggleSource(source.id, on)}
+                />
+              </div>
+            {/each}
           {/each}
-        {/each}
-        {#if sourceGroups.length === 0}
-          <p class="muted-note">Draw an area first to see its chart layers.</p>
         {/if}
       </Disclosure>
 
