@@ -153,7 +153,9 @@ Shared behavior lives here. Compose these; do not re-implement them.
   Layers panel opening a chart-source detail). The parent suppresses its own panel-level back while
   it is open, so only one back control shows.
 - `TextField`: the labeled text-input row (inline or stacked variant), a controlled value that
-  commits on blur or Enter. Use it for any labeled text field; never a raw `<input type="text">`.
+  commits on blur or Enter. It also offers a live `onInput` (validate while typing), a `focusOnOpen`,
+  an `onEnter` submit, and a `large` deck-glove size. Use it for any labeled text field; never a raw
+  `<input type="text">`.
 - `NameEntry`: the inline name form that replaces `window.prompt` (Enter saves, Escape cancels, the
   seeded default starts selected). Seed it with `defaultSaveName`.
 - `Disclosure`: the labeled collapsible section for a "Customize" or "Advanced" group. The prop is

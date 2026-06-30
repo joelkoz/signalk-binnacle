@@ -349,20 +349,12 @@ Tick all of these before you commit a new menu item.
 
 ---
 
-## Known gaps (cleanup backlog)
+## Settled conventions worth restating
 
-Found while writing this guide, kept here so a future change closes them rather than copying the
-pattern again:
+These were inconsistent across panels and are now unified; a new panel follows the settled form:
 
-- The section wrapper "flex column, `--space-2` gap" is spelled three ways: `.panel-section`
-  (RegionsPanel, scoped-local), ad-hoc `.alerts` and `.mutes` and `.thresholds` (AlarmsPanel), and a
-  bare `.section-head` (ChartsManagementPanel). Hoist `.panel-section` and `.panel-section.section-card`
-  into `panels.css` and have every panel consume it. Fold the duplicated, differently-valued
-  heading-air rule (`.panel-section h3` at `--space-1` versus `.section-head` at `--space-2`) into the
-  one hoisted class with one value. ChartsManagementPanel's "matching the regions panel's
-  .section-head rule" comment is stale.
-- `AddChartForm.svelte` and `WaypointDialog.svelte` both hand-roll the "caps-label plus `.input`"
-  name field. That is the second copy. Both need a live-bound value to disable Save while the field
-  is empty, which `TextField` (commit on blur or Enter) does not yet support, so the right fix is to
-  extend `TextField` with a live or `onInput` mode, not a third copy.
-- `TidesPanel.svelte` uses `ShowOnChartToggle` without a `description`; add the plain-language gloss.
+- One section wrapper: `.panel-section` in `panels.css`. Every panel composes it; do not invent a
+  per-feature section name.
+- One labeled text field: `TextField`, which supports a live `onInput`, a `focusOnOpen`, an
+  `onEnter` submit, and a `large` deck-glove size. There is no hand-rolled "caps-label plus input"
+  name field left to copy.
