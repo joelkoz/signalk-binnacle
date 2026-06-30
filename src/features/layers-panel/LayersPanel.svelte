@@ -109,7 +109,7 @@ const reorder = createLayerReorder(
     {/key}
   {:else}
     {#if view.items.length === 0}
-      <p class="muted-note">No layers</p>
+      <p class="muted-note">No layers available yet.</p>
     {:else}
       {#if pinned.length > 0}
         <section class="category">

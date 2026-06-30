@@ -214,6 +214,7 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
   return {
     id: WEATHER_LAYER_IDS.wind,
     title: 'Wind',
+    description: 'Wind speed and direction across the area.',
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,

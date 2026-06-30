@@ -120,6 +120,7 @@ export function createRadarOverlay(
   return {
     id: WEATHER_LAYER_IDS.radar,
     title: 'Rain radar',
+    description: 'Recent rainfall intensity from weather radar.',
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,

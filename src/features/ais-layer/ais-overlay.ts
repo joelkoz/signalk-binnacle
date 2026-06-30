@@ -49,6 +49,7 @@ export function createAisOverlay(targets: AisTargets): SymbolOverlay {
   return createSymbolOverlay({
     id: 'ais',
     title: 'AIS targets',
+    description: 'Other vessels broadcasting their position over AIS.',
     band: 'traffic',
     sourceId: SOURCE_ID,
     layerId: LAYER_ID,

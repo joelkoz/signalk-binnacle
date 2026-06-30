@@ -154,6 +154,7 @@ $effect(() => {
         <div class="facet-line">
           <LayerToggle
             title={item.title}
+            description={item.description}
             visible={item.visible}
             onToggle={(visible) => view.toggle(item.id, visible)}
           />
@@ -164,6 +165,7 @@ $effect(() => {
           <div class="facet-line facet-child">
             <LayerToggle
               title={sub.title}
+              description={sub.description}
               visible={sub.visible}
               disabled={!item.visible}
               onToggle={(visible) => view.toggle(sub.id, visible)}
@@ -177,6 +179,7 @@ $effect(() => {
       <span class="lead">{@render dragHandle()}</span>
       <LayerToggle
         title={item.title}
+        description={item.description}
         visible={item.visible}
         disabled={!item.available}
         onToggle={(visible) => view.toggle(item.id, visible)}

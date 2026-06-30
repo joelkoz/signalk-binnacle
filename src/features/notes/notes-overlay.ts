@@ -218,6 +218,7 @@ export function createNotesOverlay(
   return {
     id: 'notes',
     title: 'Points of interest',
+    description: 'Harbors, anchorages, services, and hazards from community chart notes.',
     band: 'routes',
     supportsOpacity: true,
     layerIds: LAYERS,

@@ -123,6 +123,7 @@ export function createAnchorOverlay(
   return {
     id: ANCHOR_OVERLAY_ID,
     title: 'Anchor watch',
+    description: 'The set anchor point and its drag-alarm circle.',
     band: BAND,
     supportsOpacity: true,
     layerIds: LAYERS,

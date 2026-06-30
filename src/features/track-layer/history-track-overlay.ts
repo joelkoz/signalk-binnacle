@@ -110,6 +110,7 @@ export function createHistoryTrackOverlay(
   return {
     id: 'track-history',
     title: 'Track history (24 h)',
+    description: "Your boat's path over the last 24 hours.",
     band: BAND,
     supportsOpacity: true,
     defaultVisible: false,

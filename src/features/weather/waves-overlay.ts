@@ -29,6 +29,7 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
     {
       id: WEATHER_LAYER_IDS.waves,
       title: 'Waves',
+      description: 'Significant wave height across the area.',
       sourceId: FIELD_SOURCE,
       layerId: FIELD_LAYER,
       defaultOpacity: 0.7,

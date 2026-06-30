@@ -273,6 +273,8 @@ export function createPpiLayer(
   return {
     id: 'marine-radar',
     title: 'Radar',
+    description:
+      "The radar's own returns painted over the chart: boats, land, and rain it detects.",
     band: 'traffic',
     supportsOpacity: true,
     defaultVisible: false,

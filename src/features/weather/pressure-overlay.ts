@@ -37,6 +37,7 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
   return {
     id: WEATHER_LAYER_IDS.pressure,
     title: 'Pressure',
+    description: 'Barometric pressure contours (isobars) across the area.',
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,

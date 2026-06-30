@@ -94,6 +94,7 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
   return {
     id: 'tides',
     title: 'Tide stations',
+    description: 'Markers for nearby tide and current stations you can tap for predictions.',
     band: 'safety',
     category: 'reference',
     region: 'US',

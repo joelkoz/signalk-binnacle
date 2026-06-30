@@ -103,6 +103,7 @@ export function createAisTrailsOverlay(
   return {
     id: 'ais-trails',
     title: 'AIS trails',
+    description: 'The recent track each AIS vessel has left behind.',
     band: BAND,
     supportsOpacity: true,
     available: isAvailable,

@@ -17,6 +17,8 @@ export type LayerSettings = Record<string, OverlayState>;
 export interface LayerListItem {
   id: string;
   title: string;
+  // A plain-language gloss for the row's hover tooltip. See OverlayModule.description.
+  description?: string;
   visible: boolean;
   opacity: number;
   supportsOpacity: boolean;
@@ -374,6 +376,7 @@ export class LayerManager {
           {
             id,
             title: module.title,
+            description: module.description,
             visible: state.visible,
             opacity: state.opacity,
             supportsOpacity: module.supportsOpacity,

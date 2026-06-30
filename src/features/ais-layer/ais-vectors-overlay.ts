@@ -90,6 +90,7 @@ export function createAisVectorsOverlay(
   return {
     id: 'ais-vectors',
     title: 'AIS course vectors',
+    description: 'A line ahead of each AIS vessel showing where it is heading and how fast.',
     band: BAND,
     supportsOpacity: true,
     layerIds: [LAYER_ID],

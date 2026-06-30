@@ -18,6 +18,8 @@ export interface FieldOverlay extends OverlayModule {
 export interface FieldOverlayOptions {
   id: string;
   title: string;
+  // Plain-language gloss for the Layers-panel row tooltip, passed straight to the OverlayModule.
+  description?: string;
   sourceId: string;
   layerId: string;
   defaultOpacity?: number;
@@ -47,7 +49,7 @@ export function createFieldOverlay(
   options: FieldOverlayOptions,
   makeCanvas: CanvasFactory = defaultCanvas,
 ): FieldOverlay {
-  const { id, title, sourceId, layerId, defaultOpacity, fieldRgba } = options;
+  const { id, title, description, sourceId, layerId, defaultOpacity, fieldRgba } = options;
   const canvas = makeCanvas();
   let theme: Theme = 'day';
   let lastGrid: unknown;
@@ -121,6 +123,7 @@ export function createFieldOverlay(
   return {
     id,
     title,
+    description,
     band: 'weather',
     supportsOpacity: true,
     defaultVisible: false,

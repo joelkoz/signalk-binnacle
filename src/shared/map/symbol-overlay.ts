@@ -16,6 +16,8 @@ export interface SymbolOverlay extends OverlayModule {
 export interface SymbolOverlayConfig {
   id: string;
   title: string;
+  // Plain-language gloss for the Layers-panel row tooltip, passed straight to the OverlayModule.
+  description?: string;
   band: ZBand;
   sourceId: string;
   layerId: string;
@@ -45,6 +47,7 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
   return {
     id: config.id,
     title: config.title,
+    description: config.description,
     band: config.band,
     supportsOpacity: true,
     layerIds: [config.layerId],

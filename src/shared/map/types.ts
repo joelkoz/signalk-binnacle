@@ -39,6 +39,10 @@ export interface OverlayContext {
 export interface OverlayModule {
   readonly id: string;
   readonly title: string;
+  // A one-line plain-language gloss of what the overlay shows, surfaced as the Layers-panel row's
+  // hover tooltip so a navigator new to charts can learn a layer without leaving the panel. Absent
+  // for overlays whose title already says it plainly.
+  readonly description?: string;
   readonly band: ZBand;
   // An optional parent overlay id. A sub-layer (for example the NOAA ENC data-quality overlay under
   // the NOAA ENC chart) nests under its parent in the Layers panel and is only shown when the parent
