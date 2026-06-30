@@ -6,9 +6,12 @@ interface Props {
   // A sub-layer toggle is disabled while its parent is off, so a facet cannot be enabled without
   // the chart it annotates.
   disabled?: boolean;
+  // An optional plain-language description shown as a hover and focus tooltip, so a reader can learn
+  // what a layer is without leaving the list. Falls back to the visible title.
+  description?: string;
 }
 
-const { title, visible, onToggle, disabled = false }: Props = $props();
+const { title, visible, onToggle, disabled = false, description }: Props = $props();
 </script>
 
 <label class="layer-toggle" class:disabled>
@@ -20,7 +23,7 @@ const { title, visible, onToggle, disabled = false }: Props = $props();
     {disabled}
     onchange={(e) => onToggle(e.currentTarget.checked)}
   >
-  <span class="title" {title}>{title}</span>
+  <span class="title" title={description ?? title}>{title}</span>
 </label>
 
 <style>

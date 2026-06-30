@@ -40,7 +40,7 @@ import { createRegionsClient } from './regions-client.js';
 import type { RegionRectangle } from './regions-draw.js';
 import { createRegionRectangle } from './regions-draw.js';
 import { buildConfigPayload, extractPositionWarm } from './settings-payload.js';
-import { coveringGroups, includedSummary } from './source-summary.js';
+import { coveringGroups, includedSummary, sourceDescription } from './source-summary.js';
 
 interface Props {
   auth: AuthController;
@@ -685,6 +685,7 @@ function chartLabel(id: string): string {
                 title={source.id === 'basemap'
                   ? 'Base map: land, roads, and place names'
                   : source.title}
+                description={sourceDescription(source.id)}
                 visible={selectedSources.includes(source.id)}
                 disabled={auth.writeBlocked}
                 onToggle={(on) => toggleSource(source.id, on)}

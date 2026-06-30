@@ -60,10 +60,16 @@ const panelId = `disclosure-${nextDisclosureId++}`;
 .disclosure-toggle :global(.disclosure-chevron.is-open) {
   rotate: 90deg;
 }
+/* Default to display:none so the `hidden` attribute actually hides the body. A bare
+   `display: flex` would override the hidden attribute's UA `display: none`, leaving the content
+   always visible and the chevron looking inert. */
 .disclosure-body {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: var(--space-2);
   padding-block-start: var(--space-2);
+}
+.disclosure-body:not([hidden]) {
+  display: flex;
 }
 </style>

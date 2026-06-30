@@ -80,6 +80,26 @@ const PLAIN_NOUN: Record<string, string> = {
   'mpa-noaa': 'protected areas',
 };
 
+// A plain one-line description per non-facet source, shown as the hover and focus tooltip on each
+// layer in the builder so a novice can learn what a layer is without leaving the list.
+const SOURCE_DESC: Record<string, string> = {
+  basemap: 'The underlying world map: land, water, coastlines, and place names.',
+  'depth-noaa-enc': 'The official US nautical chart: charted depths, buoys, lights, and hazards.',
+  'depth-emodnet': 'A colored seabed-depth map of European waters.',
+  'depth-bluetopo': 'High-resolution US seabed-depth shading.',
+  'depth-gebco': 'A coarse worldwide seabed map, useful well offshore.',
+  seamark: 'Buoys, beacons, lights, and harbors, worldwide.',
+  'bound-eez': "The borders between neighboring countries' waters.",
+  'bound-12nm': 'The 12-nautical-mile territorial-sea line.',
+  'mpa-emodnet': 'European conservation and restricted-use zones.',
+  'mpa-noaa': 'US marine protected areas.',
+};
+
+/** A plain-language description of a source for a tooltip, if one is defined. */
+export function sourceDescription(id: string): string | undefined {
+  return SOURCE_DESC[id];
+}
+
 function joinPlain(parts: string[]): string {
   if (parts.length === 1) return parts[0];
   return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
