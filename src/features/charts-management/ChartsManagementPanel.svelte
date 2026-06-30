@@ -92,95 +92,96 @@ function formatBounds(bounds: [number, number, number, number]): string {
     </p>
   {/if}
 
-  <h3 class="caps-label section-head">Charts</h3>
+  <section class="panel-section" aria-label="Charts">
+    <h3 class="caps-label">Charts</h3>
 
-  {#if loadError !== null}
-    <p class="alert-note" role="alert">{loadError}</p>
-  {:else if data === null}
-    <p class="muted-note" role="status">Loading charts...</p>
-  {:else if data.charts.length === 0}
-    <p class="muted-note">
-      No charts yet. Drop chart files (.pmtiles) into the server's chart folder and they show up
-      here, where you can rename them.
-    </p>
-  {:else}
-    {#each data.charts as chart (chart.identifier)}
-      {@const nameKey = `${chart.identifier}:name`}
-      {@const descKey = `${chart.identifier}:description`}
-      <div class="chart-card card-frame">
-        <p class="chart-file">{chart.fileName}</p>
-        <Disclosure label="Chart details">
-          <dl class="stat-grid">
-            <dt>Format</dt>
-            <dd><span class="num">{chart.format.toUpperCase()}</span><span class="unit"></span></dd>
-            <dt>Zoom range</dt>
-            <dd>
-              <span class="num">{chart.minzoom} to {chart.maxzoom}</span><span class="unit"></span>
-            </dd>
-            {#if chart.bounds}
-              <dt>Bounds</dt>
-              <dd class="bounds-val">
-                <span class="num">{formatBounds(chart.bounds)}</span><span class="unit"></span>
+    {#if loadError !== null}
+      <p class="alert-note" role="alert">{loadError}</p>
+    {:else if data === null}
+      <p class="muted-note" role="status">Loading charts...</p>
+    {:else if data.charts.length === 0}
+      <p class="muted-note">
+        No charts yet. Drop chart files (.pmtiles) into the server's chart folder and they show up
+        here, where you can rename them.
+      </p>
+    {:else}
+      {#each data.charts as chart (chart.identifier)}
+        {@const nameKey = `${chart.identifier}:name`}
+        {@const descKey = `${chart.identifier}:description`}
+        <div class="chart-card card-frame">
+          <p class="chart-file">{chart.fileName}</p>
+          <Disclosure label="Chart details">
+            <dl class="stat-grid">
+              <dt>Format</dt>
+              <dd>
+                <span class="num">{chart.format.toUpperCase()}</span><span class="unit"></span>
               </dd>
-            {/if}
-          </dl>
-        </Disclosure>
-        <TextField
-          variant="stacked"
-          label="Display name"
-          value={chart.override.name ?? chart.name}
-          disabled={auth.writeBlocked}
-          ariaLabel="Display name for {chart.fileName}"
-          onCommit={(value) => void saveOverride(chart, 'name', value)}
-        />
-        {#if saveStates[nameKey] === 'saving'}
-          <p class="muted-note save-note" role="status">Saving...</p>
-        {:else if saveStates[nameKey] === 'saved'}
-          <p class="muted-note save-note" role="status">Saved.</p>
-        {:else if saveStates[nameKey] === 'error'}
-          <p class="alert-note save-note" role="alert">Could not save the name. Check access.</p>
-        {/if}
-        <TextField
-          variant="stacked"
-          label="Description"
-          value={chart.override.description ?? chart.description}
-          disabled={auth.writeBlocked}
-          ariaLabel="Description for {chart.fileName}"
-          onCommit={(value) => void saveOverride(chart, 'description', value)}
-        />
-        {#if saveStates[descKey] === 'saving'}
-          <p class="muted-note save-note" role="status">Saving...</p>
-        {:else if saveStates[descKey] === 'saved'}
-          <p class="muted-note save-note" role="status">Saved.</p>
-        {:else if saveStates[descKey] === 'error'}
-          <p class="alert-note save-note" role="alert">
-            Could not save the description. Check access.
-          </p>
-        {/if}
-      </div>
-    {/each}
-  {/if}
+              <dt>Zoom range</dt>
+              <dd>
+                <span class="num">{chart.minzoom} to {chart.maxzoom}</span
+                ><span class="unit"></span>
+              </dd>
+              {#if chart.bounds}
+                <dt>Bounds</dt>
+                <dd class="bounds-val">
+                  <span class="num">{formatBounds(chart.bounds)}</span><span class="unit"></span>
+                </dd>
+              {/if}
+            </dl>
+          </Disclosure>
+          <TextField
+            variant="stacked"
+            label="Display name"
+            value={chart.override.name ?? chart.name}
+            disabled={auth.writeBlocked}
+            ariaLabel="Display name for {chart.fileName}"
+            onCommit={(value) => void saveOverride(chart, 'name', value)}
+          />
+          {#if saveStates[nameKey] === 'saving'}
+            <p class="muted-note save-note" role="status">Saving...</p>
+          {:else if saveStates[nameKey] === 'saved'}
+            <p class="muted-note save-note" role="status">Saved.</p>
+          {:else if saveStates[nameKey] === 'error'}
+            <p class="alert-note save-note" role="alert">Could not save the name. Check access.</p>
+          {/if}
+          <TextField
+            variant="stacked"
+            label="Description"
+            value={chart.override.description ?? chart.description}
+            disabled={auth.writeBlocked}
+            ariaLabel="Description for {chart.fileName}"
+            onCommit={(value) => void saveOverride(chart, 'description', value)}
+          />
+          {#if saveStates[descKey] === 'saving'}
+            <p class="muted-note save-note" role="status">Saving...</p>
+          {:else if saveStates[descKey] === 'saved'}
+            <p class="muted-note save-note" role="status">Saved.</p>
+          {:else if saveStates[descKey] === 'error'}
+            <p class="alert-note save-note" role="alert">
+              Could not save the description. Check access.
+            </p>
+          {/if}
+        </div>
+      {/each}
+    {/if}
+  </section>
 
   {#if data !== null && data.invalid.length > 0}
-    <h3 class="caps-label section-head">Invalid files</h3>
-    {#each data.invalid as item (item.fileName)}
-      <div class="card-frame invalid-card">
-        <p class="chart-file">{item.fileName}</p>
-        <p class="alert-note">{item.error}</p>
-      </div>
-    {/each}
+    <section class="panel-section" aria-label="Invalid files">
+      <h3 class="caps-label">Invalid files</h3>
+      {#each data.invalid as item (item.fileName)}
+        <div class="card-frame invalid-card">
+          <p class="chart-file">{item.fileName}</p>
+          <p class="alert-note">{item.error}</p>
+        </div>
+      {/each}
+    </section>
   {/if}
 
   <p class="muted-note deferred-note">Browser upload of chart archives is not yet available.</p>
 </SlideOver>
 
 <style>
-/* Extra top margin on each section heading so the caps labels breathe inside the bodyFlex column,
-   matching the regions panel's .section-head rule. */
-.section-head {
-  margin-block-start: var(--space-2);
-}
-
 /* A raised card per detected chart, layout-only: border, radius, and surface come from .card-frame
    (cards.css) and the local flex column adds the inner spacing. */
 .chart-card {

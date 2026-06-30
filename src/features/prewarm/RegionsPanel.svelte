@@ -965,20 +965,7 @@ function chartLabel(id: string): string {
 </SlideOver>
 
 <style>
-/* Each concern is a flex-column section: tight inside, and spaced from its neighbors by the
-   panel bodyFlex gap, matching the alarms panel. The carded sections add padding over the shared
-   card-frame surface, and sub-headings within a section get a little extra top air. */
-.panel-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.panel-section.section-card {
-  padding: var(--space-3);
-}
-.panel-section h3:not(:first-child) {
-  margin-block-start: var(--space-1);
-}
+/* The .panel-section wrapper used by the sections above is the shared class in panels.css. */
 
 /* A landing row that opens a sub-view: a label, its current value, and a trailing chevron, on the
    shared row-interactive base so it reads like the Layers-panel category toggles. Named off the

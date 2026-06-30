@@ -98,7 +98,7 @@ const caution = $derived(thresholdsCaution(t));
     Active alarms show here. Silence stops the sound, acknowledge clears it. Tune the collision
     warning below.
   </p>
-  <section class="alerts" aria-label="Active alerts">
+  <section class="panel-section" aria-label="Active alerts">
     <h3 class="caps-label">Active alerts</h3>
     {#each alerts as n (n.path)}
       {@const time = alertTime(n)}
@@ -141,7 +141,7 @@ const caution = $derived(thresholdsCaution(t));
       <p class="muted-note">No active alerts. Alarms appear here when one triggers.</p>
     {/each}
   </section>
-  <section class="mutes" aria-label="Mutes">
+  <section class="panel-section" aria-label="Mutes">
     <h3 class="caps-label">Mutes</h3>
     <button
       type="button"
@@ -175,7 +175,7 @@ const caution = $derived(thresholdsCaution(t));
       <span>Mute waypoint arrival alarm</span>
     </button>
   </section>
-  <section class="thresholds" aria-label="Collision thresholds">
+  <section class="panel-section" aria-label="Collision thresholds">
     <h3 class="caps-label">Collision alarm</h3>
     <p class="muted-note">
       Warn me when another vessel will pass closer than this distance (the closest pass) within this
@@ -239,13 +239,7 @@ const caution = $derived(thresholdsCaution(t));
 </SlideOver>
 
 <style>
-.alerts,
-.mutes,
-.thresholds {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
+/* The titled sections use the shared .panel-section class in panels.css. */
 /* The border, radius, and raised fill come from the shared .card-frame; only the row layout is here. */
 .alert-row {
   display: flex;

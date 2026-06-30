@@ -155,27 +155,29 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     />
   {/if}
 
-  <h3 class="caps-label">Track color</h3>
-  <div class="color-mode segmented" role="group" aria-label="Track color">
-    <button
-      type="button"
-      class="btn"
-      class:is-on={colorMode === 'speed'}
-      aria-pressed={colorMode === 'speed'}
-      onclick={() => setColorMode('speed')}
-    >
-      Speed
-    </button>
-    <button
-      type="button"
-      class="btn"
-      class:is-on={colorMode === 'solid'}
-      aria-pressed={colorMode === 'solid'}
-      onclick={() => setColorMode('solid')}
-    >
-      One color
-    </button>
-  </div>
+  <section class="panel-section" aria-label="Track color">
+    <h3 class="caps-label">Track color</h3>
+    <div class="color-mode segmented" role="group" aria-label="Track color">
+      <button
+        type="button"
+        class="btn"
+        class:is-on={colorMode === 'speed'}
+        aria-pressed={colorMode === 'speed'}
+        onclick={() => setColorMode('speed')}
+      >
+        Speed
+      </button>
+      <button
+        type="button"
+        class="btn"
+        class:is-on={colorMode === 'solid'}
+        aria-pressed={colorMode === 'solid'}
+        onclick={() => setColorMode('solid')}
+      >
+        One color
+      </button>
+    </div>
+  </section>
 
   <div class="panel-controls">
     <button
@@ -205,29 +207,31 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     navigates back the way you came.
   </p>
 
-  <h3 class="caps-label">Current track</h3>
-  <dl class="stat-grid">
-    <dt>Distance</dt>
-    <dd>
-      <span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span>
-      <span class="unit">nm</span>
-    </dd>
-    <dt>Duration</dt>
-    <dd>
-      <span class="num">{hasTrack ? formatDuration(stats.durationSeconds) : PLACEHOLDER}</span>
-      <span class="unit"></span>
-    </dd>
-    <dt>Avg speed</dt>
-    <dd>
-      <span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span>
-      <span class="unit">kn</span>
-    </dd>
-    <dt>Top speed</dt>
-    <dd>
-      <span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span>
-      <span class="unit">kn</span>
-    </dd>
-  </dl>
+  <section class="panel-section" aria-label="Current track">
+    <h3 class="caps-label">Current track</h3>
+    <dl class="stat-grid">
+      <dt>Distance</dt>
+      <dd>
+        <span class="num">{hasTrack ? formatNm(stats.distanceMeters) : PLACEHOLDER}</span>
+        <span class="unit">nm</span>
+      </dd>
+      <dt>Duration</dt>
+      <dd>
+        <span class="num">{hasTrack ? formatDuration(stats.durationSeconds) : PLACEHOLDER}</span>
+        <span class="unit"></span>
+      </dd>
+      <dt>Avg speed</dt>
+      <dd>
+        <span class="num">{hasTrack ? formatKnots(stats.avgSog) : PLACEHOLDER}</span>
+        <span class="unit">kn</span>
+      </dd>
+      <dt>Top speed</dt>
+      <dd>
+        <span class="num">{hasTrack ? formatKnots(stats.maxSog) : PLACEHOLDER}</span>
+        <span class="unit">kn</span>
+      </dd>
+    </dl>
+  </section>
 
   <SavedList
     heading="Saved tracks"

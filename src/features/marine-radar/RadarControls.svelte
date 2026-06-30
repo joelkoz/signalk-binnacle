@@ -173,7 +173,7 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 {/snippet}
 
 <p class="muted-note">Control your radar's power and tuning, and show its echo on the chart.</p>
-<section class="radar-section" aria-label="Radar status">
+<section class="panel-section" aria-label="Radar status">
   <h3 class="caps-label">Radar</h3>
   {#if statusLabel}
     <p class="radar-head">
@@ -215,7 +215,7 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 {/if}
 
 {#if store.hasRadar}
-  <section class="radar-section" aria-label="Radar power">
+  <section class="panel-section" aria-label="Radar power">
     <h3 class="caps-label">Power</h3>
     <div class="field-head">
       <div class="segmented" role="group" aria-label="Transmit or standby">
@@ -263,7 +263,7 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 {/if}
 
 {#if primary.length > 0}
-  <section class="radar-section" aria-label="Controls">
+  <section class="panel-section" aria-label="Controls">
     <h3 class="caps-label">Controls</h3>
     {#each primary as def (def.id)}
       {@render control(def)}
@@ -275,7 +275,7 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
     <!-- With everyday controls present, the rest fold under an Advanced disclosure so the panel
          opens to the common controls. With no primary controls the radar reports only these, so they
          stand as the lone Controls section, never hidden behind a closed disclosure. -->
-    <section class="radar-section" aria-label="Advanced controls">
+    <section class="panel-section" aria-label="Advanced controls">
       <Disclosure label="Advanced controls">
         {#each advanced as def (def.id)}
           {@render control(def)}
@@ -283,7 +283,7 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
       </Disclosure>
     </section>
   {:else}
-    <section class="radar-section" aria-label="Controls">
+    <section class="panel-section" aria-label="Controls">
       <h3 class="caps-label">Controls</h3>
       {#each advanced as def (def.id)}
         {@render control(def)}
@@ -293,13 +293,8 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 {/if}
 
 <style>
-/* A titled group of fields, matching the alarm-thresholds .group pattern: a caps-label heading over a
-   column of controls. The panel-body bodyFlex rhythm separates the sections. */
-.radar-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
+/* The titled sections use the shared .panel-section class in panels.css; only the field and segment
+   layout inside them is scoped here. */
 /* One control: the name (and the slider's live value) on a head row, then a full-width control beneath,
    so every slider track and select box shares one left and right edge. */
 .radar-field {
@@ -334,11 +329,11 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
   inline-size: 100%;
 }
 /* Every segmented in this panel (the On/Off field toggles and the Power control) fills its row with
-   equal-width segments; one rule covers both since each lives inside a .radar-section. */
-.radar-section .segmented {
+   equal-width segments; one rule covers both since each lives inside a .panel-section. */
+.panel-section .segmented {
   flex: 1;
 }
-.radar-section .segmented .btn {
+.panel-section .segmented .btn {
   flex: 1;
 }
 /* Before any value has arrived the slider thumb parks at the minimum; dim it so it does not read as a
