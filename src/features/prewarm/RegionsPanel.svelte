@@ -118,7 +118,9 @@ const positionWarmSourceList = positionWarmSources();
 // Rebuild the client when the auth token changes so every call carries the current bearer token.
 const client = $derived(createRegionsClient(companionBase, auth.token ?? undefined));
 
-// Position-warm settings; default OFF per spec, loaded from getConfig on open.
+// Position-warm settings, loaded from getConfig on open, which seeds them from the server default
+// (on, with no charts picked, so the panel prompts the navigator to choose). This false is only the
+// pre-load value before the config arrives, replaced as soon as getConfig resolves.
 let positionEnabled = $state(false);
 let positionRadiusMeters = $state(3704); // ~2 nautical miles
 let positionMoveThresholdMeters = $state(1852); // 1 nautical mile
@@ -882,6 +884,37 @@ function chartLabel(id: string): string {
           void savePositionWarm();
         }}
       />
+      {#if positionEnabled}
+        <h4 class="caps-label">Charts to auto-cache</h4>
+        <!-- Auto-cache with no chart picked saves nothing, so when it is on and the list is empty
+             the user is prompted to choose at least one rather than leaving it silently doing
+             nothing. -->
+        {#if positionSources.length === 0 && positionWarmSourceList.length > 0}
+          <p class="muted-note sev-warning" role="status">
+            Auto-cache is on but no charts are picked, so nothing is being saved. Choose at least
+            one chart below.
+          </p>
+        {/if}
+        {#each positionWarmSourceList as source (source.id)}
+          <div class="list-row">
+            <LayerToggle
+              title={source.title}
+              description={sourceDescription(source.id)}
+              visible={positionSources.includes(source.id)}
+              disabled={auth.writeBlocked}
+              onToggle={(on) => {
+                positionSources = on
+                  ? [...positionSources, source.id]
+                  : positionSources.filter((s) => s !== source.id);
+                void savePositionWarm();
+              }}
+            />
+          </div>
+        {/each}
+        {#if positionWarmSourceList.length === 0}
+          <p class="muted-note">No charts available to auto-cache.</p>
+        {/if}
+      {/if}
       <Disclosure label="Advanced">
         <UnitField
           label="How far around the boat"
@@ -925,25 +958,6 @@ function chartLabel(id: string): string {
             void savePositionWarm();
           }}
         />
-        <h4 class="caps-label">Charts to auto-cache</h4>
-        {#each positionWarmSourceList as source (source.id)}
-          <div class="list-row">
-            <LayerToggle
-              title={source.title}
-              visible={positionSources.includes(source.id)}
-              disabled={!positionEnabled || auth.writeBlocked}
-              onToggle={(on) => {
-                positionSources = on
-                  ? [...positionSources, source.id]
-                  : positionSources.filter((s) => s !== source.id);
-                void savePositionWarm();
-              }}
-            />
-          </div>
-        {/each}
-        {#if positionWarmSourceList.length === 0}
-          <p class="muted-note">No charts available to auto-cache.</p>
-        {/if}
       </Disclosure>
     </section>
   {/if}
