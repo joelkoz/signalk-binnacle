@@ -81,6 +81,9 @@ export function createMobController(deps: MobControllerDeps) {
       // Await the raise a fast cancel may be racing, then clear by id; a failed clear falls back
       // to the v1 delta so no station is left with a raised emergency.
       void pending.then(async (id) => {
+        // A new mark committed while this clear was in flight must not be silenced: a rapid trigger,
+        // cancel, trigger would otherwise let this deferred clear the second mark's boat-wide alarm.
+        if (mob.active) return;
         const cleared = id ? await resolveNotification(deps.origin, deps.getToken(), id) : false;
         if (!cleared) publishMobValue(mobClearNotification());
       });

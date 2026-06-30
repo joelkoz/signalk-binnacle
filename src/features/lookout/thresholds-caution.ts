@@ -6,6 +6,9 @@ export function thresholdsCaution(t: Thresholds): string | undefined {
   if (t.dangerCpaMeters === 0 || t.dangerTcpaSeconds === 0) {
     return 'A danger threshold of 0 disables the danger alarm.';
   }
+  if (t.warningCpaMeters === 0 || t.warningTcpaSeconds === 0) {
+    return 'A warning threshold of 0 disables the warning alarm.';
+  }
   if (t.dangerCpaMeters > t.warningCpaMeters || t.dangerTcpaSeconds > t.warningTcpaSeconds) {
     return 'Danger thresholds usually sit at or inside the warning thresholds; check these values.';
   }

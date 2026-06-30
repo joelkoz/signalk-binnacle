@@ -21,6 +21,9 @@ const FORECAST_STEPS = 6;
 // every grid step.
 const FREE_STEP_MS = 6 * HOUR_MS;
 
+// The 3-hour window used for the barometric tendency label, expressed in hours for the display string.
+const PRESSURE_TREND_WINDOW_H = PRESSURE_TREND_WINDOW_MS / HOUR_MS;
+
 // The free-grid forecast at a point: up to FORECAST_STEPS rows starting at the selected time, spaced
 // at least FREE_STEP_MS apart. Empty when there is no grid.
 export function freeForecast(
@@ -95,7 +98,6 @@ export function tendencyText(
   const dPa = pressureTrendPa(grid, lon, lat, targetMs);
   if (dPa === undefined) return undefined;
   const dHpa = dPa / PA_PER_HPA;
-  const hours = PRESSURE_TREND_WINDOW_MS / HOUR_MS;
   if (Math.abs(dHpa) < 0.5) return 'steady';
   const word = dHpa > 0 ? 'rising' : 'falling';
   // Metric keeps a tenth of a hectopascal: formatPressureOr's whole hPa would round a real
@@ -104,5 +106,5 @@ export function tendencyText(
     mode === 'imperial'
       ? formatPressureOr(Math.abs(dPa), 'imperial')
       : formatFixed(Math.abs(dHpa), 1);
-  return `${word} ${value} ${pressureUnit(mode)}/${hours} h`;
+  return `${word} ${value} ${pressureUnit(mode)}/${PRESSURE_TREND_WINDOW_H} h`;
 }

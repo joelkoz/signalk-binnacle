@@ -8,7 +8,7 @@ import {
 } from '$entities/poi-icons';
 import type { SymbolsStore } from '$entities/symbols';
 import type { SkSymbol } from '$shared/signalk';
-import { registerDismiss } from '$shared/ui';
+import { isTabKey, registerDismiss } from '$shared/ui';
 
 // Optional "default" entry at the top of the list (e.g. "Default waypoint marker"). When provided,
 // value='' selects it. If no override symbol exists for defaultOption.iconId, fallbackSvg renders.
@@ -135,10 +135,15 @@ function handleTriggerKey(e: KeyboardEvent): void {
 }
 
 // Arrow keys rove the options; ArrowUp from the first returns to the trigger (a combobox idiom the
-// generic rovingFocus action does not model, so the nav stays bespoke here). Escape is handled by
-// the shared dismiss stack, and Enter or Space activate the option natively as a button.
+// generic rovingFocus action does not model, so the nav stays bespoke here). Tab and Shift+Tab
+// close the picker and restore focus to the trigger so focus cannot escape a nominally open
+// listbox (WCAG 2.1.1). Escape is handled by the shared dismiss stack. Enter and Space activate
+// the option natively as a button.
 function handleOptionKey(e: KeyboardEvent, i: number): void {
-  if (e.key === 'ArrowDown') {
+  if (isTabKey(e)) {
+    e.preventDefault();
+    closeAndReturnFocus();
+  } else if (e.key === 'ArrowDown') {
     e.preventDefault();
     optionEls[Math.min(i + 1, options.length - 1)]?.focus();
   } else if (e.key === 'ArrowUp') {

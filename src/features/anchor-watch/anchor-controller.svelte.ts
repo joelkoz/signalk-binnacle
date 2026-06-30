@@ -142,9 +142,6 @@ export function createAnchorController(deps: AnchorControllerDeps) {
     get anchorError() {
       return anchorError;
     },
-    get anchorTransport() {
-      return anchorTransport;
-    },
     get anchorAlert() {
       return anchorAlert;
     },

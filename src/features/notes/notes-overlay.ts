@@ -7,6 +7,7 @@ import {
   type LatLon,
   latLonToLonLat,
   lngLatBoundsToBbox4,
+  padBbox,
 } from '$shared/geo';
 import { DAY_MS } from '$shared/lib';
 import {
@@ -22,7 +23,7 @@ import {
 import { str } from '$shared/signalk';
 import { createExpiringStore, type ExpiringStore } from '$shared/storage';
 import { registerNavaidIcons } from './navaid-symbols';
-import { bboxKey, NotesCache, padBbox } from './notes-cache';
+import { bboxKey, NotesCache } from './notes-cache';
 import { fetchNotes, type NotePoint, type NoteSelection } from './notes-client';
 import { buildRender } from './notes-features';
 import {
@@ -226,56 +227,62 @@ export function createNotesOverlay(
       // The selection source was just recreated empty, so a later same-position highlight redraws.
       lastRingKey = '';
 
-      onClick = (event) => {
-        const feature = event.features?.[0];
-        if (feature?.geometry.type !== 'Point') return;
-        const props = feature.properties ?? {};
-        const id = String(props.id ?? '');
-        // A note with no id cannot be fetched for detail, so do not select it.
-        if (!id) return;
-        // The category rides on the rendered feature, so validate it against the known set rather
-        // than trusting the string into PoiCategory: an out-of-vocabulary value would key the label
-        // and icon records to nothing instead of falling back.
-        const category = asPoiCategory(String(props.category ?? ''));
-        const [longitude, latitude] = feature.geometry.coordinates as [number, number];
-        onSelect?.({
-          id,
-          name: String(props.name ?? 'Point of interest'),
-          category,
-          position: { latitude, longitude },
-          attribution: str(props.attribution) ?? str(props.source),
-          url: str(props.url),
-        });
-      };
-      onClusterClick = (event) => {
-        const feature = event.features?.[0];
-        const clusterId = feature?.properties?.cluster_id;
-        if (typeof clusterId !== 'number' || feature?.geometry.type !== 'Point') return;
-        const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-        if (!source) return;
-        const center = feature.geometry.coordinates as [number, number];
-        void source
-          .getClusterExpansionZoom(clusterId)
-          .then((zoom) => {
-            ctx.map.easeTo({ center, zoom });
-          })
-          .catch(() => undefined);
-      };
-      onEnter = () => {
-        ctx.map.getCanvas().style.cursor = 'pointer';
-      };
-      onLeave = () => {
-        ctx.map.getCanvas().style.cursor = '';
-      };
-      ctx.map.on('click', LAYER_ID, onClick);
-      ctx.map.on('mouseenter', LAYER_ID, onEnter);
-      ctx.map.on('mouseleave', LAYER_ID, onLeave);
-      // Click only the ring (it covers the cluster and then some), so a click does not fire once per
-      // stacked cluster layer; hover the ring and the icon so either shows the pointer cursor.
-      ctx.map.on('click', CLUSTER_RING_LAYER, onClusterClick);
-      for (const id of CLUSTER_HIT_LAYERS) {
-        ctx.map.on('mouseenter', id, onEnter);
-        ctx.map.on('mouseleave', id, onLeave);
+      // The hit handlers persist across a base-style swap (the map keeps its listeners), so a
+      // reattach, an add() with no preceding remove(), must not re-register them or every click
+      // would fire onSelect twice and the cursor handlers would leak. remove() nulls these refs, so
+      // a genuine teardown then add() re-attaches. Guard on onClick, the first ref set below.
+      if (!onClick) {
+        onClick = (event) => {
+          const feature = event.features?.[0];
+          if (feature?.geometry.type !== 'Point') return;
+          const props = feature.properties ?? {};
+          const id = String(props.id ?? '');
+          // A note with no id cannot be fetched for detail, so do not select it.
+          if (!id) return;
+          // The category rides on the rendered feature, so validate it against the known set rather
+          // than trusting the string into PoiCategory: an out-of-vocabulary value would key the label
+          // and icon records to nothing instead of falling back.
+          const category = asPoiCategory(String(props.category ?? ''));
+          const [longitude, latitude] = feature.geometry.coordinates as [number, number];
+          onSelect?.({
+            id,
+            name: String(props.name ?? 'Point of interest'),
+            category,
+            position: { latitude, longitude },
+            attribution: str(props.attribution) ?? str(props.source),
+            url: str(props.url),
+          });
+        };
+        onClusterClick = (event) => {
+          const feature = event.features?.[0];
+          const clusterId = feature?.properties?.cluster_id;
+          if (typeof clusterId !== 'number' || feature?.geometry.type !== 'Point') return;
+          const source = ctx.map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
+          if (!source) return;
+          const center = feature.geometry.coordinates as [number, number];
+          void source
+            .getClusterExpansionZoom(clusterId)
+            .then((zoom) => {
+              ctx.map.easeTo({ center, zoom });
+            })
+            .catch(() => undefined);
+        };
+        onEnter = () => {
+          ctx.map.getCanvas().style.cursor = 'pointer';
+        };
+        onLeave = () => {
+          ctx.map.getCanvas().style.cursor = '';
+        };
+        ctx.map.on('click', LAYER_ID, onClick);
+        ctx.map.on('mouseenter', LAYER_ID, onEnter);
+        ctx.map.on('mouseleave', LAYER_ID, onLeave);
+        // Click only the ring (it covers the cluster and then some), so a click does not fire once per
+        // stacked cluster layer; hover the ring and the icon so either shows the pointer cursor.
+        ctx.map.on('click', CLUSTER_RING_LAYER, onClusterClick);
+        for (const id of CLUSTER_HIT_LAYERS) {
+          ctx.map.on('mouseenter', id, onEnter);
+          ctx.map.on('mouseleave', id, onLeave);
+        }
       }
       // Load the category and navaid icons after the layers exist, concurrently; resilient, so a
       // failure here leaves the markers as text labels rather than breaking overlay setup.
@@ -389,6 +396,9 @@ export function createNotesOverlay(
         if (onEnter) ctx.map.off('mouseenter', id, onEnter);
         if (onLeave) ctx.map.off('mouseleave', id, onLeave);
       }
+      // Null the refs so a genuine remove()/add() cycle re-attaches, while a bare reattach keeps the
+      // live handlers (the add() guard checks onClick).
+      onClick = onEnter = onLeave = onClusterClick = undefined;
       removeNoteLayers(ctx.map);
     },
   };

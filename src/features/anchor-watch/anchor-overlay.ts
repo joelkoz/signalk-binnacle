@@ -242,6 +242,12 @@ export function createAnchorOverlay(
         // Drop any in-flight drag listeners too, so a teardown mid-drag leaves nothing attached.
         map.off('mousemove', onPointerMove);
         map.off('touchmove', onPointerMove);
+        // And the pending pointer-up end handlers a drag-in-progress registered with once(), so a
+        // teardown mid-drag cannot later fire endDrag against the gone overlay and commit a stale
+        // anchor position.
+        map.off('mouseup', endDrag);
+        map.off('touchend', endDrag);
+        map.off('touchcancel', cancelDrag);
       };
     },
     sync(ctx) {

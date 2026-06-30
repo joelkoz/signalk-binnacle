@@ -124,6 +124,8 @@ const savedCards = $derived(
 // chooses to minimize; the transition check keeps a minimize during editing from springing back open
 // on the next waypoint.
 let minimized = $state(false);
+// A non-reactive edge sentinel, tracked by hand so the effect fires only on the false to true edit
+// transition; deliberately not $state, so writing it does not re-trigger the effect.
 let wasEditing = false;
 $effect(() => {
   const editing = working !== undefined;

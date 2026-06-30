@@ -16,6 +16,7 @@ import {
   HISTORY_RESOLUTION_SECONDS,
   HISTORY_WINDOW_SECONDS,
   type HistoryProviders,
+  type HistoryValues,
   SK_PATHS,
 } from '$shared/signalk';
 
@@ -59,14 +60,13 @@ export function createHistoryTrackOverlay(
     setSourceData(ctx.map, SOURCE_ID, data);
   }
 
-  function toFeature(
-    rows: ReadonlyArray<readonly [string, ...unknown[]]>,
-  ): GeoJSON.FeatureCollection {
+  function toFeature(values: HistoryValues): GeoJSON.FeatureCollection {
+    const iPos = values.columns.findIndex((c) => c.path === SK_PATHS.position);
     const lines: Array<Array<[number, number]>> = [];
     let line: Array<[number, number]> = [];
     let lastSeconds: number | undefined;
-    for (const row of rows) {
-      const position = row[1];
+    for (const row of values.rows) {
+      const position = iPos >= 0 ? row[iPos + 1] : undefined;
       if (!isLatLon(position)) continue;
       const seconds = Date.parse(row[0]) / 1000;
       // A malformed timestamp yields NaN, which would poison every later gap comparison (NaN
@@ -99,7 +99,7 @@ export function createHistoryTrackOverlay(
         durationSeconds: HISTORY_WINDOW_SECONDS,
         resolutionSeconds: HISTORY_RESOLUTION_SECONDS,
       });
-      if (got) setData(ctx, toFeature(got.values.rows));
+      if (got) setData(ctx, toFeature(got.values));
       // A failed query retries on the same cadence; the drawn line stays until then.
       nextFetchAt = deps.now() + REFRESH_MS;
     } finally {

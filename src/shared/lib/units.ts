@@ -1,6 +1,6 @@
 import { PLACEHOLDER } from './coords';
 
-const METERS_PER_NAUTICAL_MILE = 1852;
+export const METERS_PER_NAUTICAL_MILE = 1852;
 // 3600 (seconds per hour) / 1852 (meters per nautical mile): meters per second to knots.
 const MS_TO_KNOTS = 3600 / METERS_PER_NAUTICAL_MILE;
 const DEG_PER_RAD = 180 / Math.PI;

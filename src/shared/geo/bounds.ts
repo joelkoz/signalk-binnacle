@@ -62,7 +62,10 @@ export const VIEWPORT_FETCH_PAD_FRACTION = 0.5;
 // Expand a viewport bbox outward by `fraction` on each side, clamped to the world and the Web
 // Mercator latitude limit, so one padded fetch covers more than the visible area and a small pan
 // reuses it. Shared by the notes and AIS-trails overlays.
-export function padBbox([west, south, east, north]: Bbox4, fraction: number): Bbox4 {
+export function padBbox(
+  [west, south, east, north]: Bbox4,
+  fraction: number = VIEWPORT_FETCH_PAD_FRACTION,
+): Bbox4 {
   // unwrapEast measures the longitude span the short way across the seam for a crossing box, rather
   // than the negative naive east - west.
   const lonSpan = unwrapEast(west, east) - west;

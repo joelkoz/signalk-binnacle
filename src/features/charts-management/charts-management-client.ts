@@ -4,6 +4,7 @@
  * its last list. */
 
 import { companionApiUrl } from '$shared/companion/companion-api';
+import { withTimeout } from '$shared/lib';
 import { authInit } from '$shared/signalk';
 
 export interface ManagedChart {
@@ -30,7 +31,10 @@ export async function fetchManagedCharts(
   fetchImpl: typeof fetch = fetch,
 ): Promise<ManagedChartsResponse | undefined> {
   try {
-    const response = await fetchImpl(companionApiUrl(origin, '/charts'), authInit(token));
+    const response = await fetchImpl(
+      companionApiUrl(origin, '/charts'),
+      withTimeout(authInit(token)),
+    );
     if (!response.ok) return undefined;
     return (await response.json()) as ManagedChartsResponse;
   } catch {
@@ -48,11 +52,13 @@ export async function putChartOverride(
   try {
     const response = await fetchImpl(
       companionApiUrl(origin, `/charts/${encodeURIComponent(id)}/override`),
-      authInit(token, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(override),
-      }),
+      withTimeout(
+        authInit(token, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(override),
+        }),
+      ),
     );
     return response.ok;
   } catch {

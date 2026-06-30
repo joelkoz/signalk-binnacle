@@ -1881,6 +1881,10 @@ async function refreshWeatherProvider(token: string | undefined): Promise<void> 
 // (an approval from another tab) or changes re-detects with the right credentials.
 $effect(() => {
   if (!accessResolved) return;
+  // A write-access approval changes auth.token without reconnecting the stream, and chartsToken
+  // seeds only at first connect, so mirror it here or every REST write keeps using the stale
+  // read-only token and 401s.
+  chartsToken = authToken;
   void refreshWeatherProvider(authToken);
   // Resolve the server's unit preferences with the same trigger: per-user resolution rides on the
   // session credentials that exist once access has resolved.

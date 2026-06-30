@@ -53,7 +53,10 @@ $effect(() => {
 // The session recorder's version is the reactive pulse for the fallback series; reading it here
 // makes the charts re-derive on each new sample without polling.
 const sessionSeries = $derived.by(() => {
-  void recorder.version;
+  // Only track the recorder pulse when there is no history series to show. With history present the
+  // session fallback is never read, so tracking version would needlessly re-derive every chart on
+  // each 30 s sample.
+  if (!history?.series) void recorder.version;
   return (key: TrendKey): TrendSeries => recorder.series(key);
 });
 

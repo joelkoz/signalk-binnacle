@@ -1,4 +1,5 @@
 <script lang="ts">
+import { untrack } from 'svelte';
 import { categoryLabel, poiInlineIconSvg } from '$entities/poi-icons';
 import type { UnitsStore } from '$entities/units';
 import type { OwnVessel } from '$entities/vessel';
@@ -31,8 +32,11 @@ const { pois, vessel, units, onSelect, onHover, onClose, onBack }: Props = $prop
 
 let query = $state('');
 // Seeded once at mount: sorts by distance when the vessel has a fix, by name otherwise.
-// svelte-ignore state_referenced_locally
-let sortState = $state<{ key: PoiSort; dir: SortDir }>(defaultSort(vessel.position !== undefined));
+// untrack so the initializer reads vessel.position without creating a reactive dependency;
+// the sort is intentionally a one-time seed, not a live-tracking derived.
+let sortState = $state<{ key: PoiSort; dir: SortDir }>(
+  untrack(() => defaultSort(vessel.position !== undefined)),
+);
 
 const rows = $derived(
   sortRows(filterRows(toRows(pois, vessel.position), query), sortState.key, sortState.dir),

@@ -24,6 +24,25 @@ All notable changes to Binnacle are documented here. The format follows
   and region requests at the renamed `signalk-chart-locker` plugin, previously the Binnacle Companion
   plugin, and the prewarm panel and its client were renamed to the regions naming throughout.
 
+### Fixed
+
+- **Route creation from the chart.** "Start a route here" in the chart context menu now reliably
+  drops the first point. The synthetic pointer press was missing the held-button flag the draw tool
+  checks, so on some setups the first tap did nothing.
+- **Writes after an access upgrade.** Routes, waypoints, tracks, course changes, and alarm writes now
+  use the read-write token the moment access is approved, instead of failing with the original
+  read-only token until the page reloads.
+- **Man-overboard re-trigger.** A mark dropped right after cancelling another is no longer silenced
+  by the cancelled mark's clear.
+- **Measure tool.** A long-press or right-click during an active measurement no longer opens the
+  chart context menu.
+- **Stalled links.** Chart-management requests now time out instead of hanging when the server
+  accepts the connection but never answers.
+- **Collision and chart robustness.** A zero warning threshold now warns that it disables the warning
+  alarm, and malformed chart bounds are dropped before they can reach the map.
+- **Accessibility.** The icon picker keeps Tab focus within the open list, and a profile import
+  failure announces as an alert.
+
 <a id="v0120"></a>
 
 ## [0.12.0] - 2026-06-29

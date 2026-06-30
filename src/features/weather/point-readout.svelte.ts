@@ -83,6 +83,8 @@ export function createPointReadout(deps: PointReadoutDeps) {
 
   async function providerReadout(lat: number, lon: number): Promise<WeatherReadout | undefined> {
     const target = deps.store().selectedTime;
+    // selectedTime of 0 means no grid has seeded the slider yet: no meaningful target to query.
+    if (target === 0) return undefined;
     if (Math.abs(target - Date.now()) < NEAR_NOW_MS) {
       const obs = await fetchObservations(deps.origin, lat, lon, deps.token());
       const reading = obs && readoutFromSignalK(obs);

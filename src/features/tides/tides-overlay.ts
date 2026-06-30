@@ -17,6 +17,7 @@ import {
   setLayersVisibility,
   setSourceData,
 } from '$shared/map';
+import type { Theme } from '$shared/ui';
 import {
   formatCurrentRate,
   formatTideHeight,
@@ -79,6 +80,7 @@ function features(
 // event. It is driven by the store (the loader pushes readings in), not by the viewport, and only
 // rebuilds when the readings change. Point and text layers, so they theme cleanly to night-red.
 export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesOverlay {
+  let theme: Theme = 'day';
   let lastTide: TideReading | undefined;
   let lastCurrent: CurrentReading | undefined;
   let seeded = false;
@@ -108,7 +110,7 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
       lastMode = undefined;
     },
     add(ctx) {
-      const paint = mapThemePaint('day');
+      const paint = mapThemePaint(theme);
       const before = ctx.beforeIdFor('safety');
       if (!ctx.map.getSource(SOURCE_ID)) {
         const source: GeoJSONSourceSpecification = {
@@ -183,6 +185,7 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-opacity', opacity);
     },
     applyTheme(ctx, paint) {
+      theme = paint.theme;
       ctx.map.setPaintProperty(CIRCLE_LAYER, 'circle-color', paint.tide);
       ctx.map.setPaintProperty(CIRCLE_LAYER, 'circle-stroke-color', paint.background);
       ctx.map.setPaintProperty(LABEL_LAYER, 'text-color', paint.tide);

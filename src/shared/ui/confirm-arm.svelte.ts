@@ -20,6 +20,7 @@ export class ConfirmArm {
     this.#armed = true;
     this.#timer = setTimeout(() => {
       this.#armed = false;
+      this.#timer = undefined;
     }, ARM_WINDOW_MS);
     return false;
   }

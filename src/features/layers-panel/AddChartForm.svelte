@@ -144,22 +144,22 @@ function cancelDraft(): void {
 .add-form {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  padding-block: 0.4rem;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
 }
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 .field-label {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 .url-row {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 /* The box styling comes from the shared .input; only the flex sizing is local. */
 .url {
@@ -176,11 +176,11 @@ function cancelDraft(): void {
 .review {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 .name-field {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-1);
 }
 </style>

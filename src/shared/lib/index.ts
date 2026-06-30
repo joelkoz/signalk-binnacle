@@ -39,6 +39,7 @@ export {
   lengthUnit,
   litersToVolume,
   METERS_PER_MILE,
+  METERS_PER_NAUTICAL_MILE,
   MINUTE_MS,
   metersPerSecondToKnots,
   metersToFeet,

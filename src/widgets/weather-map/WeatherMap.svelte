@@ -271,6 +271,9 @@ function scheduleFetch(): void {
 // source it is gated to what is visualized.
 const showField = (id: string): boolean =>
   readoutSource === GRID_SOURCE_LABEL ? layerOn(id) : true;
+const showPrecipOrRadar = $derived(
+  showField(WEATHER_LAYER_IDS.precip) || showField(WEATHER_LAYER_IDS.radar),
+);
 
 // Refetch once when waves or radar is turned on, so the new source appears without a pan. Keyed on
 // the rising edge with a plain flag so a failed fetch cannot loop. This creates a $effect, so it MUST
@@ -495,7 +498,7 @@ onDestroy(() => {
                 from <b>{formatBearingOr(readout.waveFromRad)}</b>&deg;T
               {/if}
             {/if}
-            {#if (showField(WEATHER_LAYER_IDS.precip) || showField(WEATHER_LAYER_IDS.radar)) && readout.precipitationMm !== undefined && readout.precipitationMm >= RAIN_VISIBLE_MM_H}
+            {#if showPrecipOrRadar && readout.precipitationMm !== undefined && readout.precipitationMm >= RAIN_VISIBLE_MM_H}
               &middot; rain <b>{formatPrecipRateOr(readout.precipitationMm, units.mode)}</b>
               {precipUnitLabel(readout.precipIsRate, units.mode)}
             {/if}

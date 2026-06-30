@@ -225,7 +225,8 @@ export function createMarineRadarController(deps: MarineRadarDeps) {
 
   // Set the radar's operational state (transmit/standby). Optimistically reflects it in the status pill,
   // reverting on a failed write, and surfaces a read-only refusal like setControl. Returns whether the
-  // write succeeded so the caller can reveal the echo layer when transmit is keyed up.
+  // write succeeded. The RadarControls panel prop is typed void so it does not consume this value;
+  // echo-reveal-on-transmit must key off store.operationalStatus reactively in the composition root.
   async function setPower(status: RadarStatus): Promise<boolean> {
     const radar = store.selected;
     if (!radar) return false;

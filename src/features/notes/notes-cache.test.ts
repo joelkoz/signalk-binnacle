@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { type Bbox4, bboxContains } from '$shared/geo';
-import { bboxKey, NotesCache, padBbox } from './notes-cache';
+import { type Bbox4, bboxContains, padBbox } from '$shared/geo';
+import { bboxKey, NotesCache } from './notes-cache';
 import type { NotePoint } from './notes-client';
 
 const note = (id: string): NotePoint => ({

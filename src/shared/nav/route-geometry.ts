@@ -41,6 +41,8 @@ function greatCircleBearingRad(from: LatLon, to: LatLon): number {
 
 // Signed cross-track distance (meters) of `position` from the great-circle leg from -> to.
 // Positive is to starboard of the leg (right of the direction of travel), negative to port.
+// Test-only reference: the production fallback uses the rhumb-line rhumbCrossTrackErrorMeters; this
+// great-circle version is kept to cross-check it and is intentionally not exported from the index.
 export function crossTrackErrorMeters(from: LatLon, to: LatLon, position: LatLon): number {
   const d13 = haversineMeters(from.latitude, from.longitude, position.latitude, position.longitude);
   const theta13 = greatCircleBearingRad(from, position);

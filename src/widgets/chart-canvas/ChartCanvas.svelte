@@ -262,9 +262,10 @@ onMount(async () => {
     onView: (view) => onViewChange?.(view),
     onUserPan: () => onUserPan?.(),
     onContextMenu: (point) => {
-      // No context menu at all while drawing or editing a route (this suppresses every item,
-      // not just "Go to here"): Terra Draw owns the chart taps then.
-      if (!onGoToHere || routeStore.working) return;
+      // No context menu at all while drawing or editing a route, or while the measure tool is armed
+      // (this suppresses every item, not just "Go to here"): Terra Draw and the measure tool own the
+      // chart taps then.
+      if (!onGoToHere || routeStore.working || measure.active) return;
       chartMenu = {
         x: point.x,
         y: point.y,

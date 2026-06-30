@@ -135,6 +135,7 @@ export function createRouteEditor(opts: {
   // is the honest outcome: the named mark no longer sits there.
   // Reused across change events: a drag fires one change per pointermove, so allocating a fresh
   // consumed array each call would churn proportional to the named-route length on every pixel.
+  // Assumes single-threaded, non-re-entrant calls (safe in JS; do not make onChange async).
   const nameConsumed: boolean[] = [];
   const reconcileNames = (rebuilt: RouteWaypoint[]): RouteWaypoint[] => {
     if (!anyNamed) return rebuilt;
@@ -248,8 +249,9 @@ export function createRouteEditor(opts: {
         isPrimary: true,
         button: 0,
       } as const;
-      canvas.dispatchEvent(new PointerEvent('pointerdown', event));
-      canvas.dispatchEvent(new PointerEvent('pointerup', event));
+      // pointerdown must carry buttons:1 (primary held); pointerup carries buttons:0 (released).
+      canvas.dispatchEvent(new PointerEvent('pointerdown', { ...event, buttons: 1 }));
+      canvas.dispatchEvent(new PointerEvent('pointerup', { ...event, buttons: 0 }));
     });
   };
 

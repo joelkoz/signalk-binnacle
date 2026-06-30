@@ -1,5 +1,6 @@
 import type { CurrentEvent, TideEvent, TidesSource } from '$entities/tides';
 import {
+  formatFixed,
   formatKnots,
   landDistanceUnit,
   METERS_PER_MILE,
@@ -11,11 +12,11 @@ import {
 // with the preferred unit first, current rates in knots, the conventional units a mariner reads.
 
 function heightMeters(meters: number): string {
-  return `${meters.toFixed(2)} m`;
+  return `${formatFixed(meters, 2)} m`;
 }
 
 function heightFeet(meters: number): string {
-  return `${(metersToFeet(meters) ?? 0).toFixed(1)} ft`;
+  return `${formatFixed(metersToFeet(meters) ?? 0, 1)} ft`;
 }
 
 export function formatTideHeight(meters: number, mode: UnitsMode): string {

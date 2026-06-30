@@ -1,3 +1,4 @@
+import { isFiniteNumber } from '$shared/lib';
 import type { SignalKChart } from '$shared/map';
 import { deleteResource, fetchKeyedResource, putResource } from '$shared/signalk';
 
@@ -7,12 +8,18 @@ const V1 = '/signalk/v1/api/resources/charts';
 // Validate a keyed chart entry before it becomes a layer, the way notes and symbols are validated:
 // an error envelope ({state, statusCode, message}) or a record missing name or type has no business
 // rendering, so it falls through here. The key stands in as identifier when the entry omits one.
+// bounds is validated (4 finite numbers) and dropped when malformed so a bad value never reaches fitBounds.
 function chartFromEntry(id: string, raw: unknown): SignalKChart | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const chart = raw as Partial<SignalKChart>;
   if (typeof chart.name !== 'string' || typeof chart.type !== 'string') return undefined;
   const identifier = typeof chart.identifier === 'string' ? chart.identifier : id;
-  return { ...(chart as SignalKChart), identifier };
+  const bounds = chart.bounds;
+  const safeBounds =
+    Array.isArray(bounds) && bounds.length === 4 && (bounds as unknown[]).every(isFiniteNumber)
+      ? (bounds as SignalKChart['bounds'])
+      : undefined;
+  return { ...(chart as SignalKChart), identifier, bounds: safeBounds };
 }
 
 // Returns undefined when every endpoint is unreachable (so a caller can keep an existing list rather

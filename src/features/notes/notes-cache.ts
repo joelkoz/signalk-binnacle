@@ -1,9 +1,4 @@
-import {
-  type Bbox4,
-  bboxContains,
-  padBbox as sharedPadBbox,
-  VIEWPORT_FETCH_PAD_FRACTION,
-} from '$shared/geo';
+import { type Bbox4, bboxContains } from '$shared/geo';
 import { MINUTE_MS } from '$shared/lib';
 import type { NotePoint } from './notes-client';
 
@@ -17,12 +12,6 @@ interface CacheEntry {
   bbox: Bbox4;
   notes: NotePoint[];
   expires: number;
-}
-
-// The shared pad with this slice's default fraction baked in, re-exported so the overlay and the
-// cache key stay on one definition.
-export function padBbox(bbox: Bbox4, fraction = VIEWPORT_FETCH_PAD_FRACTION): Bbox4 {
-  return sharedPadBbox(bbox, fraction);
 }
 
 // The persisted-store key for a fetch area. Joined raw, not quantized: a reload restores the same

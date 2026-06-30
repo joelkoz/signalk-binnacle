@@ -16,8 +16,9 @@ const { auth, companionBase, onClose, onBack }: Props = $props();
 
 let data = $state<ManagedChartsResponse | null>(null);
 let loadError = $state<string | null>(null);
+type SaveState = 'saving' | 'saved' | 'error' | '';
 // Per-field save state keyed as "<identifier>:<field>", so each field tracks independently.
-let saveStates = $state<Record<string, string>>({});
+let saveStates = $state<Record<string, SaveState>>({});
 // Tracks pending clear-indicator timer ids so they can be cancelled if the panel unmounts.
 const timerIds: ReturnType<typeof setTimeout>[] = [];
 onDestroy(() => {

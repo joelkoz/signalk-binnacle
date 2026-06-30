@@ -108,9 +108,15 @@ export class SymbolsStore {
     // session: dropping the entry lets the next consumer retry, while a success stays cached.
     void loading
       .then((text) => {
-        if (text === undefined) this.#svgTexts.delete(symbol.uuid);
+        // Guard on identity: a setSymbols() clear plus a re-load for the same uuid may have replaced
+        // this promise, and an unconditional delete would evict the newer entry and force a refetch.
+        if (text === undefined && this.#svgTexts.get(symbol.uuid) === loading) {
+          this.#svgTexts.delete(symbol.uuid);
+        }
       })
-      .catch(() => this.#svgTexts.delete(symbol.uuid));
+      .catch(() => {
+        if (this.#svgTexts.get(symbol.uuid) === loading) this.#svgTexts.delete(symbol.uuid);
+      });
     return loading;
   }
 
