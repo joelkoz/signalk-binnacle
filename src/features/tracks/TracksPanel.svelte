@@ -3,7 +3,14 @@ import { Download, Eraser, Pause, Play, Route, Save, Trash2, Undo2 } from '@luci
 import type { TrackRecorder } from '$entities/track';
 import { formatDuration, formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
-import { InlineConfirm, promptSaveName, SavedList, SlideOver, VisibilityToggle } from '$shared/ui';
+import {
+  defaultSaveName,
+  InlineConfirm,
+  NameEntry,
+  SavedList,
+  SlideOver,
+  VisibilityToggle,
+} from '$shared/ui';
 import type { SavedTrack } from './tracks-client';
 
 interface Props {
@@ -57,14 +64,15 @@ const savedCards = $derived(
   })),
 );
 
-function promptSave(): void {
-  const name = promptSaveName('Track');
-  if (name !== undefined) onSave(name);
-}
-
-function promptSaveAsRoute(): void {
-  const name = promptSaveName('Route');
-  if (name !== undefined) onSaveAsRoute(name);
+// Naming a save happens inline through NameEntry rather than a native prompt; one state drives both
+// the Save and the Save-as-route flows, so only one name form is open at a time.
+let naming = $state<'track' | 'route' | null>(null);
+function confirmName(value: string): void {
+  const kind = naming === 'route' ? 'Route' : 'Track';
+  const trimmed = value.trim() || defaultSaveName(kind);
+  if (naming === 'track') onSave(trimmed);
+  else if (naming === 'route') onSaveAsRoute(trimmed);
+  naming = null;
 }
 
 // Discarding the live recording is destructive, so it arms the same inline confirm as the
@@ -114,7 +122,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     <button
       type="button"
       class="btn btn-primary"
-      onclick={promptSave}
+      onclick={() => (naming = 'track')}
       disabled={recorder.points.length < 2}
     >
       <Save size={16} aria-hidden="true" />
@@ -130,6 +138,14 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       Discard
     </button>
   </div>
+  {#if naming === 'track'}
+    <NameEntry
+      label="Save track as"
+      value={defaultSaveName('Track')}
+      onConfirm={confirmName}
+      onCancel={() => (naming = null)}
+    />
+  {/if}
   {#if confirmingClear}
     <InlineConfirm
       question="Discard the current track? This cannot be undone."
@@ -165,7 +181,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     <button
       type="button"
       class="btn"
-      onclick={promptSaveAsRoute}
+      onclick={() => (naming = 'route')}
       disabled={recorder.points.length < 2}
     >
       <Route size={16} aria-hidden="true" />
@@ -176,6 +192,14 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
       Retrace track
     </button>
   </div>
+  {#if naming === 'route'}
+    <NameEntry
+      label="Save as route"
+      value={defaultSaveName('Route')}
+      onConfirm={confirmName}
+      onCancel={() => (naming = null)}
+    />
+  {/if}
   <p class="muted-note">
     Save keeps the track. Save as route makes a reusable route you can follow again. Retrace track
     navigates back the way you came.

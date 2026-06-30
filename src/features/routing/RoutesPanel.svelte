@@ -15,9 +15,10 @@ import { type Route, type RouteHighlight, routeDistanceMeters } from '$entities/
 import { formatNm } from '$shared/lib';
 import type { PersistedValue } from '$shared/settings';
 import {
+  defaultSaveName,
   InlineConfirm,
+  NameEntry,
   pickTextFile,
-  promptSaveName,
   readErrorMessage,
   SavedList,
   SlideOver,
@@ -40,7 +41,7 @@ interface Props {
   error: string | undefined;
   onNew: () => void;
   onEditRoute: (id: string) => void;
-  // Called with the name the user enters; the panel prompts for it via the shared promptSaveName.
+  // Called with the name the user enters; the panel collects it via the inline NameEntry form.
   onSave: (name: string) => void;
   onCancelEdit: () => void;
   onToggleShown: (id: string, shown: boolean) => void;
@@ -108,9 +109,11 @@ async function importGpx(): Promise<void> {
   onImportGpx(picked.text);
 }
 
-function promptSave(): void {
-  const name = promptSaveName('Route');
-  if (name !== undefined) onSave(name);
+// Saving a route names it inline through NameEntry rather than a native prompt.
+let naming = $state(false);
+function confirmName(value: string): void {
+  onSave(value.trim() || defaultSaveName('Route'));
+  naming = false;
 }
 
 // Precompute each route's formatted distance once per change rather than re-walking every route's
@@ -177,21 +180,30 @@ $effect(() => {
 
   {#if working}
     <div class="editing" role="group" aria-label="Route under edit">
-      <div class="panel-controls">
-        <button
-          type="button"
-          class="btn btn-primary btn--grow"
-          disabled={working.waypoints.length < 2}
-          onclick={promptSave}
-        >
-          <Save size={16} aria-hidden="true" />
-          Save
-        </button>
-        <button type="button" class="btn" onclick={onCancelEdit}>
-          <X size={16} aria-hidden="true" />
-          Cancel
-        </button>
-      </div>
+      {#if naming}
+        <NameEntry
+          label="Save route as"
+          value={defaultSaveName('Route')}
+          onConfirm={confirmName}
+          onCancel={() => (naming = false)}
+        />
+      {:else}
+        <div class="panel-controls">
+          <button
+            type="button"
+            class="btn btn-primary btn--grow"
+            disabled={working.waypoints.length < 2}
+            onclick={() => (naming = true)}
+          >
+            <Save size={16} aria-hidden="true" />
+            Save
+          </button>
+          <button type="button" class="btn" onclick={onCancelEdit}>
+            <X size={16} aria-hidden="true" />
+            Cancel
+          </button>
+        </div>
+      {/if}
       {#if working.waypoints.length < 2}
         <p class="muted-note">Add at least two points to save this route.</p>
       {/if}

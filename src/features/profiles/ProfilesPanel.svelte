@@ -2,10 +2,10 @@
 import { Check, Download, Save, SquarePen, Star, Trash2, Upload } from '@lucide/svelte';
 import type { Profile } from '$entities/profile';
 import {
+  defaultSaveName,
   InlineConfirm,
+  NameEntry,
   pickTextFile,
-  promptRename,
-  promptSaveName,
   readErrorMessage,
   SavedList,
   SlideOver,
@@ -47,9 +47,18 @@ const {
   onBack,
 }: Props = $props();
 
-function promptNew(): void {
-  const name = promptSaveName('Profile');
-  if (name !== undefined) onSaveNew(name);
+// Naming a new profile or renaming an existing one happens inline through NameEntry rather than a
+// native prompt. One state drives both: 'new' for the top Save button, or a rename keyed by id.
+let naming = $state<{ mode: 'new' } | { mode: 'rename'; id: string; current: string } | null>(null);
+function confirmName(value: string): void {
+  if (naming === null) return;
+  if (naming.mode === 'new') {
+    onSaveNew(value.trim() || defaultSaveName('Profile'));
+  } else {
+    const trimmed = value.trim();
+    if (trimmed) onRename(naming.id, trimmed);
+  }
+  naming = null;
 }
 
 // A parse error or a file with no valid entries must not fail silently: the panel parses once,
@@ -78,11 +87,6 @@ function confirmDelete(id: string): void {
   confirmingDelete = undefined;
   onRemove(id);
 }
-
-function renameProfile(profile: Profile): void {
-  const name = promptRename('Profile', profile.name);
-  if (name !== undefined) onRename(profile.id, name);
-}
 </script>
 
 <SlideOver title="Profiles" bodyFlex closeLabel="Close profiles panel" {onClose} {onBack}>
@@ -91,7 +95,11 @@ function renameProfile(profile: Profile): void {
     cruising and racing in one tap.
   </p>
   <div class="panel-controls">
-    <button type="button" class="btn btn-primary btn--grow" onclick={promptNew}>
+    <button
+      type="button"
+      class="btn btn-primary btn--grow"
+      onclick={() => (naming = { mode: 'new' })}
+    >
       <Save size={16} aria-hidden="true" />
       Save current as profile
     </button>
@@ -105,6 +113,15 @@ function renameProfile(profile: Profile): void {
       Import
     </button>
   </div>
+
+  {#if naming?.mode === 'new'}
+    <NameEntry
+      label="Name this profile"
+      value={defaultSaveName('Profile')}
+      onConfirm={confirmName}
+      onCancel={() => (naming = null)}
+    />
+  {/if}
 
   {#if importError}
     <p class="alert-note" role="alert">{importError}</p>
@@ -132,7 +149,14 @@ function renameProfile(profile: Profile): void {
       {#if isActive && isDirty}
         <p class="dirty caps-label">Unsaved changes</p>
       {/if}
-      {#if confirmingDelete === profile.id}
+      {#if naming?.mode === 'rename' && naming.id === profile.id}
+        <NameEntry
+          label="Rename profile"
+          value={profile.name}
+          onConfirm={confirmName}
+          onCancel={() => (naming = null)}
+        />
+      {:else if confirmingDelete === profile.id}
         <InlineConfirm
           question="Delete this profile on every synced device?"
           onConfirm={() => confirmDelete(profile.id)}
@@ -168,7 +192,7 @@ function renameProfile(profile: Profile): void {
             class="icon-btn"
             aria-label="Rename profile"
             title="Rename"
-            onclick={() => renameProfile(profile)}
+            onclick={() => (naming = { mode: 'rename', id: profile.id, current: profile.name })}
           >
             <SquarePen size={18} aria-hidden="true" />
           </button>
