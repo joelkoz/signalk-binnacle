@@ -158,6 +158,12 @@ Three established shapes. Pick by what the second screen IS, not by size.
 There must never be two stacked back controls. Whoever owns the in-body back (the title switch in
 shape 2, the SubViewHeader in shape 3) requires the panel-level back to be suppressed for that state.
 
+Sanctioned exception: a full-screen map panel (the weather map) hosts its own header chrome instead
+of a SlideOver, because it is a docked mini-map with a layers menu and a conditions sheet rather than
+a scrolling body of controls. It still carries a specific back control and close control and follows
+the copy, token, and accessibility rules. A new panel uses a SlideOver unless it is a full-screen
+map of this kind.
+
 ---
 
 ## 4. Reuse a primitive, never re-implement
@@ -260,8 +266,9 @@ These are the style corrections we keep making. Each has a one-line fix.
   (`--alarm` is brighter than `--warning`; `--ok` collapses to a dim red at night).
 - A raster overlay cannot recolor, so it routes through `applyRasterTheme` (which desaturates and
   dims it at night), never a CSS filter.
-- All values are SI in the store (meters, radians, Kelvin), the one exception being
-  `navigation.position` in decimal degrees. Convert only at the display edge.
+- All values are SI in the store (meters, radians, Kelvin). The two sanctioned exceptions are
+  `navigation.position` in decimal degrees and weather-grid precipitation in mm/h (provider-native,
+  read only at the display edge). Convert only at the display edge.
 - Follow the server unit preference through the `UnitsStore`, never a panel-local imperial or metric
   toggle and never a locale guess. A unit-bearing field consumes the resolved `UnitsMode` as a prop
   and converts only when rendering.

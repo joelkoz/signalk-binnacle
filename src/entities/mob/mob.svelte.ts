@@ -169,7 +169,7 @@ export class MobStore {
     this.#setLocal(null);
   }
 
-  // Silence the tone; the strip and mark stay until cancelled.
+  // Silence the tone; the strip and mark stay until canceled.
   acknowledge(): void {
     this.#acknowledged = true;
   }

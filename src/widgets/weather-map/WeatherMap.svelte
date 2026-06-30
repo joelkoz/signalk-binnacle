@@ -634,14 +634,14 @@ onDestroy(() => {
   position: absolute;
   inset-block-start: -0.2rem;
   inset-inline-end: -0.2rem;
-  min-inline-size: 1.05rem;
+  min-inline-size: var(--space-4);
   padding: 0 0.2rem;
   border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--accent-contrast);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
-  line-height: 1.05rem;
+  line-height: var(--space-4);
   text-align: center;
 }
 /* Absolute fill rather than a percentage height, so the canvas always has real pixels regardless of

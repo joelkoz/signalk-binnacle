@@ -19,7 +19,7 @@ let loadError = $state<string | null>(null);
 type SaveState = 'saving' | 'saved' | 'error' | '';
 // Per-field save state keyed as "<identifier>:<field>", so each field tracks independently.
 let saveStates = $state<Record<string, SaveState>>({});
-// Tracks pending clear-indicator timer ids so they can be cancelled if the panel unmounts.
+// Tracks pending clear-indicator timer ids so they can be canceled if the panel unmounts.
 const timerIds: ReturnType<typeof setTimeout>[] = [];
 onDestroy(() => {
   for (const id of timerIds) clearTimeout(id);
@@ -112,13 +112,15 @@ function formatBounds(bounds: [number, number, number, number]): string {
         <Disclosure label="Chart details">
           <dl class="stat-grid">
             <dt>Format</dt>
-            <dd><span>{chart.format.toUpperCase()}</span><span class="unit"></span></dd>
+            <dd><span class="num">{chart.format.toUpperCase()}</span><span class="unit"></span></dd>
             <dt>Zoom range</dt>
-            <dd><span>{chart.minzoom} to {chart.maxzoom}</span><span class="unit"></span></dd>
+            <dd>
+              <span class="num">{chart.minzoom} to {chart.maxzoom}</span><span class="unit"></span>
+            </dd>
             {#if chart.bounds}
               <dt>Bounds</dt>
               <dd class="bounds-val">
-                <span>{formatBounds(chart.bounds)}</span><span class="unit"></span>
+                <span class="num">{formatBounds(chart.bounds)}</span><span class="unit"></span>
               </dd>
             {/if}
           </dl>

@@ -201,7 +201,7 @@ export function createAnchorOverlay(
         needsRedraw = true;
         commitMove(committed);
       }
-      // A cancelled touch (a system gesture, palm rejection) must abandon the drag: discard the
+      // A canceled touch (a system gesture, palm rejection) must abandon the drag: discard the
       // preview without committing, and detach the move and end handlers so a later pan plus
       // touchend cannot silently relocate the anchor.
       function cancelDrag(): void {

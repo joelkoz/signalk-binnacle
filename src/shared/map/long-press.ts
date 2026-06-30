@@ -23,7 +23,7 @@ export interface ContextMenuHandle {
 
 // A right-click or long-press at a point, surfaced for the "go to here" menu. The desktop path is
 // MapLibre's own contextmenu event; touch browsers do not all fire it, so a still-held finger past
-// a timeout (cancelled by movement, lift, or a second touch) synthesizes the same emit.
+// a timeout (canceled by movement, lift, or a second touch) synthesizes the same emit.
 export function installContextMenu(
   map: maplibregl.Map,
   emit: (point: ContextMenuPoint) => void,

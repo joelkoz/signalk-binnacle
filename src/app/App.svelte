@@ -1092,6 +1092,10 @@ const menuItems = $derived<MenuItem[]>([
           icon: DownloadCloud,
           group: 'Offline charts',
           pressed: activePanel === 'regions',
+          // The panel mounts only once the map instance is up (it draws the area box on the chart),
+          // so gray the tile until then rather than letting a tap open nothing.
+          disabled: mapInstance === undefined,
+          disabledLabel: 'Loading the chart...',
           onSelect: () => togglePanel('regions'),
         } satisfies MenuItem,
         {

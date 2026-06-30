@@ -268,8 +268,10 @@ every shipped panel (alarms, anchor, tracks, weather, routes, the radar controls
   that owns the feature's runes and returns the handlers and getters the panels and chart read. Services
   (the Signal K client, the map, the stores) are constructed in `app/App.svelte` and passed down as
   props, not global singletons, so they are swappable in tests.
-- Units: all values are SI in the store (radians, meters, m/s, Kelvin), the one exception being
-  `navigation.position` (decimal degrees). Convert only at the display edge, in a separate pure module.
+- Units: all values are SI in the store (radians, meters, m/s, Kelvin). The two sanctioned
+  exceptions are `navigation.position` (decimal degrees) and weather-grid precipitation (mm/h,
+  provider-native from Open-Meteo, read only at the display edge). Convert only at the display edge,
+  in a separate pure module.
 - Plugins are detected and degraded, never assumed: a capability backed by a Signal K plugin detects the
   provider (the `/signalk/v2/features` endpoint or a probe) and falls back to a built-in or client-side
   path when it is absent. See CLAUDE.md for the full Signal K integration contract.

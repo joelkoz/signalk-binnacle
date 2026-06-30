@@ -195,7 +195,7 @@ let routeEditor: RouteEditor | undefined;
 // The unmanaged overlay that draws the working route's dots, labels, and cross-highlight. Like the
 // editor, ChartCanvas owns its lifecycle (add, tick, recolor, raise) rather than the layer manager.
 let workingRouteOverlay: WorkingRouteOverlay | undefined;
-// Bumped on every start and stop so a route edit cancelled before the lazily-loaded editor resolves
+// Bumped on every start and stop so a route edit canceled before the lazily-loaded editor resolves
 // does not start on a route that is no longer current.
 let editGeneration = 0;
 // The layer manager, captured from onLoad so the time-travel review effect can dim the live vessel
