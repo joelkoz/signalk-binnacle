@@ -2091,7 +2091,12 @@ onDestroy(() => {
     </div>
     {#if selectedNote && noteLoader}
       <div class="note-panel-slot">
-        <NoteDetailPanel selection={selectedNote} load={noteLoader.load} onClose={closeNote} />
+        <NoteDetailPanel
+          selection={selectedNote}
+          load={noteLoader.load}
+          onClose={closeNote}
+          onLocate={() => selectedNote && flyToPosition(selectedNote.position)}
+        />
       </div>
     {/if}
     {#if activePanel === 'layers' && layersView}

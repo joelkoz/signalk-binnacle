@@ -1,5 +1,5 @@
 <script lang="ts">
-import { ExternalLink, Star } from '@lucide/svelte';
+import { Crosshair, ExternalLink, Star } from '@lucide/svelte';
 import { categoryLabel } from '$entities/poi-icons';
 import { SlideOver } from '$shared/ui';
 import type { NoteSelection } from './notes-client';
@@ -11,9 +11,11 @@ interface Props {
   selection: NoteSelection;
   load: (id: string) => Promise<NoteDetail | undefined>;
   onClose: () => void;
+  // Pan the chart to this place; the action renders only when the host wires it.
+  onLocate?: () => void;
 }
 
-const { selection, load, onClose }: Props = $props();
+const { selection, load, onClose, onLocate }: Props = $props();
 
 let detail = $state<NoteDetail | undefined>();
 let loading = $state(true);
@@ -71,6 +73,12 @@ function measure(item: NormalizedItem): string {
   footer={hasFooter ? footer : undefined}
 >
   <div class="body">
+    {#if onLocate}
+      <button type="button" class="btn btn-ghost locate" onclick={onLocate}>
+        <Crosshair size={16} aria-hidden="true" />
+        Show on chart
+      </button>
+    {/if}
     {#if loading}
       <p class="status" role="status">Loading...</p>
     {:else if failed}
@@ -177,6 +185,10 @@ function measure(item: NormalizedItem): string {
 /* The scroll box comes from the shared .panel-body; only the content spacing is local. */
 .body section {
   margin-block-end: var(--space-3);
+}
+/* The locate action sits at the top of the body as a compact button, not stretched full width. */
+.locate {
+  align-self: flex-start;
 }
 .body h3 {
   margin-block: 0 var(--space-1);
