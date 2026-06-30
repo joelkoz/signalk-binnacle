@@ -35,12 +35,12 @@ function confirmDelete(id: string): void {
     <p class="alert-note" role="alert">{error}</p>
   {/if}
 
-  <p class="muted-note">Drop waypoints from a long press on the chart.</p>
+  <p class="muted-note">Press and hold anywhere on the chart to drop a waypoint.</p>
 
   <SavedList
     heading="Saved waypoints"
     items={waypoints}
-    empty="No waypoints yet"
+    empty="No waypoints yet. Press and hold the chart to drop one."
     key={(waypoint) => waypoint.id}
   >
     {#snippet card(waypoint)}
@@ -78,8 +78,8 @@ function confirmDelete(id: string): void {
             <button
               type="button"
               class="icon-btn"
-              aria-label="Go to waypoint"
-              title="Go to"
+              aria-label="Navigate to waypoint"
+              title="Start navigating to this waypoint"
               onclick={() => onGoTo(waypoint)}
             >
               <Navigation size={18} aria-hidden="true" />

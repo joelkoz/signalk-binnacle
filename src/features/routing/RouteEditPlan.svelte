@@ -68,15 +68,22 @@ const totalTime = $derived.by(() => {
   </dd>
 </dl>
 <UnitField
-  label="Plan speed"
+  label="Planning speed"
   unit="kn"
   value={planningSpeed.value}
   min={0}
   step={0.5}
   inputWidth="4rem"
+  ariaLabel="Planning speed in knots, used to estimate the time to each point"
   onCommit={(speed) => planningSpeed.set(Math.max(0, speed))}
 />
 {#if workingLegs.length > 0}
+  <div class="leg-row leg-head" aria-hidden="true">
+    <span class="leg-no caps-label">No.</span>
+    <span class="caps-label">Dist</span>
+    <span class="caps-label" title="Compass direction of the leg, in degrees true">Bearing</span>
+    <span class="leg-time caps-label">Time</span>
+  </div>
   <ol class="legs" aria-label="Legs">
     {#each workingLegs as leg (leg.fromIndex)}
       {@const seconds = etaSeconds(leg.cumulativeMeters, planSpeedMps)}
@@ -130,6 +137,11 @@ const totalTime = $derived.by(() => {
 }
 .leg-row.is-on {
   border-inline-start-width: var(--active-bar-width);
+}
+/* The column header row above the legs: the same grid, no interactive chrome. The caps-label class
+   on each header cell carries the muted color, so no per-cell override is needed here. */
+.leg-head {
+  border-width: 0;
 }
 .leg-no {
   color: var(--text-muted);

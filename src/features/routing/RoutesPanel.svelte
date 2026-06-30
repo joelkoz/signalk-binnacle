@@ -146,6 +146,10 @@ $effect(() => {
     <p class="alert-note" role="alert">{error}</p>
   {/if}
 
+  <p class="muted-note">
+    Plan a path by dropping points on the chart. Save it to navigate, reverse it for the trip home,
+    or share it with another chartplotter.
+  </p>
   <div class="panel-controls">
     <button
       type="button"
@@ -156,9 +160,14 @@ $effect(() => {
       <Plus size={16} aria-hidden="true" />
       New route
     </button>
-    <button type="button" class="btn" onclick={importGpx}>
+    <button
+      type="button"
+      class="btn"
+      title="Import routes from a GPX file made by another chartplotter"
+      onclick={importGpx}
+    >
       <Upload size={16} aria-hidden="true" />
-      Import GPX
+      Import
     </button>
   </div>
 
@@ -183,6 +192,9 @@ $effect(() => {
           Cancel
         </button>
       </div>
+      {#if working.waypoints.length < 2}
+        <p class="muted-note">Add at least two points to save this route.</p>
+      {/if}
       <RouteEditPlan {working} {highlight} {onHighlightLeg} {planningSpeed} />
       <p class="muted-note">
         Tap the chart to add waypoints. Drag a point to move it, tap a midpoint to insert one.
@@ -193,7 +205,7 @@ $effect(() => {
   <SavedList
     heading="Saved routes"
     items={savedCards}
-    empty="No routes yet"
+    empty="No routes yet. Tap New route, then tap the chart to drop points along your path."
     key={({ route }) => route.id}
     isActive={({ route }) => route.id === activeId}
   >
@@ -202,7 +214,7 @@ $effect(() => {
         <button
           type="button"
           class="name"
-          title="Go to this route on the chart"
+          title="Show this route on the chart"
           onclick={() => onLocate(route.id)}
         >
           {route.name}
@@ -256,8 +268,8 @@ $effect(() => {
           <button
             type="button"
             class="icon-btn"
-            aria-label="Export route as GPX"
-            title="Export GPX"
+            aria-label="Download route as a GPX file"
+            title="Download as a GPX file for another chartplotter"
             onclick={() => onExportGpx(route.id)}
           >
             <Download size={18} aria-hidden="true" />
