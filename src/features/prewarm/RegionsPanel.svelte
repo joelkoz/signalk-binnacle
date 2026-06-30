@@ -423,6 +423,10 @@ async function saveRegion(): Promise<void> {
     });
     namePrep = false;
     regionName = '';
+    // Return to the landing view so the new area's card and its live download progress are on
+    // screen: the card and bar render only under the home sub-view, so staying on build would hide
+    // the download the user just started.
+    subView = 'home';
     await loadRegions();
     await loadStats();
     pollRegion(region.id);
@@ -556,8 +560,10 @@ function chartLabel(id: string): string {
           key={(region) => region.id}
         >
           {#snippet card(region)}
-            {@const cached = formatBytes(region.cachedBytes)}
             {@const live = regionStatus[region.id]}
+            {@const savedBytes =
+              region.status === 'downloading' && live ? live.bytes : region.cachedBytes}
+            {@const cached = formatBytes(savedBytes)}
             <div class="card-head">
               <span class="name" title={region.name}>{region.name}</span>
               <span class="caps-label {STATUS_SEVERITY[region.status]}">
@@ -623,18 +629,22 @@ function chartLabel(id: string): string {
       {/if}
     </section>
 
-    <button type="button" class="nav-row row-interactive" onclick={() => (subView = 'auto')}>
-      <span class="nav-row-label">Auto-cache around the boat</span>
-      <span class="nav-row-value">{positionEnabled ? 'On' : 'Off'}</span>
-      <ChevronRight size={18} aria-hidden="true" />
+    <button type="button" class="subview-link row-interactive" onclick={() => (subView = 'auto')}>
+      <span class="subview-link-label">Auto-cache around the boat</span>
+      <span class="subview-link-value">{positionEnabled ? 'On' : 'Off'}</span>
+      <ChevronRight class="subview-link-chevron" size={18} aria-hidden="true" />
     </button>
-    <button type="button" class="nav-row row-interactive" onclick={() => (subView = 'storage')}>
-      <span class="nav-row-label">Storage</span>
-      <span class="nav-row-value">
+    <button
+      type="button"
+      class="subview-link row-interactive"
+      onclick={() => (subView = 'storage')}
+    >
+      <span class="subview-link-label">Storage</span>
+      <span class="subview-link-value">
         {usedFmt?.value ?? '--'} {usedFmt?.unit ?? ''} of {capFmt?.value ?? '--'}
         {capFmt?.unit ?? ''}
       </span>
-      <ChevronRight size={18} aria-hidden="true" />
+      <ChevronRight class="subview-link-chevron" size={18} aria-hidden="true" />
     </button>
   {:else if subView === 'build'}
     <section class="panel-section" aria-label="Download an area">
@@ -955,22 +965,31 @@ function chartLabel(id: string): string {
   margin-block-start: var(--space-1);
 }
 
-/* A landing nav row: a labeled value with a chevron that opens a sub-view, on the shared
-   row-interactive base, matching the Layers-panel category toggles. */
-.nav-row {
+/* A landing row that opens a sub-view: a label, its current value, and a trailing chevron, on the
+   shared row-interactive base so it reads like the Layers-panel category toggles. Named off the
+   global .nav-row (which is an elevated card with a vertical name-over-metrics layout) so the two do
+   not collide: a bare .nav-row here inherited the card's flex-direction column and stacked the row. */
+.subview-link {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: var(--space-2);
   inline-size: 100%;
   min-block-size: var(--control-size);
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-sm);
 }
-.nav-row-label {
+.subview-link-label {
   flex: 1;
   text-align: start;
 }
-.nav-row-value {
+.subview-link-value {
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+.subview-link :global(.subview-link-chevron) {
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 
 /* The determinate download progress bar on a downloading region card: a token-driven track with an
