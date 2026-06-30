@@ -25,6 +25,11 @@ export const CATEGORY_ORDER = CATEGORIES.map((c) => c.id);
 export const CATEGORY_DEFAULT_OPEN: Record<string, boolean> = Object.fromEntries(
   CATEGORIES.map((c) => [c.id, c.defaultOpen]),
 );
+// The plain category titles keyed by id, so a consumer that already knows a source's category (the
+// offline-charts builder) reuses the same vocabulary without rebuilding a LayerListItem.
+export const CATEGORY_TITLES: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.id, c.title]),
+);
 
 // An overlay's declared category wins; otherwise the band picks a default (charts for the chart and
 // depth bands, ocean for the weather band, live for traffic, and the navigator's own data for the
