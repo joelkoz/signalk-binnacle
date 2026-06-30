@@ -16,13 +16,25 @@ import type { CacheStats, WarmStatus } from './regions-client.js';
 /** Re-exported from the shared package so the panel, the plugin, and any caller share one estimate. */
 export { DEFAULT_TILE_BYTES, estimateBytes };
 
-/** The registry sources that have a tile path; the style basemap is excluded (its warm path differs and is out of scope). */
+/** The basemap source id; the region list includes it, the position-warm list and the new-box
+ * auto-select exclude it (it is global and large). */
+export const BASEMAP_SOURCE_ID = 'basemap';
+
+/** The registry sources offered for a region download, including the vector basemap so a region can
+ * pin the base layer for offline geometry. */
 export function regionSources(): ChartSource[] {
+  return CHART_SOURCES.filter((s) => s.upstream.mode !== 'style' || s.id === BASEMAP_SOURCE_ID);
+}
+
+/** The sources offered for position warm: never the basemap (warming a whole basemap per GPS fix is
+ * wrong) and never any other style source. */
+export function positionWarmSources(): ChartSource[] {
   return CHART_SOURCES.filter((s) => s.upstream.mode !== 'style');
 }
 
 /** Sources that cover the drawn bbox: region sources where tileCountInBbox > 0. Sources with no
- * bounds are global and always included for a non-empty bbox; the style basemap is already excluded. */
+ * bounds are global and always included for a non-empty bbox; the basemap (global, no bounds) covers
+ * any non-empty box. */
 export function coveringSources(
   bbox: [number, number, number, number],
   zoomRange: [number, number],

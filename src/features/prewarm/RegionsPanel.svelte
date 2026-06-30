@@ -7,13 +7,14 @@ import { feetToMeters, lengthUnit, metersToFeet } from '$shared/lib';
 import type { AuthController } from '$shared/signalk';
 import { InlineConfirm, LayerToggle, SavedList, SlideOver, TextField, UnitField } from '$shared/ui';
 import {
+  BASEMAP_SOURCE_ID,
   canDownloadRegion,
   coveringSources,
   estimateBytes,
   formatBySource,
   formatBytes,
   isTerminal,
-  regionSources,
+  positionWarmSources,
   regionsFreeBytes,
 } from './estimate.js';
 import type { CacheStats, SavedRegionDto, WarmStatus } from './regions-client.js';
@@ -78,9 +79,9 @@ let statsGen = 0;
 // Stop a region's 2-second poller after this many consecutive failures, surfacing an error.
 const POLL_FAIL_CAP = 5;
 
-// regionSources() is a pure function with no reactive deps, evaluated once. Used by the
-// position-warm section, which is not box-scoped.
-const regionSourceList = regionSources();
+// positionWarmSources() is a pure function with no reactive deps, evaluated once. Used by the
+// position-warm section, which is not box-scoped and never warms the basemap.
+const positionWarmSourceList = positionWarmSources();
 
 // Rebuild the client when the auth token changes so every call carries the current bearer token.
 const client = $derived(createRegionsClient(companionBase, auth.token ?? undefined));
@@ -156,13 +157,18 @@ $effect(() => {
 
 // Wire up the panel-scoped Terra Draw rectangle instance. The prefixId 'chart-locker-region-draw'
 // keeps it separate from the route editor's 'binnacle-route-draw' so the two never collide. A new
-// box auto-selects every covering source; the owner can then deselect.
+// box auto-selects every covering overlay; the basemap is listed but not auto-selected (it is global
+// and large), so the owner opts it in deliberately.
 $effect(() => {
   const r = createRegionRectangle(map);
   r.onChange((newBbox) => {
     bbox = newBbox;
     selectedSources =
-      newBbox === null ? [] : coveringSources(newBbox, [minzoom, maxzoom]).map((s) => s.id);
+      newBbox === null
+        ? []
+        : coveringSources(newBbox, [minzoom, maxzoom])
+            .filter((s) => s.id !== BASEMAP_SOURCE_ID)
+            .map((s) => s.id);
     namePrep = false;
   });
   rect = r;
@@ -772,7 +778,7 @@ function updatedLabel(ts: number): string {
     }}
   />
   <h3 class="caps-label section-head">Position warm sources</h3>
-  {#each regionSourceList as source (source.id)}
+  {#each positionWarmSourceList as source (source.id)}
     <LayerToggle
       title={source.title}
       visible={positionSources.includes(source.id)}
@@ -785,7 +791,7 @@ function updatedLabel(ts: number): string {
       }}
     />
   {/each}
-  {#if regionSourceList.length === 0}
+  {#if positionWarmSourceList.length === 0}
     <p class="muted-note">No downloadable sources cover this area.</p>
   {/if}
 </SlideOver>
