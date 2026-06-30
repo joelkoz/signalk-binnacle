@@ -3,7 +3,7 @@ import { type DefaultOption, IconPicker } from '$entities/icon-picker';
 import { isPoiCategory } from '$entities/poi-icons';
 import type { SymbolsStore } from '$entities/symbols';
 import type { Waypoint } from '$entities/waypoint';
-import { dialog, focusOnMount, focusTrap } from '$shared/ui';
+import { dialog, focusTrap, TextField } from '$shared/ui';
 
 interface Props {
   // Required for add mode (new waypoint). In edit mode `waypoint` takes precedence for the initial
@@ -52,12 +52,12 @@ function finalIconRef(selected: string): string {
 // Seeded once from the waypoint prop. The dialog is keyed on the waypoint at its mount site, so it
 // remounts (and reseeds) when a different waypoint is edited; the initial-value capture is intended.
 // svelte-ignore state_referenced_locally
-let name = $state(waypoint?.name ?? '');
+let wpName = $state(waypoint?.name ?? '');
 // svelte-ignore state_referenced_locally
 let icon = $state(pickerValueFromStoredIcon(waypoint?.icon));
 
 function save(): void {
-  onSave({ name: name.trim() || defaultName, icon: finalIconRef(icon) });
+  onSave({ name: wpName.trim() || defaultName, icon: finalIconRef(icon) });
 }
 
 const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
@@ -75,19 +75,17 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
   >
     <header><h2>{title}</h2></header>
     <div class="wp-body">
-      <label class="wp-field">
-        <span class="caps-label">Name</span>
-        <input
-          class="input"
-          type="text"
-          bind:value={name}
-          placeholder={waypoint?.name ?? defaultName}
-          use:focusOnMount
-          onkeydown={(e) => {
-            if (e.key === 'Enter') save();
-          }}
-        >
-      </label>
+      <TextField
+        variant="stacked"
+        large
+        label="Name"
+        value={wpName}
+        placeholder={waypoint?.name ?? defaultName}
+        focusOnOpen
+        onInput={(value) => (wpName = value)}
+        onCommit={(value) => (wpName = value)}
+        onEnter={save}
+      />
       <div class="wp-field">
         <label class="caps-label" for="wp-icon-picker">Icon</label>
         <IconPicker
@@ -127,14 +125,6 @@ const title = $derived(waypoint ? 'Edit waypoint' : 'Add waypoint');
 .wp-field {
   display: grid;
   gap: var(--space-1);
-}
-.wp-field input {
-  inline-size: 100%;
-  padding: var(--space-2);
-  /* One size above the global .input (--text-sm): the waypoint name is typed on a pitching deck,
-     often gloved, so this single field reads a notch larger on purpose. */
-  font-size: var(--text-md);
-  background: var(--surface);
 }
 .wp-dialog footer {
   display: flex;

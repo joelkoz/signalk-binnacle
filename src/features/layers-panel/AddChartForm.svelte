@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Link2 } from '@lucide/svelte';
 import type { DraftChart, UserCharts } from '$entities/user-charts';
-import { focusOnMount } from '$shared/ui';
+import { TextField } from '$shared/ui';
 import ChartSpecList from './ChartSpecList.svelte';
 import { chartSpecRows } from './chart-spec';
 
@@ -81,10 +81,15 @@ function cancelDraft(): void {
   {#if staged}
     <div class="review" role="group" aria-label="Review imported chart">
       <span class="field-label caps-label">Review and save</span>
-      <label class="name-field">
-        <span class="caps-label">Name</span>
-        <input class="input" type="text" use:focusOnMount bind:value={draftName} disabled={busy}>
-      </label>
+      <TextField
+        variant="stacked"
+        label="Name"
+        value={draftName}
+        disabled={busy}
+        focusOnOpen
+        onInput={(value) => (draftName = value)}
+        onCommit={(value) => (draftName = value)}
+      />
       <ChartSpecList rows={draftRows} />
       <div class="panel-controls">
         <button
@@ -176,10 +181,5 @@ function cancelDraft(): void {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-.name-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
 }
 </style>
