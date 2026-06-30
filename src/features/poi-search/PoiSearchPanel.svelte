@@ -50,7 +50,7 @@ const subtitle = $derived(
 
 const SORTS: { key: PoiSort; label: string }[] = [
   { key: 'name', label: 'Name' },
-  { key: 'type', label: 'Type' },
+  { key: 'type', label: 'Category' },
   { key: 'distance', label: 'Distance' },
   { key: 'bearing', label: 'Bearing' },
 ];
@@ -64,17 +64,27 @@ function toggleSort(key: PoiSort): void {
 }
 </script>
 
-<SlideOver title="POI search" {subtitle} {onClose} {onBack} closeLabel="Close POI search" bodyFlex>
+<SlideOver
+  title="Find places"
+  {subtitle}
+  {onClose}
+  {onBack}
+  closeLabel="Close find places"
+  bodyFlex
+>
+  <p class="muted-note">
+    Harbors, anchorages, marinas, and other marked places in view on the chart.
+  </p>
   <input
     class="input search-input"
     type="search"
-    placeholder="Filter by name"
-    aria-label="Filter POIs by name"
+    placeholder="Search places by name"
+    aria-label="Search places by name"
     bind:value={query}
   >
   <div class="nav-sort">
     <span class="caps-label">Sort by</span>
-    <div class="segmented" role="group" aria-label="Sort POIs by">
+    <div class="segmented" role="group" aria-label="Sort places by">
       {#each SORTS as option (option.key)}
         <button
           type="button"
@@ -96,7 +106,9 @@ function toggleSort(key: PoiSort): void {
   </div>
   {#if rows.length === 0}
     <p class="muted-note" role="status">
-      {pois.length === 0 ? 'No POIs in this view. Pan or zoom the chart.' : 'No matches.'}
+      {pois.length === 0
+        ? 'No places in view. Pan or zoom the chart to find some.'
+        : 'No places match your filter.'}
     </p>
   {:else}
     <ul class="nav-list">
@@ -113,7 +125,7 @@ function toggleSort(key: PoiSort): void {
             onblur={() => onHover(undefined)}
           >
             <span class="poi-head">
-              <span class="poi-cat">
+              <span class="poi-cat" title={categoryLabel(row.poi.category)}>
                 <!-- The category SVG is a static literal from a fixed enum, never external input. -->
                 {@html poiInlineIconSvg(row.poi.category)}
                 <span class="visually-hidden">{categoryLabel(row.poi.category)}</span>
@@ -122,10 +134,10 @@ function toggleSort(key: PoiSort): void {
             </span>
             <span class="nav-metrics">
               <span class="nav-metric">
-                Dist <b class="num">{formatMetersOrNm(row.distanceMeters, units.mode)}</b>
+                Distance <b class="num">{formatMetersOrNm(row.distanceMeters, units.mode)}</b>
               </span>
-              <span class="nav-metric">
-                Brg <b class="num">{formatBearingOr(row.bearingRad)}</b>&deg;T
+              <span class="nav-metric" title="Bearing in degrees true">
+                Bearing <b class="num">{formatBearingOr(row.bearingRad)}</b>&deg;T
               </span>
             </span>
           </button>
