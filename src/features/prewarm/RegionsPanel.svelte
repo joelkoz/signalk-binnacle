@@ -1,11 +1,20 @@
 <script lang="ts">
-import { Download, RefreshCw, SquareDashed, Trash2 } from '@lucide/svelte';
+import {
+  ChevronRight,
+  Download,
+  DownloadCloud,
+  RefreshCw,
+  SquareDashed,
+  Trash2,
+} from '@lucide/svelte';
 import type { Map as MapLibreMap } from 'maplibre-gl';
+import { CHART_SOURCES } from 'signalk-chart-sources';
 import { onDestroy } from 'svelte';
 import type { UnitsStore } from '$entities/units';
 import { feetToMeters, lengthUnit, metersToFeet } from '$shared/lib';
 import type { AuthController } from '$shared/signalk';
 import {
+  Disclosure,
   InlineConfirm,
   LayerToggle,
   SavedList,
@@ -14,8 +23,9 @@ import {
   TextField,
   UnitField,
 } from '$shared/ui';
+import { defaultSelection } from './area-defaults.js';
+import { DETAIL_PRESETS, presetForRange, rangeForPreset } from './detail-level.js';
 import {
-  BASEMAP_SOURCE_ID,
   canDownloadRegion,
   coveringSources,
   estimateBytes,
@@ -30,6 +40,7 @@ import { createRegionsClient } from './regions-client.js';
 import type { RegionRectangle } from './regions-draw.js';
 import { createRegionRectangle } from './regions-draw.js';
 import { buildConfigPayload, extractPositionWarm } from './settings-payload.js';
+import { coveringGroups, includedSummary } from './source-summary.js';
 
 interface Props {
   auth: AuthController;
@@ -55,6 +66,19 @@ let bbox = $state<[number, number, number, number] | null>(null);
 let selectedSources = $state<string[]>([]);
 let minzoom = $state(6);
 let maxzoom = $state(12);
+
+// Which view of the feature is showing: the landing list, the area builder, the storage detail, or
+// the auto-cache settings. Switching keeps all state in this one parent; only the template branches.
+let subView = $state<'home' | 'build' | 'storage' | 'auto'>('home');
+const subViewTitle = $derived(
+  subView === 'build'
+    ? 'Download an area'
+    : subView === 'storage'
+      ? 'Storage'
+      : subView === 'auto'
+        ? 'Auto-cache around the boat'
+        : 'Offline areas',
+);
 
 // Name prep and submission state.
 let namePrep = $state(false);
@@ -126,6 +150,17 @@ const sourceList = $derived(coveringSources(bbox ?? WORLD_BBOX, [minzoom, maxzoo
 const activeSourceIds = $derived(
   sourceList.filter((s) => selectedSources.includes(s.id)).map((s) => s.id),
 );
+// The selected covering sources as objects, for the plain "what is included" sentence.
+const selectedObjects = $derived(sourceList.filter((s) => selectedSources.includes(s.id)));
+const includedText = $derived(includedSummary(selectedObjects));
+// The covering sources grouped by plain category for the Customize checklist (facets hidden).
+const sourceGroups = $derived(coveringGroups(sourceList));
+// The detail preset the current zoom range matches, or 'custom'.
+const detailPreset = $derived(presetForRange(minzoom, maxzoom));
+
+function applyDetailPreset(key: 'overview' | 'coastal' | 'harbor'): void {
+  [minzoom, maxzoom] = rangeForPreset(key);
+}
 
 const gate = $derived(
   stats !== null &&
@@ -164,19 +199,15 @@ $effect(() => {
 });
 
 // Wire up the panel-scoped Terra Draw rectangle instance. The prefixId 'chart-locker-region-draw'
-// keeps it separate from the route editor's 'binnacle-route-draw' so the two never collide. A new
-// box auto-selects every covering overlay; the basemap is listed but not auto-selected (it is global
-// and large), so the owner opts it in deliberately.
+// keeps it separate from the route editor's 'binnacle-route-draw' so the two never collide. A new box
+// gets the smart default: the covering chart, seamarks, and the base map, with facets and specialist
+// layers left off. The base map is on by default so the offline area is not a blank canvas.
 $effect(() => {
   const r = createRegionRectangle(map);
   r.onChange((newBbox) => {
     bbox = newBbox;
     selectedSources =
-      newBbox === null
-        ? []
-        : coveringSources(newBbox, [minzoom, maxzoom])
-            .filter((s) => s.id !== BASEMAP_SOURCE_ID)
-            .map((s) => s.id);
+      newBbox === null ? [] : defaultSelection(coveringSources(newBbox, [minzoom, maxzoom]));
     namePrep = false;
   });
   rect = r;
@@ -259,7 +290,9 @@ async function clearScrollCache(): Promise<void> {
     const { freedBytes } = await client.clearScrollCache();
     const f = formatBytes(freedBytes);
     clearNote =
-      freedBytes > 0 ? `Cleared ${f.value} ${f.unit} of scroll cache.` : 'Nothing to clear.';
+      freedBytes > 0
+        ? `Freed ${f.value} ${f.unit} of recently viewed charts.`
+        : 'Nothing to clear.';
     await loadStats();
   } catch {
     error = 'Could not clear the scroll cache.';
@@ -450,11 +483,11 @@ function toggleSource(id: string, on: boolean): void {
 }
 
 const STATUS_LABELS: Record<SavedRegionDto['status'], string> = {
-  downloading: 'Downloading',
-  ready: 'Ready',
-  capped: 'Cap reached',
-  error: 'Error',
-  'needs-redownload': 'Needs re-download',
+  downloading: 'Saving...',
+  ready: 'Saved, works offline',
+  capped: 'Storage full, some left out',
+  error: 'Could not finish',
+  'needs-redownload': 'Out of date, download again',
 };
 
 // Severity coloring for the status caps label so a failed or capped region reads at a glance. The
@@ -470,359 +503,438 @@ const STATUS_SEVERITY: Record<SavedRegionDto['status'], string> = {
 function updatedLabel(ts: number): string {
   return new Date(ts * 1000).toLocaleDateString();
 }
+
+// The per-chart storage breakdown is keyed by source id. Map it to the plain registry title, collapse
+// the synthetic base-map sub-source keys, and fall back to the id so an unknown key never shows blank.
+const SOURCE_TITLE = new Map(CHART_SOURCES.map((s) => [s.id, s.title]));
+function chartLabel(id: string): string {
+  if (id.startsWith('style:') || id === '__basemap_assets__') return 'Base map';
+  return SOURCE_TITLE.get(id) ?? id;
+}
 </script>
 
-<SlideOver title="Regions" closeLabel="Close regions panel" {onClose} {onBack} bodyFlex>
+<SlideOver
+  title={subViewTitle}
+  closeLabel="Close offline charts"
+  {onClose}
+  onBack={subView === 'home' ? onBack : () => (subView = 'home')}
+  bodyFlex
+>
   {#if error !== null}
     <p class="alert-note" role="alert">{error}</p>
   {/if}
   {#if auth.writeBlocked}
     <p class="muted-note">
-      A write token is needed to download a region. Request a read/write token to continue.
+      A write token is needed to download charts. Request a read/write token to continue.
     </p>
   {/if}
 
-  <section class="panel-section section-card card-frame" aria-label="Build a region">
-    <h3 class="caps-label">Region box</h3>
+  {#if subView === 'home'}
+    <p class="muted-note">Download chart areas so they work without internet at sea.</p>
     <div class="panel-controls">
       <button
         type="button"
-        class="btn btn--grow"
+        class="btn btn-primary btn--grow"
         disabled={auth.writeBlocked}
-        onclick={() => rect?.start()}
+        onclick={() => (subView = 'build')}
       >
-        <SquareDashed size={16} aria-hidden="true" />
-        Draw box
-      </button>
-      <button
-        type="button"
-        class="btn btn-ghost"
-        disabled={bbox === null || auth.writeBlocked}
-        onclick={() => rect?.clear()}
-      >
-        <Trash2 size={16} aria-hidden="true" />
-        Clear
+        <DownloadCloud size={16} aria-hidden="true" />
+        Download an area
       </button>
     </div>
-    {#if bbox !== null}
-      <p class="muted-note">
-        Box: {bbox[1].toFixed(3)}, {bbox[0].toFixed(3)} to {bbox[3].toFixed(3)},
-        {bbox[2].toFixed(3)}
-      </p>
-    {:else}
-      <p class="muted-note">No box drawn. Tap Draw box, then drag on the chart to set the area.</p>
-    {/if}
 
-    <h3 class="caps-label">Region sources</h3>
-    {#each sourceList as source (source.id)}
-      <div class="list-row">
-        <LayerToggle
-          title={source.title}
-          visible={selectedSources.includes(source.id)}
-          disabled={auth.writeBlocked}
-          onToggle={(on) => toggleSource(source.id, on)}
-        />
-      </div>
-    {/each}
-    {#if sourceList.length === 0}
-      <p class="muted-note">No sources cover this box and zoom range.</p>
-    {/if}
-
-    <h3 class="caps-label">Zoom range</h3>
-    <UnitField
-      label="Minimum zoom"
-      value={minzoom}
-      min={0}
-      max={maxzoom}
-      step={1}
-      onCommit={(v) => {
-        minzoom = Math.round(Math.max(0, Math.min(v, maxzoom)));
-      }}
-    />
-    <UnitField
-      label="Maximum zoom"
-      value={maxzoom}
-      min={minzoom}
-      max={22}
-      step={1}
-      onCommit={(v) => {
-        maxzoom = Math.round(Math.max(minzoom, Math.min(v, 22)));
-      }}
-    />
-
-    <h3 class="caps-label">Estimate</h3>
-    {#if statsError !== null}
-      <p class="alert-note" role="alert">{statsError}</p>
-    {:else if stats === null}
-      <p class="muted-note">Loading cache stats...</p>
-    {:else}
-      <dl class="stat-grid">
-        <dt>Estimated download</dt>
-        <dd>
-          <span class="num">{estimateFmt.value}</span>
-          <span class="unit">{estimateFmt.unit}</span>
-        </dd>
-        <dt>Regions free</dt>
-        <dd>
-          <span class="num">{regionsFreeFmt?.value ?? '--'}</span>
-          <span class="unit">{regionsFreeFmt?.unit ?? ''}</span>
-        </dd>
-      </dl>
-      <p class="muted-note">
-        The estimate is a ceiling. Areas with no chart data are skipped and cost nothing.
-      </p>
-    {/if}
-
-    {#if namePrep}
-      <TextField label="Region name" value={regionName} onCommit={(v) => (regionName = v)} />
-      <div class="panel-controls">
-        <button
-          type="button"
-          class="btn btn-primary btn--grow"
-          disabled={submitting}
-          onclick={() => void saveRegion()}
+    <section class="panel-section" aria-label="My areas">
+      <h3 class="caps-label">My areas</h3>
+      {#if loadError !== null}
+        <p class="alert-note" role="alert">{loadError}</p>
+      {:else if regions === null}
+        <p class="muted-note">Loading areas...</p>
+      {:else}
+        <SavedList
+          items={regions}
+          empty="No areas yet. Tap Download an area to save charts for offline."
+          key={(region) => region.id}
         >
-          <Download size={16} aria-hidden="true" />
-          Start download
-        </button>
-        <button type="button" class="btn btn-ghost" onclick={cancelNamePrep}>Cancel</button>
-      </div>
-    {:else}
-      <div class="panel-controls">
-        <button
-          type="button"
-          class="btn btn-primary btn--grow"
-          disabled={!gate || submitting}
-          onclick={() => void prepareDownload()}
-        >
-          <Download size={16} aria-hidden="true" />
-          Download region
-        </button>
-      </div>
-    {/if}
-  </section>
-
-  <section class="panel-section" aria-label="Saved regions">
-    <h3 class="caps-label">Saved regions</h3>
-    {#if loadError !== null}
-      <p class="alert-note" role="alert">{loadError}</p>
-    {:else if regions === null}
-      <p class="muted-note">Loading regions...</p>
-    {:else}
-      <SavedList
-        items={regions}
-        empty="No regions saved yet. Draw a box and download to save one."
-        key={(region) => region.id}
-      >
-        {#snippet card(region)}
-          {@const cached = formatBytes(region.cachedBytes)}
-          {@const live = regionStatus[region.id]}
-          <div class="card-head">
-            <span class="name" title={region.name}>{region.name}</span>
-            <span class="caps-label {STATUS_SEVERITY[region.status]}">
-              {STATUS_LABELS[region.status]}
-            </span>
-          </div>
-          <dl class="card-stats">
-            <dt class="caps-label">Cached</dt>
-            <dd><span class="num">{cached.value}</span> {cached.unit}</dd>
-            {#if region.lastDownloadedAt !== null}
-              <dt class="caps-label">Updated</dt>
-              <dd><span class="num">{updatedLabel(region.lastDownloadedAt)}</span></dd>
+          {#snippet card(region)}
+            {@const cached = formatBytes(region.cachedBytes)}
+            {@const live = regionStatus[region.id]}
+            <div class="card-head">
+              <span class="name" title={region.name}>{region.name}</span>
+              <span class="caps-label {STATUS_SEVERITY[region.status]}">
+                {STATUS_LABELS[region.status]}
+              </span>
+            </div>
+            <dl class="card-stats">
+              <dt class="caps-label">Saved</dt>
+              <dd><span class="num">{cached.value}</span> {cached.unit}</dd>
+              {#if region.lastDownloadedAt !== null}
+                <dt class="caps-label">Updated</dt>
+                <dd><span class="num">{updatedLabel(region.lastDownloadedAt)}</span></dd>
+              {/if}
+            </dl>
+            {#if region.status === 'downloading' && live && live.total > 0}
+              {@const pct = Math.round((live.done / live.total) * 100)}
+              <div
+                class="warm-track"
+                role="progressbar"
+                aria-label="Download progress"
+                aria-valuemin="0"
+                aria-valuemax={live.total}
+                aria-valuenow={live.done}
+              >
+                <div class="warm-fill" style:inline-size="{pct}%"></div>
+              </div>
             {/if}
-          </dl>
-          {#if region.status === 'downloading' && live && live.total > 0}
-            {@const pct = Math.round((live.done / live.total) * 100)}
-            <div
-              class="warm-track"
-              role="progressbar"
-              aria-label="Download progress"
-              aria-valuemin="0"
-              aria-valuemax={live.total}
-              aria-valuenow={live.done}
-            >
-              <div class="warm-fill" style:inline-size="{pct}%"></div>
-            </div>
-          {/if}
-          {#if confirmingDelete === region.id}
-            <InlineConfirm
-              question="Delete this region?"
-              onConfirm={() => confirmDelete(region.id)}
-              onCancel={() => (confirmingDelete = undefined)}
-            />
-          {:else}
-            <div class="actions">
-              <button
-                type="button"
-                class="icon-btn"
-                aria-label="Re-download region"
-                title="Re-download"
-                disabled={auth.writeBlocked ||
-                  submitting ||
-                  pendingRegion[region.id] ||
-                  region.status === 'downloading'}
-                onclick={() => void redownloadRegion(region.id)}
-              >
-                <RefreshCw size={18} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                class="icon-btn icon-btn--danger"
-                aria-label="Delete region"
-                title="Delete"
-                disabled={auth.writeBlocked || submitting || pendingRegion[region.id]}
-                onclick={() => (confirmingDelete = region.id)}
-              >
-                <Trash2 size={18} aria-hidden="true" />
-              </button>
-            </div>
-          {/if}
-        {/snippet}
-      </SavedList>
-    {/if}
-  </section>
+            {#if confirmingDelete === region.id}
+              <InlineConfirm
+                question="Delete this offline area?"
+                onConfirm={() => confirmDelete(region.id)}
+                onCancel={() => (confirmingDelete = undefined)}
+              />
+            {:else}
+              <div class="actions">
+                <button
+                  type="button"
+                  class="icon-btn"
+                  aria-label="Download this area again"
+                  title="Download again"
+                  disabled={auth.writeBlocked ||
+                    submitting ||
+                    pendingRegion[region.id] ||
+                    region.status === 'downloading'}
+                  onclick={() => void redownloadRegion(region.id)}
+                >
+                  <RefreshCw size={18} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  class="icon-btn icon-btn--danger"
+                  aria-label="Delete this area"
+                  title="Delete"
+                  disabled={auth.writeBlocked || submitting || pendingRegion[region.id]}
+                  onclick={() => (confirmingDelete = region.id)}
+                >
+                  <Trash2 size={18} aria-hidden="true" />
+                </button>
+              </div>
+            {/if}
+          {/snippet}
+        </SavedList>
+      {/if}
+    </section>
 
-  <section class="panel-section section-card card-frame" aria-label="Cache">
-    <h3 class="caps-label">Cache</h3>
-    {#if stats !== null}
-      <dl class="stat-grid">
-        <dt>Scroll cache</dt>
-        <dd>
-          <span class="num">{scrollFmt?.value ?? '--'}</span>
-          <span class="unit">{scrollFmt?.unit ?? ''}</span>
-        </dd>
-        <dt>Pinned</dt>
-        <dd>
-          <span class="num">{pinnedFmt?.value ?? '--'}</span>
-          <span class="unit">{pinnedFmt?.unit ?? ''}</span>
-        </dd>
-        <dt>Cache used</dt>
-        <dd>
-          <span class="num">{usedFmt?.value ?? '--'}</span>
-          <span class="unit">{usedFmt?.unit ?? ''}</span>
-        </dd>
-        <dt>Cache cap</dt>
-        <dd>
-          <span class="num">{capFmt?.value ?? '--'}</span>
-          <span class="unit">{capFmt?.unit ?? ''}</span>
-        </dd>
-        {#each formatBySource(stats) as row (row.source)}
-          <dt>{row.source}</dt>
-          <dd><span class="num">{row.value}</span> <span class="unit">{row.unit}</span></dd>
-        {/each}
-      </dl>
-    {:else}
-      <p class="muted-note">Loading cache stats...</p>
-    {/if}
-    <UnitField
-      label="Scroll cache age limit"
-      unit="days"
-      value={ttlDays}
-      min={0}
-      max={365}
-      step={1}
-      onCommit={commitTtlDays}
-    />
-    {#if confirmingClear}
-      <InlineConfirm
-        question="Clear all unpinned scroll tiles?"
-        onConfirm={() => void clearScrollCache()}
-        onCancel={() => (confirmingClear = false)}
-      />
-    {:else}
+    <button type="button" class="nav-row row-interactive" onclick={() => (subView = 'auto')}>
+      <span class="nav-row-label">Auto-cache around the boat</span>
+      <span class="nav-row-value">{positionEnabled ? 'On' : 'Off'}</span>
+      <ChevronRight size={18} aria-hidden="true" />
+    </button>
+    <button type="button" class="nav-row row-interactive" onclick={() => (subView = 'storage')}>
+      <span class="nav-row-label">Storage</span>
+      <span class="nav-row-value">
+        {usedFmt?.value ?? '--'} {usedFmt?.unit ?? ''} of {capFmt?.value ?? '--'}
+        {capFmt?.unit ?? ''}
+      </span>
+      <ChevronRight size={18} aria-hidden="true" />
+    </button>
+  {:else if subView === 'build'}
+    <section class="panel-section" aria-label="Download an area">
+      <h3 class="caps-label">Draw the area</h3>
       <div class="panel-controls">
         <button
           type="button"
-          class="btn btn-danger"
+          class="btn btn--grow"
           disabled={auth.writeBlocked}
-          onclick={() => (confirmingClear = true)}
+          onclick={() => rect?.start()}
+        >
+          <SquareDashed size={16} aria-hidden="true" />
+          Draw on the chart
+        </button>
+        <button
+          type="button"
+          class="btn btn-ghost"
+          disabled={bbox === null || auth.writeBlocked}
+          onclick={() => rect?.clear()}
         >
           <Trash2 size={16} aria-hidden="true" />
-          Clear scroll cache
+          Clear
         </button>
       </div>
-    {/if}
-    {#if clearNote !== null}
-      <p class="muted-note">{clearNote}</p>
-    {/if}
-  </section>
+      {#if bbox !== null}
+        <p class="muted-note">Area set. Draw again to change it.</p>
+      {:else}
+        <p class="muted-note">Tap Draw on the chart, then drag a box over where you are going.</p>
+      {/if}
 
-  <section class="panel-section section-card card-frame" aria-label="Position warm">
-    <h3 class="caps-label">Position warm</h3>
-    <p class="muted-note">
-      Caches tiles around the boat as it moves, so the area ahead is ready offline.
-    </p>
-    <ShowOnChartToggle
-      shown={positionEnabled}
-      label="Enable position warm"
-      disabled={auth.writeBlocked}
-      onToggle={(on) => {
-        positionEnabled = on;
-        void savePositionWarm();
-      }}
-    />
-    <UnitField
-      label="Warm radius"
-      {unit}
-      value={positionRadiusDisplay}
-      min={1}
-      step={1}
-      disabled={!positionEnabled || auth.writeBlocked}
-      onCommit={commitPositionRadius}
-    />
-    <UnitField
-      label="Move threshold"
-      {unit}
-      value={positionMoveDisplay}
-      min={1}
-      step={1}
-      disabled={!positionEnabled || auth.writeBlocked}
-      onCommit={commitMoveThreshold}
-    />
-    <UnitField
-      label="Warm interval"
-      unit="s"
-      value={positionIntervalSecs}
-      min={60}
-      step={1}
-      disabled={!positionEnabled || auth.writeBlocked}
-      onCommit={(v) => {
-        positionIntervalSecs = Math.max(60, Math.round(v));
-        void savePositionWarm();
-      }}
-    />
-    <UnitField
-      label="Base zoom"
-      value={positionBaseZoom}
-      min={0}
-      max={22}
-      step={1}
-      disabled={!positionEnabled || auth.writeBlocked}
-      onCommit={(v) => {
-        positionBaseZoom = Math.round(Math.max(0, Math.min(v, 22)));
-        void savePositionWarm();
-      }}
-    />
-    <h3 class="caps-label">Position warm sources</h3>
-    {#each positionWarmSourceList as source (source.id)}
-      <div class="list-row">
-        <LayerToggle
-          title={source.title}
-          visible={positionSources.includes(source.id)}
+      <h3 class="caps-label">What's included</h3>
+      <p class="muted-note">{includedText}</p>
+      <Disclosure label="Customize what's included">
+        <p class="muted-note">These are the chart layers that cover this area.</p>
+        <p class="muted-note">
+          You do not need to change anything: by default Binnacle saves every layer shown on your
+          chart here.
+        </p>
+        <p class="muted-note">
+          Unchecking a layer leaves it out, so it will not be available offline in this area. You
+          can add it back and download again any time.
+        </p>
+        {#each sourceGroups as group (group.category)}
+          <h4 class="caps-label">{group.title}</h4>
+          {#each group.sources as source (source.id)}
+            <div class="list-row">
+              <LayerToggle
+                title={source.id === 'basemap'
+                  ? 'Base map: land, roads, and place names'
+                  : source.title}
+                visible={selectedSources.includes(source.id)}
+                disabled={auth.writeBlocked}
+                onToggle={(on) => toggleSource(source.id, on)}
+              />
+            </div>
+          {/each}
+        {/each}
+        {#if sourceGroups.length === 0}
+          <p class="muted-note">Draw an area first to see its chart layers.</p>
+        {/if}
+      </Disclosure>
+
+      <h3 class="caps-label">Detail</h3>
+      <div class="segmented" role="group" aria-label="Detail level">
+        {#each DETAIL_PRESETS as preset (preset.key)}
+          <button
+            type="button"
+            class="btn"
+            class:is-on={detailPreset === preset.key}
+            aria-pressed={detailPreset === preset.key}
+            onclick={() => applyDetailPreset(preset.key)}
+          >
+            {preset.label}
+          </button>
+        {/each}
+      </div>
+      <Disclosure label="Advanced zoom">
+        <UnitField
+          label="Minimum zoom"
+          value={minzoom}
+          min={0}
+          max={maxzoom}
+          step={1}
+          onCommit={(v) => {
+            minzoom = Math.round(Math.max(0, Math.min(v, maxzoom)));
+          }}
+        />
+        <UnitField
+          label="Maximum zoom"
+          value={maxzoom}
+          min={minzoom}
+          max={22}
+          step={1}
+          onCommit={(v) => {
+            maxzoom = Math.round(Math.max(minzoom, Math.min(v, 22)));
+          }}
+        />
+      </Disclosure>
+
+      {#if statsError !== null}
+        <p class="alert-note" role="alert">{statsError}</p>
+      {:else if stats === null}
+        <p class="muted-note">Checking storage...</p>
+      {:else}
+        <dl class="stat-grid">
+          <dt>Download size</dt>
+          <dd>
+            <span class="num">{estimateFmt.value}</span>
+            <span class="unit">{estimateFmt.unit}</span>
+          </dd>
+          <dt>Space available</dt>
+          <dd>
+            <span class="num">{regionsFreeFmt?.value ?? '--'}</span>
+            <span class="unit">{regionsFreeFmt?.unit ?? ''}</span>
+          </dd>
+        </dl>
+        <p class="muted-note">
+          This is a maximum. Empty water with no chart data is skipped and costs nothing. The base
+          map's labels are a one-time shared download.
+        </p>
+      {/if}
+
+      {#if namePrep}
+        <TextField label="Area name" value={regionName} onCommit={(v) => (regionName = v)} />
+        <div class="panel-controls">
+          <button
+            type="button"
+            class="btn btn-primary btn--grow"
+            disabled={submitting}
+            onclick={() => void saveRegion()}
+          >
+            <Download size={16} aria-hidden="true" />
+            Start download
+          </button>
+          <button type="button" class="btn btn-ghost" onclick={cancelNamePrep}>Cancel</button>
+        </div>
+      {:else}
+        <div class="panel-controls">
+          <button
+            type="button"
+            class="btn btn-primary btn--grow"
+            disabled={!gate || submitting}
+            onclick={() => void prepareDownload()}
+          >
+            <Download size={16} aria-hidden="true" />
+            Download
+          </button>
+        </div>
+        {#if !gate && bbox !== null && activeSourceIds.length === 0}
+          <p class="muted-note">Pick at least one chart layer to download.</p>
+        {/if}
+      {/if}
+      <p class="muted-note">Once saved, this area works on your device with no internet.</p>
+    </section>
+  {:else if subView === 'storage'}
+    <section class="panel-section" aria-label="Storage">
+      {#if stats !== null}
+        <dl class="stat-grid">
+          <dt>Storage used</dt>
+          <dd>
+            <span class="num">{usedFmt?.value ?? '--'}</span>
+            <span class="unit"
+              >{usedFmt?.unit ?? ''}
+              of {capFmt?.value ?? '--'} {capFmt?.unit ?? ''}</span
+            >
+          </dd>
+          <dt>Saved areas</dt>
+          <dd>
+            <span class="num">{pinnedFmt?.value ?? '--'}</span>
+            <span class="unit">{pinnedFmt?.unit ?? ''}</span>
+          </dd>
+          <dt>Recently viewed</dt>
+          <dd>
+            <span class="num">{scrollFmt?.value ?? '--'}</span>
+            <span class="unit">{scrollFmt?.unit ?? ''}</span>
+          </dd>
+        </dl>
+        <Disclosure label="Recently viewed, by chart">
+          <dl class="stat-grid">
+            {#each formatBySource(stats) as row (row.source)}
+              <dt>{chartLabel(row.source)}</dt>
+              <dd><span class="num">{row.value}</span> <span class="unit">{row.unit}</span></dd>
+            {/each}
+          </dl>
+        </Disclosure>
+      {:else}
+        <p class="muted-note">Loading storage...</p>
+      {/if}
+      <UnitField
+        label="Auto-clear after"
+        unit="days"
+        value={ttlDays}
+        min={0}
+        max={365}
+        step={1}
+        onCommit={commitTtlDays}
+      />
+      {#if confirmingClear}
+        <InlineConfirm
+          question="Clear recently viewed charts? Your saved areas are kept."
+          onConfirm={() => void clearScrollCache()}
+          onCancel={() => (confirmingClear = false)}
+        />
+      {:else}
+        <div class="panel-controls">
+          <button
+            type="button"
+            class="btn btn-danger"
+            disabled={auth.writeBlocked}
+            onclick={() => (confirmingClear = true)}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            Clear recently viewed
+          </button>
+        </div>
+      {/if}
+      {#if clearNote !== null}
+        <p class="muted-note">{clearNote}</p>
+      {/if}
+    </section>
+  {:else if subView === 'auto'}
+    <section class="panel-section" aria-label="Auto-cache around the boat">
+      <p class="muted-note">
+        Caches the chart around the boat as it moves, so the area ahead is ready offline without
+        downloading an area yourself.
+      </p>
+      <ShowOnChartToggle
+        shown={positionEnabled}
+        label="Enable auto-cache"
+        disabled={auth.writeBlocked}
+        onToggle={(on) => {
+          positionEnabled = on;
+          void savePositionWarm();
+        }}
+      />
+      <Disclosure label="Advanced">
+        <UnitField
+          label="How far around the boat"
+          {unit}
+          value={positionRadiusDisplay}
+          min={1}
+          step={1}
           disabled={!positionEnabled || auth.writeBlocked}
-          onToggle={(on) => {
-            positionSources = on
-              ? [...positionSources, source.id]
-              : positionSources.filter((s) => s !== source.id);
+          onCommit={commitPositionRadius}
+        />
+        <UnitField
+          label="Re-cache after moving"
+          {unit}
+          value={positionMoveDisplay}
+          min={1}
+          step={1}
+          disabled={!positionEnabled || auth.writeBlocked}
+          onCommit={commitMoveThreshold}
+        />
+        <UnitField
+          label="Check every"
+          unit="s"
+          value={positionIntervalSecs}
+          min={60}
+          step={1}
+          disabled={!positionEnabled || auth.writeBlocked}
+          onCommit={(v) => {
+            positionIntervalSecs = Math.max(60, Math.round(v));
             void savePositionWarm();
           }}
         />
-      </div>
-    {/each}
-    {#if positionWarmSourceList.length === 0}
-      <p class="muted-note">No sources available to warm.</p>
-    {/if}
-  </section>
+        <UnitField
+          label="Zoom detail"
+          value={positionBaseZoom}
+          min={0}
+          max={22}
+          step={1}
+          disabled={!positionEnabled || auth.writeBlocked}
+          onCommit={(v) => {
+            positionBaseZoom = Math.round(Math.max(0, Math.min(v, 22)));
+            void savePositionWarm();
+          }}
+        />
+        <h4 class="caps-label">Charts to auto-cache</h4>
+        {#each positionWarmSourceList as source (source.id)}
+          <div class="list-row">
+            <LayerToggle
+              title={source.title}
+              visible={positionSources.includes(source.id)}
+              disabled={!positionEnabled || auth.writeBlocked}
+              onToggle={(on) => {
+                positionSources = on
+                  ? [...positionSources, source.id]
+                  : positionSources.filter((s) => s !== source.id);
+                void savePositionWarm();
+              }}
+            />
+          </div>
+        {/each}
+        {#if positionWarmSourceList.length === 0}
+          <p class="muted-note">No charts available to auto-cache.</p>
+        {/if}
+      </Disclosure>
+    </section>
+  {/if}
 </SlideOver>
 
 <style>
@@ -839,6 +951,24 @@ function updatedLabel(ts: number): string {
 }
 .panel-section h3:not(:first-child) {
   margin-block-start: var(--space-1);
+}
+
+/* A landing nav row: a labeled value with a chevron that opens a sub-view, on the shared
+   row-interactive base, matching the Layers-panel category toggles. */
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: var(--control-size);
+}
+.nav-row-label {
+  flex: 1;
+  text-align: start;
+}
+.nav-row-value {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
 /* The determinate download progress bar on a downloading region card: a token-driven track with an
