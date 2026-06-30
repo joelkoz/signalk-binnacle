@@ -1,11 +1,19 @@
 <script lang="ts">
-import { Download, RefreshCw, Square, Trash2 } from '@lucide/svelte';
+import { Download, RefreshCw, SquareDashed, Trash2 } from '@lucide/svelte';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { onDestroy } from 'svelte';
 import type { UnitsStore } from '$entities/units';
 import { feetToMeters, lengthUnit, metersToFeet } from '$shared/lib';
 import type { AuthController } from '$shared/signalk';
-import { InlineConfirm, LayerToggle, SavedList, SlideOver, TextField, UnitField } from '$shared/ui';
+import {
+  InlineConfirm,
+  LayerToggle,
+  SavedList,
+  ShowOnChartToggle,
+  SlideOver,
+  TextField,
+  UnitField,
+} from '$shared/ui';
 import {
   BASEMAP_SOURCE_ID,
   canDownloadRegion,
@@ -464,7 +472,7 @@ function updatedLabel(ts: number): string {
 }
 </script>
 
-<SlideOver title="Saved regions" closeLabel="Close regions panel" {onClose} {onBack} bodyFlex>
+<SlideOver title="Regions" closeLabel="Close regions panel" {onClose} {onBack} bodyFlex>
   {#if error !== null}
     <p class="alert-note" role="alert">{error}</p>
   {/if}
@@ -474,333 +482,363 @@ function updatedLabel(ts: number): string {
     </p>
   {/if}
 
-  <h3 class="caps-label section-head">Region box</h3>
-  <div class="panel-controls">
-    <button
-      type="button"
-      class="btn btn--grow"
-      disabled={auth.writeBlocked}
-      onclick={() => rect?.start()}
-    >
-      <Square size={16} aria-hidden="true" />
-      Draw box
-    </button>
-    <button
-      type="button"
-      class="btn btn-ghost"
-      disabled={bbox === null || auth.writeBlocked}
-      onclick={() => rect?.clear()}
-    >
-      <Trash2 size={16} aria-hidden="true" />
-      Clear
-    </button>
-  </div>
-  {#if bbox !== null}
-    <p class="muted-note">
-      Box: {bbox[1].toFixed(3)}, {bbox[0].toFixed(3)} to {bbox[3].toFixed(3)},
-      {bbox[2].toFixed(3)}
-    </p>
-  {:else}
-    <p class="muted-note">No box drawn. Tap Draw box, then drag on the chart to set the area.</p>
-  {/if}
-
-  <h3 class="caps-label section-head">Sources</h3>
-  {#each sourceList as source (source.id)}
-    <LayerToggle
-      title={source.title}
-      visible={selectedSources.includes(source.id)}
-      disabled={auth.writeBlocked}
-      onToggle={(on) => toggleSource(source.id, on)}
-    />
-  {/each}
-  {#if sourceList.length === 0}
-    <p class="muted-note">No sources cover this box and zoom range.</p>
-  {/if}
-
-  <h3 class="caps-label section-head">Zoom range</h3>
-  <UnitField
-    label="Minimum zoom"
-    value={minzoom}
-    min={0}
-    max={maxzoom}
-    step={1}
-    onCommit={(v) => {
-      minzoom = Math.round(Math.max(0, Math.min(v, maxzoom)));
-    }}
-  />
-  <UnitField
-    label="Maximum zoom"
-    value={maxzoom}
-    min={minzoom}
-    max={22}
-    step={1}
-    onCommit={(v) => {
-      maxzoom = Math.round(Math.max(minzoom, Math.min(v, 22)));
-    }}
-  />
-
-  <h3 class="caps-label section-head">Estimate</h3>
-  {#if statsError !== null}
-    <p class="alert-note" role="alert">{statsError}</p>
-  {:else if stats === null}
-    <p class="muted-note">Loading cache stats...</p>
-  {:else}
-    <dl class="stat-grid">
-      <dt>Estimated download</dt>
-      <dd>
-        <span class="num">{estimateFmt.value}</span>
-        <span class="unit">{estimateFmt.unit}</span>
-      </dd>
-      <dt>Regions free</dt>
-      <dd>
-        <span class="num">{regionsFreeFmt?.value ?? '--'}</span>
-        <span class="unit">{regionsFreeFmt?.unit ?? ''}</span>
-      </dd>
-      <dt>Pinned</dt>
-      <dd>
-        <span class="num">{pinnedFmt?.value ?? '--'}</span>
-        <span class="unit">{pinnedFmt?.unit ?? ''}</span>
-      </dd>
-      <dt>Scrolling cache</dt>
-      <dd>
-        <span class="num">{scrollFmt?.value ?? '--'}</span>
-        <span class="unit">{scrollFmt?.unit ?? ''}</span>
-      </dd>
-    </dl>
-    <p class="muted-note">The estimate is a ceiling. Cached 404s cost no bytes.</p>
-  {/if}
-
-  {#if namePrep}
-    <TextField label="Region name" value={regionName} onCommit={(v) => (regionName = v)} />
+  <section class="panel-section section-card card-frame" aria-label="Build a region">
+    <h3 class="caps-label">Region box</h3>
     <div class="panel-controls">
       <button
         type="button"
-        class="btn btn-primary btn--grow"
-        disabled={submitting}
-        onclick={() => void saveRegion()}
+        class="btn btn--grow"
+        disabled={auth.writeBlocked}
+        onclick={() => rect?.start()}
       >
-        <Download size={16} aria-hidden="true" />
-        Save region
+        <SquareDashed size={16} aria-hidden="true" />
+        Draw box
       </button>
-      <button type="button" class="btn btn-ghost" onclick={cancelNamePrep}>Cancel</button>
-    </div>
-  {:else}
-    <div class="panel-controls">
-      <button
-        type="button"
-        class="btn btn-primary btn--grow"
-        disabled={!gate || submitting}
-        onclick={() => void prepareDownload()}
-      >
-        <Download size={16} aria-hidden="true" />
-        Download region
-      </button>
-    </div>
-  {/if}
-
-  {#if loadError !== null}
-    <span class="caps-label section-head">Saved regions</span>
-    <p class="alert-note" role="alert">{loadError}</p>
-  {:else if regions === null}
-    <span class="caps-label section-head">Saved regions</span>
-    <p class="muted-note">Loading regions...</p>
-  {:else}
-    <SavedList
-      heading="Saved regions"
-      items={regions}
-      empty="No regions saved yet. Draw a box and download to save one."
-      key={(region) => region.id}
-    >
-      {#snippet card(region)}
-        {@const cached = formatBytes(region.cachedBytes)}
-        {@const live = regionStatus[region.id]}
-        <div class="card-head">
-          <span class="name" title={region.name}>{region.name}</span>
-          <span class="caps-label {STATUS_SEVERITY[region.status]}">
-            {STATUS_LABELS[region.status]}
-          </span>
-        </div>
-        <dl class="card-stats">
-          <dt class="caps-label">Cached</dt>
-          <dd><span class="num">{cached.value}</span> {cached.unit}</dd>
-          {#if region.lastDownloadedAt !== null}
-            <dt class="caps-label">Updated</dt>
-            <dd><span class="num">{updatedLabel(region.lastDownloadedAt)}</span></dd>
-          {/if}
-        </dl>
-        {#if region.status === 'downloading' && live && live.total > 0}
-          {@const pct = Math.round((live.done / live.total) * 100)}
-          <div
-            class="warm-track"
-            role="progressbar"
-            aria-label="Download progress"
-            aria-valuemin="0"
-            aria-valuemax={live.total}
-            aria-valuenow={live.done}
-          >
-            <div class="warm-fill" style:inline-size="{pct}%"></div>
-          </div>
-        {/if}
-        {#if confirmingDelete === region.id}
-          <InlineConfirm
-            question="Delete this region?"
-            onConfirm={() => confirmDelete(region.id)}
-            onCancel={() => (confirmingDelete = undefined)}
-          />
-        {:else}
-          <div class="actions">
-            <button
-              type="button"
-              class="icon-btn"
-              aria-label="Re-download region"
-              title="Re-download"
-              disabled={auth.writeBlocked ||
-                submitting ||
-                pendingRegion[region.id] ||
-                region.status === 'downloading'}
-              onclick={() => void redownloadRegion(region.id)}
-            >
-              <RefreshCw size={18} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              class="icon-btn icon-btn--danger"
-              aria-label="Delete region"
-              title="Delete"
-              disabled={auth.writeBlocked || submitting || pendingRegion[region.id]}
-              onclick={() => (confirmingDelete = region.id)}
-            >
-              <Trash2 size={18} aria-hidden="true" />
-            </button>
-          </div>
-        {/if}
-      {/snippet}
-    </SavedList>
-  {/if}
-
-  <h3 class="caps-label section-head">Scroll cache</h3>
-  {#if stats !== null}
-    <dl class="stat-grid">
-      <dt>Cache used</dt>
-      <dd>
-        <span class="num">{usedFmt?.value ?? '--'}</span>
-        <span class="unit">{usedFmt?.unit ?? ''}</span>
-      </dd>
-      <dt>Cache cap</dt>
-      <dd>
-        <span class="num">{capFmt?.value ?? '--'}</span>
-        <span class="unit">{capFmt?.unit ?? ''}</span>
-      </dd>
-      {#each formatBySource(stats) as row (row.source)}
-        <dt>{row.source}</dt>
-        <dd><span class="num">{row.value}</span> <span class="unit">{row.unit}</span></dd>
-      {/each}
-    </dl>
-  {/if}
-  <UnitField
-    label="Scroll cache age limit"
-    unit="days"
-    value={ttlDays}
-    min={0}
-    max={365}
-    step={1}
-    onCommit={commitTtlDays}
-  />
-  {#if confirmingClear}
-    <InlineConfirm
-      question="Clear all unpinned scroll tiles?"
-      onConfirm={() => void clearScrollCache()}
-      onCancel={() => (confirmingClear = false)}
-    />
-  {:else}
-    <div class="panel-controls">
       <button
         type="button"
         class="btn btn-ghost"
-        disabled={auth.writeBlocked}
-        onclick={() => (confirmingClear = true)}
+        disabled={bbox === null || auth.writeBlocked}
+        onclick={() => rect?.clear()}
       >
         <Trash2 size={16} aria-hidden="true" />
-        Clear scroll cache
+        Clear
       </button>
     </div>
-  {/if}
-  {#if clearNote !== null}
-    <p class="muted-note">{clearNote}</p>
-  {/if}
+    {#if bbox !== null}
+      <p class="muted-note">
+        Box: {bbox[1].toFixed(3)}, {bbox[0].toFixed(3)} to {bbox[3].toFixed(3)},
+        {bbox[2].toFixed(3)}
+      </p>
+    {:else}
+      <p class="muted-note">No box drawn. Tap Draw box, then drag on the chart to set the area.</p>
+    {/if}
 
-  <h3 class="caps-label section-head">Position warm</h3>
-  <LayerToggle
-    title="Enable position warm"
-    visible={positionEnabled}
-    disabled={auth.writeBlocked}
-    onToggle={(on) => {
-      positionEnabled = on;
-      void savePositionWarm();
-    }}
-  />
-  <UnitField
-    label="Warm radius"
-    {unit}
-    value={positionRadiusDisplay}
-    min={1}
-    step={1}
-    onCommit={commitPositionRadius}
-  />
-  <UnitField
-    label="Move threshold"
-    {unit}
-    value={positionMoveDisplay}
-    min={1}
-    step={1}
-    onCommit={commitMoveThreshold}
-  />
-  <UnitField
-    label="Warm interval"
-    unit="s"
-    value={positionIntervalSecs}
-    min={60}
-    step={1}
-    onCommit={(v) => {
-      positionIntervalSecs = Math.max(60, Math.round(v));
-      void savePositionWarm();
-    }}
-  />
-  <UnitField
-    label="Base zoom"
-    value={positionBaseZoom}
-    min={0}
-    max={22}
-    step={1}
-    onCommit={(v) => {
-      positionBaseZoom = Math.round(Math.max(0, Math.min(v, 22)));
-      void savePositionWarm();
-    }}
-  />
-  <h3 class="caps-label section-head">Position warm sources</h3>
-  {#each positionWarmSourceList as source (source.id)}
-    <LayerToggle
-      title={source.title}
-      visible={positionSources.includes(source.id)}
+    <h3 class="caps-label">Region sources</h3>
+    {#each sourceList as source (source.id)}
+      <div class="list-row">
+        <LayerToggle
+          title={source.title}
+          visible={selectedSources.includes(source.id)}
+          disabled={auth.writeBlocked}
+          onToggle={(on) => toggleSource(source.id, on)}
+        />
+      </div>
+    {/each}
+    {#if sourceList.length === 0}
+      <p class="muted-note">No sources cover this box and zoom range.</p>
+    {/if}
+
+    <h3 class="caps-label">Zoom range</h3>
+    <UnitField
+      label="Minimum zoom"
+      value={minzoom}
+      min={0}
+      max={maxzoom}
+      step={1}
+      onCommit={(v) => {
+        minzoom = Math.round(Math.max(0, Math.min(v, maxzoom)));
+      }}
+    />
+    <UnitField
+      label="Maximum zoom"
+      value={maxzoom}
+      min={minzoom}
+      max={22}
+      step={1}
+      onCommit={(v) => {
+        maxzoom = Math.round(Math.max(minzoom, Math.min(v, 22)));
+      }}
+    />
+
+    <h3 class="caps-label">Estimate</h3>
+    {#if statsError !== null}
+      <p class="alert-note" role="alert">{statsError}</p>
+    {:else if stats === null}
+      <p class="muted-note">Loading cache stats...</p>
+    {:else}
+      <dl class="stat-grid">
+        <dt>Estimated download</dt>
+        <dd>
+          <span class="num">{estimateFmt.value}</span>
+          <span class="unit">{estimateFmt.unit}</span>
+        </dd>
+        <dt>Regions free</dt>
+        <dd>
+          <span class="num">{regionsFreeFmt?.value ?? '--'}</span>
+          <span class="unit">{regionsFreeFmt?.unit ?? ''}</span>
+        </dd>
+      </dl>
+      <p class="muted-note">
+        The estimate is a ceiling. Areas with no chart data are skipped and cost nothing.
+      </p>
+    {/if}
+
+    {#if namePrep}
+      <TextField label="Region name" value={regionName} onCommit={(v) => (regionName = v)} />
+      <div class="panel-controls">
+        <button
+          type="button"
+          class="btn btn-primary btn--grow"
+          disabled={submitting}
+          onclick={() => void saveRegion()}
+        >
+          <Download size={16} aria-hidden="true" />
+          Start download
+        </button>
+        <button type="button" class="btn btn-ghost" onclick={cancelNamePrep}>Cancel</button>
+      </div>
+    {:else}
+      <div class="panel-controls">
+        <button
+          type="button"
+          class="btn btn-primary btn--grow"
+          disabled={!gate || submitting}
+          onclick={() => void prepareDownload()}
+        >
+          <Download size={16} aria-hidden="true" />
+          Download region
+        </button>
+      </div>
+    {/if}
+  </section>
+
+  <section class="panel-section" aria-label="Saved regions">
+    <h3 class="caps-label">Saved regions</h3>
+    {#if loadError !== null}
+      <p class="alert-note" role="alert">{loadError}</p>
+    {:else if regions === null}
+      <p class="muted-note">Loading regions...</p>
+    {:else}
+      <SavedList
+        items={regions}
+        empty="No regions saved yet. Draw a box and download to save one."
+        key={(region) => region.id}
+      >
+        {#snippet card(region)}
+          {@const cached = formatBytes(region.cachedBytes)}
+          {@const live = regionStatus[region.id]}
+          <div class="card-head">
+            <span class="name" title={region.name}>{region.name}</span>
+            <span class="caps-label {STATUS_SEVERITY[region.status]}">
+              {STATUS_LABELS[region.status]}
+            </span>
+          </div>
+          <dl class="card-stats">
+            <dt class="caps-label">Cached</dt>
+            <dd><span class="num">{cached.value}</span> {cached.unit}</dd>
+            {#if region.lastDownloadedAt !== null}
+              <dt class="caps-label">Updated</dt>
+              <dd><span class="num">{updatedLabel(region.lastDownloadedAt)}</span></dd>
+            {/if}
+          </dl>
+          {#if region.status === 'downloading' && live && live.total > 0}
+            {@const pct = Math.round((live.done / live.total) * 100)}
+            <div
+              class="warm-track"
+              role="progressbar"
+              aria-label="Download progress"
+              aria-valuemin="0"
+              aria-valuemax={live.total}
+              aria-valuenow={live.done}
+            >
+              <div class="warm-fill" style:inline-size="{pct}%"></div>
+            </div>
+          {/if}
+          {#if confirmingDelete === region.id}
+            <InlineConfirm
+              question="Delete this region?"
+              onConfirm={() => confirmDelete(region.id)}
+              onCancel={() => (confirmingDelete = undefined)}
+            />
+          {:else}
+            <div class="actions">
+              <button
+                type="button"
+                class="icon-btn"
+                aria-label="Re-download region"
+                title="Re-download"
+                disabled={auth.writeBlocked ||
+                  submitting ||
+                  pendingRegion[region.id] ||
+                  region.status === 'downloading'}
+                onclick={() => void redownloadRegion(region.id)}
+              >
+                <RefreshCw size={18} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="icon-btn icon-btn--danger"
+                aria-label="Delete region"
+                title="Delete"
+                disabled={auth.writeBlocked || submitting || pendingRegion[region.id]}
+                onclick={() => (confirmingDelete = region.id)}
+              >
+                <Trash2 size={18} aria-hidden="true" />
+              </button>
+            </div>
+          {/if}
+        {/snippet}
+      </SavedList>
+    {/if}
+  </section>
+
+  <section class="panel-section section-card card-frame" aria-label="Cache">
+    <h3 class="caps-label">Cache</h3>
+    {#if stats !== null}
+      <dl class="stat-grid">
+        <dt>Scroll cache</dt>
+        <dd>
+          <span class="num">{scrollFmt?.value ?? '--'}</span>
+          <span class="unit">{scrollFmt?.unit ?? ''}</span>
+        </dd>
+        <dt>Pinned</dt>
+        <dd>
+          <span class="num">{pinnedFmt?.value ?? '--'}</span>
+          <span class="unit">{pinnedFmt?.unit ?? ''}</span>
+        </dd>
+        <dt>Cache used</dt>
+        <dd>
+          <span class="num">{usedFmt?.value ?? '--'}</span>
+          <span class="unit">{usedFmt?.unit ?? ''}</span>
+        </dd>
+        <dt>Cache cap</dt>
+        <dd>
+          <span class="num">{capFmt?.value ?? '--'}</span>
+          <span class="unit">{capFmt?.unit ?? ''}</span>
+        </dd>
+        {#each formatBySource(stats) as row (row.source)}
+          <dt>{row.source}</dt>
+          <dd><span class="num">{row.value}</span> <span class="unit">{row.unit}</span></dd>
+        {/each}
+      </dl>
+    {:else}
+      <p class="muted-note">Loading cache stats...</p>
+    {/if}
+    <UnitField
+      label="Scroll cache age limit"
+      unit="days"
+      value={ttlDays}
+      min={0}
+      max={365}
+      step={1}
+      onCommit={commitTtlDays}
+    />
+    {#if confirmingClear}
+      <InlineConfirm
+        question="Clear all unpinned scroll tiles?"
+        onConfirm={() => void clearScrollCache()}
+        onCancel={() => (confirmingClear = false)}
+      />
+    {:else}
+      <div class="panel-controls">
+        <button
+          type="button"
+          class="btn btn-danger"
+          disabled={auth.writeBlocked}
+          onclick={() => (confirmingClear = true)}
+        >
+          <Trash2 size={16} aria-hidden="true" />
+          Clear scroll cache
+        </button>
+      </div>
+    {/if}
+    {#if clearNote !== null}
+      <p class="muted-note">{clearNote}</p>
+    {/if}
+  </section>
+
+  <section class="panel-section section-card card-frame" aria-label="Position warm">
+    <h3 class="caps-label">Position warm</h3>
+    <p class="muted-note">
+      Caches tiles around the boat as it moves, so the area ahead is ready offline.
+    </p>
+    <ShowOnChartToggle
+      shown={positionEnabled}
+      label="Enable position warm"
       disabled={auth.writeBlocked}
       onToggle={(on) => {
-        positionSources = on
-          ? [...positionSources, source.id]
-          : positionSources.filter((s) => s !== source.id);
+        positionEnabled = on;
         void savePositionWarm();
       }}
     />
-  {/each}
-  {#if positionWarmSourceList.length === 0}
-    <p class="muted-note">No downloadable sources cover this area.</p>
-  {/if}
+    <UnitField
+      label="Warm radius"
+      {unit}
+      value={positionRadiusDisplay}
+      min={1}
+      step={1}
+      disabled={!positionEnabled || auth.writeBlocked}
+      onCommit={commitPositionRadius}
+    />
+    <UnitField
+      label="Move threshold"
+      {unit}
+      value={positionMoveDisplay}
+      min={1}
+      step={1}
+      disabled={!positionEnabled || auth.writeBlocked}
+      onCommit={commitMoveThreshold}
+    />
+    <UnitField
+      label="Warm interval"
+      unit="s"
+      value={positionIntervalSecs}
+      min={60}
+      step={1}
+      disabled={!positionEnabled || auth.writeBlocked}
+      onCommit={(v) => {
+        positionIntervalSecs = Math.max(60, Math.round(v));
+        void savePositionWarm();
+      }}
+    />
+    <UnitField
+      label="Base zoom"
+      value={positionBaseZoom}
+      min={0}
+      max={22}
+      step={1}
+      disabled={!positionEnabled || auth.writeBlocked}
+      onCommit={(v) => {
+        positionBaseZoom = Math.round(Math.max(0, Math.min(v, 22)));
+        void savePositionWarm();
+      }}
+    />
+    <h3 class="caps-label">Position warm sources</h3>
+    {#each positionWarmSourceList as source (source.id)}
+      <div class="list-row">
+        <LayerToggle
+          title={source.title}
+          visible={positionSources.includes(source.id)}
+          disabled={!positionEnabled || auth.writeBlocked}
+          onToggle={(on) => {
+            positionSources = on
+              ? [...positionSources, source.id]
+              : positionSources.filter((s) => s !== source.id);
+            void savePositionWarm();
+          }}
+        />
+      </div>
+    {/each}
+    {#if positionWarmSourceList.length === 0}
+      <p class="muted-note">No sources available to warm.</p>
+    {/if}
+  </section>
 </SlideOver>
 
 <style>
-/* Extra top margin on each section heading so the caps labels breathe inside the bodyFlex column
-   without needing nested wrappers or breaking the shared gap rhythm. */
-.section-head {
-  margin-block-start: var(--space-2);
+/* Each concern is a flex-column section: tight inside, and spaced from its neighbors by the
+   panel bodyFlex gap, matching the alarms panel. The carded sections add padding over the shared
+   card-frame surface, and sub-headings within a section get a little extra top air. */
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.panel-section.section-card {
+  padding: var(--space-3);
+}
+.panel-section h3:not(:first-child) {
+  margin-block-start: var(--space-1);
 }
 
 /* The determinate download progress bar on a downloading region card: a token-driven track with an
