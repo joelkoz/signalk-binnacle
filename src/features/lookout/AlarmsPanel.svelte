@@ -3,8 +3,17 @@ import { Bell, BellOff } from '@lucide/svelte';
 import type { ActiveNotification, NotificationsStore } from '$entities/notifications';
 import { formatClockTime, formatNm, formatTcpaMin, nauticalMilesToMeters } from '$shared/lib';
 import { DEFAULT_THRESHOLDS, type PersistedValue, type Thresholds } from '$shared/settings';
-import { SlideOver, UnitField } from '$shared/ui';
+import { Disclosure, SlideOver, UnitField } from '$shared/ui';
 import { thresholdsCaution } from './thresholds-caution';
+
+// Humanize the raw Signal K alert state so a novice does not read truncated words like "WARN".
+const STATE_LABELS: Record<string, string> = {
+  warn: 'Warning',
+  alert: 'Alert',
+  alarm: 'Alarm',
+  emergency: 'Emergency',
+};
+const stateLabel = (state: string): string => STATE_LABELS[state] ?? state;
 
 interface Props {
   notifications: NotificationsStore;
@@ -86,11 +95,11 @@ const caution = $derived(thresholdsCaution(t));
     <p class="alert-note" role="alert">{error}</p>
   {/if}
   <section class="alerts" aria-label="Active alerts">
-    <span class="caps-label">Active alerts</span>
+    <h3 class="caps-label">Active alerts</h3>
     {#each alerts as n (n.path)}
       {@const time = alertTime(n)}
       <div class="alert-row card-frame">
-        <span class="state-tag caps-label {n.state}">{n.state}</span>
+        <span class="state-tag caps-label {n.state}">{stateLabel(n.state)}</span>
         <div class="alert-main">
           <span class="alert-message">{alertLabel(n)}</span>
           {#if time}
@@ -101,14 +110,24 @@ const caution = $derived(thresholdsCaution(t));
           {#if n.silenced}
             <span class="flag-tag">Silenced</span>
           {:else if onSilence && canSilence(n)}
-            <button type="button" class="btn btn-ghost" onclick={() => onSilence(n)}>
+            <button
+              type="button"
+              class="btn btn-ghost"
+              title="Stop the sound now"
+              onclick={() => onSilence(n)}
+            >
               Silence
             </button>
           {/if}
           {#if n.acknowledged}
             <span class="flag-tag">Acknowledged</span>
           {:else if onAcknowledge && canAcknowledge(n)}
-            <button type="button" class="btn btn-ghost" onclick={() => onAcknowledge(n)}>
+            <button
+              type="button"
+              class="btn btn-ghost"
+              title="Mark as seen and clear it"
+              onclick={() => onAcknowledge(n)}
+            >
               Acknowledge
             </button>
           {/if}
@@ -119,7 +138,7 @@ const caution = $derived(thresholdsCaution(t));
     {/each}
   </section>
   <section class="mutes" aria-label="Mutes">
-    <span class="caps-label">Mutes</span>
+    <h3 class="caps-label">Mutes</h3>
     <button
       type="button"
       class="btn mute-row"
@@ -135,7 +154,7 @@ const caution = $derived(thresholdsCaution(t));
       <span>Mute collision alarm</span>
     </button>
     {#if collisionMuted && collisionMuteRemainingMin !== undefined}
-      <p class="muted-note">Auto re-arms in {collisionMuteRemainingMin} min</p>
+      <p class="muted-note">Turns back on in {collisionMuteRemainingMin} min</p>
     {/if}
     <button
       type="button"
@@ -149,63 +168,69 @@ const caution = $derived(thresholdsCaution(t));
       {:else}
         <Bell size={18} aria-hidden="true" />
       {/if}
-      <span>Mute arrival alarm</span>
+      <span>Mute waypoint arrival alarm</span>
     </button>
   </section>
   <section class="thresholds" aria-label="Collision thresholds">
-    <span class="caps-label">Collision thresholds</span>
-    <div class="group">
-      <span class="group-title caps-label danger">Danger</span>
-      <UnitField
-        label="CPA"
-        unit="nm"
-        min={0}
-        step={0.05}
-        ariaLabel="Danger CPA"
-        value={cpaNm(t.dangerCpaMeters)}
-        onCommit={(nm) => setMeters('dangerCpaMeters', nm)}
-      />
-      <UnitField
-        label="TCPA"
-        unit="min"
-        min={0}
-        step={1}
-        ariaLabel="Danger TCPA"
-        value={tcpaMin(t.dangerTcpaSeconds)}
-        onCommit={(minutes) => setSeconds('dangerTcpaSeconds', minutes)}
-      />
-    </div>
-    <div class="group">
-      <span class="group-title caps-label warning">Warning</span>
-      <UnitField
-        label="CPA"
-        unit="nm"
-        min={0}
-        step={0.05}
-        ariaLabel="Warning CPA"
-        value={cpaNm(t.warningCpaMeters)}
-        onCommit={(nm) => setMeters('warningCpaMeters', nm)}
-      />
-      <UnitField
-        label="TCPA"
-        unit="min"
-        min={0}
-        step={1}
-        ariaLabel="Warning TCPA"
-        value={tcpaMin(t.warningTcpaSeconds)}
-        onCommit={(minutes) => setSeconds('warningTcpaSeconds', minutes)}
-      />
-    </div>
-    {#if caution}
-      <p class="muted-note sev-warning" role="status">{caution}</p>
-    {/if}
-    <button
-      type="button"
-      class="btn btn-ghost reset"
-      onclick={() => thresholds.set({ ...DEFAULT_THRESHOLDS })}
-    >
-      Reset to defaults
-    </button>
+    <h3 class="caps-label">Collision alarm</h3>
+    <p class="muted-note">
+      Warn me when another vessel will pass closer than this distance (the closest pass) within this
+      much time.
+    </p>
+    <Disclosure label="Adjust collision alarm sensitivity">
+      <div class="group">
+        <span class="group-title caps-label danger">Danger</span>
+        <UnitField
+          label="Closest pass"
+          unit="nm"
+          min={0}
+          step={0.05}
+          ariaLabel="Danger closest pass distance"
+          value={cpaNm(t.dangerCpaMeters)}
+          onCommit={(nm) => setMeters('dangerCpaMeters', nm)}
+        />
+        <UnitField
+          label="Time to closest"
+          unit="min"
+          min={0}
+          step={1}
+          ariaLabel="Danger time to closest pass"
+          value={tcpaMin(t.dangerTcpaSeconds)}
+          onCommit={(minutes) => setSeconds('dangerTcpaSeconds', minutes)}
+        />
+      </div>
+      <div class="group">
+        <span class="group-title caps-label warning">Warning</span>
+        <UnitField
+          label="Closest pass"
+          unit="nm"
+          min={0}
+          step={0.05}
+          ariaLabel="Warning closest pass distance"
+          value={cpaNm(t.warningCpaMeters)}
+          onCommit={(nm) => setMeters('warningCpaMeters', nm)}
+        />
+        <UnitField
+          label="Time to closest"
+          unit="min"
+          min={0}
+          step={1}
+          ariaLabel="Warning time to closest pass"
+          value={tcpaMin(t.warningTcpaSeconds)}
+          onCommit={(minutes) => setSeconds('warningTcpaSeconds', minutes)}
+        />
+      </div>
+      {#if caution}
+        <p class="muted-note sev-warning" role="status">{caution}</p>
+      {/if}
+      <button
+        type="button"
+        class="btn btn-ghost reset"
+        onclick={() => thresholds.set({ ...DEFAULT_THRESHOLDS })}
+      >
+        Reset to defaults
+      </button>
+    </Disclosure>
   </section>
 </SlideOver>
 

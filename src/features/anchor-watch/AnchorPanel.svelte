@@ -52,7 +52,9 @@ const MODE_STATUS: Record<AnchorMode, string> = {
   off: 'No anchor down.',
 };
 const statusLine = $derived(
-  anchor.dragging ? 'Dragging: the boat is outside the watch radius.' : MODE_STATUS[anchor.mode],
+  anchor.dragging
+    ? 'Anchor dragging: the boat is outside the watch radius.'
+    : MODE_STATUS[anchor.mode],
 );
 
 // Below-minimum entries clamp up, matching the entity; UnitField snaps the text back to the
@@ -84,7 +86,7 @@ function captureFromDistance(): void {
     {statusLine}
   </p>
   <dl class="stat-grid">
-    <dt>Distance</dt>
+    <dt>From anchor</dt>
     <dd><span class="num">{distanceText}</span><span class="unit">{unit}</span></dd>
     <dt>Radius</dt>
     <dd><span class="num">{radiusText}</span><span class="unit">{unit}</span></dd>
@@ -102,6 +104,7 @@ function captureFromDistance(): void {
     value={radiusDisplay}
     onCommit={commitRadius}
   />
+  <p class="muted-note">The alarm sounds if the boat drifts further than this from the anchor.</p>
   <button
     type="button"
     class="btn btn-ghost"
@@ -110,7 +113,7 @@ function captureFromDistance(): void {
     onclick={captureFromDistance}
   >
     <Crosshair size={16} aria-hidden="true" />
-    Set from current distance
+    Set radius to current swing
   </button>
   {#if watching && raiseArmed}
     <InlineConfirm
