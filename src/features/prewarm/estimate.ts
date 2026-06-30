@@ -10,7 +10,7 @@ import {
   DEFAULT_TILE_BYTES,
   estimateBytes,
   tileCountInBbox,
-} from 'signalk-binnacle-chart-sources';
+} from 'signalk-chart-sources';
 import type { CacheStats, WarmStatus } from './regions-client.js';
 
 /** Re-exported from the shared package so the panel, the plugin, and any caller share one estimate. */

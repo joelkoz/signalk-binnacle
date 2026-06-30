@@ -3,7 +3,7 @@
 // shares one cache and works offline at sea. When it is absent, every source keeps its direct upstream
 // URL, so a standalone install is unchanged.
 
-import { proxyTileTemplate } from 'signalk-binnacle-chart-sources';
+import { proxyTileTemplate } from 'signalk-chart-sources';
 import type { RasterOverlaySource } from './raster-overlay';
 
 const COMPANION_PATH = '/plugins/signalk-chart-locker';

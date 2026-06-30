@@ -1,4 +1,4 @@
-import { CHART_SOURCES } from 'signalk-binnacle-chart-sources';
+import { CHART_SOURCES } from 'signalk-chart-sources';
 import { describe, expect, it } from 'vitest';
 import { BOUNDARY_SOURCES } from '$features/boundaries-overlay';
 import { STREAMING_CHART_SOURCES } from '$features/depth-charts';
