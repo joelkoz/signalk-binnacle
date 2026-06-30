@@ -108,11 +108,14 @@ const reorder = createLayerReorder(
       <SourceDetail source={manageSource} {userCharts} onBack={() => (manageId = undefined)} />
     {/key}
   {:else}
+    <p class="muted-note">
+      Turn chart layers and overlays on or off, and drag a row to change which sits on top.
+    </p>
     {#if view.items.length === 0}
-      <p class="muted-note">No layers available yet.</p>
+      <p class="muted-note">No layers yet. Open a chart to fill this list.</p>
     {:else}
       {#if pinned.length > 0}
-        <section class="category">
+        <section class="category" aria-label="Always on top">
           <h3 class="category-head pinned-head">
             <span class="category-title caps-label">Always on top</span>
           </h3>

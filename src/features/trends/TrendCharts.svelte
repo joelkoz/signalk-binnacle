@@ -87,7 +87,7 @@ let hovered = $state<Partial<Record<TrendKey, { timeSec: number; value: number |
     {@const point = hovered[section.key]}
     <section aria-label="{section.label} trend">
       <div class="head">
-        <span class="caps-label">{section.label}</span>
+        <h3 class="caps-label">{section.label}</h3>
         {#if point}
           <span class="latest">
             <b class="num">{formatFixed(point.value, section.digits)}</b>
@@ -128,6 +128,11 @@ section {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
+}
+/* The metric title is an h3 for heading navigation; drop the UA heading margin so it sits on the
+   baseline row with the live value rather than pushing the row taller. */
+.head h3 {
+  margin: 0;
 }
 .latest {
   color: var(--text-muted);

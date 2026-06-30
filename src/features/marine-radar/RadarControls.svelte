@@ -172,6 +172,7 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
   </div>
 {/snippet}
 
+<p class="muted-note">Control your radar's power and tuning, and show its echo on the chart.</p>
 <section class="radar-section" aria-label="Radar status">
   <h3 class="caps-label">Radar</h3>
   {#if statusLabel}
@@ -188,7 +189,9 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
     </p>
   {/if}
   {#if store.radars.length === 0}
-    <p class="muted-note">No radar connected.</p>
+    <p class="muted-note">
+      No radar connected. Connect a radar to the Signal K server to see its controls.
+    </p>
   {/if}
   {#if store.radars.length > 1}
     <select

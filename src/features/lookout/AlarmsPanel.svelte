@@ -94,6 +94,10 @@ const caution = $derived(thresholdsCaution(t));
   {#if error}
     <p class="alert-note" role="alert">{error}</p>
   {/if}
+  <p class="muted-note">
+    Active alarms show here. Silence stops the sound, acknowledge clears it. Tune the collision
+    warning below.
+  </p>
   <section class="alerts" aria-label="Active alerts">
     <h3 class="caps-label">Active alerts</h3>
     {#each alerts as n (n.path)}
@@ -134,7 +138,7 @@ const caution = $derived(thresholdsCaution(t));
         </div>
       </div>
     {:else}
-      <p class="muted-note">No active alerts.</p>
+      <p class="muted-note">No active alerts. Alarms appear here when one triggers.</p>
     {/each}
   </section>
   <section class="mutes" aria-label="Mutes">

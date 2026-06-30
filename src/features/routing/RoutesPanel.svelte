@@ -51,7 +51,7 @@ interface Props {
   onStop: () => void;
   // Save a reversed copy of the route, for the return leg.
   onReverse: (id: string) => void;
-  // Download the route as a GPX file for another plotter or MFD.
+  // Download the route as a GPX file for another chartplotter.
   onExportGpx: (id: string) => void;
   // Import routes from the text of a GPX file the user picked.
   onImportGpx: (gpxText: string) => void;
@@ -166,7 +166,7 @@ $effect(() => {
     <button
       type="button"
       class="btn"
-      title="Import routes from a GPX file made by another chartplotter"
+      title="Import routes from a GPX file (the standard route-exchange format) made by another chartplotter"
       onclick={importGpx}
     >
       <Upload size={16} aria-hidden="true" />

@@ -108,10 +108,10 @@ function toggleSort(key: PoiSort): void {
     <p class="muted-note" role="status">
       {pois.length === 0
         ? 'No places in view. Pan or zoom the chart to find some.'
-        : 'No places match your filter.'}
+        : 'No places match your search. Clear it to see all in view.'}
     </p>
   {:else}
-    <ul class="nav-list">
+    <ul class="nav-list" aria-label="Places in view">
       {#each rows as row (row.poi.id)}
         <li>
           <button

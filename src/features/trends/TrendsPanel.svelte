@@ -71,6 +71,9 @@ const sourceNote = $derived.by(() => {
 </script>
 
 <SlideOver title="Trends" closeLabel="Close trends panel" {onClose} {onBack} bodyFlex>
+  <p class="muted-note">
+    Recent trends in the boat's wind, depth, and other data over the last day.
+  </p>
   <p class="muted-note" role="status">{sourceNote}</p>
   {#await import('./TrendCharts.svelte') then charts}
     <charts.default history={history?.series} {sessionSeries} {mode} {theme} />

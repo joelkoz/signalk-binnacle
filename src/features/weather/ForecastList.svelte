@@ -19,7 +19,7 @@ function stepLabel(timeMs: number): string {
 }
 </script>
 
-<p class="caps-label forecast-head">Forecast · next {horizonH} h</p>
+<h4 class="caps-label forecast-head">Forecast · next {horizonH} h</h4>
 <ul class="forecast">
   {#each forecast as step (step.timeMs)}
     <li>

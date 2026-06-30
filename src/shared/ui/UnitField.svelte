@@ -12,7 +12,7 @@ interface Props {
   step?: number | 'any';
   inputWidth?: string;
   ariaLabel?: string;
-  // Greys out and blocks the input, for a field whose feature is currently switched off.
+  // Grays out and blocks the input, for a field whose feature is currently switched off.
   disabled?: boolean;
   onCommit: (value: number) => void;
 }

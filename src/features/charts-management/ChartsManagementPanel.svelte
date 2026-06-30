@@ -84,6 +84,7 @@ function formatBounds(bounds: [number, number, number, number]): string {
 </script>
 
 <SlideOver title="Chart files" closeLabel="Close chart files panel" {onClose} {onBack} bodyFlex>
+  <p class="muted-note">Rename the chart files installed on your server so they read plainly.</p>
   {#if auth.writeBlocked}
     <p class="muted-note">
       A write token is needed to edit chart names and descriptions. Request a read/write token to

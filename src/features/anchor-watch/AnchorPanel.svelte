@@ -82,6 +82,9 @@ function captureFromDistance(): void {
 </script>
 
 <SlideOver title="Anchor watch" closeLabel="Close anchor watch" {onClose} {onBack} bodyFlex>
+  <p class="muted-note">
+    Drop the anchor to start a drift alarm that sounds if the boat swings past the watch radius.
+  </p>
   <p class="muted-note status" class:status--alarm={anchor.dragging} role="status">
     {statusLine}
   </p>
