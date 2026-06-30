@@ -8,6 +8,10 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+<a id="v0121"></a>
+
+## [0.12.1] - 2026-06-29
+
 ### Added
 
 - **Regions panel.** Draw a box on the chart and download every covering raster source into the

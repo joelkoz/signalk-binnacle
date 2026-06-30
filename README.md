@@ -15,14 +15,17 @@ A WebGL chartplotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.12.0
+## What's new in 0.12.1
 
-- **AI route-draft and optimize controls removed.** The "Draft a route with AI" button and the
-  "Optimize route" button are no longer in the Routes panel. All manual routing is retained:
-  drawing, editing, GPX import and export, reversing, activating via the Course API, and
-  stopping navigation work exactly as before.
+- **Regions panel.** Draw a box on the chart and pre-download every covering raster source into the
+  boat-wide tile cache before leaving coverage, with a regions-free byte estimate, geocoded names,
+  and per-region progress. Requires the Chart Locker plugin (previously Binnacle Companion).
+- **Interaction and reliability fixes.** "Start a route here" reliably drops the first point, writes
+  use the read-write token the moment access is approved, a man-overboard mark re-triggered right
+  after a cancel is no longer silenced, and the chart context menu stays out of the way during a
+  measurement.
 
-See the [changelog](CHANGELOG.md#v0120) for the full list.
+See the [changelog](CHANGELOG.md#v0121) for the full list.
 
 ## What it does
 
