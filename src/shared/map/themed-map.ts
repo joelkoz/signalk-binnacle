@@ -92,22 +92,30 @@ export function createThemedMap(opts: ThemedMapOptions): ThemedMapHandle {
       maxZoom: opts.maxZoom,
       attributionControl: { compact: true },
       transformRequest: (url: string) => {
-        const token = opts.getToken?.();
-        if (!token) return undefined;
+        let parsed: URL;
         try {
-          const parsed = new URL(url, location.href);
-          if (parsed.origin !== location.origin) return undefined;
-          const { pathname } = parsed;
-          if (
-            !pathname.startsWith('/plugins/signalk-chart-locker/') &&
-            !pathname.startsWith('/signalk/')
-          ) {
-            return undefined;
-          }
-          return { url, headers: { Authorization: `Bearer ${token}` } };
+          parsed = new URL(url, location.href);
         } catch {
           return undefined;
         }
+        // Only touch same-origin companion and Signal K requests; leave the CDN sprite untouched.
+        if (
+          parsed.origin !== location.origin ||
+          (!parsed.pathname.startsWith('/plugins/signalk-chart-locker/') &&
+            !parsed.pathname.startsWith('/signalk/'))
+        ) {
+          return undefined;
+        }
+        // Always hand MapLibre the absolute URL. Vector tiles and glyphs are fetched in a web
+        // worker that has no document base, so a path-absolute "/plugins/..." URL fails to parse
+        // there ("Failed to construct 'Request': Failed to parse URL") and the whole vector source
+        // stays blank. Raster tiles load on the main thread and tolerate the relative form, which
+        // is why the relief layer rendered while the vector basemap did not. Attach the bearer
+        // token when present; a read-only server still needs the absolute URL.
+        const token = opts.getToken?.();
+        return token
+          ? { url: parsed.href, headers: { Authorization: `Bearer ${token}` } }
+          : { url: parsed.href };
       },
     });
   } catch (error) {

@@ -8,6 +8,14 @@ All notable changes to Binnacle are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Vector basemap and labels rendered blank.** The OpenFreeMap base map tiles and glyphs are
+  fetched in a web worker, which cannot resolve a path-absolute `/plugins/...` URL and failed every
+  vector tile and glyph request, leaving only the shaded-relief raster (which loads on the main
+  thread) visible. The map now hands MapLibre absolute URLs for companion and Signal K requests, so
+  the vector base map, labels, and a read-only server all work again.
+
 <a id="v0121"></a>
 
 ## [0.12.1] - 2026-06-29
