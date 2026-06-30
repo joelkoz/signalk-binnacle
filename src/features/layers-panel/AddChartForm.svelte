@@ -130,7 +130,7 @@ function cancelDraft(): void {
   {/if}
 
   {#if busy}
-    <p class="status">{staged ? 'Saving chart...' : 'Reading chart...'}</p>
+    <p class="muted-note" role="status">{staged ? 'Saving chart...' : 'Reading chart...'}</p>
   {:else if error}
     <p class="alert-note" role="alert">{error}</p>
   {/if}
@@ -166,8 +166,7 @@ function cancelDraft(): void {
   flex: 1;
   min-inline-size: 0;
 }
-.hint,
-.status {
+.hint {
   margin: 0;
   font-size: var(--text-xs);
   color: var(--text-muted);

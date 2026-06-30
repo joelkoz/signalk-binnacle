@@ -215,6 +215,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
     <dt>Duration</dt>
     <dd>
       <span class="num">{hasTrack ? formatDuration(stats.durationSeconds) : PLACEHOLDER}</span>
+      <span class="unit"></span>
     </dd>
     <dt>Avg speed</dt>
     <dd>

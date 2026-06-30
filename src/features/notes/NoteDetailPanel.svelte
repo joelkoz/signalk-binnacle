@@ -68,7 +68,7 @@ function measure(item: NormalizedItem): string {
   title={selection.name}
   subtitle={categoryLabel(selection.category)}
   ariaLabel="Details for {selection.name}"
-  closeLabel="Close detail"
+  closeLabel="Close place details"
   {onClose}
   footer={hasFooter ? footer : undefined}
 >
@@ -80,15 +80,15 @@ function measure(item: NormalizedItem): string {
       </button>
     {/if}
     {#if loading}
-      <p class="status" role="status">Loading...</p>
+      <p class="muted-note" role="status">Loading...</p>
     {:else if failed}
-      <p class="status" role="alert">Could not load the details for this place.</p>
+      <p class="alert-note" role="alert">Could not load the details for this place.</p>
       <button type="button" class="btn btn-ghost" onclick={() => (attempt += 1)}>Retry</button>
     {:else if sections}
       {#each sections as section (section.id)}
         {@const danger = section.items.find((item) => isDangerFlag(item.label, item.kind))}
         {@const listItems = section.items.filter((item) => !isDangerFlag(item.label, item.kind))}
-        <section>
+        <section aria-label={section.title}>
           <h3 class="caps-label">{section.title}</h3>
           <!-- The danger status always leads its section, rendered before the dl: a div between
                dt/dd pairs is non-conforming HTML. -->
@@ -157,7 +157,7 @@ function measure(item: NormalizedItem): string {
     {:else if detail?.fallbackText}
       <p class="prose">{detail.fallbackText}</p>
     {:else}
-      <p class="status" role="status">No additional detail</p>
+      <p class="muted-note" role="status">No extra detail for this place.</p>
     {/if}
   </div>
 </SlideOver>
@@ -256,10 +256,6 @@ dd {
 .prose {
   white-space: pre-line;
   text-align: start;
-}
-.status {
-  margin-block: var(--space-1);
-  color: var(--text-muted);
 }
 .source-link {
   display: inline-flex;

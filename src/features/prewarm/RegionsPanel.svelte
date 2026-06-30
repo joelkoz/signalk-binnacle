@@ -554,7 +554,7 @@ function chartLabel(id: string): string {
       {#if loadError !== null}
         <p class="alert-note" role="alert">{loadError}</p>
       {:else if regions === null}
-        <p class="muted-note">Loading areas...</p>
+        <p class="muted-note" role="status">Loading areas...</p>
       {:else}
         <SavedList
           items={regions}
@@ -751,7 +751,7 @@ function chartLabel(id: string): string {
       {#if statsError !== null}
         <p class="alert-note" role="alert">{statsError}</p>
       {:else if stats === null}
-        <p class="muted-note">Checking storage...</p>
+        <p class="muted-note" role="status">Checking storage...</p>
       {:else}
         <dl class="stat-grid">
           <dt>Download size</dt>
@@ -835,7 +835,7 @@ function chartLabel(id: string): string {
           </dl>
         </Disclosure>
       {:else}
-        <p class="muted-note">Loading storage...</p>
+        <p class="muted-note" role="status">Loading storage...</p>
       {/if}
       <UnitField
         label="Auto-clear after"
@@ -878,6 +878,7 @@ function chartLabel(id: string): string {
       <ShowOnChartToggle
         shown={positionEnabled}
         label="Enable auto-cache"
+        description="Caches chart tiles around the boat as it moves, so the water ahead is ready offline."
         disabled={auth.writeBlocked}
         onToggle={(on) => {
           positionEnabled = on;

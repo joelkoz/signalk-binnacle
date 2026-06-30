@@ -175,7 +175,7 @@ $effect(() => {
   </div>
 
   {#if importError}
-    <p class="alert-note" role="status">{importError}</p>
+    <p class="alert-note" role="alert">{importError}</p>
   {/if}
 
   {#if working}

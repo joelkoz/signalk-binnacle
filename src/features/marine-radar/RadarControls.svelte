@@ -205,7 +205,7 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 </section>
 
 {#if store.controlsForbidden}
-  <p class="alert-note sev-warning" role="status">
+  <p class="muted-note" role="status">
     Radar needs read-write access. Approve Binnacle for read and write in the Signal K server's
     access requests, then reconnect.
   </p>

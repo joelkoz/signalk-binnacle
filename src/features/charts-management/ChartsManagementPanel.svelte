@@ -96,7 +96,7 @@ function formatBounds(bounds: [number, number, number, number]): string {
   {#if loadError !== null}
     <p class="alert-note" role="alert">{loadError}</p>
   {:else if data === null}
-    <p class="muted-note">Loading charts...</p>
+    <p class="muted-note" role="status">Loading charts...</p>
   {:else if data.charts.length === 0}
     <p class="muted-note">
       No charts yet. Drop chart files (.pmtiles) into the server's chart folder and they show up
@@ -131,9 +131,9 @@ function formatBounds(bounds: [number, number, number, number]): string {
           onCommit={(value) => void saveOverride(chart, 'name', value)}
         />
         {#if saveStates[nameKey] === 'saving'}
-          <p class="muted-note save-note">Saving...</p>
+          <p class="muted-note save-note" role="status">Saving...</p>
         {:else if saveStates[nameKey] === 'saved'}
-          <p class="muted-note save-note">Saved.</p>
+          <p class="muted-note save-note" role="status">Saved.</p>
         {:else if saveStates[nameKey] === 'error'}
           <p class="alert-note save-note" role="alert">Could not save the name. Check access.</p>
         {/if}
@@ -146,9 +146,9 @@ function formatBounds(bounds: [number, number, number, number]): string {
           onCommit={(value) => void saveOverride(chart, 'description', value)}
         />
         {#if saveStates[descKey] === 'saving'}
-          <p class="muted-note save-note">Saving...</p>
+          <p class="muted-note save-note" role="status">Saving...</p>
         {:else if saveStates[descKey] === 'saved'}
-          <p class="muted-note save-note">Saved.</p>
+          <p class="muted-note save-note" role="status">Saved.</p>
         {:else if saveStates[descKey] === 'error'}
           <p class="alert-note save-note" role="alert">
             Could not save the description. Check access.
