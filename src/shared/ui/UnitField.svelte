@@ -12,6 +12,8 @@ interface Props {
   step?: number | 'any';
   inputWidth?: string;
   ariaLabel?: string;
+  // Greys out and blocks the input, for a field whose feature is currently switched off.
+  disabled?: boolean;
   onCommit: (value: number) => void;
 }
 
@@ -24,6 +26,7 @@ const {
   step = 'any',
   inputWidth = '5.5rem',
   ariaLabel,
+  disabled = false,
   onCommit,
 }: Props = $props();
 
@@ -40,7 +43,7 @@ function commit(event: Event): void {
 
 <!-- The labeled number-input-with-unit row shared by the alarm thresholds, the anchor watch
      radius, and the route planning speed, so the field shape cannot drift per panel. -->
-<label class="field">
+<label class="field" class:disabled>
   <span class="name">{label}</span>
   <input
     class="input"
@@ -48,6 +51,7 @@ function commit(event: Event): void {
     {min}
     {max}
     {step}
+    {disabled}
     value={String(value)}
     aria-label={ariaLabel ?? (unit ? `${label} in ${unit}` : label)}
     style:inline-size={inputWidth}
@@ -64,6 +68,9 @@ function commit(event: Event): void {
   align-items: center;
   gap: var(--space-2);
   min-block-size: var(--control-size);
+}
+.field.disabled {
+  opacity: var(--disabled-opacity);
 }
 .name {
   flex: 1;

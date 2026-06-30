@@ -2,8 +2,8 @@
 import type { Snippet } from 'svelte';
 
 interface Props {
-  // The caps-label heading above the list.
-  heading: string;
+  // The caps-label heading above the list. Omit to let the parent own the heading.
+  heading?: string;
   items: T[];
   // The message shown in place of the list when there are no items.
   empty: string;
@@ -20,7 +20,9 @@ const { heading, items, empty, ariaLabel, key, isActive, card }: Props = $props(
 </script>
 
 <div class="saved">
-  <span class="caps-label">{heading}</span>
+  {#if heading}
+    <span class="caps-label">{heading}</span>
+  {/if}
   {#if items.length === 0}
     <p class="empty">{empty}</p>
   {:else}

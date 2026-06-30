@@ -6,10 +6,12 @@ let {
   shown,
   label,
   onToggle,
+  disabled = false,
 }: {
   shown: boolean;
   label: string;
   onToggle: (shown: boolean) => void;
+  disabled?: boolean;
 } = $props();
 </script>
 
@@ -18,6 +20,7 @@ let {
   class="btn show-on-chart"
   class:is-on={shown}
   aria-pressed={shown}
+  {disabled}
   onclick={() => onToggle(!shown)}
 >
   {label}
