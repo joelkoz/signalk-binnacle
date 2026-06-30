@@ -23,6 +23,11 @@ idioms, menus, interaction and a11y conventions, coding standards, and a recipe 
 consistently. Read it before designing or building any UI, so a new panel or menu is indistinguishable
 from the shipped ones.
 
+When adding or changing a menu item, panel, or its controls, follow `docs/building-menu-items.md`: the
+step-by-step build checklist, the reuse-or-rebuild decision tables, the cascade and collision traps,
+the copy and accessibility checklists, and the gate. It operationalizes the design system so styles do
+not have to be corrected after the fact.
+
 ## Locked product and stack decisions
 
 - Framework: Svelte 5 (runes), Vite, TypeScript. This was a deliberate clean break from the

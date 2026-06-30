@@ -4,7 +4,10 @@ This is the authoritative guide to how Binnacle looks, feels, and is built. Read
 building any UI. If you follow it, a new panel, menu, or feature will be indistinguishable in look and
 behavior from the ones already shipped. `CLAUDE.md` holds the project's hard rules and the Signal K
 integration contract; this document is the design and front-end build companion to it. When the two
-overlap, neither contradicts the other: CLAUDE.md is the rule, this is the how.
+overlap, neither contradicts the other: CLAUDE.md is the rule, this is the how. For the step-by-step
+checklist to add one menu item, panel, and its controls without re-correcting styles, follow
+`docs/building-menu-items.md`, which operationalizes this standard and catalogs the pitfalls we keep
+fixing.
 
 ## 1. What Binnacle is, and the design tiebreaker
 
@@ -144,7 +147,19 @@ Shared behavior lives here. Compose these; do not re-implement them.
   back to the effective value). Use it for a single number field with a unit; do not use it for a live
   drag (that is a `.range` slider).
 - `SavedList`: the saved-item card list (used by routes, tracks, waypoints, profiles). Renders the
-  `.saved` card frame and the actions row; the panel supplies the card body.
+  `.saved` card frame and the actions row, plus the caps heading and the `empty` state; the panel
+  supplies the card body. Do not also render your own `<h3>` for the same list.
+- `SubViewHeader`: the back header for an in-panel sub-view drilled into inside one SlideOver (the
+  Layers panel opening a chart-source detail). The parent suppresses its own panel-level back while
+  it is open, so only one back control shows.
+- `TextField`: the labeled text-input row (inline or stacked variant), a controlled value that
+  commits on blur or Enter. Use it for any labeled text field; never a raw `<input type="text">`.
+- `NameEntry`: the inline name form that replaces `window.prompt` (Enter saves, Escape cancels, the
+  seeded default starts selected). Seed it with `defaultSaveName`.
+- `Disclosure`: the labeled collapsible section for a "Customize" or "Advanced" group. The prop is
+  `expanded` (bindable), never `open` (which collides with `window.open`).
+- `LayerToggle`: the layer or chart toggle row, with a `description` that becomes the hover and focus
+  tooltip. Set a plain-language `description` on every toggle row.
 - `VisibilityToggle`: the show/hide eye toggle for a saved overlay item.
 - `ShowOnChartToggle`: the full-width "Show X on chart" `.btn` toggle in a panel body that mirrors a
   layer's visibility, with the Layers eye as the source of truth.
@@ -155,8 +170,8 @@ Shared behavior lives here. Compose these; do not re-implement them.
   CSS token contract.
 - Focus and dialog helpers: `rovingFocus`, `focusTrap`, `focusOnMount`, `onKeydownAction`, `isTabKey`,
   `dialog`, and `registerDismiss` (the Escape dismiss stack that peels the topmost surface first).
-- `pickTextFile` and `readErrorMessage` for file import; `promptSaveName`, `promptRename`, and
-  `defaultSaveName` for the save/rename dialogs.
+- `pickTextFile` and `readErrorMessage` for file import; `defaultSaveName` to seed a save name. The
+  old `window.prompt` wrappers were removed; collect or rename a name with the `NameEntry` primitive.
 - `THEMES`, `ThemeController`, `createThemeController` for the theme switch.
 
 ## 7. Panel anatomy and the field idioms
@@ -277,6 +292,10 @@ These apply to UI text, headings, labels, comments, commits, and docs.
 
 ## 13. Recipe: add a new panel consistently
 
+For the full step-by-step with the reuse decision tables, the cascade and collision traps, the copy
+and accessibility checklists, and the pre-flight list, follow `docs/building-menu-items.md`. The
+short version:
+
 1. Create the feature slice under `features/<name>` with an `index.ts` public API. If it orchestrates
    runes or a service, add a `create<Name>Controller(deps)` in a `*.svelte.ts` module.
 2. Build the panel as a `SlideOver` with `bodyFlex`. Title it, give it a `closeLabel`, wire `onClose`,
@@ -289,5 +308,7 @@ These apply to UI text, headings, labels, comments, commits, and docs.
    primitive, not a second scoped copy.
 5. Wire it in `app/App.svelte`: construct the controller and services there and pass them down, render
    the SlideOver in the panel slot, and add a gated or ungated `MenuItem` to open it.
-6. Run the gate: `biome ci`, `npm run cruise`, `npm run check`, `npm test`, and `npm run build`, all
-   green, before committing.
+6. Run the gate: `npx @biomejs/biome ci <files>` (the scoped name; a bare `npx biome` resolves the
+   wrong package), `npm run check`, `npm run cruise`, then `npm test` and `npm run build` before a
+   release, all green. See `docs/building-menu-items.md` section 0 for the per-file loop and the
+   tooling traps.
