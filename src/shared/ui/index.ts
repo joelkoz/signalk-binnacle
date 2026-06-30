@@ -1,5 +1,6 @@
 export { default as AnchoredMenu } from './AnchoredMenu.svelte';
 export { ConfirmArm } from './confirm-arm.svelte';
+export { default as Disclosure } from './Disclosure.svelte';
 export { dialog, registerDismiss } from './dialog';
 export type { PickedTextResult } from './file-pick';
 export { pickTextFile, readErrorMessage } from './file-pick';
@@ -10,6 +11,7 @@ export { defaultSaveName, promptRename, promptSaveName } from './prompt';
 export { default as SavedList } from './SavedList.svelte';
 export { default as ShowOnChartToggle } from './ShowOnChartToggle.svelte';
 export { default as SlideOver } from './SlideOver.svelte';
+export { default as SubViewHeader } from './SubViewHeader.svelte';
 export { default as TextField } from './TextField.svelte';
 export type { Theme } from './theme.svelte';
 export { createThemeController, THEMES, ThemeController } from './theme.svelte';
