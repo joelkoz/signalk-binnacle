@@ -1,5 +1,6 @@
 <script lang="ts">
 import {
+  formatClockTime,
   formatFixed,
   lengthUnit,
   metersPerSecondToKnots,
@@ -47,6 +48,7 @@ interface Section {
   key: TrendKey;
   label: string;
   unit: string;
+  digits: number;
   times: readonly number[];
   values: ReadonlyArray<number | null>;
   latest: string;
@@ -65,6 +67,7 @@ const sections = $derived(
       key: metric.key,
       label: metric.label,
       unit: display.unit,
+      digits: display.digits,
       times: series.times,
       values,
       latest: formatFixed(values.findLast((value) => value != null) ?? null, display.digits),
@@ -73,17 +76,35 @@ const sections = $derived(
 );
 
 const hasData = (section: Section): boolean => section.values.some((value) => value != null);
+
+// The point under the cursor per metric (value already in display units, time in epoch seconds), so
+// the header reads back any past sample on hover and falls back to the latest when the cursor leaves.
+let hovered = $state<Partial<Record<TrendKey, { timeSec: number; value: number | null }>>>({});
 </script>
 
 <div class="trend-charts">
   {#each sections as section (section.key)}
+    {@const point = hovered[section.key]}
     <section aria-label="{section.label} trend">
       <div class="head">
         <span class="caps-label">{section.label}</span>
-        <span class="latest"><b class="num">{section.latest}</b> {section.unit}</span>
+        {#if point}
+          <span class="latest">
+            <b class="num">{formatFixed(point.value, section.digits)}</b>
+            {section.unit}
+            <span class="at">at {formatClockTime(point.timeSec * 1000)}</span>
+          </span>
+        {:else}
+          <span class="latest"><b class="num">{section.latest}</b> {section.unit}</span>
+        {/if}
       </div>
       {#if hasData(section)}
-        <TrendChart times={section.times} values={section.values} {theme} />
+        <TrendChart
+          times={section.times}
+          values={section.values}
+          {theme}
+          onHover={(p) => (hovered[section.key] = p)}
+        />
       {:else}
         <p class="muted-note">No samples for this instrument yet.</p>
       {/if}
@@ -115,5 +136,9 @@ section {
 .latest b {
   color: var(--text);
   font-size: var(--text-base);
+}
+/* The hover timestamp trails the value at the fine-print scale so the value stays the loud element. */
+.at {
+  font-size: var(--text-xs);
 }
 </style>

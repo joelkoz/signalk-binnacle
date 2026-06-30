@@ -26,7 +26,10 @@ function stepLabel(timeMs: number): string {
       <span class="f-time">{stepLabel(step.timeMs)}</span>
       <span class="f-wind">
         <b class="num">{formatWholeKnots(step.windMs)}</b>
-        kn from {formatBearingOr(step.fromRad)}&deg;T
+        kn from
+        <span title="Degrees true, measured clockwise from true north"
+          >{formatBearingOr(step.fromRad)}&deg;T</span
+        >
       </span>
       {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}
         <span class="f-rain">

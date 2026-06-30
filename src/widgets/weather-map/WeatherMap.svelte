@@ -418,6 +418,8 @@ onDestroy(() => {
       class:is-on={conditionsOpen}
       aria-expanded={conditionsOpen}
       aria-controls={conditionsOpen ? 'weather-conditions' : undefined}
+      aria-label="Conditions at the boat"
+      title="Conditions at the boat: wind, pressure, waves, and any warnings"
       onclick={() => (conditionsOpen = !conditionsOpen)}
     >
       Here

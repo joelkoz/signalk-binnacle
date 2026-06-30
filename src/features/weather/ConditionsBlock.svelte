@@ -41,7 +41,10 @@ const validLabel = (timeMs: number): string => formatDayClock(timeMs, { zone: tr
     <dt>Wind</dt>
     <dd>
       <b class="num">{formatWholeKnots(current.windMs)}</b>
-      kn from {formatBearingOr(current.fromRad)}&deg;T
+      kn from
+      <span title="Degrees true, measured clockwise from true north"
+        >{formatBearingOr(current.fromRad)}&deg;T</span
+      >
     </dd>
   </div>
   {#if current.gustMs !== undefined}
@@ -93,10 +96,17 @@ const validLabel = (timeMs: number): string => formatDayClock(timeMs, { zone: tr
         <b class="num">{height(heightM)}</b>
         {lengthUnit(units.mode)}
         {#if periodS !== undefined}
-          / <b class="num">{formatFixed(periodS, 1)}</b> s
+          /
+          <span title="Wave period: seconds between crests"
+            ><b class="num">{formatFixed(periodS, 1)}</b>
+            s</span
+          >
         {/if}
         {#if fromRad !== undefined}
-          from {formatBearingOr(fromRad)}&deg;T
+          from
+          <span title="Degrees true, measured clockwise from true north"
+            >{formatBearingOr(fromRad)}&deg;T</span
+          >
         {/if}
       </dd>
     </div>

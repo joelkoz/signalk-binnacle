@@ -152,6 +152,7 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
             {/if}
           </dd>
         </dl>
+        <p class="footnote">Ebb flows out toward the sea, flood flows in from it.</p>
       </div>
     {/if}
 
@@ -164,7 +165,10 @@ function curvePath(points: Array<{ x: number; y: number }>): string {
     {#if sourceNote}
       <p class="muted-note source-note">{sourceNote}</p>
     {/if}
-    <p class="footnote">Heights above MLLW, times in the device's local time.</p>
+    <p class="footnote">
+      Heights are above mean lower low water (MLLW), the chart's zero. Times are in the device's
+      local time.
+    </p>
   {:else if store.status === 'error'}
     <p class="muted-note sev-warning" role="status">
       Could not load tide predictions. Check the connection.
