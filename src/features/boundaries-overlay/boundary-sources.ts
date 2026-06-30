@@ -18,6 +18,7 @@ export const BOUNDARY_SOURCES: RasterOverlaySource[] = [
   {
     id: 'bound-eez',
     title: 'Maritime boundaries',
+    description: 'Lines marking the border between one country and the next at sea.',
     region: 'Global',
     tiles: [wmsTiles(MARINE_REGIONS_WMS, 'eez_boundaries')],
     attribution: VLIZ_ATTRIBUTION,
@@ -26,6 +27,7 @@ export const BOUNDARY_SOURCES: RasterOverlaySource[] = [
   {
     id: 'bound-12nm',
     title: 'Territorial sea (12 nm)',
+    description: "The 12 nm limit where a country's customs and clearance rules begin.",
     region: 'Global',
     tiles: [wmsTiles(MARINE_REGIONS_WMS, 'eez_12nm')],
     attribution: VLIZ_ATTRIBUTION,

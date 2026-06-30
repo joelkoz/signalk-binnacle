@@ -12,6 +12,7 @@ export const SEAMARK_SOURCES: RasterOverlaySource[] = [
   {
     id: 'seamark',
     title: 'OpenSeaMap seamarks',
+    description: 'Buoys, beacons, lights, and harbors from OpenSeaMap, drawn over the chart.',
     region: 'Global',
     tiles: ['https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png'],
     minzoom: 0,

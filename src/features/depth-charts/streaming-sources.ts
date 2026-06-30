@@ -25,10 +25,16 @@ const noaaEncSource = (
   id: string,
   title: string,
   layers: string,
-  opts: { parent?: string; group?: { id: string; title: string }; region?: string } = {},
+  opts: {
+    parent?: string;
+    group?: { id: string; title: string };
+    region?: string;
+    description?: string;
+  } = {},
 ): StreamingChartSource => ({
   id,
   title,
+  description: opts.description,
   tiles: [wmsTiles(NOAA_ENC_WMS, layers)],
   minzoom: 0,
   maxzoom: 18,
@@ -70,6 +76,8 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-gebco',
     title: 'GEBCO bathymetry',
+    description:
+      'Coarse global seabed-depth shading. Use BlueTopo, EMODnet, or the ENC for inshore detail.',
     region: 'Global',
     tiles: [wmsTiles('https://wms.gebco.net/mapserv', 'GEBCO_LATEST')],
     minzoom: 0,
@@ -82,6 +90,7 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-emodnet',
     title: 'EMODnet bathymetry',
+    description: 'European seabed-depth shading.',
     region: 'EU',
     tiles: [wmsTiles(EMODNET_WMS, 'emodnet:mean_multicolour')],
     minzoom: 0,
@@ -94,6 +103,7 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-emodnet-quality',
     title: 'Quality index',
+    description: 'How reliable each EMODnet depth cell is.',
     tiles: [wmsTiles(EMODNET_WMS, 'emodnet:quality_index', 'quality_index_combined')],
     minzoom: 0,
     maxzoom: 12,
@@ -105,6 +115,7 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-bluetopo',
     title: 'BlueTopo bathymetry',
+    description: 'High-resolution US seabed-depth shading.',
     region: 'US',
     tiles: [
       'https://nowcoast.noaa.gov/geoserver/gwc/service/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=bluetopo:bathymetry&STYLE=&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:{z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png8',
@@ -121,6 +132,7 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   {
     id: 'depth-bluetopo-uncertainty',
     title: 'Uncertainty',
+    description: 'How uncertain each BlueTopo depth value is.',
     tiles: [wmsTiles(BLUETOPO_WMS, 'bathymetry', 'nbs_uncertainty')],
     minzoom: 0,
     maxzoom: 16,
@@ -135,9 +147,11 @@ export const STREAMING_CHART_SOURCES: StreamingChartSource[] = [
   noaaEncSource('depth-noaa-enc', 'NOAA ENC', '0,1,2,3,4,5,6,7,10', {
     group: NOAA_ENC_GROUP,
     region: 'US',
+    description: 'US official electronic navigation charts, for reference (not for navigation).',
   }),
   noaaEncSource('depth-noaa-enc-quality', 'Data quality (ZOC)', '8,9', {
     parent: 'depth-noaa-enc',
     group: NOAA_ENC_GROUP,
+    description: "Survey-quality zones (ZOC): how trustworthy the chart's depths are.",
   }),
 ];

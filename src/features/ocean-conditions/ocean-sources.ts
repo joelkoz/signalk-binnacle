@@ -20,6 +20,7 @@ export function buildOceanSources(): RasterOverlaySource[] {
     {
       id: 'gibs-sst',
       title: 'Sea-surface temperature',
+      description: 'A satellite color map of how warm the sea surface is.',
       tiles: [gibsTiles('GHRSST_L4_MUR_Sea_Surface_Temperature', date)],
       minzoom: 0,
       maxzoom: 7,
@@ -30,6 +31,7 @@ export function buildOceanSources(): RasterOverlaySource[] {
     {
       id: 'gibs-sea-ice',
       title: 'Sea ice concentration',
+      description: 'How much of the sea surface is covered by ice.',
       tiles: [gibsTiles('GHRSST_L4_MUR_Sea_Ice_Concentration', date)],
       minzoom: 0,
       maxzoom: 7,

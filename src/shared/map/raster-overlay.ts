@@ -16,6 +16,8 @@ const rasterLayerId = (id: string): string => `${RASTER_ID_PREFIX}${id}-layer`;
 export interface RasterOverlaySource {
   id: string;
   title: string;
+  // A plain-language gloss for the Layers-panel row tooltip. See OverlayModule.description.
+  description?: string;
   // MapLibre raster tile URL template(s): {z}/{x}/{y} for XYZ or WMTS, or a WMS GetMap request using
   // the {bbox-epsg-3857} token.
   tiles: string[];
@@ -72,6 +74,7 @@ export function createRasterOverlay(source: RasterOverlaySource, band: ZBand): O
   return {
     id: source.id,
     title: source.title,
+    description: source.description,
     band,
     parent: source.parent,
     group: source.group,
