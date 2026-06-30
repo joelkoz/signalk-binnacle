@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Radar } from '@lucide/svelte';
 import { PLACEHOLDER } from '$shared/lib';
-import { ShowOnChartToggle } from '$shared/ui';
+import { Disclosure, ShowOnChartToggle } from '$shared/ui';
 import type { MarineRadarStore } from './marine-radar-store.svelte';
 import { isPowerControl, isPrimaryControl, widgetKind } from './radar-controls-model';
 import type { ControlDefinition, RadarStatus } from './radar-types';
@@ -173,7 +173,7 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 {/snippet}
 
 <section class="radar-section" aria-label="Radar status">
-  <span class="caps-label">Radar</span>
+  <h3 class="caps-label">Radar</h3>
   {#if statusLabel}
     <p class="radar-head">
       <Radar size={18} aria-hidden="true" />
@@ -213,7 +213,7 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
 
 {#if store.hasRadar}
   <section class="radar-section" aria-label="Radar power">
-    <span class="caps-label">Power</span>
+    <h3 class="caps-label">Power</h3>
     <div class="field-head">
       <div class="segmented" role="group" aria-label="Transmit or standby">
         <button
@@ -246,26 +246,47 @@ const isAuto = (def: ControlDefinition): boolean => store.controlAuto[def.id] ==
         {operationalLabel}
       </span>
     </div>
-    <ShowOnChartToggle shown={echoShown} label="Show echo on chart" onToggle={onToggleEcho} />
+    <p class="muted-note">
+      Standby keeps the radar powered but not emitting. Transmit scans and paints returns.
+    </p>
+    <ShowOnChartToggle
+      shown={echoShown}
+      label="Show echo on chart"
+      description="The radar echo: the returns it paints from boats, land, and rain around you"
+      onToggle={onToggleEcho}
+    />
     <p class="muted-note">Opacity and stacking are in Layers.</p>
   </section>
 {/if}
 
 {#if primary.length > 0}
   <section class="radar-section" aria-label="Controls">
-    <span class="caps-label">Controls</span>
+    <h3 class="caps-label">Controls</h3>
     {#each primary as def (def.id)}
       {@render control(def)}
     {/each}
   </section>
 {/if}
 {#if advanced.length > 0}
-  <section class="radar-section" aria-label={primary.length ? 'Advanced controls' : 'Controls'}>
-    <span class="caps-label">{primary.length ? 'Advanced' : 'Controls'}</span>
-    {#each advanced as def (def.id)}
-      {@render control(def)}
-    {/each}
-  </section>
+  {#if primary.length}
+    <!-- With everyday controls present, the rest fold under an Advanced disclosure so the panel
+         opens to the common controls. With no primary controls the radar reports only these, so they
+         stand as the lone Controls section, never hidden behind a closed disclosure. -->
+    <section class="radar-section" aria-label="Advanced controls">
+      <Disclosure label="Advanced controls">
+        {#each advanced as def (def.id)}
+          {@render control(def)}
+        {/each}
+      </Disclosure>
+    </section>
+  {:else}
+    <section class="radar-section" aria-label="Controls">
+      <h3 class="caps-label">Controls</h3>
+      {#each advanced as def (def.id)}
+        {@render control(def)}
+      {/each}
+    </section>
+  {/if}
 {/if}
 
 <style>

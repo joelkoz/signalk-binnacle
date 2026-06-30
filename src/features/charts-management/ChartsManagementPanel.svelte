@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onDestroy } from 'svelte';
 import type { AuthController } from '$shared/signalk';
-import { SlideOver, TextField } from '$shared/ui';
+import { Disclosure, SlideOver, TextField } from '$shared/ui';
 import type { ManagedChart, ManagedChartsResponse } from './charts-management-client.js';
 import { fetchManagedCharts, putChartOverride } from './charts-management-client.js';
 
@@ -83,13 +83,7 @@ function formatBounds(bounds: [number, number, number, number]): string {
 }
 </script>
 
-<SlideOver
-  title="Chart management"
-  closeLabel="Close chart management panel"
-  {onClose}
-  {onBack}
-  bodyFlex
->
+<SlideOver title="Chart files" closeLabel="Close chart files panel" {onClose} {onBack} bodyFlex>
   {#if auth.writeBlocked}
     <p class="muted-note">
       A write token is needed to edit chart names and descriptions. Request a read/write token to
@@ -104,25 +98,30 @@ function formatBounds(bounds: [number, number, number, number]): string {
   {:else if data === null}
     <p class="muted-note">Loading charts...</p>
   {:else if data.charts.length === 0}
-    <p class="muted-note">No charts found. Add PMTiles files to the server chart directory.</p>
+    <p class="muted-note">
+      No charts yet. Drop chart files (.pmtiles) into the server's chart folder and they show up
+      here, where you can rename them.
+    </p>
   {:else}
     {#each data.charts as chart (chart.identifier)}
       {@const nameKey = `${chart.identifier}:name`}
       {@const descKey = `${chart.identifier}:description`}
       <div class="chart-card card-frame">
         <p class="chart-file">{chart.fileName}</p>
-        <dl class="stat-grid">
-          <dt>Format</dt>
-          <dd><span>{chart.format.toUpperCase()}</span><span class="unit"></span></dd>
-          <dt>Zoom range</dt>
-          <dd><span>{chart.minzoom} to {chart.maxzoom}</span><span class="unit"></span></dd>
-          {#if chart.bounds}
-            <dt>Bounds</dt>
-            <dd class="bounds-val">
-              <span>{formatBounds(chart.bounds)}</span><span class="unit"></span>
-            </dd>
-          {/if}
-        </dl>
+        <Disclosure label="Chart details">
+          <dl class="stat-grid">
+            <dt>Format</dt>
+            <dd><span>{chart.format.toUpperCase()}</span><span class="unit"></span></dd>
+            <dt>Zoom range</dt>
+            <dd><span>{chart.minzoom} to {chart.maxzoom}</span><span class="unit"></span></dd>
+            {#if chart.bounds}
+              <dt>Bounds</dt>
+              <dd class="bounds-val">
+                <span>{formatBounds(chart.bounds)}</span><span class="unit"></span>
+              </dd>
+            {/if}
+          </dl>
+        </Disclosure>
         <TextField
           variant="stacked"
           label="Display name"

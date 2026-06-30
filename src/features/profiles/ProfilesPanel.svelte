@@ -86,14 +86,23 @@ function renameProfile(profile: Profile): void {
 </script>
 
 <SlideOver title="Profiles" bodyFlex closeLabel="Close profiles panel" {onClose} {onBack}>
+  <p class="muted-note">
+    A profile saves which layers and overlays are on, so you can switch between setups like coastal
+    cruising and racing in one tap.
+  </p>
   <div class="panel-controls">
     <button type="button" class="btn btn-primary btn--grow" onclick={promptNew}>
       <Save size={16} aria-hidden="true" />
       Save current as profile
     </button>
-    <button type="button" class="btn" onclick={importProfiles}>
+    <button
+      type="button"
+      class="btn"
+      title="Import profiles from a file another device exported"
+      onclick={importProfiles}
+    >
       <Upload size={16} aria-hidden="true" />
-      Import JSON
+      Import
     </button>
   </div>
 
@@ -104,7 +113,7 @@ function renameProfile(profile: Profile): void {
   <SavedList
     heading="Saved profiles"
     items={profiles}
-    empty="No profiles yet"
+    empty="No profiles yet. Set up your layers, then tap Save current as profile to keep them."
     key={(profile) => profile.id}
     isActive={(profile) => profile.id === activeId}
   >
@@ -135,8 +144,8 @@ function renameProfile(profile: Profile): void {
             <button
               type="button"
               class="icon-btn"
-              aria-label="Apply this profile"
-              title="Apply"
+              aria-label="Use this profile"
+              title="Use this profile"
               onclick={() => onApply(profile.id)}
             >
               <Check size={18} aria-hidden="true" />
@@ -168,7 +177,7 @@ function renameProfile(profile: Profile): void {
               type="button"
               class="icon-btn"
               aria-label="Set as default profile"
-              title="Set as default"
+              title="Set as the default, loaded when the app starts"
               onclick={() => onSetDefault(profile.id)}
             >
               <Star size={18} aria-hidden="true" />
@@ -177,8 +186,8 @@ function renameProfile(profile: Profile): void {
           <button
             type="button"
             class="icon-btn"
-            aria-label="Export JSON"
-            title="Export JSON"
+            aria-label="Export profile"
+            title="Download this profile as a file to load on another device"
             onclick={() => onExport(profile.id)}
           >
             <Download size={18} aria-hidden="true" />
