@@ -160,8 +160,8 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   goes into the right module, never back into one monolith; new shared UI behavior goes through
   the `$shared/ui` primitives (SlideOver, AnchoredMenu, InlineConfirm, UnitField, ConfirmArm, SavedList,
   VisibilityToggle, the dialog dismiss stack, the rovingFocus, focusTrap, focusOnMount, and
-  onKeydownAction focus actions, the isTabKey helper, the pickTextFile importer, the promptRename
-  and promptSaveName dialogs, and the PANEL_TRANSITION_MS shared panel-transition-duration constant) and the
+  onKeydownAction focus actions, the isTabKey helper, the pickTextFile importer, the NameEntry name
+  form with its defaultSaveName and resolveSaveName helpers, and the PANEL_TRANSITION_MS shared panel-transition-duration constant) and the
   global utility classes (the `.btn` system, `.icon-btn`, `.icon-pill`, `.popover-card`, the
   `.surface-elevated` floating-panel frame, `.modal-card`, `.menu-item`, the `.row-interactive`
   control-height interactive-row base composed by the weather, route, and layers-category rows (it

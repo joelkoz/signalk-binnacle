@@ -25,7 +25,7 @@ A WebGL chartplotter for [Signal K](https://signalk.org).
   bug had left only the shaded relief), the man-overboard confirm dialog times out exactly once, and
   an in-progress offline download keeps polling on the current access token if it rotates.
 
-See the [changelog](CHANGELOG.md#v0121) for the full list.
+See the [changelog](CHANGELOG.md#v0122) for the full list.
 
 ## What it does
 

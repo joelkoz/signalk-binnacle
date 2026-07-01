@@ -232,7 +232,7 @@ every shipped panel (alarms, anchor, tracks, weather, routes, the radar controls
   intent. A menu entry is a `MenuItem` (`id`, `label`, `shortLabel` for the bottom-bar pill, `icon` a
   lucide component, `group` a section heading, `pressed` for a toggle's lit state, `disabled` plus
   `disabledLabel`, `available` plus `unavailableHint`, `onSelect`). Groups today: Map, Navigate,
-  Conditions, Safety, Settings. Adding a menu option is one more `MenuItem`, never a change to the menu
+  Conditions, Safety, the plugin-gated Offline charts group, and Settings. Adding a menu option is one more `MenuItem`, never a change to the menu
   component. A capability whose provider is absent sets `available: false` with an `unavailableHint`:
   the launcher and bottom bar render it grayed and non-interactive with the hint as a tooltip and
   screen-reader text, rather than dropping it from the menu. (`disabled` plus `disabledLabel` is the
