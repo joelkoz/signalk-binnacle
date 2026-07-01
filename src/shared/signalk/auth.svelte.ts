@@ -18,6 +18,9 @@ interface AuthOptions {
 const STORAGE_KEY = 'binnacle:signalk-auth';
 const PROBE_PATH = '/signalk/v1/api/vessels/self';
 const REQUEST_PATH = '/signalk/v1/access/requests';
+// The client description the server shows in its access-request list, single-sourced so the read-only
+// and the read/write request agree on the app name.
+const CLIENT_DESCRIPTION = 'Binnacle Chartplotter';
 // Stop polling an unanswered access request (or retrying a POST that keeps failing in
 // transit) after this many attempts (about 10 min at the default 3 s interval) so a
 // never-approved request is not an unbounded loop.
@@ -233,7 +236,7 @@ export class AuthController {
 
   async requestAccess(): Promise<void> {
     this.status = 'requesting';
-    const { ok, href } = await this.#postAccessRequest(this.clientId, 'Binnacle Chartplotter');
+    const { ok, href } = await this.#postAccessRequest(this.clientId, CLIENT_DESCRIPTION);
     if (!ok) {
       // A failed POST (offline at startup) must not strand the request at 'requesting' forever: re-issue
       // it on the poll cadence, bounded by the attempt counter, which resets once a POST lands.
@@ -322,7 +325,7 @@ export class AuthController {
     this.upgrading = true;
     const { href } = await this.#postAccessRequest(
       this.#upgradeClientId,
-      'Binnacle Chartplotter (read/write)',
+      `${CLIENT_DESCRIPTION} (read/write)`,
     );
     this.#upgradePoll.href = href;
     if (!href) {

@@ -85,7 +85,9 @@ export function createSymbolOverlay(config: SymbolOverlayConfig): SymbolOverlay 
       setLayersVisibility(ctx.map, [config.layerId], visible);
     },
     setOpacity(ctx, opacity) {
-      ctx.map.setPaintProperty(config.layerId, 'icon-opacity', opacity);
+      // Guard on getLayer, matching setLayersVisibility: setPaintProperty throws on an absent layer.
+      if (ctx.map.getLayer(config.layerId))
+        ctx.map.setPaintProperty(config.layerId, 'icon-opacity', opacity);
     },
     remove(ctx) {
       removeLayersAndSources(ctx.map, [config.layerId], [config.sourceId]);

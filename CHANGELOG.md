@@ -27,6 +27,11 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Fixed
 
+- **The man-overboard confirm dialog timed out cleanly.** The 15 second self-dismiss countdown could
+  fire its timeout more than once if the dialog lingered, so the alarm handoff now runs exactly once.
+- **A downloading region kept polling on the current credentials.** If the access token rotated while
+  an offline-area download was in progress, the status poll now picks up the new token on its next
+  tick instead of running on the stale one until it gave up.
 - **Vector basemap and labels rendered blank.** The OpenFreeMap base map tiles and glyphs are
   fetched in a web worker, which cannot resolve a path-absolute `/plugins/...` URL and failed every
   vector tile and glyph request, leaving only the shaded-relief raster (which loads on the main

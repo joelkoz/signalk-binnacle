@@ -133,7 +133,11 @@ export function createChartOverlay(
     setOpacity(ctx, opacity) {
       for (const layer of layers) {
         const property = opacityProperty(layer.type);
-        if (property) ctx.map.setPaintProperty(layer.id, property, opacity);
+        // Guard on getLayer, matching setLayersVisibility: setPaintProperty throws on a layer that is
+        // not present, for example if the slider moves during the window after a base-style reload and
+        // before the overlay reattaches.
+        if (property && ctx.map.getLayer(layer.id))
+          ctx.map.setPaintProperty(layer.id, property, opacity);
       }
     },
     applyTheme(ctx, paint) {

@@ -26,7 +26,12 @@ let remaining = $state(TIMEOUT_S);
 onMount(() => {
   const countdown = setInterval(() => {
     remaining -= 1;
-    if (remaining <= 0) onTimeout();
+    // Clear before firing so onTimeout runs exactly once: without this the interval keeps ticking
+    // past zero and fires onTimeout every second until the opener happens to unmount the dialog.
+    if (remaining <= 0) {
+      clearInterval(countdown);
+      onTimeout();
+    }
   }, 1000);
   return () => clearInterval(countdown);
 });

@@ -113,7 +113,8 @@ export function createRasterOverlay(source: RasterOverlaySource, band: ZBand): O
       setLayersVisibility(ctx.map, [layerId], visible);
     },
     setOpacity(ctx, opacity) {
-      ctx.map.setPaintProperty(layerId, 'raster-opacity', opacity);
+      // Guard on getLayer, matching setLayersVisibility: setPaintProperty throws on an absent layer.
+      if (ctx.map.getLayer(layerId)) ctx.map.setPaintProperty(layerId, 'raster-opacity', opacity);
     },
     applyTheme(ctx, paint) {
       applyRasterTheme(ctx.map, layerId, paint);

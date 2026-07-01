@@ -353,9 +353,11 @@ function stopRegionPoll(id: string): void {
 function pollRegion(id: string): void {
   stopRegionPoll(id);
   pollFailures.set(id, 0);
-  const activeClient = client;
+  // Read the reactive client each tick, not a captured snapshot, so a token that rotates during a
+  // long poll is picked up on the next request instead of the poll running on the stale bearer token
+  // until it caps out on auth failures.
   const timer = setInterval(() => {
-    void activeClient
+    void client
       .getRegionJobStatus(id)
       .then((s) => {
         pollFailures.set(id, 0);
