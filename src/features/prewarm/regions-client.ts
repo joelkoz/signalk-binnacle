@@ -7,6 +7,16 @@ import { companionApiUrl } from '$shared/companion/companion-api';
 import { withTimeout } from '$shared/lib';
 import { authInit } from '$shared/signalk';
 
+/** A non-ok HTTP response from a companion route, carrying the status so a caller can branch on it
+ * (401 and 403 are a missing or refused token, other codes are a server or transport fault). Thrown
+ * rather than parsing an error body as a valid payload. */
+export class HttpStatusError extends Error {
+  constructor(readonly status: number) {
+    super(`companion request failed with ${status}`);
+    this.name = 'HttpStatusError';
+  }
+}
+
 export interface WarmStatus {
   total: number;
   done: number;
@@ -102,7 +112,12 @@ export function createRegionsClient(
       );
     },
     async getCacheStats() {
-      return json<CacheStats>(await fetchImpl(url('/cache/stats'), init()));
+      // Without an r.ok check a 401 or a 500 would parse an error body into a garbage CacheStats or
+      // throw on non-JSON, which a caller could not classify. Throw the status so the caller maps 401
+      // and 403 to a sign-in prompt and any other fault to a not-responding state.
+      const r = await fetchImpl(url('/cache/stats'), init());
+      if (!r.ok) throw new HttpStatusError(r.status);
+      return json<CacheStats>(r);
     },
     async getRegions() {
       return json<SavedRegionDto[]>(await fetchImpl(url('/regions'), init()));

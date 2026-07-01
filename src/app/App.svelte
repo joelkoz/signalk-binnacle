@@ -82,7 +82,7 @@ import {
   type NoteSelection,
 } from '$features/notes';
 import { type Poi, PoiSearchPanel } from '$features/poi-search';
-import { RegionsPanel } from '$features/prewarm';
+import { CompanionStatus, RegionsPanel } from '$features/prewarm';
 import {
   createProfileBindings,
   downloadProfileJson,
@@ -551,6 +551,15 @@ let mapInstance = $state<MapLibreMap | undefined>();
 // Companion feature-detect: resolved once at startup. Both the regions and chart-management panels
 // receive the resolved base URL as a prop, so they mount ready without their own probe RTT.
 let companionBase = $state<string | null>(null);
+
+// The single owner of Chart Locker health, polled for the status strip's offline-charts chip. The base
+// and token are getters so it reads them live: the base resolves after detectCompanion, and the token
+// arrives after admin approval and can rotate mid-session.
+const companionStatus = new CompanionStatus(
+  origin,
+  () => companionBase,
+  () => auth.token ?? null,
+);
 
 // Samples the live instruments from app start so the Trends panel has an honest in-session
 // series on servers with no history provider. Stopped on destroy.
@@ -1163,6 +1172,20 @@ const collisionAlert = $derived.by(() => {
 // and the coming re-arm obvious.
 const muteAlert = $derived(collisionMute.active ? 'Collision alarm muted.' : '');
 const muteRemainingMin = $derived(Math.max(1, Math.ceil(collisionMute.remainingMs / MINUTE_MS)));
+
+// Announce a single crossing of the serving-to-not-responding boundary through the polite live region,
+// never the ticking byte count. Edge detection needs the previous value, so it uses a non-reactive
+// latch in an effect rather than a derived, which would re-fire on every poll.
+let companionAnnounce = $state('');
+let companionWasDown = false;
+$effect(() => {
+  const down = companionStatus.state === 'down';
+  if (down === companionWasDown) return;
+  companionWasDown = down;
+  companionAnnounce = down
+    ? 'Chart Locker is not responding.'
+    : 'Chart Locker is responding again.';
+});
 
 // Publish the collision notification to Signal K as the assessment changes.
 $effect(() => {
@@ -1921,6 +1944,7 @@ onMount(() => {
   void detectCompanion(origin).then((base) => {
     companionBase = base;
   });
+  companionStatus.start();
   trendRecorder.start(() => ({
     depth: vessel.depthMeters,
     wind: vessel.windSpeedApparentMps,
@@ -1947,6 +1971,7 @@ onMount(() => {
 });
 
 onDestroy(() => {
+  companionStatus.stop();
   trendRecorder.stop();
   if (viewSaveTimer) clearTimeout(viewSaveTimer);
   if (arrivalBannerTimer) clearTimeout(arrivalBannerTimer);
@@ -1975,6 +2000,7 @@ onDestroy(() => {
     anchor={anchorController.anchorAlert}
     mob={mobController.mobAlert}
     mute={muteAlert}
+    companion={companionAnnounce}
   />
   <header class="topbar">
     <span class="topbar-start">
@@ -2338,6 +2364,9 @@ onDestroy(() => {
     {vessel}
     {mapView}
     pinnedActions={resolvedPinned}
+    companionPresent={companionStatus.present}
+    companionState={companionStatus.state}
+    companionCacheBytes={companionStatus.cacheBytes}
   />
 </main>
 

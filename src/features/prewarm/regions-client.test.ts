@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createRegionsClient } from './regions-client.js';
+import { createRegionsClient, HttpStatusError } from './regions-client.js';
 
 const ok = (body: unknown, status = 200): Response =>
   ({ ok: status < 400, status, json: async () => body }) as unknown as Response;
@@ -48,6 +48,44 @@ describe('regions client', () => {
       'http://h/plugins/signalk-chart-locker/api/cache/stats',
       expect.not.objectContaining({ headers: expect.anything() }),
     );
+  });
+
+  it('getCacheStats throws an HttpStatusError carrying the status on 401', async () => {
+    const fetchImpl = vi.fn(async () => ok({ error: 'unauthorized' }, 401));
+    const client = createRegionsClient(
+      'http://h/plugins/signalk-chart-locker',
+      'tok',
+      fetchImpl as unknown as typeof fetch,
+    );
+    await expect(client.getCacheStats()).rejects.toMatchObject({
+      name: 'HttpStatusError',
+      status: 401,
+    });
+    await expect(client.getCacheStats()).rejects.toBeInstanceOf(HttpStatusError);
+  });
+
+  it('getCacheStats throws an HttpStatusError carrying the status on 500', async () => {
+    const fetchImpl = vi.fn(async () => ok({ error: 'boom' }, 500));
+    const client = createRegionsClient(
+      'http://h/plugins/signalk-chart-locker',
+      'tok',
+      fetchImpl as unknown as typeof fetch,
+    );
+    await expect(client.getCacheStats()).rejects.toMatchObject({
+      name: 'HttpStatusError',
+      status: 500,
+    });
+  });
+
+  it('getCacheStats parses the body on 200', async () => {
+    const stats = { rows: 3, bytes: 4096, cap: 1000, perSourceAvgBytes: { seamark: 50 } };
+    const fetchImpl = vi.fn(async () => ok(stats));
+    const client = createRegionsClient(
+      'http://h/plugins/signalk-chart-locker',
+      'tok',
+      fetchImpl as unknown as typeof fetch,
+    );
+    expect(await client.getCacheStats()).toEqual(stats);
   });
 
   it('posts config with the bearer token', async () => {

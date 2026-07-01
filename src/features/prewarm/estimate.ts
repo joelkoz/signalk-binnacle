@@ -11,6 +11,7 @@ import {
   estimateBytes,
   tileCountInBbox,
 } from 'signalk-chart-sources';
+import { formatBytes } from '$shared/lib';
 import type { CacheStats, WarmStatus } from './regions-client.js';
 
 /** Re-exported from the shared package so the panel, the plugin, and any caller share one estimate. */
@@ -91,18 +92,6 @@ export function canDownloadRegion(opts: {
  * gone (the container restarted and lost the in-memory job); treat it as gone and offer a re-warm. */
 export function isTerminal(status: WarmStatus | null): boolean {
   return status === null || status.state !== 'running';
-}
-
-const KB = 1024;
-const MB = KB * 1024;
-const GB = MB * 1024;
-
-/** Humanize a byte count to a rounded value and unit label, for display in the estimate row. */
-export function formatBytes(bytes: number): { value: string; unit: string } {
-  if (bytes >= GB) return { value: (bytes / GB).toFixed(2), unit: 'GB' };
-  if (bytes >= MB) return { value: (bytes / MB).toFixed(1), unit: 'MB' };
-  if (bytes >= KB) return { value: (bytes / KB).toFixed(1), unit: 'KB' };
-  return { value: String(Math.round(bytes)), unit: 'B' };
 }
 
 /** Format the per-source scroll totals for the cache-management breakdown: each source's bytes through

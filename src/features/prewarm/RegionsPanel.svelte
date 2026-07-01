@@ -11,7 +11,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { CHART_SOURCES } from 'signalk-chart-sources';
 import { onDestroy } from 'svelte';
 import type { UnitsStore } from '$entities/units';
-import { clampInt, feetToMeters, lengthUnit, metersToFeet } from '$shared/lib';
+import { clampInt, feetToMeters, formatBytes, lengthUnit, metersToFeet } from '$shared/lib';
 import type { AuthController } from '$shared/signalk';
 import {
   Disclosure,
@@ -30,7 +30,6 @@ import {
   estimateBytes,
   exceedsRegionsFree,
   formatBySource,
-  formatBytes,
   isTerminal,
   positionWarmSources,
   regionsFreeBytes,

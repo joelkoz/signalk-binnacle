@@ -1,3 +1,4 @@
+export { formatBytes } from './bytes';
 export { Clock, type ReactiveClock } from './clock.svelte';
 export { formatLatitude, formatLongitude, PLACEHOLDER } from './coords';
 export { downloadText } from './download';
