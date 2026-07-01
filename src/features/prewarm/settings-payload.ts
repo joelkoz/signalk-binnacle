@@ -19,12 +19,17 @@ export function buildConfigPayload(settings: PositionWarmSettings): {
   return { positionWarm: settings };
 }
 
-// Extract and validate the positionWarm section of the plugin config response. Returns null when
-// the config is absent, malformed, or missing required fields, so the panel keeps its defaults.
+// Extract and validate the position-warm settings from the config response. Returns null when the
+// response is absent, malformed, or missing required fields, so the panel keeps its defaults.
+//
+// GET /api/position-warm/config returns the positionWarm block directly, not a { positionWarm }
+// wrapper (the wrapper exists only on POST so a save merges that one key without dropping the saved
+// regions). Accept either shape so the panel restores its saved auto-cache state whichever the server
+// sends: reading only the wrapper left the load silently returning null, so a saved setting looked
+// unsaved on reopen.
 export function extractPositionWarm(cfg: unknown): PositionWarmSettings | null {
   if (!isRecord(cfg)) return null;
-  const pw = cfg.positionWarm;
-  if (!isRecord(pw)) return null;
+  const pw = isRecord(cfg.positionWarm) ? cfg.positionWarm : cfg;
   if (
     typeof pw.enabled !== 'boolean' ||
     typeof pw.radiusMeters !== 'number' ||
