@@ -15,15 +15,15 @@ A WebGL chartplotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.12.1
+## What's new in 0.12.2
 
-- **Regions panel.** Draw a box on the chart and pre-download every covering raster source into the
-  boat-wide tile cache before leaving coverage, with a regions-free byte estimate, geocoded names,
-  and per-region progress. Requires the Chart Locker plugin (previously Binnacle Companion).
-- **Interaction and reliability fixes.** "Start a route here" reliably drops the first point, writes
-  use the read-write token the moment access is approved, a man-overboard mark re-triggered right
-  after a cancel is no longer silenced, and the chart context menu stays out of the way during a
-  measurement.
+- **Offline charts, in plain language.** The old "Tile cache" panel is now "Offline charts": one
+  "Download an area" action, a list of saved areas, and Storage and Auto-cache sub-views. The base
+  map is saved by default so an offline area is never blank, and detail is an Overview, Coastal, or
+  Harbor preset rather than raw zoom numbers.
+- **Reliability fixes.** The vector base map and its labels render again (a worker URL-resolution
+  bug had left only the shaded relief), the man-overboard confirm dialog times out exactly once, and
+  an in-progress offline download keeps polling on the current access token if it rotates.
 
 See the [changelog](CHANGELOG.md#v0121) for the full list.
 
