@@ -179,6 +179,10 @@ export function colorProperty(type: string): 'line-color' | 'fill-color' {
 // output, so changing rasterSaturation or rasterBrightnessMax means re-tuning those swatch literals
 // or the legend lies about the tiles.
 export function applyRasterTheme(map: MapLibreMap, layerId: string, paint: MapThemePaint): void {
+  // Guard on getLayer, matching setLayersVisibility: setPaintProperty throws on a layer that is not
+  // present, for example a theme change during the window after a base-style reload and before the
+  // overlay reattaches. One guard here covers every raster caller.
+  if (!map.getLayer(layerId)) return;
   map.setPaintProperty(layerId, 'raster-saturation', paint.rasterSaturation);
   map.setPaintProperty(layerId, 'raster-brightness-max', paint.rasterBrightnessMax);
 }

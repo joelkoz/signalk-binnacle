@@ -150,6 +150,9 @@ export function createChartOverlay(
           continue;
         }
         if (!layer.themePaint) continue;
+        // Guard on getLayer, matching setLayersVisibility and setOpacity: setPaintProperty throws on a
+        // layer absent during the window after a base-style reload and before reattach.
+        if (!ctx.map.getLayer(layer.id)) continue;
         const property = colorProperty(layer.type);
         ctx.map.setPaintProperty(layer.id, property, paint[layer.themePaint]);
       }
