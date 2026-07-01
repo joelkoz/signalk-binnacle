@@ -4,6 +4,35 @@ All notable changes to Binnacle are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<a id="v0130"></a>
+
+## [0.13.0] - 2026-07-01
+
+First public release since 0.12.0. It gathers the offline-charts work of the two intervening
+development versions, 0.12.1 and 0.12.2, and adds a status-strip indicator for the chart cache.
+
+### Added
+
+- **Chart Locker status in the strip.** With the Chart Locker plugin installed, the status strip now
+  shows an offline-charts chip beside the AIS and anchor readouts: a status dot plus the cache size in
+  use, so the boat-wide chart cache is reachable at a glance and its fill is visible. The chip reads
+  "sign in" for a viewer without access, and "no reply" if the cache stops responding, and it is absent
+  on a standalone install without Chart Locker.
+
+### Fixed
+
+- **Auto-cache settings are kept.** Turning on auto-cache around the boat, and its chart picks, radius,
+  and interval, now persist and reload. The settings were saved all along, but the panel read them back
+  in the wrong shape and reopened on its defaults, so the toggle looked like it never saved.
+- **Theme switch during a chart load.** Switching the day, dusk, or night theme no longer errors when a
+  chart overlay layer is still loading; the paint update skips a layer that is not on the map yet.
+
+### Changed
+
+- **Dependencies and internals.** Refreshed @lucide/svelte, declared the Biome dev dependency the lint
+  scripts rely on, dropped an unused dev dependency, and removed dead export surface across the app.
+  No behavior change.
+
 <a id="v0122"></a>
 
 ## [0.12.2] - 2026-07-01

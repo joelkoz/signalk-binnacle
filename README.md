@@ -15,17 +15,26 @@ A WebGL chartplotter for [Signal K](https://signalk.org).
 > is also not certified for safety-of-life navigation. Always carry redundant means of navigation,
 > cross-check against your primary instruments, and treat every display as advisory.
 
-## What's new in 0.12.2
+## What's new in 0.13.0
 
-- **Offline charts, in plain language.** The old "Tile cache" panel is now "Offline charts": one
-  "Download an area" action, a list of saved areas, and Storage and Auto-cache sub-views. The base
-  map is saved by default so an offline area is never blank, and detail is an Overview, Coastal, or
-  Harbor preset rather than raw zoom numbers.
-- **Reliability fixes.** The vector base map and its labels render again (a worker URL-resolution
-  bug had left only the shaded relief), the man-overboard confirm dialog times out exactly once, and
-  an in-progress offline download keeps polling on the current access token if it rotates.
+The major changes since 0.12.0, the first public release since then.
 
-See the [changelog](CHANGELOG.md#v0122) for the full list.
+- **Offline charts, powered by Chart Locker.** With the Chart Locker plugin installed, Binnacle caches
+  the remote charts and the vector base map boat-wide so they work offline at sea. Draw a box and
+  download every covering chart source before leaving coverage, keep an area warm around the boat
+  automatically, and manage local PMTiles archives, all from a plain-language "Offline charts" panel
+  with Overview, Coastal, and Harbor presets instead of raw zoom numbers.
+- **Chart Locker status in the strip.** The status strip now shows an offline-charts chip: a status
+  dot plus the cache size in use, so the boat-wide chart cache is visible at a glance. It reads "sign
+  in" for a viewer without access, and "no reply" if the cache stops responding, and is absent on a
+  standalone install.
+- **Auto-cache settings are kept.** Turning on auto-cache around the boat, and its chart picks and
+  range, now persist and reload correctly.
+- **Reliability fixes.** The vector base map and its labels render again, theme switches no longer
+  error mid chart-load, the man-overboard confirm times out exactly once, and writes use the read-write
+  token the moment access is approved.
+
+See the [changelog](CHANGELOG.md#v0130) for the full list.
 
 ## What it does
 

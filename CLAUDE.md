@@ -176,7 +176,7 @@ surgery on the core. The core never hardcodes knowledge of a specific feature.
   rather than a hand-rolled flex column, so the section rhythm matches across panels. When the same
   markup or CSS appears in a second place, hoist it; a third copy is a review failure.
 - Reuse the shared non-UI helpers before re-implementing them: `$shared/lib` (isRecord, formatPercent,
-  formatFixed and the unit formatters, the SI converters, uuidv4), `$shared/map` (featureCollection,
+  formatFixed, formatBytes and the unit formatters, the SI converters, uuidv4), `$shared/map` (featureCollection,
   emptyFeatureCollection, setSourceData, iconOffsetExpression with CENTERED_OFFSET, removeLayersAndSources,
   setLayersVisibility, createSafetyOverlay for safety-band rasters, rgbaCss), `$shared/geo`
   (latLonToLonLat and the single lat/lon-to-GeoJSON-order crossing, the Bbox4 bounding-box tuple,
