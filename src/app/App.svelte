@@ -179,6 +179,7 @@ import { createTrackStore } from '$shared/storage';
 import { createThemeController, defaultSaveName, SlideOver, type Theme } from '$shared/ui';
 import { ChartCanvas, type MapCommands, type UserChartRegistrar } from '$widgets/chart-canvas';
 import { WeatherMap } from '$widgets/weather-map';
+import CompanionChip from './CompanionChip.svelte';
 import LiveRegions from './LiveRegions.svelte';
 import StatusStrip from './StatusStrip.svelte';
 
@@ -2016,6 +2017,11 @@ onDestroy(() => {
       <span class="brand"
         >Binnacle Chartplotter <span class="version">v{__APP_VERSION__}</span></span
       >
+      <CompanionChip
+        present={companionStatus.present}
+        state={companionStatus.state}
+        cacheBytes={companionStatus.cacheBytes}
+      />
     </span>
     <MobButton {mob} onTrigger={mobController.onTrigger} onLocate={flyToPosition} />
     <span class="topbar-actions">
@@ -2364,9 +2370,6 @@ onDestroy(() => {
     {vessel}
     {mapView}
     pinnedActions={resolvedPinned}
-    companionPresent={companionStatus.present}
-    companionState={companionStatus.state}
-    companionCacheBytes={companionStatus.cacheBytes}
   />
 </main>
 

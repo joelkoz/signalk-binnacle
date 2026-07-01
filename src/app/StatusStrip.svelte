@@ -10,10 +10,8 @@ import {
   type MenuItem,
   splitBarActions,
 } from '$features/menu';
-import type { CompanionState } from '$features/prewarm';
 import {
   formatBearingOr,
-  formatBytes,
   formatFixed,
   formatKnotsOr,
   formatLatitude,
@@ -37,9 +35,6 @@ let {
   vessel,
   mapView,
   pinnedActions,
-  companionPresent,
-  companionState,
-  companionCacheBytes,
 }: {
   connectionLabel: string;
   streamError: boolean;
@@ -52,30 +47,10 @@ let {
   vessel: OwnVessel;
   mapView: MapView | undefined;
   pinnedActions: MenuItem[];
-  companionPresent: boolean;
-  companionState: CompanionState;
-  companionCacheBytes: number | null;
 } = $props();
 
 const connectionDown = $derived(connectionPhase === 'reconnecting' || connectionPhase === 'closed');
 
-// The offline-charts chip is a passive presenter: distinct visible text per state so the meaning never
-// rides on the dot color alone (WCAG 1.4.1), and a richer accessible name in the hover title. The byte
-// figure renders in the strip's muted chrome type, not the hero readout tier, so it does not compete
-// with SOG and COG.
-const companionBytes = $derived(formatBytes(companionCacheBytes ?? 0));
-const companionText = $derived.by(() => {
-  if (companionState === 'serving')
-    return `Offline charts ${companionBytes.value} ${companionBytes.unit}`;
-  if (companionState === 'needs-auth') return 'Offline charts: sign in';
-  return 'Offline charts: no reply';
-});
-const companionTitle = $derived.by(() => {
-  if (companionState === 'serving')
-    return `Chart Locker: cache ${companionBytes.value} ${companionBytes.unit}`;
-  if (companionState === 'needs-auth') return 'Chart Locker: detected, sign in to see cache size';
-  return 'Chart Locker: not responding';
-});
 const split = $derived(splitBarActions(pinnedActions, MAX_BAR_PILLS));
 const moreActive = $derived(split.overflow.some((a) => a.pressed === true));
 let moreOpen = $state(false);
@@ -129,16 +104,6 @@ const closeMore = (): void => {
           >
           {lengthUnit(units.mode)}
         {/if}
-      </span>
-    {/if}
-    {#if companionPresent}
-      <span
-        class="readout companion-chip"
-        class:companion-chip--down={companionState === 'down'}
-        title={companionTitle}
-      >
-        <span class="status-dot" aria-hidden="true"></span>
-        {companionText}
       </span>
     {/if}
     <span class="readout">SOG <b>{formatKnotsOr(fixStale ? undefined : vessel.sogMps)}</b> kn</span>
@@ -318,29 +283,9 @@ const closeMore = (): void => {
   display: inline-flex;
   align-items: center;
 }
-/* One status dot for every strip indicator: the color is set per chip through the --dot-color custom
-   property, defaulting to the healthy token. The connection dot and the offline-charts chip share it,
-   so there is one dot definition, not two. */
-.status-dot {
-  inline-size: 0.6rem;
-  block-size: 0.6rem;
-  border-radius: 50%;
-  background: var(--dot-color, var(--ok));
-}
+/* The dot itself is the global .status-dot (in strips.css); the strip only overrides the --dot-color
+   token to the caution hue while the stream is reconnecting or closed. */
 .conn--down .status-dot {
-  --dot-color: var(--warning);
-}
-/* The offline-charts chip is quiet chrome, like the lookout and anchor chips: it confirms the Chart
-   Locker companion is present without competing with the hero SOG and COG. Its dot warns only when the
-   companion is not responding; the serving and needs-sign-in states carry the healthy token, since the
-   state is distinguished by the visible text, not a third dot hue. */
-.companion-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  color: var(--text-muted);
-}
-.companion-chip--down {
   --dot-color: var(--warning);
 }
 /* A lost own fix is a caution, not an alarm: the boat is still where it was, the position is just no
