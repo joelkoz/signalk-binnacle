@@ -31,9 +31,12 @@ describe('CompanionChip', () => {
   });
 
   it('shows the distinct text for needs-auth and down', () => {
-    expect(body({ present: true, state: 'needs-auth', cacheBytes: null })).toContain(
-      'Offline charts: sign in',
-    );
+    // Needs-auth reads as plain "Offline charts" (present and working); the sign-in hint is only in the
+    // hover title, never shouted as visible text next to the brand.
+    const needsAuth = body({ present: true, state: 'needs-auth', cacheBytes: null });
+    expect(needsAuth).toContain('Offline charts');
+    expect(needsAuth).not.toContain('Offline charts:');
+    expect(needsAuth).toContain('sign in to see cache size');
     expect(body({ present: true, state: 'down', cacheBytes: null })).toContain(
       'Offline charts: no reply',
     );

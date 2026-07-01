@@ -18,7 +18,10 @@ let {
 const bytes = $derived(formatBytes(cacheBytes ?? 0));
 const text = $derived.by(() => {
   if (state === 'serving') return `Offline charts ${bytes.value} ${bytes.unit}`;
-  if (state === 'needs-auth') return 'Offline charts: sign in';
+  // Detected but the viewer has no access token, so the cache size cannot be read. Show the plain
+  // "Offline charts" (the companion is present and working); the sign-in hint lives in the hover title
+  // rather than shouting an imperative next to the brand.
+  if (state === 'needs-auth') return 'Offline charts';
   return 'Offline charts: no reply';
 });
 const title = $derived.by(() => {

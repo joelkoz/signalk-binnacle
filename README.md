@@ -26,8 +26,8 @@ The major changes since 0.12.0, the first public release since then.
   with Overview, Coastal, and Harbor presets instead of raw zoom numbers.
 - **Chart Locker status in the header.** The header shows an offline-charts chip next to the Binnacle
   Chartplotter title: a status dot plus the cache size in use, so the boat-wide chart cache is visible
-  at a glance. It reads "sign in" for a viewer without access, and "no reply" if the cache stops
-  responding, and is absent on a standalone install.
+  at a glance. A viewer without the access to read the size sees the name alone, it reads "no reply" if
+  the cache stops responding, and is absent on a standalone install.
 - **Auto-cache settings are kept.** Turning on auto-cache around the boat, and its chart picks and
   range, now persist and reload correctly.
 - **Reliability fixes.** The vector base map and its labels render again, theme switches no longer
