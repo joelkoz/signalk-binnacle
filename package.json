@@ -82,10 +82,10 @@
     "hooks": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
     "@playwright/test": "^1.61.1",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tsconfig/svelte": "^5.0.8",
-    "@vitest/web-worker": "^4.1.9",
     "dependency-cruiser": "^17.4.3",
     "svelte": "^5.56.4",
     "svelte-check": "^4.7.0",
