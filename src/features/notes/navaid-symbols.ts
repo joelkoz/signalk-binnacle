@@ -14,7 +14,7 @@ const RE_AID_NUM = /(\d+)[a-z]?\b/;
 const RE_LIGHTHOUSE = /lighthouse/;
 const RE_DAYBEACON = /daybeacon/;
 const RE_BUOY = /buoy/;
-const RE_LIGHT = /\blight\b|pierhead|breakwater|entrance light|channel light/;
+const RE_LIGHT = /\blight\b|pierhead|breakwater/;
 
 // Crow's Nest tags every light, beacon, and buoy with the same skIcon
 // (navigation-structure), so the specific kind is inferred from the note name and the

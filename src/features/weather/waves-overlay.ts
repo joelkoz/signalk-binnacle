@@ -1,7 +1,8 @@
-import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
+import type { LineLayerSpecification } from 'maplibre-gl';
 import type { WeatherStore } from '$entities/weather';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSource,
   removeLayersAndSources,
   setLayersVisibility,
   setSourceData,
@@ -9,6 +10,7 @@ import {
 import type { Theme } from '$shared/ui';
 import { type CanvasFactory, createFieldOverlay, type FieldOverlay } from './field-overlay';
 import { WEATHER_LAYER_IDS } from './fills';
+import { gridTimeGate } from './grid-time-gate';
 import { waveArrowFeatures } from './wave-arrows';
 import { waveArrowColor } from './wave-colormap';
 import { waveFieldRgba } from './wave-field';
@@ -38,25 +40,16 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
     makeCanvas,
   );
   let theme: Theme = 'day';
-  let lastGrid: unknown;
-  let lastTime = Number.NaN;
+  const gate = gridTimeGate(store);
 
+  // Spread the composed field overlay so its description and default opacity (0.7) carry through,
+  // then override only the arrow-aware lifecycle methods and the two-layer id list.
   return {
-    id: field.id,
-    title: field.title,
-    band: 'weather',
-    supportsOpacity: true,
-    defaultVisible: false,
+    ...field,
     layerIds: [FIELD_LAYER, ARROW_LAYER],
     add(ctx) {
       field.add(ctx);
-      if (!ctx.map.getSource(ARROW_SOURCE)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(ARROW_SOURCE, source);
-      }
+      ensureGeoJsonSource(ctx.map, ARROW_SOURCE);
       if (!ctx.map.getLayer(ARROW_LAYER)) {
         // The wave field already encodes height by color, so the direction arrows take one flat
         // per-theme color (recolored in applyTheme) rather than the wind overlay's data-driven,
@@ -73,15 +66,12 @@ export function createWavesOverlay(store: WeatherStore, makeCanvas?: CanvasFacto
     },
     reset() {
       field.reset?.();
-      lastGrid = undefined;
-      lastTime = Number.NaN;
+      gate.reset();
     },
     sync(ctx) {
       field.sync(ctx);
+      if (!gate.changed()) return;
       const grid = store.grid;
-      if (grid === lastGrid && store.selectedTime === lastTime) return;
-      lastGrid = grid;
-      lastTime = store.selectedTime;
       setSourceData(
         ctx.map,
         ARROW_SOURCE,

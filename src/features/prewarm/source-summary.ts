@@ -10,6 +10,7 @@ import { STREAMING_CHART_SOURCES } from '$features/depth-charts';
 import { CATEGORY_ORDER, CATEGORY_TITLES } from '$features/layers-panel';
 import { MPA_SOURCES } from '$features/mpa-overlays';
 import { SEAMARK_SOURCES } from '$features/seamark-overlay';
+import { capitalize } from '$shared/lib';
 
 interface SourceMeta {
   category: string;
@@ -141,6 +142,5 @@ export function includedSummary(selected: ChartSource[]): string {
     if (noun !== undefined && !nouns.includes(noun)) nouns.push(noun);
   }
   if (nouns.length === 0) return 'Nothing yet. Pick at least one chart layer below.';
-  const sentence = joinPlain(nouns);
-  return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
+  return `${capitalize(joinPlain(nouns))}.`;
 }

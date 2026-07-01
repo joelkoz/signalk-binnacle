@@ -9,6 +9,7 @@ import { categoryRank, POI_CATEGORIES, poiIconId } from '$entities/poi-icons';
 import {
   DARK_SCRIM,
   emptyFeatureCollection,
+  ensureGeoJsonSource,
   type MapThemePaint,
   removeLayersAndSources,
   rgbaCss,
@@ -81,9 +82,7 @@ export function addNoteLayers(
     };
     map.addSource(SOURCE_ID, source);
   }
-  if (!map.getSource(SELECT_SOURCE)) {
-    map.addSource(SELECT_SOURCE, { type: 'geojson', data: emptyFeatureCollection() });
-  }
+  ensureGeoJsonSource(map, SELECT_SOURCE);
 
   // Selection ring sits below the markers so the icon draws on top of it; a dark casing ring below
   // it (a wider stroke at the same radius) gives the amber ring contrast on light day water.

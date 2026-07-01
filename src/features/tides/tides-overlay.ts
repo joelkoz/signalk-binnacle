@@ -1,14 +1,10 @@
-import type {
-  CircleLayerSpecification,
-  GeoJSONSourceSpecification,
-  SymbolLayerSpecification,
-} from 'maplibre-gl';
+import type { CircleLayerSpecification, SymbolLayerSpecification } from 'maplibre-gl';
 import type { CurrentReading, TideReading, TidesStore } from '$entities/tides';
 import type { UnitsStore } from '$entities/units';
 import { latLonToLonLat } from '$shared/geo';
 import { formatClockTime, MINUTE_MS, type UnitsMode } from '$shared/lib';
 import {
-  emptyFeatureCollection,
+  ensureGeoJsonSource,
   featureCollection,
   mapThemePaint,
   type OverlayContext,
@@ -113,13 +109,7 @@ export function createTidesOverlay(store: TidesStore, units: UnitsStore): TidesO
     add(ctx) {
       const paint = mapThemePaint(theme);
       const before = ctx.beforeIdFor('safety');
-      if (!ctx.map.getSource(SOURCE_ID)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(SOURCE_ID, source);
-      }
+      ensureGeoJsonSource(ctx.map, SOURCE_ID);
 
       const circle: CircleLayerSpecification = {
         id: CIRCLE_LAYER,

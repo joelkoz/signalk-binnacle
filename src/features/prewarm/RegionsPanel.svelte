@@ -11,7 +11,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { CHART_SOURCES } from 'signalk-chart-sources';
 import { onDestroy } from 'svelte';
 import type { UnitsStore } from '$entities/units';
-import { feetToMeters, lengthUnit, metersToFeet } from '$shared/lib';
+import { clampInt, feetToMeters, lengthUnit, metersToFeet } from '$shared/lib';
 import type { AuthController } from '$shared/signalk';
 import {
   Disclosure,
@@ -26,9 +26,9 @@ import {
 import { defaultSelection } from './area-defaults.js';
 import { DETAIL_PRESETS, presetForRange, rangeForPreset } from './detail-level.js';
 import {
-  canDownloadRegion,
   coveringSources,
   estimateBytes,
+  exceedsRegionsFree,
   formatBySource,
   formatBytes,
   isTerminal,
@@ -131,29 +131,28 @@ let positionSources = $state<string[]>([]);
 // Length display unit follows the server unit preference, same as the anchor watch panel.
 const mode = $derived(units.mode);
 const unit = $derived(lengthUnit(mode));
-const positionRadiusDisplay = $derived(
-  Math.round(
-    mode === 'imperial' ? (metersToFeet(positionRadiusMeters) ?? 0) : positionRadiusMeters,
-  ),
-);
-const positionMoveDisplay = $derived(
-  Math.round(
-    mode === 'imperial'
-      ? (metersToFeet(positionMoveThresholdMeters) ?? 0)
-      : positionMoveThresholdMeters,
-  ),
-);
+// The length fields display feet in imperial and meters otherwise, storing SI meters; these two
+// closures convert each way through the current mode so the radius and move fields share one rule.
+function toDisplayLength(meters: number): number {
+  return Math.round(mode === 'imperial' ? (metersToFeet(meters) ?? 0) : meters);
+}
+function fromDisplayLength(entered: number): number {
+  return mode === 'imperial' ? (feetToMeters(entered) ?? entered) : entered;
+}
+const positionRadiusDisplay = $derived(toDisplayLength(positionRadiusMeters));
+const positionMoveDisplay = $derived(toDisplayLength(positionMoveThresholdMeters));
 
 // Only the sources that cover the current box show; a global source (no bounds) always covers a
 // non-empty box, and the style basemap is already excluded.
 const sourceList = $derived(coveringSources(bbox ?? WORLD_BBOX, [minzoom, maxzoom]));
+// The selected ids as a Set for O(1) membership in the derived filters and the checklist rows.
+const selectedSet = $derived(new Set(selectedSources));
+const positionSet = $derived(new Set(positionSources));
 // The selected ids restricted to what is currently shown, so a zoom change that drops a source from
 // the list never carries a stale id into the estimate or the request.
-const activeSourceIds = $derived(
-  sourceList.filter((s) => selectedSources.includes(s.id)).map((s) => s.id),
-);
+const activeSourceIds = $derived(sourceList.filter((s) => selectedSet.has(s.id)).map((s) => s.id));
 // The selected covering sources as objects, for the plain "what is included" sentence.
-const selectedObjects = $derived(sourceList.filter((s) => selectedSources.includes(s.id)));
+const selectedObjects = $derived(sourceList.filter((s) => selectedSet.has(s.id)));
 const includedText = $derived(includedSummary(selectedObjects));
 // The covering sources grouped by plain category for the Customize checklist (facets hidden).
 const sourceGroups = $derived(coveringGroups(sourceList));
@@ -164,24 +163,26 @@ function applyDetailPreset(key: 'overview' | 'coastal' | 'harbor'): void {
   [minzoom, maxzoom] = rangeForPreset(key);
 }
 
-const gate = $derived(
-  stats !== null &&
-    !namePrep &&
-    canDownloadRegion({
-      bbox,
-      sources: activeSourceIds,
-      writeBlocked: auth.writeBlocked,
-      stats,
-      zoomRange: [minzoom, maxzoom],
-    }),
-);
-
+// The estimated download size, computed once and fed to both the size row and the gate so
+// estimateBytes runs a single time per change rather than once here and again inside the gate.
 const estimateVal = $derived(
   stats !== null && bbox !== null && activeSourceIds.length > 0
     ? estimateBytes(activeSourceIds, bbox, [minzoom, maxzoom], stats.perSourceAvgBytes)
     : 0,
 );
 const estimateFmt = $derived(formatBytes(estimateVal));
+
+// Download is enabled only with a box drawn, at least one source picked, write access, storage that
+// still holds the estimate, and no name prompt open. Mirrors canDownloadRegion (shared with its
+// test) but reuses estimateVal rather than re-running the estimate.
+const gate = $derived(
+  stats !== null &&
+    !namePrep &&
+    bbox !== null &&
+    activeSourceIds.length > 0 &&
+    !auth.writeBlocked &&
+    !exceedsRegionsFree(estimateVal, stats),
+);
 const regionsFreeFmt = $derived(stats !== null ? formatBytes(regionsFreeBytes(stats)) : null);
 const pinnedFmt = $derived(stats !== null ? formatBytes(stats.pinnedBytes ?? 0) : null);
 const scrollFmt = $derived(stats !== null ? formatBytes(stats.scrollBytes ?? 0) : null);
@@ -267,20 +268,18 @@ async function savePositionWarm(): Promise<void> {
 }
 
 function commitPositionRadius(entered: number): void {
-  const meters = mode === 'imperial' ? (feetToMeters(entered) ?? entered) : entered;
-  positionRadiusMeters = Math.max(1, meters);
+  positionRadiusMeters = Math.max(1, fromDisplayLength(entered));
   void savePositionWarm();
 }
 
 function commitMoveThreshold(entered: number): void {
-  const meters = mode === 'imperial' ? (feetToMeters(entered) ?? entered) : entered;
-  positionMoveThresholdMeters = Math.max(1, meters);
+  positionMoveThresholdMeters = Math.max(1, fromDisplayLength(entered));
   void savePositionWarm();
 }
 
 function commitTtlDays(entered: number): void {
   if (auth.writeBlocked) return;
-  ttlDays = Math.round(Math.max(0, Math.min(entered, 365)));
+  ttlDays = clampInt(entered, 0, 365);
   void client.setCacheConfig(ttlDays).catch(() => {});
 }
 
@@ -484,26 +483,24 @@ async function deleteRegion(id: string): Promise<void> {
   }
 }
 
-function toggleSource(id: string, on: boolean): void {
-  selectedSources = on ? [...selectedSources, id] : selectedSources.filter((s) => s !== id);
+// Add or remove an id from a selection list, returning a fresh array for the reactive assignment.
+function toggleId(list: string[], id: string, on: boolean): string[] {
+  return on ? [...list, id] : list.filter((x) => x !== id);
 }
 
-const STATUS_LABELS: Record<SavedRegionDto['status'], string> = {
-  downloading: 'Saving...',
-  ready: 'Saved, works offline',
-  capped: 'Storage full, some left out',
-  error: 'Could not finish',
-  'needs-redownload': 'Out of date, download again',
-};
+function toggleSource(id: string, on: boolean): void {
+  selectedSources = toggleId(selectedSources, id, on);
+}
 
-// Severity coloring for the status caps label so a failed or capped region reads at a glance. The
-// sev-* classes live in text.css; an empty string leaves the plain muted caps label.
-const STATUS_SEVERITY: Record<SavedRegionDto['status'], string> = {
-  downloading: '',
-  ready: '',
-  capped: 'sev-warning',
-  error: 'sev-danger',
-  'needs-redownload': 'sev-warning',
+// The plain status label and its severity coloring, keyed by region status. The sev-* classes live
+// in text.css; an empty severity leaves the plain muted caps label, so a failed or capped region
+// reads at a glance while a normal one stays quiet.
+const STATUS_META: Record<SavedRegionDto['status'], { label: string; severity: string }> = {
+  downloading: { label: 'Saving...', severity: '' },
+  ready: { label: 'Saved, works offline', severity: '' },
+  capped: { label: 'Storage full, some left out', severity: 'sev-warning' },
+  error: { label: 'Could not finish', severity: 'sev-danger' },
+  'needs-redownload': { label: 'Out of date, download again', severity: 'sev-warning' },
 };
 
 function updatedLabel(ts: number): string {
@@ -568,8 +565,8 @@ function chartLabel(id: string): string {
             {@const cached = formatBytes(savedBytes)}
             <div class="card-head">
               <span class="name" title={region.name}>{region.name}</span>
-              <span class="caps-label {STATUS_SEVERITY[region.status]}">
-                {STATUS_LABELS[region.status]}
+              <span class="caps-label {STATUS_META[region.status].severity}">
+                {STATUS_META[region.status].label}
               </span>
             </div>
             <dl class="card-stats">
@@ -701,7 +698,7 @@ function chartLabel(id: string): string {
                     ? 'Base map: land, roads, and place names'
                     : source.title}
                   description={sourceDescription(source.id)}
-                  visible={selectedSources.includes(source.id)}
+                  visible={selectedSet.has(source.id)}
                   disabled={auth.writeBlocked}
                   onToggle={(on) => toggleSource(source.id, on)}
                 />
@@ -733,7 +730,7 @@ function chartLabel(id: string): string {
           max={maxzoom}
           step={1}
           onCommit={(v) => {
-            minzoom = Math.round(Math.max(0, Math.min(v, maxzoom)));
+            minzoom = clampInt(v, 0, maxzoom);
           }}
         />
         <UnitField
@@ -743,7 +740,7 @@ function chartLabel(id: string): string {
           max={22}
           step={1}
           onCommit={(v) => {
-            maxzoom = Math.round(Math.max(minzoom, Math.min(v, 22)));
+            maxzoom = clampInt(v, minzoom, 22);
           }}
         />
       </Disclosure>
@@ -901,12 +898,10 @@ function chartLabel(id: string): string {
             <LayerToggle
               title={source.title}
               description={sourceDescription(source.id)}
-              visible={positionSources.includes(source.id)}
+              visible={positionSet.has(source.id)}
               disabled={auth.writeBlocked}
               onToggle={(on) => {
-                positionSources = on
-                  ? [...positionSources, source.id]
-                  : positionSources.filter((s) => s !== source.id);
+                positionSources = toggleId(positionSources, source.id, on);
                 void savePositionWarm();
               }}
             />
@@ -955,7 +950,7 @@ function chartLabel(id: string): string {
           step={1}
           disabled={!positionEnabled || auth.writeBlocked}
           onCommit={(v) => {
-            positionBaseZoom = Math.round(Math.max(0, Math.min(v, 22)));
+            positionBaseZoom = clampInt(v, 0, 22);
             void savePositionWarm();
           }}
         />

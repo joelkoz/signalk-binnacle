@@ -25,16 +25,26 @@ export function compareOptionalNumber(
   return dir === 'asc' ? av - bv : bv - av;
 }
 
-// The item whose time is nearest the target, skipping items with a NaN time. One scan shared by
-// the nearest-forecast-step, nearest-grid-time, and latest-observation lookups.
+// Round v to the nearest integer within the inclusive range [lo, hi]. Shared so the numeric inputs
+// that must land on a whole value inside a bound clamp and round in one place.
+export function clampInt(v: number, lo: number, hi: number): number {
+  return Math.round(Math.max(lo, Math.min(v, hi)));
+}
+
+// The item whose time is nearest the target, skipping items with a NaN time. An optional predicate
+// filters candidates first, so a caller can restrict the scan (a positioned sample, say) without a
+// separate pass. One scan shared by the nearest-forecast-step, nearest-grid-time, and
+// latest-observation lookups.
 export function nearestBy<T>(
   items: readonly T[],
   toMs: (item: T) => number,
   targetMs: number,
+  predicate?: (item: T) => boolean,
 ): T | undefined {
   let best: T | undefined;
   let bestGap = Number.POSITIVE_INFINITY;
   for (const item of items) {
+    if (predicate && !predicate(item)) continue;
     const t = toMs(item);
     if (Number.isNaN(t)) continue;
     const gap = Math.abs(t - targetMs);

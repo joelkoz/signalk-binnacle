@@ -14,7 +14,13 @@ interface Props {
   // :global block in its own scoped style. The primitive adds no position: relative or
   // container-type, so it never inserts a containing block between the consumer and its ancestor.
   surfaceClass?: string;
+  // Optional inline style forwarded onto the surface, for a consumer that positions the menu
+  // dynamically (the chart context menu clamps to the press point) rather than via a static class.
+  surfaceStyle?: string;
   ariaLabel?: string;
+  // The surface role, 'group' by default; a true menu passes 'menu' so its role="menuitem" rows
+  // are exposed as a menu rather than a generic group.
+  role?: string;
   id?: string;
   // Optional ref binding and keyboard handler forwarded to the surface element, so consumers
   // that need arrow-key navigation can attach their handler without wrapping the content in an
@@ -29,7 +35,9 @@ let {
   onClose,
   backdropLabel,
   surfaceClass,
+  surfaceStyle,
   ariaLabel,
+  role = 'group',
   id,
   surfaceRef = $bindable(),
   onKeydown,
@@ -54,10 +62,13 @@ $effect(() => {
     aria-label={backdropLabel}
     onclick={onClose}
   ></button>
+  <!-- biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is a prop (group by default, menu for
+       context menus); both support aria-label, but biome cannot resolve the dynamic role statically. -->
   <div
     class={surfaceClass ? `anchored-menu-surface ${surfaceClass}` : 'anchored-menu-surface'}
-    role="group"
+    {role}
     aria-label={ariaLabel}
+    style={surfaceStyle}
     {id}
     bind:this={surfaceRef}
     use:onKeydownAction={onKeydown}

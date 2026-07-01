@@ -2,11 +2,18 @@ export function serverOrigin(): string {
   return `${location.protocol}//${location.host}`;
 }
 
+// Append one `key=value` query parameter to a URL, choosing `?` or `&` by whether the URL already
+// carries a query. The value is percent-encoded; the key is assumed already safe. Shared by the token
+// and subscribe parameters so the separator choice lives in one place.
+export function appendQuery(url: string, key: string, value: string): string {
+  return `${url}${url.includes('?') ? '&' : '?'}${key}=${encodeURIComponent(value)}`;
+}
+
 // Append the device token as a query parameter, the only header-free form a browser WebSocket handshake
 // can carry that this server actually authenticates (the subprotocol form does not: see the note below).
 // Shared by the delta stream and the radar spoke stream so the idiom lives in one place.
 export function appendToken(url: string, token: string): string {
-  return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
+  return appendQuery(url, 'token', token);
 }
 
 // The stream URL, optionally carrying the auth token as a query parameter.
@@ -22,7 +29,7 @@ export function appendToken(url: string, token: string): string {
 // own server over the LAN, the token is a device token scoped to read, and the URL is
 // not sent to any third party. To harden, serve Signal K over TLS (wss) so the URL is
 // encrypted in transit, and keep the server's access logs off or scrubbed of `token`.
-// The connection appends `subscribe=none` via withQuery, so this only adds the token.
+// The connection appends `subscribe=none` via appendQuery, so this only adds the token.
 export function streamUrl(token?: string): string {
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const base = `${scheme}//${location.host}/signalk/v1/stream`;

@@ -13,9 +13,8 @@ import { pickForecast, tendencyText as tendencyTextFor } from './forecast-series
 import { createPointConditionsLoader, type PointConditionsLoader } from './point-conditions';
 import {
   conditionsFromSignalK,
-  NEAR_NOW_MS,
-  nearestInTimeBounded,
   type PointConditions,
+  pickProviderEntry,
   type SignalKWeatherData,
   type WeatherWarning,
 } from './signalk-weather';
@@ -134,14 +133,10 @@ const targetMs = $derived(store.grid ? store.selectedTime : clock.now);
 const providerCurrent = $derived.by<{ cond: PointConditions; observed: boolean } | undefined>(
   () => {
     if (!providerName) return undefined;
-    if (Math.abs(targetMs - clock.now) < NEAR_NOW_MS && obsData) {
-      return { cond: conditionsFromSignalK(obsData), observed: true };
-    }
-    if (seriesData) {
-      const step = nearestInTimeBounded(seriesData, targetMs);
-      if (step) return { cond: conditionsFromSignalK(step), observed: false };
-    }
-    return undefined;
+    const picked = pickProviderEntry(obsData, seriesData, targetMs, clock.now);
+    return picked
+      ? { cond: conditionsFromSignalK(picked.entry), observed: picked.observed }
+      : undefined;
   },
 );
 

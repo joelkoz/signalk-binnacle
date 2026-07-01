@@ -14,3 +14,10 @@ export function quantizeCellDeg(v: number): string {
 export function quantizeLatLonKey(pos: LatLon, decimals = 3): string {
   return `${pos.latitude.toFixed(decimals)},${pos.longitude.toFixed(decimals)}`;
 }
+
+// The inverse of quantizeLatLonKey: a "lat,lon" key back to its numbers, for a caller that keys a
+// cache by the string and later needs the position it stood for.
+export function parseLatLonKey(key: string): { lat: number; lon: number } {
+  const [lat, lon] = key.split(',').map(Number);
+  return { lat, lon };
+}

@@ -8,6 +8,7 @@ import {
 } from '$entities/route';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSources,
   featureCollection,
   type MapThemePaint,
   mapThemePaint,
@@ -71,13 +72,7 @@ export function createWorkingRouteOverlay(
       lastHighlight = undefined;
       ctxRef = ctx;
       const before = ctx.beforeIdFor(BAND);
-      // Each source gets its own empty collection rather than one shared spec literal, so the three
-      // never alias a single initial data object.
-      for (const src of [WPT_SRC, HL_SEG_SRC, HL_DOT_SRC]) {
-        if (!ctx.map.getSource(src)) {
-          ctx.map.addSource(src, { type: 'geojson', data: emptyFeatureCollection() });
-        }
-      }
+      ensureGeoJsonSources(ctx.map, [WPT_SRC, HL_SEG_SRC, HL_DOT_SRC]);
       if (!ctx.map.getLayer(WPT_LAYER)) {
         ctx.map.addLayer(waypointCircleLayer(WPT_LAYER, WPT_SRC, paint), before);
       }

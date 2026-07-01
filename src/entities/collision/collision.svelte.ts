@@ -178,8 +178,10 @@ export class CollisionAssessment {
 
   // The worst-contact signature (id and severity) that was acknowledged. The alert is
   // suppressed only while the current worst contact still matches it, so a new or more
-  // severe contact re-arms the alert automatically. Full mute lifecycle is Lookout step 4.
-  #ackSignature = $state<string | null>(null);
+  // severe contact re-arms the alert automatically. Held as fields rather than a joined
+  // string so suppressed, read every animation frame, allocates nothing. Full mute
+  // lifecycle is Lookout step 4.
+  #ackSignature = $state<{ id: string; severity: ActiveSeverity } | null>(null);
 
   // Set during the assessment recompute when the situation goes all-clear, so the same vessel
   // re-approaching later at the same severity is a new event, never auto-suppressed by a stale
@@ -244,8 +246,15 @@ export class CollisionAssessment {
   // True when the current worst contact has been acknowledged and has not since changed or
   // gone clear in between.
   get suppressed(): boolean {
-    const sig = this.#signature();
-    return sig !== null && !this.#ackExpired && sig === this.#ackSignature;
+    const top = this.#topContact;
+    const ack = this.#ackSignature;
+    return (
+      top !== undefined &&
+      ack !== null &&
+      !this.#ackExpired &&
+      top.id === ack.id &&
+      top.severity === ack.severity
+    );
   }
 
   // True when the worst contact is inside the hard inner ring: close enough and imminent enough that
@@ -262,15 +271,11 @@ export class CollisionAssessment {
 
   acknowledge(): void {
     this.#ackExpired = false;
-    this.#ackSignature = this.#signature();
+    const top = this.#topContact;
+    this.#ackSignature = top ? { id: top.id, severity: top.severity } : null;
   }
 
   get #topContact(): DangerContact | undefined {
     return this.#assessment.contacts[0];
-  }
-
-  #signature(): string | null {
-    const top = this.#topContact;
-    return top ? `${top.id}:${top.severity}` : null;
   }
 }

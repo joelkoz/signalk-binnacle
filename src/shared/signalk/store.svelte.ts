@@ -1,5 +1,5 @@
 import type { AisTargetState, ConnectionState, SKFrame, Value } from './types';
-import { INITIAL_CONNECTION_STATE, NOTIFICATIONS_PREFIX } from './types';
+import { INITIAL_CONNECTION_STATE, NOTIFICATIONS_PREFIX, notificationState } from './types';
 
 // The four v2 status flags the alert list renders, so the notification dedup compares them field by
 // field; serializing the status object would allocate per delta for active alarms. canClear is
@@ -57,6 +57,14 @@ export class SignalKStore {
     return cell;
   }
 
+  // Pre-create the cells a consumer reads. cell() creates a PathCell lazily on first access; if that
+  // first access is a reactive template read, the freshly created $state source is not tracked and
+  // later updates do not re-render. Pre-creating the fixed path set at construction means every read
+  // finds an existing, tracked cell.
+  ensureCells(paths: readonly string[]): void {
+    for (const path of paths) this.cell(path);
+  }
+
   applyFrame(frame: SKFrame): void {
     if (!this.selfContext && frame.selfContext) this.selfContext = frame.selfContext;
     for (const [path, value] of frame.self) {
@@ -91,8 +99,7 @@ export class SignalKStore {
   // A null value or one without a state string is a cleared notification (raw v1 producers
   // publish null to clear); it leaves the mirror so only raised notifications are listed.
   #mirrorNotification(path: string, value: Value): void {
-    const state =
-      value && typeof value === 'object' ? (value as { state?: unknown }).state : undefined;
+    const state = notificationState(value);
     // A cleared, normal, or nominal notification leaves the mirror rather than accumulating in
     // it: the alert list only ever shows raised states, and servers can republish normal-state
     // values every cycle for telemetry paths under notifications.*.

@@ -13,6 +13,7 @@ import type { OwnVessel } from '$entities/vessel';
 import { type LatLon, latLonToLonLat } from '$shared/geo';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSources,
   featureCollection,
   type MapThemePaint,
   mapThemePaint,
@@ -130,11 +131,7 @@ export function createAnchorOverlay(
     add(ctx) {
       const { map } = ctx;
       const before = ctx.beforeIdFor(BAND);
-      for (const id of [SHAPE_SRC, POINT_SRC]) {
-        if (!map.getSource(id)) {
-          map.addSource(id, { type: 'geojson', data: emptyFeatureCollection() });
-        }
-      }
+      ensureGeoJsonSources(map, [SHAPE_SRC, POINT_SRC]);
       if (!map.getLayer(FILL_LAYER)) {
         const layer: FillLayerSpecification = {
           id: FILL_LAYER,

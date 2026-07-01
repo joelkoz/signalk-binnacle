@@ -38,6 +38,19 @@ export interface HistoryQuery {
   provider?: string;
 }
 
+// The column index for a path, method-aware. When a method is given, prefer the exact
+// path-plus-method column (duplicate paths with different aggregates are legal in one query), then
+// fall back to the first column matching the path alone for a provider that omits the method echo.
+// Returns -1 when nothing matches. Shared by the trends, time-travel, and history-track readers so the
+// column lookup lives in one place.
+export function columnIndex(values: HistoryValues, path: string, method?: string): number {
+  if (method !== undefined) {
+    const exact = values.columns.findIndex((c) => c.path === path && c.method === method);
+    if (exact >= 0) return exact;
+  }
+  return values.columns.findIndex((c) => c.path === path);
+}
+
 export async function fetchHistoryProviders(
   base: string,
   token?: string,
@@ -108,7 +121,7 @@ export async function fetchHistoryValuesAcrossProviders(
   for (const provider of providers.ids.length > 0 ? providers.ids : [undefined]) {
     const values = await fetchHistoryValues(base, token, { ...query, provider });
     if (!values) continue;
-    if (values.rows.some((row) => row.slice(1).some((cell) => cell != null))) {
+    if (values.rows.some((row) => row.some((cell, i) => i > 0 && cell != null))) {
       return { values, provider };
     }
     first ??= { values, provider };

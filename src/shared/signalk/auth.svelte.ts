@@ -36,6 +36,53 @@ function newClientId(): string {
   return `binnacle-${short}`;
 }
 
+// One bounded access-request poll loop: owns the poll href, the attempt counter, and the scheduled
+// flag for a single flow, so the initial-access and read/write-upgrade flows share one cadence instead
+// of two parallel copies. schedule() books the next tick after pollMs unless the loop is already
+// scheduled, is inactive (isActive), or has reached MAX_POLL_ATTEMPTS (then onExhausted fires). Each
+// flow supplies only its active check, its exhausted handler, and the task to run per tick.
+class AccessRequestPoll {
+  href?: string;
+  #attempts = 0;
+  #scheduled = false;
+  #schedule: (run: () => void, ms: number) => void;
+  #pollMs: number;
+  #isActive: () => boolean;
+  #onExhausted: () => void;
+
+  constructor(
+    schedule: (run: () => void, ms: number) => void,
+    pollMs: number,
+    isActive: () => boolean,
+    onExhausted: () => void,
+  ) {
+    this.#schedule = schedule;
+    this.#pollMs = pollMs;
+    this.#isActive = isActive;
+    this.#onExhausted = onExhausted;
+  }
+
+  // Restart the attempt budget once a fresh request lands, so an approval that arrives after an earlier
+  // stalled request still has the full window.
+  reset(): void {
+    this.#attempts = 0;
+  }
+
+  schedule(task: () => void): void {
+    if (this.#scheduled || !this.#isActive()) return;
+    if (this.#attempts >= MAX_POLL_ATTEMPTS) {
+      this.#onExhausted();
+      return;
+    }
+    this.#attempts += 1;
+    this.#scheduled = true;
+    this.#schedule(() => {
+      this.#scheduled = false;
+      task();
+    }, this.#pollMs);
+  }
+}
+
 export class AuthController {
   status = $state<AuthStatus>('unknown');
   token = $state<string | null>(null);
@@ -51,22 +98,39 @@ export class AuthController {
   #schedule: (run: () => void, ms: number) => void;
   #pollMs: number;
   #identity: PersistedValue<AuthIdentity>;
-  #href?: string;
   #stopped = false;
-  #pollAttempts = 0;
-  #pollScheduled = false;
   #checking = false;
   #watching = false;
-  #upgradeHref?: string;
   #upgradeClientId?: string;
-  #upgradeAttempts = 0;
-  #upgradeScheduled = false;
+  // One poll loop per flow: the initial access request and the read/write upgrade. Each owns its href,
+  // attempt budget, and scheduled flag; the shared driver keeps the cadence identical across both.
+  #accessPoll: AccessRequestPoll;
+  #upgradePoll: AccessRequestPoll;
 
   constructor(base: string, opts: AuthOptions = {}) {
     this.#base = base;
     this.#fetch = opts.fetch ?? globalThis.fetch.bind(globalThis);
     this.#schedule = opts.schedule ?? ((run, ms) => void setTimeout(run, ms));
     this.#pollMs = opts.pollMs ?? 3000;
+    // The initial-access poll stays live until a token is granted; exhausting its budget denies the
+    // request. It does not gate on an href, so a POST that failed in transit can retry on the cadence
+    // before any href exists.
+    this.#accessPoll = new AccessRequestPoll(
+      this.#schedule,
+      this.#pollMs,
+      () => !this.#stopped && this.status !== 'authenticated',
+      () => {
+        this.status = 'denied';
+      },
+    );
+    // The upgrade poll runs only while an upgrade href is in flight; exhausting its budget ends the
+    // upgrade and leaves the live read token in place.
+    this.#upgradePoll = new AccessRequestPoll(
+      this.#schedule,
+      this.#pollMs,
+      () => !this.#stopped && this.#upgradePoll.href !== undefined,
+      () => this.#endUpgrade(),
+    );
     this.#identity = new PersistedValue<AuthIdentity>(
       STORAGE_KEY,
       { clientId: newClientId(), token: null },
@@ -173,31 +237,32 @@ export class AuthController {
     if (!ok) {
       // A failed POST (offline at startup) must not strand the request at 'requesting' forever: re-issue
       // it on the poll cadence, bounded by the attempt counter, which resets once a POST lands.
-      this.#schedulePoll(() => this.requestAccess());
+      this.#accessPoll.schedule(() => void this.requestAccess());
       return;
     }
-    this.#pollAttempts = 0;
-    this.#href = href;
+    this.#accessPoll.reset();
+    this.#accessPoll.href = href;
     if (!href) {
       this.status = 'denied';
       return;
     }
-    this.#schedulePoll();
+    this.#accessPoll.schedule(() => void this.checkRequest());
   }
 
   async checkRequest(): Promise<void> {
     // Skip if a check is already in flight: a tab return fires focus and visibilitychange together,
     // and a manual recheck can overlap the scheduled poll, so one guard avoids duplicate fetches.
-    if (this.#checking || !this.#href || this.status === 'authenticated') return;
+    const href = this.#accessPoll.href;
+    if (this.#checking || !href || this.status === 'authenticated') return;
     this.#checking = true;
     try {
-      const result = await this.#pollAccessRequest(this.#href);
+      const result = await this.#pollAccessRequest(href);
       if (result === 'gone') {
         // The request expired or was cleared server-side; start a fresh one rather than poll a dead
         // href forever (which left the first tab stuck until the user opened a new one).
         await this.requestAccess();
       } else if (result === 'pending') {
-        this.#schedulePoll();
+        this.#accessPoll.schedule(() => void this.checkRequest());
       } else if (result === 'denied') {
         this.status = 'denied';
       } else {
@@ -252,26 +317,27 @@ export class AuthController {
   async requestWriteAccess(): Promise<void> {
     if (this.upgrading) return;
     // Set the upgrade client id before the reactive flag so the banner names it on first render.
-    this.#upgradeAttempts = 0;
+    this.#upgradePoll.reset();
     this.#upgradeClientId = newClientId();
     this.upgrading = true;
     const { href } = await this.#postAccessRequest(
       this.#upgradeClientId,
       'Binnacle Chartplotter (read/write)',
     );
-    this.#upgradeHref = href;
+    this.#upgradePoll.href = href;
     if (!href) {
       this.upgrading = false;
       return;
     }
-    this.#scheduleUpgradePoll();
+    this.#upgradePoll.schedule(() => void this.checkUpgrade());
   }
 
   async checkUpgrade(): Promise<void> {
-    if (!this.#upgradeHref) return;
-    const result = await this.#pollAccessRequest(this.#upgradeHref);
+    const href = this.#upgradePoll.href;
+    if (!href) return;
+    const result = await this.#pollAccessRequest(href);
     if (result === 'pending') {
-      this.#scheduleUpgradePoll();
+      this.#upgradePoll.schedule(() => void this.checkUpgrade());
       return;
     }
     // On approval adopt the new read/write identity wholesale; 'gone' and 'denied' just end the upgrade,
@@ -310,39 +376,9 @@ export class AuthController {
     }
   };
 
-  // Schedule the next poll tick. The default task checks the pending request; requestAccess
-  // passes itself as the task to retry a POST that failed in transit.
-  #schedulePoll(task?: () => Promise<void>): void {
-    if (this.#stopped || this.#pollScheduled || this.status === 'authenticated') return;
-    if (this.#pollAttempts >= MAX_POLL_ATTEMPTS) {
-      this.status = 'denied';
-      return;
-    }
-    this.#pollAttempts += 1;
-    this.#pollScheduled = true;
-    this.#schedule(() => {
-      this.#pollScheduled = false;
-      void (task ? task() : this.checkRequest());
-    }, this.#pollMs);
-  }
-
-  #scheduleUpgradePoll(): void {
-    if (this.#stopped || this.#upgradeScheduled || !this.#upgradeHref) return;
-    if (this.#upgradeAttempts >= MAX_POLL_ATTEMPTS) {
-      this.#endUpgrade();
-      return;
-    }
-    this.#upgradeAttempts += 1;
-    this.#upgradeScheduled = true;
-    this.#schedule(() => {
-      this.#upgradeScheduled = false;
-      void this.checkUpgrade();
-    }, this.#pollMs);
-  }
-
   #endUpgrade(): void {
     this.upgrading = false;
-    this.#upgradeHref = undefined;
+    this.#upgradePoll.href = undefined;
     this.#upgradeClientId = undefined;
   }
 

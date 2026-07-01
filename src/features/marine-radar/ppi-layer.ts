@@ -1,6 +1,5 @@
 import type {
   CustomLayerInterface,
-  GeoJSONSourceSpecification,
   LineLayerSpecification,
   Map as MapLibreMap,
   SymbolLayerSpecification,
@@ -10,10 +9,13 @@ import type { LatLon } from '$shared/geo';
 import { formatNm } from '$shared/lib';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSource,
   type MapThemePaint,
+  matrixOf,
   type OverlayContext,
   type OverlayModule,
   removeLayersAndSources,
+  setLayersVisibility,
   setSourceData,
 } from '$shared/map';
 import { DEFAULT_RADAR_LEGEND } from './legend';
@@ -51,13 +53,6 @@ function ringColor(theme: MapThemePaint['theme']): string {
 // green otherwise, brighter than the rings so the scanning edge stands out over the echo.
 function sweepColor(theme: MapThemePaint['theme']): [number, number, number] {
   return theme === 'night-red' ? [1, 0.2, 0.2] : [0.4, 1, 0.55];
-}
-
-function matrixOf(args: unknown): number[] {
-  if (Array.isArray(args)) return args;
-  const data = (args as { defaultProjectionData?: { mainMatrix?: number[] } })
-    .defaultProjectionData;
-  return data?.mainMatrix ?? [];
 }
 
 export interface PpiLayer extends OverlayModule {
@@ -197,10 +192,7 @@ export function createPpiLayer(
   }
 
   function addRings(ctx: OverlayContext): void {
-    if (!ctx.map.getSource(RINGS_SOURCE_ID)) {
-      const src: GeoJSONSourceSpecification = { type: 'geojson', data: emptyFeatureCollection() };
-      ctx.map.addSource(RINGS_SOURCE_ID, src);
-    }
+    ensureGeoJsonSource(ctx.map, RINGS_SOURCE_ID);
     if (!ctx.map.getLayer(RADAR_RINGS_LAYER_ID)) {
       const layer: LineLayerSpecification = {
         id: RADAR_RINGS_LAYER_ID,
@@ -319,11 +311,7 @@ export function createPpiLayer(
     },
     setVisible(ctx, value) {
       visible = value;
-      for (const id of [RADAR_RINGS_LAYER_ID, RADAR_RING_LABELS_LAYER_ID]) {
-        if (ctx.map.getLayer(id)) {
-          ctx.map.setLayoutProperty(id, 'visibility', value ? 'visible' : 'none');
-        }
-      }
+      setLayersVisibility(ctx.map, [RADAR_RINGS_LAYER_ID, RADAR_RING_LABELS_LAYER_ID], value);
       if (value) ctx.map.triggerRepaint();
     },
     setOpacity(ctx, value) {

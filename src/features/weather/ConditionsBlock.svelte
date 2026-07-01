@@ -15,7 +15,12 @@ import {
   temperatureUnit,
 } from '$shared/lib';
 import type { PointConditions } from './signalk-weather';
-import { formatWholeKnots, precipUnitLabel, RAIN_VISIBLE_MM_H } from './weather-readout';
+import {
+  DEGREES_TRUE_TITLE,
+  formatWholeKnots,
+  precipUnitLabel,
+  RAIN_VISIBLE_MM_H,
+} from './weather-readout';
 
 interface Props {
   current: PointConditions;
@@ -42,9 +47,7 @@ const validLabel = (timeMs: number): string => formatDayClock(timeMs, { zone: tr
     <dd>
       <b class="num">{formatWholeKnots(current.windMs)}</b>
       kn from
-      <span title="Degrees true, measured clockwise from true north"
-        >{formatBearingOr(current.fromRad)}&deg;T</span
-      >
+      <span title={DEGREES_TRUE_TITLE}>{formatBearingOr(current.fromRad)}&deg;T</span>
     </dd>
   </div>
   {#if current.gustMs !== undefined}
@@ -104,9 +107,7 @@ const validLabel = (timeMs: number): string => formatDayClock(timeMs, { zone: tr
         {/if}
         {#if fromRad !== undefined}
           from
-          <span title="Degrees true, measured clockwise from true north"
-            >{formatBearingOr(fromRad)}&deg;T</span
-          >
+          <span title={DEGREES_TRUE_TITLE}>{formatBearingOr(fromRad)}&deg;T</span>
         {/if}
       </dd>
     </div>

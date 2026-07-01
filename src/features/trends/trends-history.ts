@@ -1,5 +1,6 @@
 import { DAY_MS } from '$shared/lib';
 import {
+  columnIndex,
   fetchHistoryValuesAcrossProviders,
   type HistoryProviders,
   type HistoryValues,
@@ -39,12 +40,7 @@ export async function loadTrendHistory(
 function toSeries(values: HistoryValues): Map<TrendKey, TrendSeries> {
   const out = new Map<TrendKey, TrendSeries>();
   for (const metric of TREND_METRICS) {
-    // Duplicate paths with different aggregates are legal in one query, so prefer the full
-    // path-plus-method key; fall back to path alone for providers that omit the method echo.
-    const exact = values.columns.findIndex(
-      (c) => c.path === metric.path && c.method === metric.aggregate,
-    );
-    const column = exact >= 0 ? exact : values.columns.findIndex((c) => c.path === metric.path);
+    const column = columnIndex(values, metric.path, metric.aggregate);
     if (column < 0) {
       out.set(metric.key, { times: [], values: [] });
       continue;

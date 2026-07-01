@@ -4,7 +4,7 @@ export { downloadText } from './download';
 export { fetchJsonOrUndefined } from './fetch-json';
 export { withTimeout } from './fetch-timeout';
 export { uuidv4 } from './id';
-export { compareOptionalNumber, isFiniteNumber, lerp, nearestBy } from './math';
+export { clampInt, compareOptionalNumber, isFiniteNumber, lerp, nearestBy } from './math';
 export { prefersReducedMotion } from './motion';
 export { isRecord } from './object';
 export { capitalize } from './strings';

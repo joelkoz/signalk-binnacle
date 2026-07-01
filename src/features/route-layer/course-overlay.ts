@@ -6,6 +6,7 @@ import { latLonToLonLat as toLonLat } from '$shared/geo';
 import {
   DARK_SCRIM,
   emptyFeatureCollection,
+  ensureGeoJsonSources,
   featureCollection,
   type MapThemePaint,
   mapThemePaint,
@@ -35,12 +36,19 @@ export interface CourseOverlay extends OverlayModule {
 
 export function createCourseOverlay(guidance: CourseGuidance, vessel: OwnVessel): CourseOverlay {
   let paint: MapThemePaint = mapThemePaint('day');
-  // Dirty-check signature: "vesselLng,vesselLat|destLng,destLat" or "" for empty.
-  let lastSignature = '';
+  // Dirty-check state: the last drawn vessel and destination coordinates, compared numerically so the
+  // unchanged-frame path returns without allocating. NaN is the empty sentinel (no course drawn yet).
+  let lastVesselLng = Number.NaN;
+  let lastVesselLat = Number.NaN;
+  let lastDestLng = Number.NaN;
+  let lastDestLat = Number.NaN;
 
   function clearBoth(ctx: OverlayContext): void {
-    if (lastSignature === '') return;
-    lastSignature = '';
+    if (Number.isNaN(lastVesselLng)) return;
+    lastVesselLng = Number.NaN;
+    lastVesselLat = Number.NaN;
+    lastDestLng = Number.NaN;
+    lastDestLat = Number.NaN;
     for (const src of [LINE_SRC, POINT_SRC]) {
       setSourceData(ctx.map, src, emptyFeatureCollection());
     }
@@ -56,15 +64,13 @@ export function createCourseOverlay(guidance: CourseGuidance, vessel: OwnVessel)
     add(ctx) {
       // Reset the dirty-check so a reattach (after a base-style swap emptied the sources)
       // repopulates them on the next sync instead of staying blank.
-      lastSignature = '';
+      lastVesselLng = Number.NaN;
+      lastVesselLat = Number.NaN;
+      lastDestLng = Number.NaN;
+      lastDestLat = Number.NaN;
 
       const before = ctx.beforeIdFor(BAND);
-
-      for (const id of [LINE_SRC, POINT_SRC]) {
-        if (!ctx.map.getSource(id)) {
-          ctx.map.addSource(id, { type: 'geojson', data: emptyFeatureCollection() });
-        }
-      }
+      ensureGeoJsonSources(ctx.map, [LINE_SRC, POINT_SRC]);
 
       // Line first so it sits below the destination circle in the stack.
       if (!ctx.map.getLayer(LINE_LAYER)) {
@@ -110,11 +116,20 @@ export function createCourseOverlay(guidance: CourseGuidance, vessel: OwnVessel)
         return;
       }
 
-      // Build the signature from the raw fields so the common unchanged-frame path returns before
-      // allocating any coordinate arrays or feature objects.
-      const signature = `${pos.longitude},${pos.latitude}|${dest.longitude},${dest.latitude}`;
-      if (signature === lastSignature) return;
-      lastSignature = signature;
+      // Compare the raw fields so the common unchanged-frame path returns before allocating any
+      // coordinate arrays or feature objects.
+      if (
+        pos.longitude === lastVesselLng &&
+        pos.latitude === lastVesselLat &&
+        dest.longitude === lastDestLng &&
+        dest.latitude === lastDestLat
+      ) {
+        return;
+      }
+      lastVesselLng = pos.longitude;
+      lastVesselLat = pos.latitude;
+      lastDestLng = dest.longitude;
+      lastDestLat = dest.latitude;
 
       const vesselCoord = toLonLat(pos);
       const destCoord = toLonLat(dest);

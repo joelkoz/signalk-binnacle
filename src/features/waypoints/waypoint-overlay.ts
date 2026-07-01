@@ -1,7 +1,6 @@
 import type {
   CircleLayerSpecification,
   ExpressionSpecification,
-  GeoJSONSourceSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
 import { categoryForSkIcon, poiIconId, registerPoiIcons } from '$entities/poi-icons';
@@ -9,7 +8,7 @@ import { createOverlayIconResolver, type SymbolsStore } from '$entities/symbols'
 import type { Waypoint, WaypointsStore } from '$entities/waypoint';
 import { latLonToLonLat } from '$shared/geo';
 import {
-  emptyFeatureCollection,
+  ensureGeoJsonSource,
   featureCollection,
   iconOffsetExpression,
   type MapThemePaint,
@@ -17,6 +16,7 @@ import {
   type OverlayContext,
   type OverlayModule,
   removeLayersAndSources,
+  type Syncable,
   setLayersVisibility,
   setSourceData,
 } from '$shared/map';
@@ -27,9 +27,7 @@ const SYMBOL_MARKER_LAYER = 'binnacle-waypoint-symbol';
 const LABEL_LAYER = 'binnacle-waypoint-label';
 const BAND = 'routes';
 
-export interface WaypointOverlay extends OverlayModule {
-  sync(ctx: OverlayContext): void;
-}
+export interface WaypointOverlay extends OverlayModule, Syncable {}
 
 // Standalone waypoints. Each waypoint renders as a provided symbol when its icon resolves to one
 // (the Symbols API: an explicit `custom:`/`binnacle:` reference, or the `waypoint` built-in's
@@ -118,6 +116,13 @@ export function createWaypointOverlay(
     iconResolver.ensurePending(ctx.map, paint, () => redraw(ctx));
   }
 
+  // Invalidate the change-detection cache so the next sync repopulates from scratch. The manager
+  // calls this on a base-style swap, which recreates the source empty; add() calls it so a fresh
+  // add draws too.
+  function reset(): void {
+    lastVersion = -1;
+  }
+
   return {
     id: 'waypoints',
     title: 'Waypoints',
@@ -125,15 +130,9 @@ export function createWaypointOverlay(
     supportsOpacity: true,
     layerIds: layers,
     add(ctx) {
-      lastVersion = -1;
+      reset();
       const before = ctx.beforeIdFor(BAND);
-      if (!ctx.map.getSource(SOURCE_ID)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(SOURCE_ID, source);
-      }
+      ensureGeoJsonSource(ctx.map, SOURCE_ID);
       if (!ctx.map.getLayer(MARKER_LAYER)) {
         // The disc carries waypoints WITHOUT a provided symbol; the symbol layer carries the rest.
         const layer: CircleLayerSpecification = {
@@ -200,6 +199,7 @@ export function createWaypointOverlay(
       redraw(ctx);
       void registerPoiIcons(ctx.map, paint).then(() => redraw(ctx));
     },
+    reset,
     sync(ctx) {
       if (store.version === lastVersion) return;
       lastVersion = store.version;

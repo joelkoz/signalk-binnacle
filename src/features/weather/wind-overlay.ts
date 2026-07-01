@@ -1,7 +1,6 @@
 import type {
   CustomLayerInterface,
   ExpressionSpecification,
-  GeoJSONSourceSpecification,
   LineLayerSpecification,
   Map as MapLibreMap,
 } from 'maplibre-gl';
@@ -9,6 +8,8 @@ import type { WeatherStore } from '$entities/weather';
 import { prefersReducedMotion } from '$shared/lib';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSource,
+  matrixOf,
   type OverlayContext,
   type OverlayModule,
   removeLayersAndSources,
@@ -16,6 +17,7 @@ import {
 } from '$shared/map';
 import type { Theme } from '$shared/ui';
 import { WEATHER_LAYER_IDS } from './fills';
+import { gridTimeGate } from './grid-time-gate';
 import { windArrowFeatures } from './wind-arrows';
 import { windColorTexture } from './wind-color-texture';
 import { windColorExpression } from './wind-colormap';
@@ -34,15 +36,6 @@ const STEP_MS = 40;
 
 export interface WindOverlay extends OverlayModule {
   sync(ctx: OverlayContext): void;
-}
-
-// MapLibre 5 passes a render-args object carrying the projection matrix; older builds pass the
-// matrix directly. Accept both.
-function matrixOf(args: unknown): number[] {
-  if (Array.isArray(args)) return args;
-  const data = (args as { defaultProjectionData?: { mainMatrix?: number[] } })
-    .defaultProjectionData;
-  return data?.mainMatrix ?? [];
 }
 
 function sameMatrix(a: number[], b: number[]): boolean {
@@ -66,8 +59,7 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
   let theme: Theme = 'day';
   let opacity = 1;
   let visible = false;
-  let lastGrid: unknown;
-  let lastTime = Number.NaN;
+  const gate = gridTimeGate(store);
 
   // Particle path.
   let particles: WindParticles | undefined;
@@ -86,13 +78,7 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
   }
 
   function addArrowLayer(ctx: OverlayContext): void {
-    if (!ctx.map.getSource(SOURCE_ID)) {
-      const source: GeoJSONSourceSpecification = {
-        type: 'geojson',
-        data: emptyFeatureCollection(),
-      };
-      ctx.map.addSource(SOURCE_ID, source);
-    }
+    ensureGeoJsonSource(ctx.map, SOURCE_ID);
     if (!ctx.map.getLayer(LAYER_ID)) {
       const layer: LineLayerSpecification = {
         id: LAYER_ID,
@@ -229,14 +215,10 @@ export function createWindOverlay(store: WeatherStore): WindOverlay {
     reset() {
       // The manager calls this on a base-style swap; without it the arrow fallback stays blank when
       // the grid object is unchanged, the same hazard radar-overlay guards against.
-      lastGrid = undefined;
-      lastTime = Number.NaN;
+      gate.reset();
     },
     sync(ctx) {
-      const grid = store.grid;
-      if (grid === lastGrid && store.selectedTime === lastTime) return;
-      lastGrid = grid;
-      lastTime = store.selectedTime;
+      if (!gate.changed()) return;
       pushWind(); // a no-op without particles
       if (!particles && ctx.map.getLayer(LAYER_ID)) syncArrows(ctx);
     },

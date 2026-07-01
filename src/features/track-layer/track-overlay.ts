@@ -1,11 +1,8 @@
-import type {
-  ExpressionSpecification,
-  GeoJSONSourceSpecification,
-  LineLayerSpecification,
-} from 'maplibre-gl';
+import type { ExpressionSpecification, LineLayerSpecification } from 'maplibre-gl';
 import type { TrackPoint, TrackRecorder } from '$entities/track';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSources,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
@@ -153,16 +150,7 @@ export function createTrackOverlay(
       lastSavedVersion = -1;
       resetSimplification();
       const before = ctx.beforeIdFor(BAND);
-      const activeSrc: GeoJSONSourceSpecification = {
-        type: 'geojson',
-        data: emptyFeatureCollection(),
-      };
-      // Guard each add so a base-style reattach (which calls add() again) cannot throw "source
-      // already exists", matching every other overlay's add lifecycle.
-      if (!ctx.map.getSource(ACTIVE_SOURCE)) ctx.map.addSource(ACTIVE_SOURCE, activeSrc);
-      if (!ctx.map.getSource(SAVED_SOURCE)) {
-        ctx.map.addSource(SAVED_SOURCE, { type: 'geojson', data: emptyFeatureCollection() });
-      }
+      ensureGeoJsonSources(ctx.map, [ACTIVE_SOURCE, SAVED_SOURCE]);
       if (!ctx.map.getLayer(SAVED_LAYER)) {
         const savedLayer: LineLayerSpecification = {
           id: SAVED_LAYER,

@@ -1,6 +1,7 @@
-import type { CircleLayerSpecification, GeoJSONSourceSpecification } from 'maplibre-gl';
+import type { CircleLayerSpecification } from 'maplibre-gl';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSource,
   featureCollection,
   mapThemePaint,
   type OverlayContext,
@@ -49,13 +50,7 @@ export function createTimeTravelOverlay(store: TimeTravelStore): TimeTravelOverl
       lastActive = false;
       lastLon = undefined;
       lastLat = undefined;
-      if (!ctx.map.getSource(SOURCE_ID)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(SOURCE_ID, source);
-      }
+      ensureGeoJsonSource(ctx.map, SOURCE_ID);
       if (!ctx.map.getLayer(LAYER_ID)) {
         const layer: CircleLayerSpecification = {
           id: LAYER_ID,

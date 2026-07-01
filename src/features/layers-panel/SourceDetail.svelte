@@ -1,6 +1,7 @@
 <script lang="ts">
 import { Trash2 } from '@lucide/svelte';
 import type { UserChartSource, UserCharts } from '$entities/user-charts';
+import { formatBounds } from '$shared/geo';
 import { InlineConfirm, SubViewHeader, TextField } from '$shared/ui';
 import ChartSpecList from './ChartSpecList.svelte';
 import { chartSpecRows } from './chart-spec';
@@ -22,7 +23,7 @@ const specRows = $derived([
   spec.type,
   { label: 'Source', value: source.origin.url },
   spec.zoom,
-  { label: 'Bounds', value: fmtBounds(source.bounds) },
+  { label: 'Bounds', value: source.bounds ? formatBounds(source.bounds) : 'Unknown' },
 ]);
 
 // Seed the editable name from the source, re-syncing if it changes underneath. A fine-grained
@@ -35,12 +36,6 @@ $effect(() => {
 function saveName(): void {
   const trimmed = chartName.trim();
   if (trimmed && trimmed !== source.name) userCharts.rename(source.id, trimmed);
-}
-
-function fmtBounds(b: [number, number, number, number] | undefined): string {
-  if (!b) return 'Unknown';
-  const r = (n: number): string => n.toFixed(2);
-  return `${r(b[1])}, ${r(b[0])} to ${r(b[3])}, ${r(b[2])}`;
 }
 
 function doDelete(): void {

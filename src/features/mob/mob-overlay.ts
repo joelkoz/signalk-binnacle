@@ -1,6 +1,5 @@
 import type {
   CircleLayerSpecification,
-  GeoJSONSourceSpecification,
   LineLayerSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
@@ -9,11 +8,12 @@ import type { OwnVessel } from '$entities/vessel';
 import { type LatLon, latLonToLonLat } from '$shared/geo';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSource,
   featureCollection,
   mapThemePaint,
-  type OverlayContext,
   type OverlayModule,
   removeLayersAndSources,
+  type Syncable,
   setLayersVisibility,
   setSourceData,
 } from '$shared/map';
@@ -50,9 +50,7 @@ function features(mark: LatLon | undefined, vessel: LatLon | undefined): GeoJSON
   return featureCollection(out);
 }
 
-export interface MobOverlay extends OverlayModule {
-  sync(ctx: OverlayContext): void;
-}
+export interface MobOverlay extends OverlayModule, Syncable {}
 
 // The man-overboard mark: an alarm-colored marker labeled MOB and a straight line from the boat
 // back to it, the on-chart counterpart of the strip's bearing and range.
@@ -61,6 +59,13 @@ export function createMobOverlay(mob: MobStore, vessel: OwnVessel): MobOverlay {
   let lastMark: LatLon | undefined;
   let lastVessel: LatLon | undefined;
   let needsRedraw = false;
+
+  // Invalidate the change-detection cache so the next sync repopulates from scratch. The manager
+  // calls this on a base-style swap, which recreates the source empty; add() calls it so a fresh
+  // add draws too.
+  function reset(): void {
+    needsRedraw = true;
+  }
 
   return {
     id: MOB_OVERLAY_ID,
@@ -71,13 +76,7 @@ export function createMobOverlay(mob: MobStore, vessel: OwnVessel): MobOverlay {
     add(ctx) {
       const { map } = ctx;
       const before = ctx.beforeIdFor('vessel');
-      if (!map.getSource(SRC)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        map.addSource(SRC, source);
-      }
+      ensureGeoJsonSource(map, SRC);
       if (!map.getLayer(LINE_LAYER)) {
         const layer: LineLayerSpecification = {
           id: LINE_LAYER,
@@ -124,9 +123,9 @@ export function createMobOverlay(mob: MobStore, vessel: OwnVessel): MobOverlay {
         };
         map.addLayer(layer, before);
       }
-      // Force a redraw so a reattach after a base-style swap repopulates the emptied source.
-      needsRedraw = true;
+      reset();
     },
+    reset,
     sync(ctx) {
       const mark = mob.position;
       const boat = vessel.position;

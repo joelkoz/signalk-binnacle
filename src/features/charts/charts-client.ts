@@ -1,4 +1,4 @@
-import { isFiniteNumber } from '$shared/lib';
+import { isFiniteNumber, isRecord } from '$shared/lib';
 import type { SignalKChart } from '$shared/map';
 import { deleteResource, fetchKeyedResource, putResource } from '$shared/signalk';
 
@@ -10,7 +10,7 @@ const V1 = '/signalk/v1/api/resources/charts';
 // rendering, so it falls through here. The key stands in as identifier when the entry omits one.
 // bounds is validated (4 finite numbers) and dropped when malformed so a bad value never reaches fitBounds.
 function chartFromEntry(id: string, raw: unknown): SignalKChart | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
+  if (!isRecord(raw)) return undefined;
   const chart = raw as Partial<SignalKChart>;
   if (typeof chart.name !== 'string' || typeof chart.type !== 'string') return undefined;
   const identifier = typeof chart.identifier === 'string' ? chart.identifier : id;

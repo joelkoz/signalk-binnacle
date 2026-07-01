@@ -1,17 +1,12 @@
-import { categoryLabel, type PoiCategory } from '$entities/poi-icons';
+import { categoryLabel } from '$entities/poi-icons';
+import type { NotePoint } from '$features/notes';
 import type { LatLon } from '$shared/geo';
 import { compareOptionalNumber } from '$shared/lib';
 import { rhumbBearingRad, rhumbDistanceMeters } from '$shared/nav';
 
-export interface Poi {
-  id: string;
-  name: string;
-  position: LatLon;
-  category: PoiCategory;
-  source?: string;
-  attribution?: string;
-  url?: string;
-}
+// A point of interest surfaced by the search panel: the same shape the notes overlay renders, reused
+// so the two cannot drift.
+export type Poi = NotePoint;
 
 export type PoiSort = 'name' | 'type' | 'distance' | 'bearing';
 export type SortDir = 'asc' | 'desc';
@@ -41,14 +36,18 @@ export function filterRows(rows: readonly PoiRow[], query: string): readonly Poi
 }
 
 export function sortRows(rows: readonly PoiRow[], key: PoiSort, dir: SortDir): PoiRow[] {
-  const sorted = [...rows];
   const sign = dir === 'asc' ? 1 : -1;
+  if (key === 'type') {
+    // Precompute each row's category label once, then sort (decorate, sort, undecorate), so the
+    // comparator does not recompute categoryLabel on every comparison.
+    return rows
+      .map((row) => ({ row, label: categoryLabel(row.poi.category) }))
+      .sort((a, b) => sign * a.label.localeCompare(b.label))
+      .map((entry) => entry.row);
+  }
+  const sorted = [...rows];
   if (key === 'name') {
     sorted.sort((a, b) => sign * a.poi.name.localeCompare(b.poi.name));
-  } else if (key === 'type') {
-    sorted.sort(
-      (a, b) => sign * categoryLabel(a.poi.category).localeCompare(categoryLabel(b.poi.category)),
-    );
   } else if (key === 'distance') {
     sorted.sort((a, b) => compareOptionalNumber(a.distanceMeters, b.distanceMeters, dir));
   } else {

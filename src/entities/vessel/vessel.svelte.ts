@@ -19,7 +19,7 @@ export class OwnVessel {
     // access; if that first access is a reactive template read, the freshly created
     // $state source is not tracked and later updates do not re-render. Creating the
     // cells up front means every read finds an existing, tracked cell.
-    for (const path of [
+    store.ensureCells([
       SK_PATHS.position,
       SK_PATHS.speedOverGround,
       SK_PATHS.courseOverGroundTrue,
@@ -27,39 +27,37 @@ export class OwnVessel {
       SK_PATHS.depthBelowTransducer,
       SK_PATHS.windSpeedApparent,
       SK_PATHS.outsidePressure,
-    ]) {
-      store.cell(path);
-    }
+    ]);
   }
 
   // Speed over ground in m/s (SI). Consumers convert to knots at the display edge.
   get sogMps(): number | undefined {
-    return asNumber(this.#raw(SK_PATHS.speedOverGround));
+    return this.#num(SK_PATHS.speedOverGround);
   }
 
   // Course over ground in radians (SI). Display converts to a compass bearing at its edge.
   get cogRad(): number | undefined {
-    return asNumber(this.#raw(SK_PATHS.courseOverGroundTrue));
+    return this.#num(SK_PATHS.courseOverGroundTrue);
   }
 
   // Heading (true) in radians (SI).
   get headingRad(): number | undefined {
-    return asNumber(this.#raw(SK_PATHS.headingTrue));
+    return this.#num(SK_PATHS.headingTrue);
   }
 
   // Depth below the transducer in meters (SI), when a sounder publishes it.
   get depthMeters(): number | undefined {
-    return asNumber(this.#raw(SK_PATHS.depthBelowTransducer));
+    return this.#num(SK_PATHS.depthBelowTransducer);
   }
 
   // Apparent wind speed in m/s (SI), when an anemometer publishes it.
   get windSpeedApparentMps(): number | undefined {
-    return asNumber(this.#raw(SK_PATHS.windSpeedApparent));
+    return this.#num(SK_PATHS.windSpeedApparent);
   }
 
   // Outside air pressure in Pascals (SI), when a barometer publishes it.
   get outsidePressurePa(): number | undefined {
-    return asNumber(this.#raw(SK_PATHS.outsidePressure));
+    return this.#num(SK_PATHS.outsidePressure);
   }
 
   get position(): LatLon | undefined {
@@ -84,5 +82,11 @@ export class OwnVessel {
 
   #raw(path: string): unknown {
     return this.#store.cell(path).value;
+  }
+
+  // Read a cell value coerced to a finite number (undefined otherwise), the SI reader every
+  // numeric getter shares.
+  #num(path: string): number | undefined {
+    return asNumber(this.#raw(path));
   }
 }

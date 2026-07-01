@@ -1,4 +1,5 @@
 import { isLonLat, type LonLat, latLonToLonLat, lonLatToLatLon } from '$shared/geo';
+import { isRecord } from '$shared/lib';
 import { rhumbBearingRad, rhumbDistanceMeters } from '$shared/nav';
 import { str } from '$shared/signalk';
 import type { Route, RouteWaypoint } from './route-types';
@@ -40,7 +41,7 @@ export function routeToFeature(route: Route): RouteResourceBody {
 }
 
 export function featureToRoute(id: string, raw: unknown): Route | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
+  if (!isRecord(raw)) return undefined;
   const r = raw as {
     name?: unknown;
     feature?: {

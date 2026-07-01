@@ -27,6 +27,22 @@ export const NOTIFICATIONS_PREFIX = 'notifications.';
 const SOUNDING_STATES: readonly NotificationState[] = ['alarm', 'emergency'];
 export const SOUNDING_NOTIFICATION_STATES: ReadonlySet<string> = new Set(SOUNDING_STATES);
 
+// The state string of a notifications.* value, or undefined when the value is absent, not an object,
+// or carries no string state (a cleared v1 producer publishes null). Shared by every consumer that
+// reads a raised notification's grade (anchor drag, MOB, the store mirror, the alert list).
+export function notificationState(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const state = (value as { state?: unknown }).state;
+  return typeof state === 'string' ? state : undefined;
+}
+
+// Whether a notifications.* value is in an audible grade (alarm or emergency). Shared so the audible
+// alarms grade a cell through one predicate rather than re-deriving the state and the set membership.
+export function isSoundingNotification(value: unknown): boolean {
+  const state = notificationState(value);
+  return state !== undefined && SOUNDING_NOTIFICATION_STATES.has(state);
+}
+
 // The full Signal K alarm-state set (server-api ALARM_STATE). 'nominal' and 'normal' are the
 // quiet grades; the rest escalate alert < warn < alarm < emergency.
 export type NotificationState = 'nominal' | 'normal' | 'alert' | 'warn' | 'alarm' | 'emergency';

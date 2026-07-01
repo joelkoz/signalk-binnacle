@@ -1,9 +1,9 @@
 import type { OwnVessel } from '$entities/vessel';
 import { isLatLon, type LatLon } from '$shared/geo';
-import { isFiniteNumber, type ReactiveClock } from '$shared/lib';
+import { isFiniteNumber, isRecord, type ReactiveClock } from '$shared/lib';
 import { haversineMeters, rhumbBearingRad } from '$shared/nav';
 import { PersistedValue, type StorageLike } from '$shared/settings';
-import { type SignalKStore, SK_PATHS, SOUNDING_NOTIFICATION_STATES } from '$shared/signalk';
+import { isSoundingNotification, type SignalKStore, SK_PATHS } from '$shared/signalk';
 
 // The mark this station made: where and when the person went in. Persisted so a reload during a
 // recovery cannot lose the spot. The position is optional: an MOB without a fix is still an MOB
@@ -14,7 +14,7 @@ export interface MobMark {
 }
 
 function validMark(value: MobMark | null): MobMark | null {
-  if (!value || typeof value !== 'object') return null;
+  if (!isRecord(value)) return null;
   if (!isFiniteNumber(value.epochMs)) return null;
   if (value.position !== undefined && !isLatLon(value.position)) return null;
   // Rebuilt as a clean literal: returning the raw localStorage object would re-persist any unknown
@@ -52,7 +52,7 @@ export class MobStore {
     this.#persisted = new PersistedValue<MobMark | null>('binnacle:mob', null, storage);
     this.#local = validMark(this.#persisted.value);
     // Pre-create the cell so the first reactive read finds a tracked cell (the OwnVessel pitfall).
-    store.cell(SK_PATHS.mobNotification);
+    store.ensureCells([SK_PATHS.mobNotification]);
   }
 
   #notification = $derived.by<{ state?: unknown; position?: unknown } | undefined>(() => {
@@ -61,10 +61,7 @@ export class MobStore {
     return value as { state?: unknown; position?: unknown };
   });
 
-  #remoteActive = $derived.by<boolean>(() => {
-    const state = this.#notification?.state;
-    return typeof state === 'string' && SOUNDING_NOTIFICATION_STATES.has(state);
-  });
+  #remoteActive = $derived.by<boolean>(() => isSoundingNotification(this.#notification));
 
   #remotePosition = $derived.by<LatLon | undefined>(() => {
     if (!this.#remoteActive) return undefined;

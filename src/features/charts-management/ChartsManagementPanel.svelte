@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onDestroy } from 'svelte';
+import { formatBounds } from '$shared/geo';
 import type { AuthController } from '$shared/signalk';
 import { Disclosure, SlideOver, TextField } from '$shared/ui';
 import type { ManagedChart, ManagedChartsResponse } from './charts-management-client.js';
@@ -75,11 +76,6 @@ async function saveOverride(
       }, 2000),
     );
   }
-}
-
-function formatBounds(bounds: [number, number, number, number]): string {
-  // PMTiles bounds are [west, south, east, north] in decimal degrees.
-  return `${bounds[1].toFixed(2)}, ${bounds[0].toFixed(2)} to ${bounds[3].toFixed(2)}, ${bounds[2].toFixed(2)}`;
 }
 </script>
 

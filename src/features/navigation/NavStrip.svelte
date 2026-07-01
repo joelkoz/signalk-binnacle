@@ -26,10 +26,11 @@ interface Props {
 
 const { guidance, routeProgress, onStop, onSkip }: Props = $props();
 
-// The side to steer toward to return to the track, as a port (L) or starboard (R) marker. The
-// cross-track sign convention lives in steerSide; absent or zero error yields no marker.
+// The side to steer toward to return to the track. The cross-track sign convention lives in
+// steerSide; absent or zero error yields null (no marker). Shared by the L/R marker and the CDI needle.
+const side = $derived(steerSide(guidance.crossTrackErrorMeters ?? Number.NaN));
+
 const steer = $derived.by<'L' | 'R' | null>(() => {
-  const side = steerSide(guidance.crossTrackErrorMeters ?? Number.NaN);
   if (side === null) return null;
   return side === 'port' ? 'L' : 'R';
 });
@@ -41,7 +42,6 @@ const CDI_FULL_SCALE_M = nauticalMilesToMeters(0.2);
 const cdi = $derived.by<{ pos: number; pegged: boolean } | null>(() => {
   const xte = guidance.crossTrackErrorMeters;
   if (xte == null) return null;
-  const side = steerSide(xte);
   if (side === null) return { pos: 0, pegged: false };
   const mag = Math.min(1, Math.abs(xte) / CDI_FULL_SCALE_M);
   return { pos: side === 'starboard' ? mag : -mag, pegged: mag >= 1 };

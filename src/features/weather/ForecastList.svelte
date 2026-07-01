@@ -2,7 +2,12 @@
 import type { UnitsStore } from '$entities/units';
 import { formatBearingOr, formatDayClock, formatPrecipRateOr } from '$shared/lib';
 import type { PointConditions } from './signalk-weather';
-import { formatWholeKnots, precipUnitLabel, RAIN_VISIBLE_MM_H } from './weather-readout';
+import {
+  DEGREES_TRUE_TITLE,
+  formatWholeKnots,
+  precipUnitLabel,
+  RAIN_VISIBLE_MM_H,
+} from './weather-readout';
 
 interface Props {
   forecast: PointConditions[];
@@ -27,9 +32,7 @@ function stepLabel(timeMs: number): string {
       <span class="f-wind">
         <b class="num">{formatWholeKnots(step.windMs)}</b>
         kn from
-        <span title="Degrees true, measured clockwise from true north"
-          >{formatBearingOr(step.fromRad)}&deg;T</span
-        >
+        <span title={DEGREES_TRUE_TITLE}>{formatBearingOr(step.fromRad)}&deg;T</span>
       </span>
       {#if step.precipitationMm !== undefined && step.precipitationMm >= RAIN_VISIBLE_MM_H}
         <span class="f-rain">

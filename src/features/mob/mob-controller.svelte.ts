@@ -1,6 +1,7 @@
 import type { MobMark, MobStore } from '$entities/mob';
 import type { GatedAlarm } from '$shared/audio';
 import type { LatLon } from '$shared/geo';
+import { formatMetersOrNm, type UnitsMode } from '$shared/lib';
 import { postMobNotification, resolveNotification, SK_PATHS } from '$shared/signalk';
 import { mobClearNotification, mobNotification } from './mob-notification';
 
@@ -14,6 +15,9 @@ export interface MobControllerDeps {
   mob: MobStore;
   // The man-overboard alarm, a stable instance passed by reference.
   mobAlarm: GatedAlarm;
+  // The active units mode, so the live-region range matches the strip's Range readout. A
+  // getter-backed object (the shared UnitsStore) so a mid-session preference change reads live.
+  units: { mode: UnitsMode };
   // Whether the v2 Notifications API is available. A getter because it resolves asynchronously from
   // server feature discovery and the trigger path must branch on its live value.
   notificationsApi: () => boolean;
@@ -46,7 +50,7 @@ export function createMobController(deps: MobControllerDeps) {
   const mobAlert = $derived.by(() => {
     if (!mob.active || mob.acknowledged) return '';
     const distance = mob.distanceMeters;
-    const range = distance == null ? '' : `, range ${Math.round(distance)} meters`;
+    const range = distance == null ? '' : `, range ${formatMetersOrNm(distance, deps.units.mode)}`;
     return `Man overboard${range}. Steer back to the mark.`;
   });
 

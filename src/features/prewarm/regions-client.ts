@@ -4,6 +4,7 @@
  * and the client owning the path. */
 
 import { companionApiUrl } from '$shared/companion/companion-api';
+import { withTimeout } from '$shared/lib';
 import { authInit } from '$shared/signalk';
 
 export interface WarmStatus {
@@ -76,15 +77,18 @@ export function createRegionsClient(
 ): RegionsClient {
   const url = (path: string): string => companionApiUrl(origin, path);
   const json = async <T>(r: Response): Promise<T> => (await r.json()) as T;
-  const jsonPost = (body: unknown): RequestInit | undefined =>
-    authInit(token, {
+  // Every container call carries the bearer token and a request timeout, so a half-open link on a
+  // boat bounds the wait rather than hanging, matching the charts-management client.
+  const init = (extra?: RequestInit): RequestInit => withTimeout(authInit(token, extra));
+  const jsonPost = (body: unknown): RequestInit =>
+    init({
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
   return {
     async getConfig() {
-      return json(await fetchImpl(url('/position-warm/config'), authInit(token)));
+      return json(await fetchImpl(url('/position-warm/config'), init()));
     },
     async postConfig(config) {
       await fetchImpl(url('/position-warm/config'), jsonPost(config));
@@ -94,14 +98,14 @@ export function createRegionsClient(
     },
     async clearScrollCache() {
       return json<{ freedBytes: number; freedRows: number }>(
-        await fetchImpl(url('/cache/clear-scroll'), authInit(token, { method: 'POST' })),
+        await fetchImpl(url('/cache/clear-scroll'), init({ method: 'POST' })),
       );
     },
     async getCacheStats() {
-      return json<CacheStats>(await fetchImpl(url('/cache/stats'), authInit(token)));
+      return json<CacheStats>(await fetchImpl(url('/cache/stats'), init()));
     },
     async getRegions() {
-      return json<SavedRegionDto[]>(await fetchImpl(url('/regions'), authInit(token)));
+      return json<SavedRegionDto[]>(await fetchImpl(url('/regions'), init()));
     },
     async postRegion(body) {
       return json<{ region: SavedRegionDto; jobId: string }>(
@@ -109,21 +113,18 @@ export function createRegionsClient(
       );
     },
     async deleteRegion(id) {
-      await fetchImpl(
-        url(`/regions/${encodeURIComponent(id)}`),
-        authInit(token, { method: 'DELETE' }),
-      );
+      await fetchImpl(url(`/regions/${encodeURIComponent(id)}`), init({ method: 'DELETE' }));
     },
     async redownloadRegion(id) {
       return json<{ jobId: string }>(
         await fetchImpl(
           url(`/regions/${encodeURIComponent(id)}/redownload`),
-          authInit(token, { method: 'POST' }),
+          init({ method: 'POST' }),
         ),
       );
     },
     async getRegionJobStatus(id) {
-      const r = await fetchImpl(url(`/regions/${encodeURIComponent(id)}/status`), authInit(token));
+      const r = await fetchImpl(url(`/regions/${encodeURIComponent(id)}/status`), init());
       // A 404 means the job is gone (the region reconciled server-side): treat it as terminal, not a
       // failure. Any other non-ok is a real failure, so throw rather than parse an error body as a
       // status snapshot, letting the poller count it and stop after a small cap.
@@ -135,7 +136,7 @@ export function createRegionsClient(
       try {
         const r = await fetchImpl(
           url(`/geocode?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`),
-          authInit(token),
+          init(),
         );
         if (!r.ok) return null;
         const data = (await r.json()) as Record<string, unknown>;

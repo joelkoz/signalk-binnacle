@@ -10,6 +10,11 @@ All notable changes to Binnacle are documented here. The format follows
 
 ### Changed
 
+- **The man-overboard alert range follows your distance units.** The MOB alert's announced range now
+  matches the on-screen Range readout and honors your distance-unit preference, instead of always
+  announcing meters.
+- **The offline-area storage check no longer hangs.** The check now bounds its request with a timeout,
+  so an unreachable tile cache fails and reports rather than leaving the panel on "Checking storage".
 - **Offline charts, redesigned for a plain-language flow.** The old "Tile cache" panel, a single long
   scroll of chart-source checkboxes, zoom numbers, and cache internals, is now "Offline charts" under
   its own menu group. A landing offers one "Download an area" action, the list of saved areas, and

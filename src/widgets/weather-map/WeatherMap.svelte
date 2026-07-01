@@ -1,5 +1,5 @@
 <script lang="ts">
-import { ArrowLeft, ChevronDown, ChevronUp, Layers, X } from '@lucide/svelte';
+import { ChevronDown, ChevronUp, Layers, X } from '@lucide/svelte';
 import { onDestroy, onMount } from 'svelte';
 import { fly } from 'svelte/transition';
 import type { UnitsStore } from '$entities/units';
@@ -46,7 +46,7 @@ import {
 import { createThemedMap, type LayerSettings, type ThemedMapHandle } from '$shared/map';
 import type { MapView } from '$shared/settings';
 import { serverOrigin } from '$shared/signalk';
-import { dialog, PANEL_TRANSITION_MS, type Theme } from '$shared/ui';
+import { dialog, PANEL_TRANSITION_MS, PanelHeader, type Theme } from '$shared/ui';
 import { createForecastPlayback } from './playback.svelte';
 import WeatherLayerMenu from './WeatherLayerMenu.svelte';
 import WeatherLegendBar from './WeatherLegendBar.svelte';
@@ -160,9 +160,10 @@ const readoutSource = $derived(pointReadout.readoutSource);
 const readoutPending = $derived(pointReadout.readoutPending);
 
 const items = $derived(layersView?.items ?? []);
+const visibleItems = $derived(items.filter((i) => i.visible));
 const fills = $derived(items.filter((i) => WEATHER_FILL_ID_SET.has(i.id)));
 const overlayItems = $derived(items.filter((i) => !WEATHER_FILL_ID_SET.has(i.id)));
-const activeCount = $derived(items.filter((i) => i.visible).length);
+const activeCount = $derived(visibleItems.length);
 // The source and fetch-age line, surfaced in the layer menu as well as the footer so it is not
 // hidden behind a click; undefined before any grid loads.
 const menuProvenance = $derived(
@@ -215,8 +216,7 @@ const radarNote = $derived.by<string>(() => {
 // Keyed on items, theme, and the unit mode only: the live radar note is substituted at render
 // time, so the 600 ms frame beat updates one text node instead of rebuilding every legend gradient.
 const legends = $derived<WeatherLegend[]>(
-  items
-    .filter((i) => i.visible)
+  visibleItems
     .map((i) => weatherLegend(i.id, theme, units.mode))
     .filter((l): l is WeatherLegend => l !== undefined),
 );
@@ -396,43 +396,35 @@ onDestroy(() => {
   use:dialog={onClose}
   transition:fly={{ y: 20, duration: prefersReducedMotion() ? 0 : PANEL_TRANSITION_MS, opacity: 0.3 }}
 >
-  <header class="panel-header panel-head">
-    {#if onBack}
+  <PanelHeader
+    title="Weather"
+    extraClass="panel-head"
+    closeLabel="Close weather"
+    {onClose}
+    {onBack}
+  >
+    {#snippet headerExtra()}
+      <!-- "Here" is a one-tap header control that opens the conditions panel, distinct from a layer;
+           it sits between the title and close through the shared header's interleaved slot. -->
       <button
         type="button"
-        class="icon-btn icon-btn--accent"
-        aria-label="Back to menu"
-        title="Back to menu"
-        onclick={onBack}
+        class="btn btn-pill btn-compact here-btn"
+        class:is-on={conditionsOpen}
+        aria-expanded={conditionsOpen}
+        aria-controls={conditionsOpen ? 'weather-conditions' : undefined}
+        aria-label="Conditions at the boat"
+        title="Conditions at the boat: wind, pressure, waves, and any warnings"
+        onclick={() => (conditionsOpen = !conditionsOpen)}
       >
-        <ArrowLeft size={20} aria-hidden="true" />
+        Here
+        {#if conditionsOpen}
+          <ChevronUp size={14} aria-hidden="true" />
+        {:else}
+          <ChevronDown size={14} aria-hidden="true" />
+        {/if}
       </button>
-    {/if}
-    <!-- The layer toggles moved off the header onto the floating menu over the map (the row used to
-         overflow); the title now carries the spacing so "Here" and close sit at the trailing edge.
-         "Here" stays a one-tap header control: it opens a conditions panel, distinct from a layer. -->
-    <h2 class="panel-title">Weather</h2>
-    <button
-      type="button"
-      class="btn btn-pill btn-compact here-btn"
-      class:is-on={conditionsOpen}
-      aria-expanded={conditionsOpen}
-      aria-controls={conditionsOpen ? 'weather-conditions' : undefined}
-      aria-label="Conditions at the boat"
-      title="Conditions at the boat: wind, pressure, waves, and any warnings"
-      onclick={() => (conditionsOpen = !conditionsOpen)}
-    >
-      Here
-      {#if conditionsOpen}
-        <ChevronUp size={14} aria-hidden="true" />
-      {:else}
-        <ChevronDown size={14} aria-hidden="true" />
-      {/if}
-    </button>
-    <button type="button" class="panel-close" aria-label="Close weather" onclick={onClose}>
-      <X size={18} aria-hidden="true" />
-    </button>
-  </header>
+    {/snippet}
+  </PanelHeader>
 
   <div class="panel-map">
     <div class="map" bind:this={container}></div>
@@ -455,17 +447,14 @@ onDestroy(() => {
         <span class="layer-count" aria-hidden="true">{activeCount}</span>
       {/if}
     </button>
-    {#if layerMenuOpen}
-      <div id="weather-layer-menu">
-        <WeatherLayerMenu
-          {fills}
-          overlays={overlayItems}
-          provenance={menuProvenance}
-          onToggle={(id, next) => layersView?.toggle(id, next)}
-          onClose={closeLayerMenu}
-        />
-      </div>
-    {/if}
+    <WeatherLayerMenu
+      open={layerMenuOpen}
+      {fills}
+      overlays={overlayItems}
+      provenance={menuProvenance}
+      onToggle={(id, next) => layersView?.toggle(id, next)}
+      onClose={closeLayerMenu}
+    />
     <!-- One column for the floating notes so the readout and a status note stack instead of
          overlapping, on any width. Both containers stay mounted so the live regions announce
          reliably (a region inserted together with its content is skipped by some screen readers). -->
@@ -598,16 +587,13 @@ onDestroy(() => {
   z-index: calc(var(--z-panel) + 1);
   overflow: hidden;
 }
-/* On the global .panel-header frame, a touch denser than the slide-over panels: a shorter block
-   padding, and the close button keeps its tighter end inset. */
-.panel-head {
+/* On the shared PanelHeader frame, a touch denser than the slide-over panels: a shorter block
+   padding, and the close button keeps its tighter end inset. Global because the header element is
+   rendered by PanelHeader, so a scoped selector would not reach it. The title takes the slack via
+   PanelHeader's own .heading, so "Here" and close sit at the trailing edge. */
+:global(.panel-head) {
   padding-block: 0.4rem;
   padding-inline-end: var(--space-2);
-}
-/* The title takes the slack so "Here" and close sit at the trailing edge now that the layer pills
-   have moved to the floating menu. */
-.panel-head .panel-title {
-  flex: 1;
 }
 .here-btn {
   gap: var(--space-1);

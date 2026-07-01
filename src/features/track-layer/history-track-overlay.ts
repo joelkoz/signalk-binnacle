@@ -1,8 +1,8 @@
-import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
+import type { LineLayerSpecification } from 'maplibre-gl';
 import { isLatLon, latLonToLonLat } from '$shared/geo';
 import { MINUTE_MS } from '$shared/lib';
 import {
-  emptyFeatureCollection,
+  ensureGeoJsonSource,
   featureCollection,
   mapThemePaint,
   type OverlayContext,
@@ -12,6 +12,7 @@ import {
   setSourceData,
 } from '$shared/map';
 import {
+  columnIndex,
   fetchHistoryValuesAcrossProviders,
   HISTORY_RESOLUTION_SECONDS,
   HISTORY_WINDOW_SECONDS,
@@ -56,12 +57,8 @@ export function createHistoryTrackOverlay(
   let fetching = false;
   let nextFetchAt = 0;
 
-  function setData(ctx: OverlayContext, data: GeoJSON.FeatureCollection): void {
-    setSourceData(ctx.map, SOURCE_ID, data);
-  }
-
   function toFeature(values: HistoryValues): GeoJSON.FeatureCollection {
-    const iPos = values.columns.findIndex((c) => c.path === SK_PATHS.position);
+    const iPos = columnIndex(values, SK_PATHS.position);
     const lines: Array<Array<[number, number]>> = [];
     let line: Array<[number, number]> = [];
     let lastSeconds: number | undefined;
@@ -99,7 +96,7 @@ export function createHistoryTrackOverlay(
         durationSeconds: HISTORY_WINDOW_SECONDS,
         resolutionSeconds: HISTORY_RESOLUTION_SECONDS,
       });
-      if (got) setData(ctx, toFeature(got.values));
+      if (got) setSourceData(ctx.map, SOURCE_ID, toFeature(got.values));
       // A failed query retries on the same cadence; the drawn line stays until then.
       nextFetchAt = deps.now() + REFRESH_MS;
     } finally {
@@ -119,13 +116,7 @@ export function createHistoryTrackOverlay(
     layerIds: [LAYER_ID],
     add(ctx) {
       nextFetchAt = 0;
-      if (!ctx.map.getSource(SOURCE_ID)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(SOURCE_ID, source);
-      }
+      ensureGeoJsonSource(ctx.map, SOURCE_ID);
       if (!ctx.map.getLayer(LAYER_ID)) {
         const layer: LineLayerSpecification = {
           id: LAYER_ID,

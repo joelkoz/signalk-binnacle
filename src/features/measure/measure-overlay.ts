@@ -1,6 +1,5 @@
 import type {
   CircleLayerSpecification,
-  GeoJSONSourceSpecification,
   LineLayerSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
@@ -9,11 +8,12 @@ import { type LatLon, latLonToLonLat } from '$shared/geo';
 import { formatMetersOrNm, type UnitsMode } from '$shared/lib';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSource,
   featureCollection,
   mapThemePaint,
-  type OverlayContext,
   type OverlayModule,
   removeLayersAndSources,
+  type Syncable,
   setLayersVisibility,
   setSourceData,
 } from '$shared/map';
@@ -48,9 +48,7 @@ function features(measure: MeasureStore, mode: UnitsMode): GeoJSON.FeatureCollec
   return featureCollection(out);
 }
 
-export interface MeasureOverlay extends OverlayModule {
-  sync(ctx: OverlayContext): void;
-}
+export interface MeasureOverlay extends OverlayModule, Syncable {}
 
 // The on-chart measurement: tapped vertices, the dashed line through them, and the running total
 // labeled at the last point. Renders nothing while no measurement is in progress.
@@ -63,6 +61,13 @@ export function createMeasureOverlay(
   // The total label bakes in the unit preference, so a mode flip redraws like a point change.
   let lastMode: UnitsMode | undefined;
 
+  // Invalidate the change-detection cache so the next sync repopulates from scratch. The manager
+  // calls this on a base-style swap, which recreates the source empty; add() calls it so a fresh
+  // add draws too.
+  function reset(): void {
+    lastPoints = undefined;
+  }
+
   return {
     id: 'measure',
     title: 'Measure',
@@ -73,13 +78,7 @@ export function createMeasureOverlay(
     add(ctx) {
       const { map } = ctx;
       const before = ctx.beforeIdFor('routes');
-      if (!map.getSource(SRC)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        map.addSource(SRC, source);
-      }
+      ensureGeoJsonSource(map, SRC);
       if (!map.getLayer(LINE_LAYER)) {
         const layer: LineLayerSpecification = {
           id: LINE_LAYER,
@@ -131,9 +130,9 @@ export function createMeasureOverlay(
         };
         map.addLayer(layer, before);
       }
-      // Force a redraw so a reattach after a base-style swap repopulates the emptied source.
-      lastPoints = undefined;
+      reset();
     },
+    reset,
     sync(ctx) {
       const points = measure.points;
       const mode = units.mode;

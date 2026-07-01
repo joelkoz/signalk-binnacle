@@ -36,7 +36,11 @@ export class MemoryCache<V> {
   }
 
   #insert(key: string, value: V, expires: number, now: number): void {
-    for (const [k, entry] of this.#entries) if (entry.expires <= now) this.#entries.delete(k);
+    // With an infinite TTL nothing ever expires, so skip the sweep entirely rather than scan every
+    // entry on each put (the tides model, where expires is always Infinity).
+    if (this.#ttlMs !== Number.POSITIVE_INFINITY) {
+      for (const [k, entry] of this.#entries) if (entry.expires <= now) this.#entries.delete(k);
+    }
     // Delete before set so a refreshed key moves to the newest insertion position; otherwise it
     // keeps its original slot and the oldest-first eviction drops a just-refreshed entry early.
     this.#entries.delete(key);

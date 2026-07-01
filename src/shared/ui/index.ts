@@ -1,4 +1,5 @@
 export { default as AnchoredMenu } from './AnchoredMenu.svelte';
+export { ArmedRow } from './armed-row.svelte';
 export { ConfirmArm } from './confirm-arm.svelte';
 export { default as Disclosure } from './Disclosure.svelte';
 export { dialog, registerDismiss } from './dialog';
@@ -8,7 +9,8 @@ export { focusOnMount, focusTrap, isTabKey, onKeydownAction, rovingFocus } from 
 export { default as InlineConfirm } from './InlineConfirm.svelte';
 export { default as LayerToggle } from './LayerToggle.svelte';
 export { default as NameEntry } from './NameEntry.svelte';
-export { defaultSaveName } from './prompt';
+export { default as PanelHeader } from './PanelHeader.svelte';
+export { defaultSaveName, resolveSaveName } from './prompt';
 export { default as SavedList } from './SavedList.svelte';
 export { default as ShowOnChartToggle } from './ShowOnChartToggle.svelte';
 export { default as SlideOver } from './SlideOver.svelte';

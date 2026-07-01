@@ -107,9 +107,15 @@ export function createExpiringStore<T>(dbName: string, options: Options = {}): E
             reqPromise<number[]>(expiriesReq),
             reqPromise<IDBValidKey[]>(keysReq),
           ]);
-          const items = keys.map((k, i) => ({ key: String(k), expires: expiries[i] }));
-          const expired = items.filter((it) => it.expires <= now).map((it) => it.key);
-          const live = items.filter((it) => it.expires > now).sort((a, b) => a.expires - b.expires);
+          const expired: string[] = [];
+          const live: { key: string; expires: number }[] = [];
+          for (let i = 0; i < keys.length; i += 1) {
+            const key = String(keys[i]);
+            const expires = expiries[i];
+            if (expires <= now) expired.push(key);
+            else live.push({ key, expires });
+          }
+          live.sort((a, b) => a.expires - b.expires);
           const overflow =
             live.length > maxEntries
               ? live.slice(0, live.length - maxEntries).map((it) => it.key)

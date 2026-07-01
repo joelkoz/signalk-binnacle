@@ -4,6 +4,9 @@ import type { LayerListItem } from '$shared/map';
 import { AnchoredMenu, rovingFocus } from '$shared/ui';
 
 interface Props {
+  // Driven by the parent rather than a conditional mount, so AnchoredMenu owns the open transition
+  // and the gated dismiss registration, matching the StatusStrip More menu.
+  open: boolean;
   // The mutually-exclusive area fills (the LayerManager enforces one-at-a-time) and the freely
   // combinable overlays, already split by the parent.
   fills: LayerListItem[];
@@ -15,7 +18,7 @@ interface Props {
   onClose: () => void;
 }
 
-const { fills, overlays, provenance, onToggle, onClose }: Props = $props();
+const { open, fills, overlays, provenance, onToggle, onClose }: Props = $props();
 
 const groups = $derived(
   [
@@ -29,11 +32,12 @@ const groups = $derived(
      surfaceClass positions the surface inside .panel-map; no position: relative or container-type
      is added to the surface element so the @container query below resolves against .panel-map. -->
 <AnchoredMenu
-  open={true}
+  {open}
   {onClose}
   backdropLabel="Close weather layers"
   surfaceClass="popover-card weather-menu"
   ariaLabel="Weather layers"
+  id="weather-layer-menu"
 >
   {#snippet children()}
     <!-- Non-modal on purpose: a toolbar dropdown over the map, not a modal. No focus trap, so Tab can

@@ -1,5 +1,9 @@
 import { isRecord } from '$shared/lib';
-import type { RaisedNotificationState, SignalKStore } from '$shared/signalk';
+import {
+  notificationState,
+  type RaisedNotificationState,
+  type SignalKStore,
+} from '$shared/signalk';
 
 // Sort rank for the raised grades; lower is more severe. Doubles as the membership test:
 // a state outside this table (normal, nominal, or junk) is not an active alert. Keyed by
@@ -35,9 +39,9 @@ const boolField = (v: unknown): boolean | undefined => (typeof v === 'boolean' ?
 function parseNotification(path: string, value: unknown): ActiveNotification | undefined {
   if (!isRecord(value)) return undefined;
   const raw = value;
-  const state = raw.state;
+  const state = notificationState(value);
   // Object.hasOwn, not `in`: a junk state like 'constructor' must not match the prototype.
-  if (typeof state !== 'string' || !Object.hasOwn(SEVERITY_RANK, state)) return undefined;
+  if (state === undefined || !Object.hasOwn(SEVERITY_RANK, state)) return undefined;
   const method = Array.isArray(raw.method)
     ? raw.method.filter((m): m is NotificationMethod => m === 'visual' || m === 'sound')
     : [];

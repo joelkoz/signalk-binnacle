@@ -283,3 +283,24 @@ export function nearestInTimeBounded(
     !Number.isNaN(t0) && !Number.isNaN(t1) && t1 > t0 ? t1 - t0 : DEFAULT_SERIES_STEP_MS;
   return Math.abs(Date.parse(best.date) - targetMs) <= stepMs ? best : undefined;
 }
+
+// Choose the provider entry that answers a target time: the latest observation when the target is
+// near now (and one is present), otherwise the bounded nearest forecast step. Returns the raw entry
+// and whether it is an observation, so each caller maps it to its own shape. Shared by the conditions
+// panel; the tap readout keeps its own lazy fetch (it only requests forecasts when the observation
+// is stale or carries no wind).
+export function pickProviderEntry(
+  obs: SignalKWeatherData | undefined,
+  series: SignalKWeatherData[] | undefined,
+  targetMs: number,
+  nowMs: number,
+): { entry: SignalKWeatherData; observed: boolean } | undefined {
+  if (Math.abs(targetMs - nowMs) < NEAR_NOW_MS && obs) {
+    return { entry: obs, observed: true };
+  }
+  if (series) {
+    const step = nearestInTimeBounded(series, targetMs);
+    if (step) return { entry: step, observed: false };
+  }
+  return undefined;
+}

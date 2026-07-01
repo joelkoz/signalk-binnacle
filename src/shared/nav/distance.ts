@@ -1,4 +1,3 @@
-import type { LatLon } from '$shared/geo';
 import { DEG_TO_RAD } from '$shared/lib';
 
 // Mean Earth radius in meters, shared by the great-circle and rhumb-line geodesy.
@@ -75,20 +74,4 @@ export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: 
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * DEG_TO_RAD) * Math.cos(lat2 * DEG_TO_RAD) * Math.sin(dLon / 2) ** 2;
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(a)));
-}
-
-// Whether two routes are the same to within a per-waypoint tolerance: the same count and every
-// waypoint within toleranceMeters of its counterpart. Used to tell an optimize that did not change
-// anything from one that did, so the navigator is not asked to re-verify an untouched route.
-export function routesRoughlyEqual(
-  a: readonly LatLon[],
-  b: readonly LatLon[],
-  toleranceMeters: number,
-): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
-    const moved = haversineMeters(a[i].latitude, a[i].longitude, b[i].latitude, b[i].longitude);
-    if (moved > toleranceMeters) return false;
-  }
-  return true;
 }

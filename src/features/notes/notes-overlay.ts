@@ -17,6 +17,7 @@ import {
   mapThemePaint,
   type OverlayContext,
   type OverlayModule,
+  type Syncable,
   setLayersVisibility,
   setSourceData,
 } from '$shared/map';
@@ -52,8 +53,7 @@ const RETRY_COOLDOWN_MS = 30_000;
 const PERSIST_TTL_MS = 7 * DAY_MS;
 const MAX_PERSIST_ENTRIES = 24;
 
-export interface NotesOverlay extends OverlayModule {
-  sync(ctx: OverlayContext): void;
+export interface NotesOverlay extends OverlayModule, Syncable {
   // Ring the marker at a position, or clear the ring with undefined. Position-driven so the POI
   // search can highlight a result without a rendered map feature and without moving the map.
   highlight(ctx: OverlayContext, position: LatLon | undefined): void;
@@ -195,7 +195,8 @@ export function createNotesOverlay(
   }
 
   // The "lat,lon" of the ring last drawn (empty when cleared), so a redundant source rewrite is
-  // skipped when the highlighted position has not changed; reset in add() once the source is recreated.
+  // skipped when the highlighted position has not changed; reset() clears it once the source is
+  // recreated.
   let lastRingKey = '';
   // Position-driven so a list selection rings a marker without a rendered map feature and without
   // moving the map; the app owns what is highlighted (a hovered or a selected POI) and drives this.
@@ -215,6 +216,13 @@ export function createNotesOverlay(
     setSourceData(ctx.map, SELECT_SOURCE, data);
   }
 
+  // Invalidate the change-detection cache so the next highlight repopulates from scratch. The
+  // manager calls this on a base-style swap, which recreates the selection source empty; add() calls
+  // it so a later same-position highlight redraws its ring.
+  function reset(): void {
+    lastRingKey = '';
+  }
+
   return {
     id: 'notes',
     title: 'Points of interest',
@@ -225,8 +233,7 @@ export function createNotesOverlay(
     async add(ctx) {
       const before = ctx.beforeIdFor('routes');
       addNoteLayers(ctx.map, themePaint, before);
-      // The selection source was just recreated empty, so a later same-position highlight redraws.
-      lastRingKey = '';
+      reset();
 
       // The hit handlers persist across a base-style swap (the map keeps its listeners), so a
       // reattach, an add() with no preceding remove(), must not re-register them or every click
@@ -292,6 +299,7 @@ export function createNotesOverlay(
         registerNavaidIcons(ctx.map, themePaint),
       ]);
     },
+    reset,
     sync(ctx) {
       // A hidden layer pays nothing: no network fetch, no clustering, no GeoJSON rebuild. The next
       // show re-syncs from the cache (or fetches) for wherever the map ended up.

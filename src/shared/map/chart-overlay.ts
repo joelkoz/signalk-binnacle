@@ -1,7 +1,7 @@
 import type { Map as MapLibreMap, MapSourceDataEvent } from 'maplibre-gl';
 import { chartSourceId, chartToSpecs, PMTILES_SCHEME, THEME_PAINT_KEY } from './chart-adapter';
 import type { SignalKChart } from './chart-types';
-import { applyRasterTheme, type MapColorKey } from './map-theme';
+import { applyRasterTheme, colorProperty, type MapColorKey } from './map-theme';
 import { removeLayersAndSources, setLayersVisibility } from './overlay-helpers';
 import { registerPmtilesArchive, unregisterPmtilesArchive } from './pmtiles';
 import type { OverlayModule, ZBand } from './types';
@@ -146,7 +146,7 @@ export function createChartOverlay(
           continue;
         }
         if (!layer.themePaint) continue;
-        const property = layer.type === 'line' ? 'line-color' : 'fill-color';
+        const property = colorProperty(layer.type);
         ctx.map.setPaintProperty(layer.id, property, paint[layer.themePaint]);
       }
     },

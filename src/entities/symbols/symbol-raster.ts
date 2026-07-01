@@ -1,4 +1,4 @@
-import type { MapThemePaint } from '$shared/map';
+import { decodeSvgToImageData, type MapThemePaint } from '$shared/map';
 import { mapLuminanceToRed } from './night-red';
 
 // Rasterized at 2x and registered with pixelRatio 2, matching the built-in note icons.
@@ -38,31 +38,20 @@ export function anchorOffset(
   return [cssWidth / 2 - anchor[0] * scale, cssHeight / 2 - anchor[1] * scale];
 }
 
-// Decode and draw the SVG text the same way the built-in note icons do (Image + canvas, since
-// createImageBitmap does not reliably decode SVG across browsers). Browser only: the node test
-// environment returns null, which callers treat as the degrade signal. At night-red the bitmap
-// goes through the luminance-to-red pixel pass so a user SVG can never break the theme.
-export const rasterizeSymbolSvg: RasterizeSymbol = async (svgText, scale, paint) => {
-  if (typeof document === 'undefined' || typeof Image === 'undefined') return null;
-  try {
-    const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-    const img = new Image();
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error('svg decode failed'));
-      img.src = url;
-    });
+// Size and draw the decoded SVG onto a canvas, capping the rendered size and (at night-red) running
+// the luminance-to-red pixel pass so a user SVG can never break the theme. Browser only: the node
+// test environment returns null via decodeSvgToImageData, which callers treat as the degrade signal.
+export const rasterizeSymbolSvg: RasterizeSymbol = (svgText, scale, paint) =>
+  decodeSvgToImageData(svgText, (img, ctx) => {
     const naturalWidth = img.naturalWidth || DEFAULT_SVG_PX;
     const naturalHeight = img.naturalHeight || DEFAULT_SVG_PX;
     const fit = MAX_CSS_PX / Math.max(naturalWidth, naturalHeight);
     const effectiveScale = Math.min(scale, fit);
     const width = Math.max(1, Math.round(naturalWidth * effectiveScale * SYMBOL_PIXEL_RATIO));
     const height = Math.max(1, Math.round(naturalHeight * effectiveScale * SYMBOL_PIXEL_RATIO));
-    const canvas = document.createElement('canvas');
+    const { canvas } = ctx;
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
     ctx.drawImage(img, 0, 0, width, height);
     const image = ctx.getImageData(0, 0, width, height);
     if (paint.theme === 'night-red') mapLuminanceToRed(image.data);
@@ -72,7 +61,4 @@ export const rasterizeSymbolSvg: RasterizeSymbol = async (svgText, scale, paint)
       cssHeight: height / SYMBOL_PIXEL_RATIO,
       scale: effectiveScale,
     };
-  } catch {
-    return null;
-  }
-};
+  });

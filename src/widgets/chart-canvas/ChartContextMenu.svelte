@@ -1,6 +1,6 @@
 <script lang="ts">
 import { MapPin, Navigation, Route, Ruler } from '@lucide/svelte';
-import { registerDismiss, rovingFocus } from '$shared/ui';
+import { AnchoredMenu, rovingFocus } from '$shared/ui';
 
 interface Props {
   // The press point in chart pixels, and the chart's pixel size, so the menu clamps inside the
@@ -34,11 +34,11 @@ const {
   onClose,
 }: Props = $props();
 
-// Escape closes through the shared dismiss stack, so it peels the topmost surface in order rather
-// than a raw window listener firing alongside any other open menu. onClose is wrapped so the effect
-// does not reactively read the prop (the parent passes a fresh closure each render), which would
-// re-register and push this menu back to the top of the stack, breaking last-opened-first order.
-$effect(() => registerDismiss(() => onClose()));
+// AnchoredMenu owns the backdrop dismiss and the gated dismiss-stack registration (Escape peels the
+// topmost surface in order). A stable wrapper is handed to it so it registers once instead of
+// re-registering on every parent render, which the parent's fresh onClose closure would otherwise
+// cause, breaking last-opened-first order; the wrapper reads the latest onClose when it fires.
+const close = (): void => onClose();
 
 // Wide enough for the longest label ("Start a route here") at the inherited font size; the menu
 // is fixed to this width below so the clamp math always matches the rendered box.
@@ -66,45 +66,54 @@ const above = $derived(y > menuHeight + EDGE * 2 || y > height / 2);
 const top = $derived(above ? y - EDGE : y + EDGE);
 </script>
 
-<!-- A transparent backdrop catches the outside tap to dismiss and keeps the press off the map. -->
-<button type="button" class="overlay-backdrop" aria-label="Dismiss menu" onclick={onClose}></button>
-<div
-  class="popover-card menu"
+<AnchoredMenu
+  open={true}
+  onClose={close}
+  backdropLabel="Dismiss menu"
+  surfaceClass="popover-card chart-context-menu"
+  ariaLabel="Chart actions"
   role="menu"
-  aria-label="Chart actions"
-  tabindex="-1"
-  use:rovingFocus={'[role="menuitem"]'}
-  style="left: {left}px; top: {top}px; inline-size: {MENU_WIDTH}px; transform: translate(-50%, {above
-    ? '-100%'
-    : '0'});"
+  surfaceStyle={`left: ${left}px; top: ${top}px; inline-size: ${MENU_WIDTH}px; transform: translate(-50%, ${above ? '-100%' : '0'});`}
 >
-  <button type="button" role="menuitem" class="menu-item item" onclick={onGoToHere}>
-    <Navigation size={16} aria-hidden="true" />
-    Go to here
-  </button>
-  <button type="button" role="menuitem" class="menu-item item" onclick={onStartRoute}>
-    <Route size={16} aria-hidden="true" />
-    Start a route here
-  </button>
-  {#if onDropWaypoint}
-    <button type="button" role="menuitem" class="menu-item item" onclick={onDropWaypoint}>
-      <MapPin size={16} aria-hidden="true" />
-      Drop waypoint
-    </button>
-  {/if}
-  {#if onMeasureFrom}
-    <button type="button" role="menuitem" class="menu-item item" onclick={onMeasureFrom}>
-      <Ruler size={16} aria-hidden="true" />
-      Measure from here
-    </button>
-  {/if}
-</div>
+  {#snippet children()}
+    <!-- rovingFocus lands the keyboard on the first row and moves it with the arrow keys; the
+         display:contents wrapper carries the action without inserting a box between the menu surface
+         and its rows. -->
+    <div class="rows" use:rovingFocus={'[role="menuitem"]'}>
+      <button type="button" role="menuitem" class="menu-item item" onclick={onGoToHere}>
+        <Navigation size={16} aria-hidden="true" />
+        Go to here
+      </button>
+      <button type="button" role="menuitem" class="menu-item item" onclick={onStartRoute}>
+        <Route size={16} aria-hidden="true" />
+        Start a route here
+      </button>
+      {#if onDropWaypoint}
+        <button type="button" role="menuitem" class="menu-item item" onclick={onDropWaypoint}>
+          <MapPin size={16} aria-hidden="true" />
+          Drop waypoint
+        </button>
+      {/if}
+      {#if onMeasureFrom}
+        <button type="button" role="menuitem" class="menu-item item" onclick={onMeasureFrom}>
+          <Ruler size={16} aria-hidden="true" />
+          Measure from here
+        </button>
+      {/if}
+    </div>
+  {/snippet}
+</AnchoredMenu>
 
 <style>
-.menu {
+:global(.chart-context-menu) {
   position: absolute;
   z-index: var(--z-menu);
   padding: var(--space-1);
+}
+/* Transparent to layout so the rows stay direct children of the menu surface and keep its padding;
+   it adds no box and no containing block. */
+.rows {
+  display: contents;
 }
 .item {
   white-space: nowrap;

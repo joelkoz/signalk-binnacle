@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { CHART_SOURCE_PREFIX } from './chart-adapter';
-import type { MapThemePaint } from './map-theme';
+import { colorProperty, type MapThemePaint } from './map-theme';
 import { RASTER_ID_PREFIX } from './raster-overlay';
 
 // The base map is the OpenFreeMap "liberty" style (OpenMapTiles schema). Its default
@@ -8,10 +8,14 @@ import { RASTER_ID_PREFIX } from './raster-overlay';
 // landcover green. We recolor it per theme from each layer's source-layer, which is a far
 // more stable key than the individual layer ids.
 
+// Every binnacle-owned overlay layer id starts with this, so the base recolor can tell them apart
+// from the base-style layers it may touch. Shared with the overlay id builders.
+export const BINNACLE_ID_PREFIX = 'binnacle-';
+
 // A layer whose id starts with one of these is owned by an overlay (the chart, every hosted-raster
 // overlay, and every binnacle overlay theme their own layers via the layer manager), so the base
 // recolor leaves them alone. RASTER_ID_PREFIX is shared with the raster-overlay factory.
-const MANAGED_PREFIXES = [CHART_SOURCE_PREFIX, 'binnacle-', RASTER_ID_PREFIX];
+const MANAGED_PREFIXES = [CHART_SOURCE_PREFIX, BINNACLE_ID_PREFIX, RASTER_ID_PREFIX];
 
 export interface BaseLayer {
   id: string;
@@ -40,16 +44,9 @@ export function themableBaseLayers(map: MapLibreMap): BaseLayer[] {
 }
 
 function paintProperty(type: string): string | null {
-  switch (type) {
-    case 'fill':
-      return 'fill-color';
-    case 'line':
-      return 'line-color';
-    case 'fill-extrusion':
-      return 'fill-extrusion-color';
-    default:
-      return null;
-  }
+  if (type === 'fill' || type === 'line') return colorProperty(type);
+  if (type === 'fill-extrusion') return 'fill-extrusion-color';
+  return null;
 }
 
 function sourceColor(

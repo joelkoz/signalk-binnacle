@@ -52,27 +52,27 @@ export function buildMapCommands(deps: MapCommandsDeps): MapCommands {
     cancelEditGeneration,
     currentEditGeneration,
   } = deps;
+  // Fly to a point, holding the current zoom unless it is below `floor`, in which case it zooms in
+  // to `target`; a reduced-motion preference drops the animation. Shared by centerOnVessel and flyTo.
+  const flyToMinZoom = (lngLat: [number, number], floor: number, target: number): void => {
+    const zoom = map.getZoom();
+    map.flyTo({
+      center: lngLat,
+      zoom: zoom < floor ? target : zoom,
+      ...(prefersReducedMotion() ? { duration: 0 } : {}),
+    });
+  };
   return {
     centerOnVessel: () => {
       const position = vessel.position;
       if (!position) return;
-      const zoom = map.getZoom();
-      map.flyTo({
-        center: [position.longitude, position.latitude],
-        zoom: zoom < 12 ? 14 : zoom,
-        ...(prefersReducedMotion() ? { duration: 0 } : {}),
-      });
+      flyToMinZoom([position.longitude, position.latitude], 12, 14);
     },
     recenterOnVessel: (latitude, longitude) => {
       map.setCenter([longitude, latitude]);
     },
     flyTo: (latitude, longitude) => {
-      const zoom = map.getZoom();
-      map.flyTo({
-        center: [longitude, latitude],
-        zoom: zoom < 11 ? 12 : zoom,
-        ...(prefersReducedMotion() ? { duration: 0 } : {}),
-      });
+      flyToMinZoom([longitude, latitude], 11, 12);
     },
     fitBounds: (bounds) => {
       // normalizeBounds rejects a malformed (non-finite or inverted) descriptor, unwraps an

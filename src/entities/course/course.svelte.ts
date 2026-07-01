@@ -66,7 +66,7 @@ export class CourseGuidance {
     // Pre-create the cells so the first access inside a reactive context finds an existing,
     // tracked cell. A cell created lazily during a reactive read is not tracked, so later
     // updates would not re-render. This mirrors OwnVessel's constructor.
-    for (const path of COURSE_CELL_PATHS) store.cell(path);
+    store.ensureCells(COURSE_CELL_PATHS);
   }
 
   // Seed every course cell from a one-time REST hydration, so the nav strip shows values immediately

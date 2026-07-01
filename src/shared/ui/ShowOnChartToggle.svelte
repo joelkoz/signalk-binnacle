@@ -2,20 +2,16 @@
 // A full-width "Show X on chart" toggle: the in-panel control that mirrors a layer's visibility (the
 // Layers eye stays the source of truth). Shared so every panel that surfaces its own layer reads
 // identically. Reuses the .btn lit-state vocabulary, so it themes correctly with no extra styling.
-let {
-  shown,
-  label,
-  onToggle,
-  disabled = false,
-  description,
-}: {
+interface Props {
   shown: boolean;
   label: string;
   onToggle: (shown: boolean) => void;
   disabled?: boolean;
   // An optional plain-language hover and focus tooltip, matching LayerToggle.
   description?: string;
-} = $props();
+}
+
+const { shown, label, onToggle, disabled = false, description }: Props = $props();
 </script>
 
 <button

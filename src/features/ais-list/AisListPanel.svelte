@@ -3,7 +3,7 @@ import type { AisTargets } from '$entities/ais';
 import type { CollisionAssessment } from '$entities/collision';
 import type { UnitsStore } from '$entities/units';
 import type { OwnVessel } from '$entities/vessel';
-import { type LatLon, quantizeLatLonKey } from '$shared/geo';
+import { type LatLon, parseLatLonKey, quantizeLatLonKey } from '$shared/geo';
 import {
   formatBearingOr,
   formatKnotsOr,
@@ -43,8 +43,8 @@ const ownCellKey = $derived(vessel.position ? quantizeLatLonKey(vessel.position)
 const parsedOwn = $derived<LatLon | undefined>(
   ownCellKey
     ? (() => {
-        const [latitude, longitude] = ownCellKey.split(',').map(Number);
-        return { latitude, longitude };
+        const { lat, lon } = parseLatLonKey(ownCellKey);
+        return { latitude: lat, longitude: lon };
       })()
     : undefined,
 );

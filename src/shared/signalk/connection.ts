@@ -1,14 +1,11 @@
 import { fullJitterDelay } from './backoff';
+import { appendQuery } from './origin';
 import type { ConnectionPhase, ConnectionState } from './types';
 
 interface ConnectionHandlers {
   onState: (state: ConnectionState) => void;
   onDelta: (raw: string) => void;
   onOpen?: () => void;
-}
-
-function withQuery(url: string, query: string): string {
-  return url.includes('?') ? `${url}&${query}` : `${url}?${query}`;
 }
 
 export class SkConnection {
@@ -32,7 +29,7 @@ export class SkConnection {
     if (this.#reconnectTimer) clearTimeout(this.#reconnectTimer);
     this.#ws?.close();
     this.#emit('connecting');
-    const ws = new WebSocket(withQuery(this.#url, 'subscribe=none'));
+    const ws = new WebSocket(appendQuery(this.#url, 'subscribe', 'none'));
     this.#ws = ws;
     // Gate every handler on still being the current socket, so a superseded socket (after a
     // reconnect) cannot inject a delta or schedule a second reconnect from its stale closures.

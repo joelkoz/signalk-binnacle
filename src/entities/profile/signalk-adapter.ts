@@ -1,3 +1,4 @@
+import { isRecord } from '$shared/lib';
 import { fetchAuthedJson, postResource } from '$shared/signalk';
 import type { ProfilesState } from './profile-types';
 import type { AsyncProfileAdapter } from './profiles-store.svelte';
@@ -28,10 +29,10 @@ export class SignalKProfileAdapter implements AsyncProfileAdapter {
     if (body === undefined) return undefined;
     // A reachable but empty store answers with {} and a 200, so a missing profiles array is an empty
     // state, not an unavailable one: returning it lets the store seed the server from the local cache.
-    if (!body || typeof body !== 'object' || !Array.isArray((body as ProfilesState).profiles)) {
+    if (!isRecord(body) || !Array.isArray(body.profiles)) {
       return { profiles: [], activeId: undefined, defaultId: undefined };
     }
-    return body as ProfilesState;
+    return body as unknown as ProfilesState;
   }
 
   async save(state: ProfilesState): Promise<boolean> {

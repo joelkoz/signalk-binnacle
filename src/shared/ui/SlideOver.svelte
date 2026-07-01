@@ -1,9 +1,9 @@
 <script lang="ts">
-import { ArrowLeft, ChevronDown, ChevronUp, X } from '@lucide/svelte';
 import type { Snippet } from 'svelte';
 import { fly } from 'svelte/transition';
 import { prefersReducedMotion } from '$shared/lib';
 import { dialog } from './dialog';
+import PanelHeader from './PanelHeader.svelte';
 import { PANEL_TRANSITION_MS } from './transitions';
 
 // The panel slides in from the edge it docks to, with a zero duration when the system reduced-motion
@@ -66,51 +66,16 @@ const {
     opacity: 0.3,
   }}
 >
-  <header class="panel-header" class:panel-header--stacked={subtitle}>
-    {#if onBack}
-      <button
-        type="button"
-        class="icon-btn icon-btn--accent"
-        aria-label={backLabel}
-        title={backLabel}
-        onclick={onBack}
-      >
-        <ArrowLeft size={20} aria-hidden="true" />
-      </button>
-    {/if}
-    <div class="heading">
-      <h2 class="panel-title">{title}</h2>
-      {#if subtitle}
-        <span class="subtitle">{subtitle}</span>
-      {/if}
-    </div>
-    {@render headerExtra?.()}
-    {#if minimize}
-      <button
-        type="button"
-        class="panel-minimize"
-        aria-label={minimize.collapsed ? 'Expand panel' : 'Minimize panel'}
-        aria-expanded={!minimize.collapsed}
-        title={minimize.collapsed ? 'Expand panel' : 'Minimize panel'}
-        onclick={minimize.onToggle}
-      >
-        {#if minimize.collapsed}
-          <ChevronUp size={18} aria-hidden="true" />
-        {:else}
-          <ChevronDown size={18} aria-hidden="true" />
-        {/if}
-      </button>
-    {/if}
-    <button
-      type="button"
-      class="panel-close"
-      aria-label={closeLabel}
-      title={closeLabel}
-      onclick={onClose}
-    >
-      <X size={18} aria-hidden="true" />
-    </button>
-  </header>
+  <PanelHeader
+    {title}
+    {subtitle}
+    {closeLabel}
+    {onClose}
+    {onBack}
+    {backLabel}
+    {headerExtra}
+    {minimize}
+  />
   <div
     class="panel-body"
     class:panel-body--flex={bodyFlex}
@@ -124,19 +89,3 @@ const {
     </footer>
   {/if}
 </aside>
-
-<style>
-.heading {
-  flex: 1;
-  min-inline-size: 0;
-}
-.subtitle {
-  display: block;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-/* A two-line heading aligns to the top of the header instead of vertical center. */
-.panel-header--stacked {
-  align-items: flex-start;
-}
-</style>

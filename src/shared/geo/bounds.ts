@@ -4,6 +4,26 @@ import type { LatLon } from './geo-guards';
 // carries.
 export type Bbox4 = [number, number, number, number];
 
+// True when every argument is a finite number, the shared guard for rejecting a box or a metadata
+// bounds array carrying a NaN, an Infinity, or a missing coordinate.
+export function allFinite(...n: number[]): boolean {
+  return n.every(Number.isFinite);
+}
+
+// Whether an unknown value is a Bbox4: a four-element array of finite numbers. Guards a raw chart
+// descriptor before its bounds are treated as a box. Number.isFinite already rejects a non-number,
+// so the length check plus the finite check is sufficient.
+export function isBbox4(x: unknown): x is Bbox4 {
+  return Array.isArray(x) && x.length === 4 && x.every(Number.isFinite);
+}
+
+// A Bbox4 as "lat, lon to lat, lon" at two decimals, the south-west then north-east corner text the
+// charts and layers panels show. Reads the [west, south, east, north] order as [1], [0] then [3], [2].
+export function formatBounds(bbox: Bbox4): string {
+  const r = (n: number): string => n.toFixed(2);
+  return `${r(bbox[1])}, ${r(bbox[0])} to ${r(bbox[3])}, ${r(bbox[2])}`;
+}
+
 // A MapLibre-ready corner pair: [[west, south], [east, north]].
 type CornerBounds = [[number, number], [number, number]];
 
@@ -24,7 +44,7 @@ function unwrapEast(west: number, east: number): number {
 // short way. A zero-area box is padded so it has a real extent.
 export function normalizeBounds(bbox: Bbox4): CornerBounds | null {
   const [west, south, east, north] = bbox;
-  if (![west, south, east, north].every(Number.isFinite)) return null;
+  if (!allFinite(west, south, east, north)) return null;
   if (south > north) return null;
   const unwrappedEast = unwrapEast(west, east);
   const w = unwrappedEast === west ? west - DEGENERATE_PAD_DEG : west;

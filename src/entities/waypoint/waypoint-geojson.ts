@@ -1,4 +1,5 @@
 import { isLonLat, type LonLat, latLonToLonLat, lonLatToLatLon } from '$shared/geo';
+import { isRecord } from '$shared/lib';
 import { str } from '$shared/signalk';
 import type { Waypoint } from './waypoint-types';
 
@@ -29,7 +30,7 @@ export function waypointToFeature(waypoint: Waypoint): WaypointResourceBody {
 }
 
 export function featureToWaypoint(id: string, raw: unknown): Waypoint | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
+  if (!isRecord(raw)) return undefined;
   const w = raw as {
     name?: unknown;
     description?: unknown;

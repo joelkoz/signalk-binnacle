@@ -1,9 +1,12 @@
 export type { Bbox4, LngLatBoundsLike } from './bounds';
 export {
+  allFinite,
   bboxContains,
   bboxContainsPoint,
   boundsOfPoints,
   clampToWorld,
+  formatBounds,
+  isBbox4,
   lngLatBoundsToBbox4,
   normalizeBounds,
   padBbox,
@@ -20,5 +23,5 @@ export {
   lonLatToLatLon,
   roundLatLon,
 } from './geo-guards';
-export { COORD_CELL_DEG, quantizeCellDeg, quantizeLatLonKey } from './quantize';
+export { COORD_CELL_DEG, parseLatLonKey, quantizeCellDeg, quantizeLatLonKey } from './quantize';
 export type { MapView } from './view';

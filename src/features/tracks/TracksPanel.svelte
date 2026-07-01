@@ -4,9 +4,11 @@ import type { TrackRecorder } from '$entities/track';
 import { formatDuration, formatKnots, formatNm, PLACEHOLDER } from '$shared/lib';
 import type { PersistedValue, TrackSettings } from '$shared/settings';
 import {
+  ArmedRow,
   defaultSaveName,
   InlineConfirm,
   NameEntry,
+  resolveSaveName,
   SavedList,
   SlideOver,
   VisibilityToggle,
@@ -69,7 +71,7 @@ const savedCards = $derived(
 let naming = $state<'track' | 'route' | null>(null);
 function confirmName(value: string): void {
   const kind = naming === 'route' ? 'Route' : 'Track';
-  const trimmed = value.trim() || defaultSaveName(kind);
+  const trimmed = resolveSaveName(value, kind);
   if (naming === 'track') onSave(trimmed);
   else if (naming === 'route') onSaveAsRoute(trimmed);
   naming = null;
@@ -85,11 +87,7 @@ function confirmClear(): void {
 
 // Deleting a saved track is destructive, so it arms a confirm step rather than firing on a
 // single tap where a mis-tap on a rolling deck would lose a saved track.
-let confirmingDelete = $state<string | undefined>();
-function confirmDelete(id: string): void {
-  confirmingDelete = undefined;
-  onDelete(id);
-}
+const armedDelete = new ArmedRow((id) => onDelete(id));
 
 function setColorMode(mode: TrackSettings['colorMode']): void {
   settings.set({ ...settings.value, colorMode: mode });
@@ -252,11 +250,11 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
         <dt class="caps-label">Duration</dt>
         <dd><span class="num">{durationText}</span></dd>
       </dl>
-      {#if confirmingDelete === track.id}
+      {#if armedDelete.isArmed(track.id)}
         <InlineConfirm
           question="Delete this track?"
-          onConfirm={() => confirmDelete(track.id)}
-          onCancel={() => (confirmingDelete = undefined)}
+          onConfirm={() => armedDelete.confirm(track.id)}
+          onCancel={() => armedDelete.cancel()}
         />
       {:else}
         <div class="actions">
@@ -275,7 +273,7 @@ function setColorMode(mode: TrackSettings['colorMode']): void {
             class="icon-btn icon-btn--danger"
             aria-label="Delete track"
             title="Delete"
-            onclick={() => (confirmingDelete = track.id)}
+            onclick={() => armedDelete.arm(track.id)}
           >
             <Trash2 size={18} aria-hidden="true" />
           </button>

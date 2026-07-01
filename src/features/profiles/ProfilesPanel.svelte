@@ -49,7 +49,7 @@ const {
 
 // Naming a new profile or renaming an existing one happens inline through NameEntry rather than a
 // native prompt. One state drives both: 'new' for the top Save button, or a rename keyed by id.
-let naming = $state<{ mode: 'new' } | { mode: 'rename'; id: string; current: string } | null>(null);
+let naming = $state<{ mode: 'new' } | { mode: 'rename'; id: string } | null>(null);
 function confirmName(value: string): void {
   if (naming === null) return;
   if (naming.mode === 'new') {
@@ -192,7 +192,7 @@ function confirmDelete(id: string): void {
             class="icon-btn"
             aria-label="Rename profile"
             title="Rename"
-            onclick={() => (naming = { mode: 'rename', id: profile.id, current: profile.name })}
+            onclick={() => (naming = { mode: 'rename', id: profile.id })}
           >
             <SquarePen size={18} aria-hidden="true" />
           </button>

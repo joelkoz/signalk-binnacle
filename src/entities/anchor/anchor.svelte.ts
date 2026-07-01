@@ -1,9 +1,14 @@
 import type { OwnVessel } from '$entities/vessel';
 import { asNumber, isLatLon, type LatLon } from '$shared/geo';
-import { isFiniteNumber } from '$shared/lib';
+import { isFiniteNumber, isRecord } from '$shared/lib';
 import { haversineMeters } from '$shared/nav';
 import { PersistedValue, type StorageLike } from '$shared/settings';
-import { type SignalKStore, SK_PATHS, SOUNDING_NOTIFICATION_STATES } from '$shared/signalk';
+import {
+  isSoundingNotification,
+  notificationState,
+  type SignalKStore,
+  SK_PATHS,
+} from '$shared/signalk';
 import { DEFAULT_RADIUS_M, MIN_RADIUS_M } from './anchor-geometry';
 import { DragDetector } from './drag-detector';
 
@@ -20,7 +25,7 @@ export interface LocalAnchor {
 }
 
 function validLocal(value: LocalAnchor | null): LocalAnchor | null {
-  if (!value || typeof value !== 'object') return null;
+  if (!isRecord(value)) return null;
   if (!isLatLon(value.position)) return null;
   if (!isFiniteNumber(value.radiusMeters) || value.radiusMeters < MIN_RADIUS_M) return null;
   // Rebuilt as a clean literal: spreading the raw localStorage object would re-persist any
@@ -64,35 +69,29 @@ export class AnchorWatch {
     this.#local = validLocal(this.#watch.value);
     // Pre-create the cells this watch reads, so the first reactive read finds a tracked cell
     // (see OwnVessel for the lazily-created-cell pitfall).
-    for (const path of [
+    store.ensureCells([
       SK_PATHS.anchorPosition,
       SK_PATHS.anchorMaxRadius,
       SK_PATHS.anchorNotification,
-    ]) {
-      store.cell(path);
-    }
+    ]);
   }
 
   #serverPosition = $derived.by<LatLon | undefined>(() => {
-    const value = this.#store.cell(SK_PATHS.anchorPosition).value;
+    const value = this.#raw(SK_PATHS.anchorPosition);
     return isLatLon(value) ? value : undefined;
   });
 
   #serverRadius = $derived.by<number | undefined>(() =>
-    asNumber(this.#store.cell(SK_PATHS.anchorMaxRadius).value),
+    asNumber(this.#raw(SK_PATHS.anchorMaxRadius)),
   );
 
-  #notificationState = $derived.by<string | undefined>(() => {
-    const value = this.#store.cell(SK_PATHS.anchorNotification).value;
-    if (!value || typeof value !== 'object') return undefined;
-    const state = (value as { state?: unknown }).state;
-    return typeof state === 'string' ? state : undefined;
-  });
+  #notificationState = $derived.by<string | undefined>(() =>
+    notificationState(this.#raw(SK_PATHS.anchorNotification)),
+  );
 
-  #serverDragging = $derived.by<boolean>(() => {
-    const state = this.#notificationState;
-    return state !== undefined && SOUNDING_NOTIFICATION_STATES.has(state);
-  });
+  #serverDragging = $derived.by<boolean>(() =>
+    isSoundingNotification(this.#raw(SK_PATHS.anchorNotification)),
+  );
 
   get mode(): AnchorMode {
     if (this.#serverPosition) return 'server';
@@ -236,5 +235,9 @@ export class AnchorWatch {
   #setLocal(next: LocalAnchor | null): void {
     this.#local = next;
     this.#watch.set(next);
+  }
+
+  #raw(path: string): unknown {
+    return this.#store.cell(path).value;
   }
 }

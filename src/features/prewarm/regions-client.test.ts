@@ -31,7 +31,7 @@ describe('regions client', () => {
     expect(await client.geocode(37.77, -122.41)).toBe('Test City');
     expect(fetchImpl).toHaveBeenCalledWith(
       'http://h/plugins/signalk-chart-locker/api/geocode?lat=37.77&lon=-122.41',
-      undefined,
+      expect.not.objectContaining({ headers: expect.anything() }),
     );
   });
 
@@ -46,7 +46,7 @@ describe('regions client', () => {
     expect(await client.getCacheStats()).toEqual(stats);
     expect(fetchImpl).toHaveBeenCalledWith(
       'http://h/plugins/signalk-chart-locker/api/cache/stats',
-      undefined,
+      expect.not.objectContaining({ headers: expect.anything() }),
     );
   });
 

@@ -209,9 +209,7 @@ export class LayerManager {
     const clamped = Math.max(0, Math.min(toIndex, topDown.length));
     topDown.splice(clamped, 0, id);
     this.#explicitOrder = topDown.reverse();
-    // The effective order is already determined by the new explicit order, so build it once here
-    // and hand it to #applyOrder rather than letting #applyOrder recompute it.
-    this.#applyOrder(this.#effectiveOrder());
+    this.#applyOrder();
     this.#onOrderChange?.([...this.#explicitOrder]);
   }
 
@@ -269,6 +267,9 @@ export class LayerManager {
 
   // The effective stacking order, bottom to top: pinned overlays on top, the rest by the
   // saved explicit order, with any overlay missing from it slotted in at its band default.
+  // Recomputed per call rather than memoized: the overlay count is small (a dozen at most) and a
+  // cache would need invalidating on every register, unregister, reorder, pin, and snapshot, where a
+  // stale entry would mis-stack layers.
   #effectiveOrder(): string[] {
     const bandRank = (id: string): number =>
       Z_RANK.get(this.#modules.get(id)?.band ?? 'basemap') ?? 0;

@@ -7,6 +7,7 @@ import type { TimeBracket, WeatherGrid, WeatherStore } from '$entities/weather';
 import { type OverlayContext, type OverlayModule, removeLayersAndSources } from '$shared/map';
 import type { Theme } from '$shared/ui';
 import type { FieldBitmap } from './field-rgba';
+import { gridTimeGate } from './grid-time-gate';
 
 export type Quad = [[number, number], [number, number], [number, number], [number, number]];
 export type CanvasFactory = () => HTMLCanvasElement;
@@ -52,8 +53,7 @@ export function createFieldOverlay(
   const { id, title, description, sourceId, layerId, defaultOpacity, fieldRgba } = options;
   const canvas = makeCanvas();
   let theme: Theme = 'day';
-  let lastGrid: unknown;
-  let lastTime = Number.NaN;
+  const gate = gridTimeGate(store);
   let lastTheme: Theme | undefined;
   // Pending frames during which the non-animated source stays "playing" so it re-reads the canvas.
   // A single rAF chain runs at a time; a redraw mid-window just extends the count, never stacks.
@@ -152,15 +152,13 @@ export function createFieldOverlay(
     reset() {
       // The manager calls this on a base-style swap, which recreated the source emptied, so the next
       // sync must redraw rather than early-return on an unchanged grid reference.
-      lastGrid = undefined;
-      lastTime = Number.NaN;
+      gate.reset();
       lastTheme = undefined;
     },
     sync(ctx) {
-      const grid = store.grid;
-      if (grid === lastGrid && store.selectedTime === lastTime && theme === lastTheme) return;
-      lastGrid = grid;
-      lastTime = store.selectedTime;
+      // gate.changed() always records the current grid and time; the theme dimension is tracked
+      // separately so a theme swap alone (unchanged grid and time) still forces a recolored redraw.
+      if (!gate.changed() && theme === lastTheme) return;
       lastTheme = theme;
       redraw();
       const coords = fieldCoords();

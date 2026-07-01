@@ -12,6 +12,7 @@ export type {
   HistoryValues,
 } from './history-client';
 export {
+  columnIndex,
   fetchHistoryProviders,
   fetchHistoryValues,
   fetchHistoryValuesAcrossProviders,
@@ -31,7 +32,7 @@ export {
   silenceNotification,
   updateNotification,
 } from './notifications-client';
-export { appendToken, serverOrigin, streamUrl } from './origin';
+export { appendQuery, appendToken, serverOrigin, streamUrl } from './origin';
 export type { SkPathKey } from './paths';
 export { SK_PATHS } from './paths';
 export {
@@ -66,4 +67,10 @@ export type {
   SubscribeEntry,
   SubscribePolicy,
 } from './types';
-export { ALL_VESSELS_CONTEXT, SELF_CONTEXT, SOUNDING_NOTIFICATION_STATES } from './types';
+export {
+  ALL_VESSELS_CONTEXT,
+  isSoundingNotification,
+  notificationState,
+  SELF_CONTEXT,
+  SOUNDING_NOTIFICATION_STATES,
+} from './types';

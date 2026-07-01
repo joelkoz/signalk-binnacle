@@ -15,11 +15,13 @@ import { type Route, type RouteHighlight, routeDistanceMeters } from '$entities/
 import { formatNm } from '$shared/lib';
 import type { PersistedValue } from '$shared/settings';
 import {
+  ArmedRow,
   defaultSaveName,
   InlineConfirm,
   NameEntry,
   pickTextFile,
   readErrorMessage,
+  resolveSaveName,
   SavedList,
   SlideOver,
   VisibilityToggle,
@@ -89,11 +91,7 @@ const {
 
 // Delete is destructive and, for the active route, also stops navigation, so it arms a confirm step
 // rather than firing on a single tap where a mis-tap on a rolling deck would lose a saved route.
-let confirmingDelete = $state<string | undefined>();
-function confirmDelete(id: string): void {
-  confirmingDelete = undefined;
-  onDelete(id);
-}
+const armedDelete = new ArmedRow((id) => onDelete(id));
 
 // A failed file read must not look like a quiet cancel: surface it so the navigator knows the import
 // did not happen, not just that nothing changed.
@@ -112,7 +110,7 @@ async function importGpx(): Promise<void> {
 // Saving a route names it inline through NameEntry rather than a native prompt.
 let naming = $state(false);
 function confirmName(value: string): void {
-  onSave(value.trim() || defaultSaveName('Route'));
+  onSave(resolveSaveName(value, 'Route'));
   naming = false;
 }
 
@@ -244,13 +242,13 @@ $effect(() => {
         <dt class="caps-label">Waypoints</dt>
         <dd><span class="num">{route.waypoints.length}</span></dd>
       </dl>
-      {#if confirmingDelete === route.id}
+      {#if armedDelete.isArmed(route.id)}
         <InlineConfirm
           question={route.id === activeId
             ? 'Delete this route and stop navigating?'
             : 'Delete this route?'}
-          onConfirm={() => confirmDelete(route.id)}
-          onCancel={() => (confirmingDelete = undefined)}
+          onConfirm={() => armedDelete.confirm(route.id)}
+          onCancel={() => armedDelete.cancel()}
         />
       {:else}
         <div class="actions">
@@ -313,7 +311,7 @@ $effect(() => {
             class="icon-btn icon-btn--danger"
             aria-label="Delete route"
             title="Delete"
-            onclick={() => (confirmingDelete = route.id)}
+            onclick={() => armedDelete.arm(route.id)}
           >
             <Trash2 size={18} aria-hidden="true" />
           </button>

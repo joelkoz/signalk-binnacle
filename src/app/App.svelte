@@ -1189,6 +1189,7 @@ const mobController = createMobController({
   getToken: () => chartsToken,
   mob,
   mobAlarm,
+  units,
   notificationsApi: () => notificationsApi,
   publishDelta,
   flyTo: (lat, lon) => mapCommands?.flyTo(lat, lon),
@@ -2103,21 +2104,177 @@ onDestroy(() => {
         />
       </div>
     {/if}
-    {#if activePanel === 'layers' && layersView}
-      <div class="panel-slot" id="layers-panel">
-        <LayersPanel
-          view={layersView}
-          {userCharts}
-          categoriesOpen={layerCategoriesOpen}
-          onClose={closePanel}
-          onBack={backToMenu}
-          onManageLayer={(id) => {
-            if (id === 'marine-radar') {
-              radarOpenedFrom = 'layers';
-              radarControlsOpen = true;
-            }
-          }}
-        />
+    {#if activePanel}
+      <div class="panel-slot" id={activePanel === 'layers' ? 'layers-panel' : undefined}>
+        {#if activePanel === 'layers' && layersView}
+          <LayersPanel
+            view={layersView}
+            {userCharts}
+            categoriesOpen={layerCategoriesOpen}
+            onClose={closePanel}
+            onBack={backToMenu}
+            onManageLayer={(id) => {
+              if (id === 'marine-radar') {
+                radarOpenedFrom = 'layers';
+                radarControlsOpen = true;
+              }
+            }}
+          />
+        {:else if activePanel === 'routes'}
+          <RoutesPanel
+            routes={routeStore.routes}
+            shownIds={routeStore.shownIds}
+            working={routeStore.working}
+            activeId={routeStore.activeId}
+            highlight={routeStore.highlight}
+            {onHighlightLeg}
+            error={routeError}
+            onNew={beginNewRoute}
+            {onEditRoute}
+            onSave={onSaveRoute}
+            onCancelEdit={onCancelRouteEdit}
+            onToggleShown={onToggleRouteShown}
+            onLocate={flyToRouteStart}
+            onActivate={onActivateRoute}
+            onStop={onStopCourse}
+            onReverse={onReverseRoute}
+            onExportGpx={onExportRouteGpx}
+            onImportGpx={onImportRouteGpx}
+            planningSpeed={planningSpeedKn}
+            onDelete={onDeleteRoute}
+            onClose={closeRoutesPanel}
+            onBack={backFromRoutesPanel}
+          />
+        {:else if activePanel === 'tracks'}
+          <TracksPanel
+            {recorder}
+            settings={trackSettings}
+            saved={savedTracks}
+            shown={shownSaved}
+            onSave={onSaveTrack}
+            onSaveAsRoute={onSaveTrackAsRoute}
+            {onTrackHome}
+            onDelete={onDeleteSavedTrack}
+            {onToggleSaved}
+            onExport={onExportSavedTrack}
+            error={trackError}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'waypoints'}
+          <WaypointsPanel
+            waypoints={waypointsStore.waypoints}
+            error={waypointError}
+            onLocate={(waypoint) => flyToPosition(waypoint.position)}
+            onGoTo={(waypoint) => void onGoToHere(waypoint.position)}
+            onEdit={onOpenEditWaypoint}
+            onDelete={(id) => void onDeleteWaypoint(id)}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'tides'}
+          <TidesPanel
+            store={tidesStore}
+            {units}
+            stationsShown={layerSettings.value.tides?.visible ?? false}
+            onToggleStations={(shown) => setLayerVisible('tides', shown)}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'trends'}
+          <TrendsPanel
+            {origin}
+            token={chartsToken}
+            providers={historyProviders}
+            recorder={trendRecorder}
+            mode={units.mode}
+            theme={theme.theme}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'ais'}
+          <AisListPanel
+            {units}
+            {aisTargets}
+            {vessel}
+            {collision}
+            onLocate={flyToPosition}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'poi-search'}
+          <!-- The list stays docked at the leading edge; selecting a result opens its detail in the
+               standard note popup, the same as tapping the marker on the chart. On a wide screen the
+               popup docks at the trailing edge so the navigator can click through results with the list
+               still open; on a phone it replaces the list as a bottom sheet. -->
+          <PoiSearchPanel
+            pois={poiInView}
+            {vessel}
+            {units}
+            onSelect={selectPoi}
+            onHover={(poi) => (hoveredPoi = poi)}
+            onClose={closePoiSearch}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'anchor'}
+          <AnchorPanel
+            {units}
+            {anchor}
+            {vessel}
+            error={anchorController.anchorError}
+            onDrop={() => void anchorController.onDrop()}
+            onRaise={() => void anchorController.onRaise()}
+            onSetRadius={(meters) => void anchorController.onSetRadius(meters)}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'alarms'}
+          <AlarmsPanel
+            {thresholds}
+            collisionMuted={collisionMute.active}
+            collisionMuteRemainingMin={collisionMute.active ? muteRemainingMin : undefined}
+            onToggleCollisionMute={toggleCollisionMute}
+            arrivalMuted={arrivalMuted.value}
+            onToggleArrivalMute={() => arrivalMuted.set(!arrivalMuted.value)}
+            notifications={notificationsStore}
+            error={alarmActionError}
+            onSilence={notificationsApi ? onSilenceNotification : undefined}
+            onAcknowledge={notificationsApi ? onAcknowledgeNotification : undefined}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'profiles'}
+          <ProfilesPanel
+            profiles={profileStore.profiles}
+            activeId={profileStore.activeId}
+            defaultId={profileStore.defaultId}
+            isDirty={profileStore.isDirty}
+            onApply={onApplyProfile}
+            onSaveNew={onSaveNewProfile}
+            onUpdate={(id) => {
+              profileStore.update(id, captureProfileSettings());
+              profileStore.clearDirty();
+            }}
+            onRename={(id, name) => profileStore.rename(id, name)}
+            onRemove={(id) => profileStore.remove(id)}
+            onSetDefault={(id) => profileStore.setDefault(id)}
+            onExport={onExportProfile}
+            onImport={onImportProfiles}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'regions' && companionBase !== null && mapInstance}
+          <RegionsPanel
+            {auth}
+            map={mapInstance}
+            {units}
+            {companionBase}
+            onClose={closePanel}
+            onBack={backToMenu}
+          />
+        {:else if activePanel === 'charts-management' && companionBase !== null}
+          <ChartsManagementPanel {auth} {companionBase} onClose={closePanel} onBack={backToMenu} />
+        {/if}
       </div>
     {/if}
     {#if radarControlsOpen}
@@ -2144,196 +2301,6 @@ onDestroy(() => {
             onToggleEcho={(shown) => setLayerVisible('marine-radar', shown)}
           />
         </SlideOver>
-      </div>
-    {/if}
-    {#if activePanel === 'routes'}
-      <div class="panel-slot">
-        <RoutesPanel
-          routes={routeStore.routes}
-          shownIds={routeStore.shownIds}
-          working={routeStore.working}
-          activeId={routeStore.activeId}
-          highlight={routeStore.highlight}
-          {onHighlightLeg}
-          error={routeError}
-          onNew={beginNewRoute}
-          {onEditRoute}
-          onSave={onSaveRoute}
-          onCancelEdit={onCancelRouteEdit}
-          onToggleShown={onToggleRouteShown}
-          onLocate={flyToRouteStart}
-          onActivate={onActivateRoute}
-          onStop={onStopCourse}
-          onReverse={onReverseRoute}
-          onExportGpx={onExportRouteGpx}
-          onImportGpx={onImportRouteGpx}
-          planningSpeed={planningSpeedKn}
-          onDelete={onDeleteRoute}
-          onClose={closeRoutesPanel}
-          onBack={backFromRoutesPanel}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'tracks'}
-      <div class="panel-slot">
-        <TracksPanel
-          {recorder}
-          settings={trackSettings}
-          saved={savedTracks}
-          shown={shownSaved}
-          onSave={onSaveTrack}
-          onSaveAsRoute={onSaveTrackAsRoute}
-          {onTrackHome}
-          onDelete={onDeleteSavedTrack}
-          {onToggleSaved}
-          onExport={onExportSavedTrack}
-          error={trackError}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'waypoints'}
-      <div class="panel-slot">
-        <WaypointsPanel
-          waypoints={waypointsStore.waypoints}
-          error={waypointError}
-          onLocate={(waypoint) => flyToPosition(waypoint.position)}
-          onGoTo={(waypoint) => void onGoToHere(waypoint.position)}
-          onEdit={onOpenEditWaypoint}
-          onDelete={(id) => void onDeleteWaypoint(id)}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'tides'}
-      <div class="panel-slot">
-        <TidesPanel
-          store={tidesStore}
-          {units}
-          stationsShown={layerSettings.value.tides?.visible ?? false}
-          onToggleStations={(shown) => setLayerVisible('tides', shown)}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'trends'}
-      <div class="panel-slot">
-        <TrendsPanel
-          {origin}
-          token={chartsToken}
-          providers={historyProviders}
-          recorder={trendRecorder}
-          mode={units.mode}
-          theme={theme.theme}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'ais'}
-      <div class="panel-slot">
-        <AisListPanel
-          {units}
-          {aisTargets}
-          {vessel}
-          {collision}
-          onLocate={flyToPosition}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'poi-search'}
-      <div class="panel-slot">
-        <!-- The list stays docked at the leading edge; selecting a result opens its detail in the
-             standard note popup, the same as tapping the marker on the chart. On a wide screen the
-             popup docks at the trailing edge so the navigator can click through results with the list
-             still open; on a phone it replaces the list as a bottom sheet. -->
-        <PoiSearchPanel
-          pois={poiInView}
-          {vessel}
-          {units}
-          onSelect={selectPoi}
-          onHover={(poi) => (hoveredPoi = poi)}
-          onClose={closePoiSearch}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'anchor'}
-      <div class="panel-slot">
-        <AnchorPanel
-          {units}
-          {anchor}
-          {vessel}
-          error={anchorController.anchorError}
-          onDrop={() => void anchorController.onDrop()}
-          onRaise={() => void anchorController.onRaise()}
-          onSetRadius={(meters) => void anchorController.onSetRadius(meters)}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'alarms'}
-      <div class="panel-slot">
-        <AlarmsPanel
-          {thresholds}
-          collisionMuted={collisionMute.active}
-          collisionMuteRemainingMin={collisionMute.active ? muteRemainingMin : undefined}
-          onToggleCollisionMute={toggleCollisionMute}
-          arrivalMuted={arrivalMuted.value}
-          onToggleArrivalMute={() => arrivalMuted.set(!arrivalMuted.value)}
-          notifications={notificationsStore}
-          error={alarmActionError}
-          onSilence={notificationsApi ? onSilenceNotification : undefined}
-          onAcknowledge={notificationsApi ? onAcknowledgeNotification : undefined}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'profiles'}
-      <div class="panel-slot">
-        <ProfilesPanel
-          profiles={profileStore.profiles}
-          activeId={profileStore.activeId}
-          defaultId={profileStore.defaultId}
-          isDirty={profileStore.isDirty}
-          onApply={onApplyProfile}
-          onSaveNew={onSaveNewProfile}
-          onUpdate={(id) => {
-            profileStore.update(id, captureProfileSettings());
-            profileStore.clearDirty();
-          }}
-          onRename={(id, name) => profileStore.rename(id, name)}
-          onRemove={(id) => profileStore.remove(id)}
-          onSetDefault={(id) => profileStore.setDefault(id)}
-          onExport={onExportProfile}
-          onImport={onImportProfiles}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'regions' && companionBase !== null && mapInstance}
-      <div class="panel-slot">
-        <RegionsPanel
-          {auth}
-          map={mapInstance}
-          {units}
-          {companionBase}
-          onClose={closePanel}
-          onBack={backToMenu}
-        />
-      </div>
-    {/if}
-    {#if activePanel === 'charts-management' && companionBase !== null}
-      <div class="panel-slot">
-        <ChartsManagementPanel {auth} {companionBase} onClose={closePanel} onBack={backToMenu} />
       </div>
     {/if}
     {#if weatherPanelOpen}

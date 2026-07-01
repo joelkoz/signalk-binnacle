@@ -3,3 +3,9 @@
 export function defaultSaveName(kind: string): string {
   return `${kind} ${new Date().toISOString().slice(0, 10)}`;
 }
+
+// The name to save under from what the user typed into a NameEntry: the trimmed input, or the dated
+// fallback when it is left blank. Shared by the routes and tracks save-name flows.
+export function resolveSaveName(value: string, kind: string): string {
+  return value.trim() || defaultSaveName(kind);
+}

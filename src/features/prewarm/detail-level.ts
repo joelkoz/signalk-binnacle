@@ -17,9 +17,13 @@ export const DETAIL_PRESETS: DetailPreset[] = [
   { key: 'harbor', label: 'Harbor', minzoom: 6, maxzoom: 15 },
 ];
 
+// The preset a new area starts on and the fallback when a key matches no preset.
+const DEFAULT_DETAIL: DetailKey = 'coastal';
+const DEFAULT_PRESET = DETAIL_PRESETS.find((p) => p.key === DEFAULT_DETAIL) ?? DETAIL_PRESETS[0];
+
 /** The zoom range for a preset key. */
 export function rangeForPreset(key: DetailKey): [number, number] {
-  const preset = DETAIL_PRESETS.find((p) => p.key === key) ?? DETAIL_PRESETS[1];
+  const preset = DETAIL_PRESETS.find((p) => p.key === key) ?? DEFAULT_PRESET;
   return [preset.minzoom, preset.maxzoom];
 }
 

@@ -1,5 +1,5 @@
-import type { Bbox4 } from '$shared/geo';
-import { isFiniteNumber, isRecord, uuidv4 } from '$shared/lib';
+import { type Bbox4, isBbox4 } from '$shared/geo';
+import { isRecord, uuidv4 } from '$shared/lib';
 import { readPmtilesMeta, type SignalKChart } from '$shared/map';
 
 // A chart the user imported by URL, persisted as a descriptor pointing at a remote archive. Both
@@ -28,14 +28,7 @@ export function isUserChartSource(value: unknown): value is UserChartSource {
   const origin = value.origin;
   if (!isRecord(origin)) return false;
   if (origin.type !== 'url' || typeof origin.url !== 'string') return false;
-  if (
-    value.bounds !== undefined &&
-    (!Array.isArray(value.bounds) ||
-      value.bounds.length !== 4 ||
-      !value.bounds.every(isFiniteNumber))
-  ) {
-    return false;
-  }
+  if (value.bounds !== undefined && !isBbox4(value.bounds)) return false;
   return true;
 }
 

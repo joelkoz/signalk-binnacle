@@ -14,6 +14,7 @@ import {
 } from '$shared/map';
 import type { Theme } from '$shared/ui';
 import { WEATHER_LAYER_IDS } from './fills';
+import { gridTimeGate } from './grid-time-gate';
 import { isobarColors } from './pressure-colors';
 import { isobarFeatures } from './pressure-isobars';
 
@@ -31,8 +32,7 @@ export interface PressureOverlay extends OverlayModule {
 // selected time changes, like the wind overlay.
 export function createPressureOverlay(store: WeatherStore): PressureOverlay {
   let theme: Theme = 'day';
-  let lastGrid: unknown;
-  let lastTime = Number.NaN;
+  const gate = gridTimeGate(store);
 
   return {
     id: WEATHER_LAYER_IDS.pressure,
@@ -45,8 +45,7 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
     reset() {
       // The manager calls this on a base-style swap, which recreated the emptied sources, so sync()
       // redraws the isobars rather than seeing the unchanged grid and leaving them blank.
-      lastGrid = undefined;
-      lastTime = Number.NaN;
+      gate.reset();
     },
     add(ctx) {
       const colors = isobarColors(theme);
@@ -88,10 +87,8 @@ export function createPressureOverlay(store: WeatherStore): PressureOverlay {
       }
     },
     sync(ctx) {
+      if (!gate.changed()) return;
       const grid = store.grid;
-      if (grid === lastGrid && store.selectedTime === lastTime) return;
-      lastGrid = grid;
-      lastTime = store.selectedTime;
       if (!grid) {
         setSourceData(ctx.map, LINE_SOURCE, emptyFeatureCollection());
         setSourceData(ctx.map, LABEL_SOURCE, emptyFeatureCollection());

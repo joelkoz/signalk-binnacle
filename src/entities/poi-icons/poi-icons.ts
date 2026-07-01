@@ -1,5 +1,5 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
-import { type MapThemePaint, setMapImage } from '$shared/map';
+import { decodeSvgToImageData, type MapThemePaint, setMapImage } from '$shared/map';
 import { POI_CATEGORIES, type PoiCategory, poiIconId } from './poi-categories';
 
 // Per-category glyphs. Most are Lucide glyphs (anchor, sailboat, triangle-alert, fuel,
@@ -75,30 +75,17 @@ export function poiInlineIconSvg(category: PoiCategory): string {
 
 const ICON_PX = 60;
 
-// Rasterize the SVG through an Image and a canvas. createImageBitmap does not reliably
-// decode SVG blobs across browsers, but Image + drawImage does. Browser only: the node
-// test environment has no document, so icons are simply not registered there (the source
-// and layer still install).
+// Rasterize the marker SVG to a fixed 60x60 bitmap. Browser only: the node test environment has no
+// document, so decodeSvgToImageData returns null and the icon is simply not registered there (the
+// source and layer still install).
 export async function rasterizeSvg(svg: string): Promise<ImageData | null> {
-  if (typeof document === 'undefined' || typeof Image === 'undefined') return null;
-  try {
-    const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-    const img = new Image(ICON_PX, ICON_PX);
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error('svg decode failed'));
-      img.src = url;
-    });
-    const canvas = document.createElement('canvas');
+  return decodeSvgToImageData(svg, (img, ctx) => {
+    const { canvas } = ctx;
     canvas.width = ICON_PX;
     canvas.height = ICON_PX;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
     ctx.drawImage(img, 0, 0, ICON_PX, ICON_PX);
     return ctx.getImageData(0, 0, ICON_PX, ICON_PX);
-  } catch {
-    return null;
-  }
+  });
 }
 
 // The note and navaid glyphs are rasterized at 2x for retina crispness, so they register with a

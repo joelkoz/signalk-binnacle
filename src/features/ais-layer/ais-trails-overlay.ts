@@ -1,4 +1,4 @@
-import type { GeoJSONSourceSpecification, LineLayerSpecification } from 'maplibre-gl';
+import type { LineLayerSpecification } from 'maplibre-gl';
 
 import {
   type Bbox4,
@@ -9,6 +9,7 @@ import {
 } from '$shared/geo';
 import {
   emptyFeatureCollection,
+  ensureGeoJsonSource,
   featureCollection,
   mapThemePaint,
   type OverlayContext,
@@ -118,13 +119,7 @@ export function createAisTrailsOverlay(
       lastZoom = undefined;
       lastLng = undefined;
       lastLat = undefined;
-      if (!ctx.map.getSource(SOURCE_ID)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(SOURCE_ID, source);
-      }
+      ensureGeoJsonSource(ctx.map, SOURCE_ID);
       if (!ctx.map.getLayer(LAYER_ID)) {
         const layer: LineLayerSpecification = {
           id: LAYER_ID,

@@ -138,11 +138,20 @@ Shared behavior lives here. Compose these; do not re-implement them.
   controls), `closeLabel`, `onClose`, `onBack` (when set, a leading back arrow returns to the menu via
   the App's `backToMenu`; omit on panels opened from the chart), `headerExtra`, `footer`, and `minimize`
   (a phone collapse-to-header control). Every left-docked panel is a SlideOver.
+- `PanelHeader`: the header triad, a back arrow, the title and subtitle heading with an optional
+  interleaved `headerExtra`, a minimize control, and the close button. SlideOver renders its header
+  through it, and the floating weather map panel reuses it, so the two headers stay identical. Do not
+  hand-roll a panel header.
 - `AnchoredMenu`: the popover primitive (a backdrop plus a positioned surface with a scale transition
   and the dismiss-stack registration). Use it for any anchored menu (the app-menu launcher, the
-  bottom-bar More menu, the opacity popover). Pass it a `surfaceClass` to position and frame the surface.
+  bottom-bar More menu, the opacity popover). Pass it a `surfaceClass` to position and frame the
+  surface, a `role` (`group` by default, `menu` for a true menu with roving focus), and a `surfaceStyle`
+  for an inline clamp position.
 - `InlineConfirm` and `ConfirmArm`: the armed two-step confirm for destructive actions. Never a blocking
   `window.confirm`.
+- `ArmedRow`: a keyed one-at-a-time delete confirm for a list of rows (the routes and tracks panels):
+  arming one row disarms the rest. Use it instead of a per-panel `confirmingDelete` id. `ConfirmArm`
+  stays the single timed strip.
 - `UnitField`: the labeled number-input-with-unit row for stored SI thresholds (commit on blur, snaps
   back to the effective value). Use it for a single number field with a unit; do not use it for a live
   drag (that is a `.range` slider).
@@ -172,8 +181,9 @@ Shared behavior lives here. Compose these; do not re-implement them.
   CSS token contract.
 - Focus and dialog helpers: `rovingFocus`, `focusTrap`, `focusOnMount`, `onKeydownAction`, `isTabKey`,
   `dialog`, and `registerDismiss` (the Escape dismiss stack that peels the topmost surface first).
-- `pickTextFile` and `readErrorMessage` for file import; `defaultSaveName` to seed a save name. The
-  old `window.prompt` wrappers were removed; collect or rename a name with the `NameEntry` primitive.
+- `pickTextFile` and `readErrorMessage` for file import; `defaultSaveName` to seed a save name, and
+  `resolveSaveName(value, kind)` to fall a blank entry back to that default. The old `window.prompt`
+  wrappers were removed; collect or rename a name with the `NameEntry` primitive.
 - `THEMES`, `ThemeController`, `createThemeController` for the theme switch.
 
 ## 7. Panel anatomy and the field idioms

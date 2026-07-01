@@ -1,12 +1,8 @@
-import type {
-  ExpressionSpecification,
-  GeoJSONSourceSpecification,
-  LineLayerSpecification,
-} from 'maplibre-gl';
+import type { ExpressionSpecification, LineLayerSpecification } from 'maplibre-gl';
 import type { RouteStore } from '$entities/route';
 import {
   DARK_SCRIM,
-  emptyFeatureCollection,
+  ensureGeoJsonSources,
   type MapThemePaint,
   mapThemePaint,
   type OverlayContext,
@@ -61,20 +57,7 @@ export function createRouteOverlay(store: RouteStore): RouteOverlay {
       // repopulates them on the next sync instead of staying blank.
       lastVersion = -1;
       const before = ctx.beforeIdFor(BAND);
-      if (!ctx.map.getSource(LINE_SRC)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(LINE_SRC, source);
-      }
-      if (!ctx.map.getSource(WPT_SRC)) {
-        const source: GeoJSONSourceSpecification = {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-        };
-        ctx.map.addSource(WPT_SRC, source);
-      }
+      ensureGeoJsonSources(ctx.map, [LINE_SRC, WPT_SRC]);
       // The casing is added first so it sits below the line; a solid (not dashed) backing reads as a
       // continuous dark line with the bright dashes on top, which is what lifts it off light water.
       if (!ctx.map.getLayer(LINE_CASING_LAYER)) {
