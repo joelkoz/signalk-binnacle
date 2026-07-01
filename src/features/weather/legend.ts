@@ -18,7 +18,7 @@ import { DEFAULT_INTERVAL_HPA } from './pressure-isobars';
 import { waveColor } from './wave-colormap';
 import { windColor } from './wind-colormap';
 
-export interface LegendSwatch {
+interface LegendSwatch {
   color: string;
   label: string;
 }

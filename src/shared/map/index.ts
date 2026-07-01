@@ -1,4 +1,3 @@
-export { BINNACLE_ID_PREFIX } from './base-theme';
 export { chartSourceId } from './chart-adapter';
 export { createChartOverlay } from './chart-overlay';
 export type { SignalKChart } from './chart-types';

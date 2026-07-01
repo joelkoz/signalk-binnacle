@@ -17,7 +17,7 @@ import {
 // detected by the drop attempt itself (a false from drop means degrade to the client-side watch,
 // unchanged). Every method keeps the boolean degrade contract of the underlying clients.
 
-export type AnchorTransportKind = 'standard' | 'plugin' | 'none';
+type AnchorTransportKind = 'standard' | 'plugin' | 'none';
 
 export interface AnchorTransport {
   kind: AnchorTransportKind;

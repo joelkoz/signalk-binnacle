@@ -6,7 +6,7 @@ export type Bbox4 = [number, number, number, number];
 
 // True when every argument is a finite number, the shared guard for rejecting a box or a metadata
 // bounds array carrying a NaN, an Infinity, or a missing coordinate.
-export function allFinite(...n: number[]): boolean {
+function allFinite(...n: number[]): boolean {
   return n.every(Number.isFinite);
 }
 
@@ -65,7 +65,7 @@ export function normalizeBounds(bbox: Bbox4): CornerBounds | null {
 // The Web Mercator projection is undefined toward the poles, so the world clamp stops at the
 // standard latitude limit on both sides.
 const WEB_MERCATOR_MAX_LAT = 85;
-export function clampToWorld([west, south, east, north]: Bbox4): Bbox4 {
+function clampToWorld([west, south, east, north]: Bbox4): Bbox4 {
   return [
     Math.max(-180, west),
     Math.max(-WEB_MERCATOR_MAX_LAT, south),

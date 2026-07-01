@@ -31,5 +31,3 @@ export const SK_PATHS = {
   // Subscribe to the wildcard so every calcValues field streams; the base path stays for leaf keys.
   courseCalcValuesAll: 'navigation.course.calcValues.*',
 } as const satisfies Record<string, Path>;
-
-export type SkPathKey = keyof typeof SK_PATHS;

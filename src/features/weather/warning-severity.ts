@@ -6,7 +6,7 @@ const WARN_STORM = /\bstorm warning\b|\btropical storm\b/;
 const WARN_GALE = /gale/;
 const WARN_SMALL_CRAFT = /small craft/;
 
-export function severityRank(type: string): number {
+function severityRank(type: string): number {
   const t = type.toLowerCase();
   if (WARN_HURRICANE.test(t)) return 0;
   if (WARN_STORM.test(t)) return 1;

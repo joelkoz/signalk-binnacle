@@ -18,7 +18,7 @@ export { DEFAULT_TILE_BYTES, estimateBytes };
 
 /** The basemap source id; the region list includes it, the position-warm list and the new-box
  * auto-select exclude it (it is global and large). */
-export const BASEMAP_SOURCE_ID = 'basemap';
+const BASEMAP_SOURCE_ID = 'basemap';
 
 /** The registry sources offered for a region download, including the vector basemap so a region can
  * pin the base layer for offline geometry. */

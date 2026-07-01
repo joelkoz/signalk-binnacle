@@ -1,7 +1,7 @@
 import type { ExpressionSpecification } from 'maplibre-gl';
 
 // The neutral [0, 0] icon offset: a centered marker disc with no provided-symbol anchor to honor.
-export const CENTERED_OFFSET: [number, number] = [0, 0];
+const CENTERED_OFFSET: [number, number] = [0, 0];
 
 // Per-feature icon offset as a MapLibre `match` on a feature property. MapLibre stringifies an
 // array-valued GeoJSON property crossing to the worker, so a per-symbol anchor offset cannot ride on

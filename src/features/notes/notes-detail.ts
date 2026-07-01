@@ -14,7 +14,7 @@ const ITEM_KINDS = [
   'note',
 ] as const;
 
-export type NormalizedItemKind = (typeof ITEM_KINDS)[number];
+type NormalizedItemKind = (typeof ITEM_KINDS)[number];
 
 export interface NormalizedItem {
   label: string;

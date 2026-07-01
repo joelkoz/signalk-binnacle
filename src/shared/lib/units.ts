@@ -1,6 +1,6 @@
 import { PLACEHOLDER } from './coords';
 
-export const METERS_PER_NAUTICAL_MILE = 1852;
+const METERS_PER_NAUTICAL_MILE = 1852;
 // 3600 (seconds per hour) / 1852 (meters per nautical mile): meters per second to knots.
 const MS_TO_KNOTS = 3600 / METERS_PER_NAUTICAL_MILE;
 const DEG_PER_RAD = 180 / Math.PI;
@@ -50,10 +50,6 @@ export function headingDegrees(
   return radiansToBearing(headingRad) ?? radiansToBearing(cogRad) ?? 0;
 }
 
-export function pascalsToHectopascals(value: number | null | undefined): number | undefined {
-  return value == null ? undefined : value / PA_PER_HPA;
-}
-
 // Signal K temperatures are Kelvin; the display edge shows Celsius.
 export function kelvinToCelsius(value: number | null | undefined): number | undefined {
   return value == null ? undefined : value - KELVIN_OFFSET;
@@ -80,10 +76,6 @@ export function formatKnotsOr(metersPerSecond: number | null | undefined, digits
 
 export function formatBearingOr(radians: number | null | undefined, digits = 0): string {
   return formatFixed(radiansToBearing(radians), digits);
-}
-
-export function formatHectopascalsOr(pascals: number | null | undefined, digits = 0): string {
-  return formatFixed(pascalsToHectopascals(pascals), digits);
 }
 
 export function metersToNauticalMiles(value: number | null | undefined): number | undefined {
@@ -127,7 +119,6 @@ const METERS_PER_FOOT = 0.3048;
 const MM_PER_INCH = 25.4;
 const PA_PER_INHG = 3386.389;
 export const METERS_PER_MILE = 1609.344;
-const LITERS_PER_US_GALLON = 3.785_411_784;
 
 export function metersToFeet(value: number | null | undefined): number | undefined {
   return value == null ? undefined : value / METERS_PER_FOOT;
@@ -154,16 +145,6 @@ export function formatLengthOr(
 ): string {
   const value = mode === 'imperial' ? metersToFeet(meters) : meters;
   return formatFixed(value, digits);
-}
-
-// The unit label for a mode-dependent volume (fuel, tankage): US gallons in imperial, liters metric.
-export function volumeUnit(mode: UnitsMode): 'L' | 'gal' {
-  return mode === 'imperial' ? 'gal' : 'L';
-}
-
-// A volume in the display unit, US gallons in imperial and liters metric. The store keeps liters.
-export function litersToVolume(liters: number, mode: UnitsMode): number {
-  return mode === 'imperial' ? liters / LITERS_PER_US_GALLON : liters;
 }
 
 export function temperatureUnit(mode: UnitsMode): string {

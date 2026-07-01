@@ -15,7 +15,7 @@ export function themedRamp(day: Array<[number, Rgba]>, night: Array<[number, Rgb
 // Sample a value against an ascending list of [value, color] stops, linearly interpolating the four
 // RGBA channels between the two bracketing stops. NaN and values at or below the first stop return
 // the first color; values at or above the last return the last. Shared by the weather colormaps.
-export function sampleRamp(stops: Array<[number, Rgba]>, x: number): Rgba {
+function sampleRamp(stops: Array<[number, Rgba]>, x: number): Rgba {
   if (Number.isNaN(x) || x <= stops[0][0]) return stops[0][1];
   for (let i = 0; i < stops.length - 1; i += 1) {
     const [x0, c0] = stops[i];

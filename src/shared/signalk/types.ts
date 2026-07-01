@@ -25,7 +25,7 @@ export const NOTIFICATIONS_PREFIX = 'notifications.';
 // audible alarm (anchor drag, MOB). Built from a NotificationState[] literal so a typo in a member
 // is a compile error, while the Set stays string-keyed so a raw notifications.* state reads cleanly.
 const SOUNDING_STATES: readonly NotificationState[] = ['alarm', 'emergency'];
-export const SOUNDING_NOTIFICATION_STATES: ReadonlySet<string> = new Set(SOUNDING_STATES);
+const SOUNDING_NOTIFICATION_STATES: ReadonlySet<string> = new Set(SOUNDING_STATES);
 
 // The state string of a notifications.* value, or undefined when the value is absent, not an object,
 // or carries no string state (a cleared v1 producer publishes null). Shared by every consumer that
@@ -56,7 +56,7 @@ export interface PathValue {
   value: Value;
 }
 
-export interface DeltaUpdate {
+interface DeltaUpdate {
   values?: PathValue[];
   [key: string]: unknown;
 }

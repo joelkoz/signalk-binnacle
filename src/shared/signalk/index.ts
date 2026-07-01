@@ -6,7 +6,6 @@ export { createSignalKClient } from './client';
 export type { ServerFeatures } from './features-client';
 export { fetchServerFeatures } from './features-client';
 export type {
-  HistoryColumn,
   HistoryProviders,
   HistoryQuery,
   HistoryValues,
@@ -33,7 +32,6 @@ export {
   updateNotification,
 } from './notifications-client';
 export { appendQuery, appendToken, serverOrigin, streamUrl } from './origin';
-export type { SkPathKey } from './paths';
 export { SK_PATHS } from './paths';
 export {
   asKeyedObject,
@@ -72,5 +70,4 @@ export {
   isSoundingNotification,
   notificationState,
   SELF_CONTEXT,
-  SOUNDING_NOTIFICATION_STATES,
 } from './types';

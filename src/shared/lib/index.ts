@@ -19,7 +19,6 @@ export {
   formatDuration,
   formatDurationParts,
   formatFixed,
-  formatHectopascalsOr,
   formatKnots,
   formatKnotsOr,
   formatLengthOr,
@@ -37,9 +36,7 @@ export {
   knotsToMetersPerSecond,
   landDistanceUnit,
   lengthUnit,
-  litersToVolume,
   METERS_PER_MILE,
-  METERS_PER_NAUTICAL_MILE,
   MINUTE_MS,
   metersPerSecondToKnots,
   metersToFeet,
@@ -51,5 +48,4 @@ export {
   pressureValue,
   temperatureUnit,
   type UnitsMode,
-  volumeUnit,
 } from './units';

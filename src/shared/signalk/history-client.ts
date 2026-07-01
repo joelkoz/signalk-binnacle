@@ -18,7 +18,7 @@ export interface HistoryProviders {
   ids: readonly string[];
 }
 
-export interface HistoryColumn {
+interface HistoryColumn {
   path: string;
   method: string;
 }

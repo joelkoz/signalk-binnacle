@@ -1,6 +1,6 @@
 import type { Bbox4 } from '$shared/geo';
 
-export type MapSourceType = 'tilelayer' | 'WMS' | 'WMTS' | 'tileJSON' | 'mapstyleJSON' | 'S-57';
+type MapSourceType = 'tilelayer' | 'WMS' | 'WMTS' | 'tileJSON' | 'mapstyleJSON' | 'S-57';
 
 export interface SignalKChart {
   identifier: string;

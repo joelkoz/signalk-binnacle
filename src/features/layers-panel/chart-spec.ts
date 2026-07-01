@@ -1,6 +1,6 @@
 import { type UserChartSource, zoomRange } from '$entities/user-charts';
 
-export interface ChartSpecRow {
+interface ChartSpecRow {
   label: string;
   value: string;
 }

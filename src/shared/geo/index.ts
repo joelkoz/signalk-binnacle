@@ -1,10 +1,8 @@
 export type { Bbox4, LngLatBoundsLike } from './bounds';
 export {
-  allFinite,
   bboxContains,
   bboxContainsPoint,
   boundsOfPoints,
-  clampToWorld,
   formatBounds,
   isBbox4,
   lngLatBoundsToBbox4,

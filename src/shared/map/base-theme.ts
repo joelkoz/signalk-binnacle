@@ -10,7 +10,7 @@ import { RASTER_ID_PREFIX } from './raster-overlay';
 
 // Every binnacle-owned overlay layer id starts with this, so the base recolor can tell them apart
 // from the base-style layers it may touch. Shared with the overlay id builders.
-export const BINNACLE_ID_PREFIX = 'binnacle-';
+const BINNACLE_ID_PREFIX = 'binnacle-';
 
 // A layer whose id starts with one of these is owned by an overlay (the chart, every hosted-raster
 // overlay, and every binnacle overlay theme their own layers via the layer manager), so the base

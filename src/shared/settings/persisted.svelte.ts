@@ -92,7 +92,7 @@ export interface TrackSettings {
   colorMode: 'speed' | 'solid';
 }
 
-export const DEFAULT_TRACK_SETTINGS: TrackSettings = {
+const DEFAULT_TRACK_SETTINGS: TrackSettings = {
   intervalSeconds: 10,
   minMeters: 10,
   colorMode: 'speed',

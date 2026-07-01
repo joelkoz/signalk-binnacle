@@ -1,6 +1,6 @@
 import Pbf from 'pbf';
 
-export type Pathology = 'clean' | 'reduce' | 'fill' | 'double';
+type Pathology = 'clean' | 'reduce' | 'fill' | 'double';
 
 export interface Opts {
   spokesPerRev: number;

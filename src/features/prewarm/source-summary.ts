@@ -33,11 +33,6 @@ const META: Record<string, SourceMeta> = (() => {
   return map;
 })();
 
-/** The category metadata for a source id, if it is known to the catalog. */
-export function sourceMeta(id: string): SourceMeta | undefined {
-  return META[id];
-}
-
 /** A facet is a child of another overlay (ZOC, uncertainty, Natura 2000); it is hidden from the builder. */
 export function isFacet(source: { id: string }): boolean {
   return META[source.id]?.parent !== undefined;

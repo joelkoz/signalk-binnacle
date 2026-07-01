@@ -4,7 +4,7 @@ import { createExpiringStore, type ExpiringStore, MemoryCache } from '$shared/st
 import { fetchRadar } from './rainviewer-client';
 import { type ForecastOptions, fetchForecast, fetchMarine, mergeMarine } from './weather-client';
 
-export interface WeatherLayersWanted {
+interface WeatherLayersWanted {
   waves: boolean;
   radar: boolean;
 }

@@ -9,7 +9,7 @@ import { degradeToMemory, openIdbDatabase, reqPromise, txDone } from './idb';
 // and never throws, when IndexedDB is missing (Node, SSR, private mode) or fails (blocked upgrade,
 // quota, corruption), so a persistence failure never breaks the caller.
 
-export interface ExpiringEntry<T> {
+interface ExpiringEntry<T> {
   value: T;
   expires: number;
 }

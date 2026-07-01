@@ -9,7 +9,7 @@ import type { Theme } from '$shared/ui';
 import type { FieldBitmap } from './field-rgba';
 import { gridTimeGate } from './grid-time-gate';
 
-export type Quad = [[number, number], [number, number], [number, number], [number, number]];
+type Quad = [[number, number], [number, number], [number, number], [number, number]];
 export type CanvasFactory = () => HTMLCanvasElement;
 
 export interface FieldOverlay extends OverlayModule {
@@ -27,7 +27,7 @@ export interface FieldOverlayOptions {
   fieldRgba: (grid: WeatherGrid, bracket: TimeBracket, theme: Theme) => FieldBitmap | undefined;
 }
 
-export function defaultCanvas(): HTMLCanvasElement {
+function defaultCanvas(): HTMLCanvasElement {
   return document.createElement('canvas');
 }
 

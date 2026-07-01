@@ -13,7 +13,7 @@ export const POWER_PENDING_KEY = 'power';
 
 // A live control value. `auto` is present on controls that support an automatic mode (gain, sea); a
 // value-only control (rain on some radars) omits it.
-export interface RadarControlEntry {
+interface RadarControlEntry {
   value: number;
   auto?: boolean;
 }

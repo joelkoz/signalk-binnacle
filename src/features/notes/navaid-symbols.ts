@@ -2,8 +2,8 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { ICON_PIXEL_RATIO, poiIconId, rasterizeSvg } from '$entities/poi-icons';
 import { type MapThemePaint, setMapImage } from '$shared/map';
 
-export type NavaidKind = 'lighthouse' | 'light' | 'buoy' | 'daybeacon' | 'generic';
-export type NavaidSide = 'port' | 'starboard' | 'none';
+type NavaidKind = 'lighthouse' | 'light' | 'buoy' | 'daybeacon' | 'generic';
+type NavaidSide = 'port' | 'starboard' | 'none';
 
 export interface NavaidClass {
   kind: NavaidKind;

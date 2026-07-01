@@ -26,7 +26,7 @@ const PRESSURE_TREND_WINDOW_H = PRESSURE_TREND_WINDOW_MS / HOUR_MS;
 
 // The free-grid forecast at a point: up to FORECAST_STEPS rows starting at the selected time, spaced
 // at least FREE_STEP_MS apart. Empty when there is no grid.
-export function freeForecast(
+function freeForecast(
   grid: WeatherGrid | undefined,
   lat: number,
   lon: number,

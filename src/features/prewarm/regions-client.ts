@@ -48,7 +48,7 @@ export interface SavedRegionDto {
   cachedBytes: number;
 }
 
-export interface RegionRequest {
+interface RegionRequest {
   bbox: [number, number, number, number];
   sourceIds: string[];
   minzoom: number;

@@ -1,7 +1,6 @@
 export type {
   ActiveSeverity,
   Assessment,
-  CpaSource,
   DangerContact,
   Severity,
 } from './collision.svelte';
