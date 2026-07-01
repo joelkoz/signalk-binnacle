@@ -61,7 +61,9 @@ const EMODNET_ATTRIBUTION =
 
 const BLUETOPO_WMS = 'https://nowcoast.noaa.gov/geoserver/bluetopo/wms';
 const BLUETOPO_GROUP = { id: 'bluetopo', title: 'BlueTopo (US)' };
-const BLUETOPO_BOUNDS: [number, number, number, number] = [-138.0, -53.876, 17.046, 59.55];
+// From the BlueTopo service GetCapabilities (bluetopo:bathymetry): US waters from the western
+// Pacific to the western Atlantic. South is a positive latitude, east a negative longitude.
+const BLUETOPO_BOUNDS: [number, number, number, number] = [-138.0, 16.786, -64.198, 59.55];
 const BLUETOPO_ATTRIBUTION = 'NOAA Office of Coast Survey, BlueTopo / National Bathymetric Source';
 
 // Live-verified free services (2026-06-02). Every one carries a "not for navigation" constraint, so
